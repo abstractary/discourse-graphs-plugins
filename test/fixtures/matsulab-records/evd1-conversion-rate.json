@@ -1,0 +1,152 @@
+[
+  {
+    "uri": "at://did:web:records.example/science.mira.evidence/3merpnmdk2222",
+    "cid": "bafyreieanmz2pcruy4al7ai3llextuzzbg2rizye7bxlmjwa7xgrc6a2py",
+    "value": {
+      "$type": "science.mira.evidence",
+      "createdAt": "2026-02-14T00:00:00.000Z",
+      "title": "[[RES]] - 29% of MATSUlab issues (n=445) were claimed as experiments - [[@analysis/quantify issue claiming from MATSUlab]]",
+      "content": "Issue-to-experiment conversion rate and result production. The proportion of issues posted to a discourse graph Issues board that are claimed as experiments, and the subsequent proportion of those claimed experiments that produce formal result nodes. Measured across 445 issues, 130 claimed experiments, and 139 RES nodes in the MATSUlab discourse graph.",
+      "description": {
+        "$type": "at.linkedopendata.defs#ref",
+        "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/README.md"
+      },
+      "depiction": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/fig1_conversion_rate.png"
+      ],
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/#evidence"
+      ],
+      "attributedTo": [
+        {
+          "uri": "https://orcid.org/0000-0002-0286-5310"
+        }
+      ],
+      "observationStatement": {
+        "uri": "at://did:web:records.example/science.mira.claim/3merpnmdl2222",
+        "cid": "bafyreifaolmdflo36o6bp4jssytbxgjdyia75tmejgpuhfllggljzq3y2q"
+      },
+      "observationOriginActivity": {
+        "uri": "at://did:web:records.example/science.mira.study/3merpnmdm2222",
+        "cid": "bafyreihebprhlwn5fiq3sx4gdj4vxjkxnsvlxbp76orjiw2w7jt25dzumy"
+      },
+      "sourceDocument": {
+        "uri": "at://did:web:records.example/science.mira.sourceDocument/3merpnmdo2222",
+        "cid": "bafyreidv2fcbgil2oljxu3utv555kpurijzxgjeow54d6wqvp6srz4gqua"
+      },
+      "isGroundedIn": {
+        "uri": "at://did:web:records.example/science.mira.study/3merpnmdm2222",
+        "cid": "bafyreihebprhlwn5fiq3sx4gdj4vxjkxnsvlxbp76orjiw2w7jt25dzumy"
+      },
+      "observationBase": [
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/data/conversion_data.json"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/data/issue_timeline_data.json"
+        }
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.claim/3merpnmdl2222",
+    "cid": "bafyreifaolmdflo36o6bp4jssytbxgjdyia75tmejgpuhfllggljzq3y2q",
+    "value": {
+      "$type": "science.mira.claim",
+      "createdAt": "2026-02-14T00:00:00.000Z",
+      "title": "29% of MATSUlab issues (n=445) were claimed as experiments.",
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/#observation"
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.study/3merpnmdm2222",
+    "cid": "bafyreihebprhlwn5fiq3sx4gdj4vxjkxnsvlxbp76orjiw2w7jt25dzumy",
+    "value": {
+      "$type": "science.mira.study",
+      "createdAt": "2026-02-14T00:00:00.000Z",
+      "title": "@analysis/quantify issue claiming from MATSUlab",
+      "seeAlso": [
+        "https://roamresearch.com/#/app/discourse-graphs/page/E5UYzWC6b"
+      ],
+      "used": [
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/#matsulab-graph"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/#source-1"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/#source-2"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/calculate_metrics.py"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/parse_jsonld.py"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/parse_roam_json.py"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/generate_visualizations.py"
+        }
+      ],
+      "wasAssociatedWith": [
+        "https://orcid.org/0000-0002-0286-5310",
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/#claude"
+      ],
+      "startedAtTime": "2026-01-25T00:00:00.000Z",
+      "endedAtTime": "2026-02-14T00:00:00.000Z",
+      "codeRepository": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/#study"
+      ],
+      "follows": [
+        {
+          "uri": "at://did:web:records.example/science.mira.protocol/3merpnmdn2222",
+          "cid": "bafyreidkvqidggzesoy72n7zc2jh7cb5qfbnzy6bhi7oecsklwg5xa4nja"
+        }
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.protocol/3merpnmdn2222",
+    "cid": "bafyreidkvqidggzesoy72n7zc2jh7cb5qfbnzy6bhi7oecsklwg5xa4nja",
+    "value": {
+      "$type": "science.mira.protocol",
+      "createdAt": "2026-02-14T00:00:00.000Z",
+      "title": "Discourse graph conversion rate analysis",
+      "content": "Automated pipeline parsing JSON-LD and Roam JSON exports to identify issue nodes (320 formal ISS + 125 experiment pages), detect claiming via a two-tier strategy (explicitly claimed via Claimed By:: field, n=69; inferred via experimental log presence, n=56; plus 5 ISS pages with activity), and link result nodes using a 3-tier matching strategy (relation instances, backreference matching, full description matching).",
+      "description": {
+        "$type": "at.linkedopendata.defs#ref",
+        "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/methods_excerpt.md"
+      },
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd1-conversion-rate/#protocol"
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.sourceDocument/3merpnmdo2222",
+    "cid": "bafyreidv2fcbgil2oljxu3utv555kpurijzxgjeow54d6wqvp6srz4gqua",
+    "value": {
+      "$type": "science.mira.sourceDocument",
+      "createdAt": "2026-02-14T00:00:00.000Z",
+      "title": "Narrative post describing the MATSUlab discourse graph analysis",
+      "format": "text/html",
+      "sameAs": [
+        "https://experiment.com/u/Hd2AYg"
+      ],
+      "describesActivity": {
+        "uri": "at://did:web:records.example/science.mira.study/3merpnmdm2222",
+        "cid": "bafyreihebprhlwn5fiq3sx4gdj4vxjkxnsvlxbp76orjiw2w7jt25dzumy"
+      }
+    }
+  }
+]

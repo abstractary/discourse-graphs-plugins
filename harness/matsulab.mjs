@@ -6,8 +6,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const BUNDLES = "../org-repos/MATSUlab-issue-exchange-analysis/output/evidence_bundles";
-const RECORDS = "../mira-lexicon/records";
+const BUNDLES = process.env.MATSULAB_BUNDLES ?? "../org-repos/MATSUlab-issue-exchange-analysis/output/evidence_bundles";
+const RECORDS = "test/fixtures/matsulab-records";
 
 const parseCsv = (text) => {
   const rows = [];

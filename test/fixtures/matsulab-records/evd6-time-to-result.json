@@ -1,0 +1,153 @@
+[
+  {
+    "uri": "at://did:web:records.example/science.mira.evidence/3meua4jsm2222",
+    "cid": "bafyreicibt4v43755s7fqqf54uqklwicslm5cfv7hrftjlvq2czvprltci",
+    "value": {
+      "$type": "science.mira.evidence",
+      "createdAt": "2026-02-15T00:00:00.000Z",
+      "title": "[[RES]] - Among 50 experiments in the MATSUlab that produced formal results, the median time from issue claiming to first result was 12 days, with wide variance (n=50, IQR 0–50 days) - [[@analysis/quantify issue claiming from MATSUlab]]",
+      "content": "Time from issue creation and claiming to first result production. The elapsed time between issue creation, experiment claiming, and production of the first formal result node (RES). Measured across 50 result-producing experiments and 125 claimed experiments in the MATSUlab discourse graph.",
+      "description": {
+        "$type": "at.linkedopendata.defs#ref",
+        "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/README.md"
+      },
+      "seeAlso": [
+        "https://roamresearch.com/#/app/discourse-graphs/page/Iyef0kkul"
+      ],
+      "depiction": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/fig6c_swimmer_plot.png",
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/figS6c_swimmer_plot_log.png"
+      ],
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/#evidence"
+      ],
+      "attributedTo": [
+        {
+          "uri": "https://orcid.org/0000-0002-0286-5310"
+        }
+      ],
+      "observationStatement": {
+        "uri": "at://did:web:records.example/science.mira.claim/3meua4jsn2222",
+        "cid": "bafyreievkfrvdfvpqdt347fatzantpjdovsexss3uoi3ru4njeyvn6hx5q"
+      },
+      "observationOriginActivity": {
+        "uri": "at://did:web:records.example/science.mira.study/3meua4jso2222",
+        "cid": "bafyreid2laxaxybngqypur5uivpba6wmaofevb2ecvrrn7of5yxvyfibye"
+      },
+      "sourceDocument": {
+        "uri": "at://did:web:records.example/science.mira.sourceDocument/3meua4jsq2222",
+        "cid": "bafyreigzgop2e5fwu2f6bho5trt23mcuhuexcmunwskamagnn6iyddjzoi"
+      },
+      "isGroundedIn": {
+        "uri": "at://did:web:records.example/science.mira.study/3meua4jso2222",
+        "cid": "bafyreid2laxaxybngqypur5uivpba6wmaofevb2ecvrrn7of5yxvyfibye"
+      },
+      "observationBase": [
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/data/time_to_result_data.json"
+        }
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.claim/3meua4jsn2222",
+    "cid": "bafyreievkfrvdfvpqdt347fatzantpjdovsexss3uoi3ru4njeyvn6hx5q",
+    "value": {
+      "$type": "science.mira.claim",
+      "createdAt": "2026-02-15T00:00:00.000Z",
+      "title": "Among 50 experiments in the MATSUlab that produced formal results, the median time from issue claiming to first result was 12 days, with wide variance (n=50, IQR 0–50 days).",
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/#observation"
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.study/3meua4jso2222",
+    "cid": "bafyreid2laxaxybngqypur5uivpba6wmaofevb2ecvrrn7of5yxvyfibye",
+    "value": {
+      "$type": "science.mira.study",
+      "createdAt": "2026-02-15T00:00:00.000Z",
+      "title": "@analysis/quantify issue claiming from MATSUlab",
+      "seeAlso": [
+        "https://roamresearch.com/#/app/discourse-graphs/page/E5UYzWC6b"
+      ],
+      "used": [
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/#matsulab-graph"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/#source-1"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/#source-2"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/calculate_metrics.py"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/experiment_lifecycle_visualizations.py"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/parse_jsonld.py"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/parse_roam_json.py"
+        }
+      ],
+      "wasAssociatedWith": [
+        "https://orcid.org/0000-0002-0286-5310",
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/#claude"
+      ],
+      "startedAtTime": "2026-02-14T00:00:00.000Z",
+      "endedAtTime": "2026-02-15T00:00:00.000Z",
+      "codeRepository": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/#study"
+      ],
+      "follows": [
+        {
+          "uri": "at://did:web:records.example/science.mira.protocol/3meua4jsp2222",
+          "cid": "bafyreibcjavb2nbyv7pazqplpvzodtvy74xlc3vrrf4en4mqa376tm3f5a"
+        }
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.protocol/3meua4jsp2222",
+    "cid": "bafyreibcjavb2nbyv7pazqplpvzodtvy74xlc3vrrf4en4mqa376tm3f5a",
+    "value": {
+      "$type": "science.mira.protocol",
+      "createdAt": "2026-02-15T00:00:00.000Z",
+      "title": "Time-to-result interval analysis",
+      "content": "Automated pipeline computing three timing intervals from actual timestamps in the MATSUlab discourse graph: (1) issue creation to claim (page_created to claimed_timestamp), (2) issue creation to first result (page_created to earliest RES node created date), (3) claim to first result (claimed_timestamp to earliest RES node). All intervals use a unified page-creation origin for the swimmer plot visualization.",
+      "description": {
+        "$type": "at.linkedopendata.defs#ref",
+        "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/methods_excerpt.md"
+      },
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd6-time-to-result/#protocol"
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.sourceDocument/3meua4jsq2222",
+    "cid": "bafyreigzgop2e5fwu2f6bho5trt23mcuhuexcmunwskamagnn6iyddjzoi",
+    "value": {
+      "$type": "science.mira.sourceDocument",
+      "createdAt": "2026-02-15T00:00:00.000Z",
+      "title": "Narrative post describing the MATSUlab discourse graph analysis",
+      "format": "text/html",
+      "sameAs": [
+        "https://experiment.com/u/Hd2AYg"
+      ],
+      "describesActivity": {
+        "uri": "at://did:web:records.example/science.mira.study/3meua4jso2222",
+        "cid": "bafyreid2laxaxybngqypur5uivpba6wmaofevb2ecvrrn7of5yxvyfibye"
+      }
+    }
+  }
+]

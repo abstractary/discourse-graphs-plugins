@@ -1,0 +1,146 @@
+[
+  {
+    "uri": "at://did:web:records.example/science.mira.evidence/3mdoj4pvj2222",
+    "cid": "bafyreieajg7xcynr24whszkzebbpinb23lj5mgi7gdk7eaf4dt6c6iosbe",
+    "value": {
+      "$type": "science.mira.evidence",
+      "createdAt": "2026-01-31T00:00:00.000Z",
+      "title": "[[RES]] - Three undergraduate researchers tracked in this analysis each generated an original result within ~4 months of joining the lab, with two creating a result within ~1 month - [[@analysis/quantify researcher onboarding from MATSUlab]]",
+      "content": "Undergraduate researcher onboarding time-to-result. The time from a researcher's first day in the lab to their first formal result (RES node) creation, measured for three undergraduate researchers following different onboarding pathways.",
+      "description": {
+        "$type": "at.linkedopendata.defs#ref",
+        "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/README.md"
+      },
+      "seeAlso": [
+        "https://roamresearch.com/#/app/discourse-graphs/page/0FU6ssOwH"
+      ],
+      "depiction": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/fig7_student_timelines.png"
+      ],
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#evidence"
+      ],
+      "attributedTo": [
+        {
+          "uri": "https://orcid.org/0000-0002-0286-5310"
+        }
+      ],
+      "observationStatement": {
+        "uri": "at://did:web:records.example/science.mira.claim/3mdoj4pvk2222",
+        "cid": "bafyreic5l54igbdsnfmxrlj3wpb37enhkblkckf7hl3wevevdmobzp633i"
+      },
+      "observationOriginActivity": {
+        "uri": "at://did:web:records.example/science.mira.study/3mdoj4pvl2222",
+        "cid": "bafyreibyfert55ydqjmzqli2fu725sxlmpy3q3lpu7bxyqkby4lpl6blvu"
+      },
+      "sourceDocument": {
+        "uri": "at://did:web:records.example/science.mira.sourceDocument/3mdoj4pvn2222",
+        "cid": "bafyreibbdhuj7o73jwd4vsj3veim5wbt6klrime5prx6dy4xllshcedzau"
+      },
+      "isGroundedIn": {
+        "uri": "at://did:web:records.example/science.mira.study/3mdoj4pvl2222",
+        "cid": "bafyreibyfert55ydqjmzqli2fu725sxlmpy3q3lpu7bxyqkby4lpl6blvu"
+      },
+      "observationBase": [
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/data/student_milestones.json"
+        }
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.claim/3mdoj4pvk2222",
+    "cid": "bafyreic5l54igbdsnfmxrlj3wpb37enhkblkckf7hl3wevevdmobzp633i",
+    "value": {
+      "$type": "science.mira.claim",
+      "createdAt": "2026-01-31T00:00:00.000Z",
+      "title": "Three undergraduate researchers tracked in this analysis each generated an original result within ~4 months of joining the lab, with two creating a result within ~1 month.",
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#observation"
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.study/3mdoj4pvl2222",
+    "cid": "bafyreibyfert55ydqjmzqli2fu725sxlmpy3q3lpu7bxyqkby4lpl6blvu",
+    "value": {
+      "$type": "science.mira.study",
+      "createdAt": "2026-01-31T00:00:00.000Z",
+      "title": "@analysis/quantify researcher onboarding from MATSUlab",
+      "seeAlso": [
+        "https://roamresearch.com/#/app/discourse-graphs/page/E5UYzWC6b"
+      ],
+      "used": [
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#matsulab-graph"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#source-1"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#source-2"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#source-3"
+        },
+        {
+          "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/student_timeline_analysis.py"
+        }
+      ],
+      "wasAssociatedWith": [
+        "https://orcid.org/0000-0002-0286-5310",
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#claude"
+      ],
+      "startedAtTime": "2026-01-31T00:00:00.000Z",
+      "endedAtTime": "2026-01-31T00:00:00.000Z",
+      "codeRepository": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#study"
+      ],
+      "follows": [
+        {
+          "uri": "at://did:web:records.example/science.mira.protocol/3mdoj4pvm2222",
+          "cid": "bafyreif3mkvzro2phq34g5ahxkvhyuw64umjdin34idtdi4i4xjnps2vva"
+        }
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.protocol/3mdoj4pvm2222",
+    "cid": "bafyreif3mkvzro2phq34g5ahxkvhyuw64umjdin34idtdi4i4xjnps2vva",
+    "value": {
+      "$type": "science.mira.protocol",
+      "createdAt": "2026-01-31T00:00:00.000Z",
+      "title": "Discourse graph milestone tracing",
+      "content": "Manual extraction of key milestones from daily notes exports and experiment page metadata. Milestones tracked: (1) first day in lab, (2) first experiment reference in daily notes, (3) first plot (linked image), (4) first RES node creation date. Researchers anonymized as A, B, C in outputs.",
+      "description": {
+        "$type": "at.linkedopendata.defs#ref",
+        "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/methods_excerpt.md"
+      },
+      "container": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/",
+      "sameAs": [
+        "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/output/evidence_bundles/evd7-student-onboarding/#protocol"
+      ]
+    }
+  },
+  {
+    "uri": "at://did:web:records.example/science.mira.sourceDocument/3mdoj4pvn2222",
+    "cid": "bafyreibbdhuj7o73jwd4vsj3veim5wbt6klrime5prx6dy4xllshcedzau",
+    "value": {
+      "$type": "science.mira.sourceDocument",
+      "createdAt": "2026-01-31T00:00:00.000Z",
+      "title": "Narrative post describing the MATSUlab discourse graph analysis",
+      "format": "text/html",
+      "sameAs": [
+        "https://experiment.com/u/Hd2AYg"
+      ],
+      "describesActivity": {
+        "uri": "at://did:web:records.example/science.mira.study/3mdoj4pvl2222",
+        "cid": "bafyreibyfert55ydqjmzqli2fu725sxlmpy3q3lpu7bxyqkby4lpl6blvu"
+      }
+    }
+  }
+]

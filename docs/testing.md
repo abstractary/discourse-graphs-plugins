@@ -69,6 +69,8 @@ The scripts drive Obsidian through its command line tool, which is in `/Applicat
 
 Replace `obsidian` with `roam` to run a suite in the other base.
 
+Seeding with `harness/matsulab.mjs` also needs the MATSUlab evidence bundles. Set `MATSULAB_BUNDLES` to their folder in a checkout of `MATSUlab-issue-exchange-analysis`.
+
 The conformance suite runs inside each app. It's the same 36 checks in both, written once in `packages/contract/src/conformance.ts`:
 
 - In Obsidian, call `app.plugins.plugins["discourse-graphs-demo"].slice.runConformance()`.

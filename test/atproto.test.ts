@@ -127,7 +127,7 @@ test("CIDs follow the repo format, and change when content does", async () => {
 
 test("the published MATSUlab records read in, and go back out in the same collections", async () => {
   const { ready } = await setup();
-  const folder = "../mira-lexicon/records";
+  const folder = "test/fixtures/matsulab-records";
   const published = readdirSync(folder)
     .filter((name) => name.endsWith(".json"))
     .flatMap((name) => JSON.parse(readFileSync(join(folder, name), "utf8")) as { uri: string; cid: string; value: Record<string, unknown> }[]);

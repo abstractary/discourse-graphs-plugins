@@ -9,4 +9,4 @@ Two published papers and what the MIRA extraction app made from them. They give 
 
 The `.mira.jsonld` files are the same graphs in MIRA's linked data form.
 
-The PDFs belong to their publishers, and they're here so the team can run the demo. Remove them before this repository is ever made public.
+The PDFs belong to their publishers, and they're here so people can run the demo.

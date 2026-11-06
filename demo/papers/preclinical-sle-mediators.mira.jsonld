@@ -1,0 +1,1367 @@
+{
+  "@context": [
+    "https://purl.org/mira-science/mira.jsonld",
+    {
+      "x": "urn:mira-extraction:dysregulation-of-innate-and-adaptive-serum-mediators-precedes-systemic-lupus-erythematosus-classification-and-improves-prognostic-accuracy-of-autoantibodies:"
+    }
+  ],
+  "@graph": [
+    {
+      "@id": "x:agent",
+      "@type": "UserAccount",
+      "accountName": "MIRA-extraction web editor"
+    },
+    {
+      "@id": "x:author-0",
+      "@type": "UserAccount",
+      "accountName": "Rufei Lu"
+    },
+    {
+      "@id": "x:author-1",
+      "@type": "UserAccount",
+      "accountName": "Melissa E. Munroe"
+    },
+    {
+      "@id": "x:author-2",
+      "@type": "UserAccount",
+      "accountName": "Joel M. Guthridge"
+    },
+    {
+      "@id": "x:author-3",
+      "@type": "UserAccount",
+      "accountName": "Krista M. Bean"
+    },
+    {
+      "@id": "x:author-4",
+      "@type": "UserAccount",
+      "accountName": "Dustin A. Fife"
+    },
+    {
+      "@id": "x:author-5",
+      "@type": "UserAccount",
+      "accountName": "Hua Chen"
+    },
+    {
+      "@id": "x:author-6",
+      "@type": "UserAccount",
+      "accountName": "Samantha R. Slight-Webb"
+    },
+    {
+      "@id": "x:author-7",
+      "@type": "UserAccount",
+      "accountName": "Michael P. Keith"
+    },
+    {
+      "@id": "x:author-8",
+      "@type": "UserAccount",
+      "accountName": "John B. Harley"
+    },
+    {
+      "@id": "x:author-9",
+      "@type": "UserAccount",
+      "accountName": "Judith A. James"
+    },
+    {
+      "@id": "x:_schema_SourceDocument",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "SourceDocument"
+      ],
+      "label": "SourceDocument",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Study",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Study"
+      ],
+      "label": "Study",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Protocol",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Protocol"
+      ],
+      "label": "Protocol",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Question",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Question"
+      ],
+      "label": "Question",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Claim",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Claim"
+      ],
+      "label": "Claim",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Evidence",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Evidence"
+      ],
+      "label": "Evidence",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_schema_Request",
+      "@type": "NodeSchema",
+      "subClassOf": [
+        "Request"
+      ],
+      "label": "Request",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_describesActivity",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "describesActivity"
+      ],
+      "label": "describesActivity",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_follows",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "follows"
+      ],
+      "label": "follows",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_grounds",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "grounds"
+      ],
+      "label": "grounds",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_supports",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "supports"
+      ],
+      "label": "supports",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_addresses",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "addresses"
+      ],
+      "label": "addresses",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:_rel_request_target",
+      "@type": "AbstractRelationDef",
+      "subClassOf": [
+        "request_target"
+      ],
+      "label": "request_target",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent"
+    },
+    {
+      "@id": "x:doc",
+      "@type": "Container"
+    },
+    {
+      "@id": "x:a-n0",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Dysregulation of innate and adaptive serum mediators precedes systemic lupus erythematosus classification and improves prognostic accuracy of autoantibodies",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n1",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Samples were obtained from the DoDSR. Demographic and clinical information, including medication history and American College of Rheumatology (ACR) criteria for SLE classification, were extracted from medical records by study personnel.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n2",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Serum levels of BLyS (R & D Systems, Minneapolis, MN) and a proliferation-inducing ligand (APRIL) (eBioscience/Affymetrix, San Diego, CA) were assessed using enzyme-linked immunosorbent assay (ELISA) per manufacturer's protocol.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n3",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Normalized fluorescence intensity values for an additional 30 immune mediators, including cytokines, chemokines, and soluble TNFR superfamily members (Supplemental Table 2), were determined by xMAP multiplex assays (eBioscience/Affymetrix) [18].",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n4",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "The BioPlex 2200® system (Bio-Rad Technologies) was used to simultaneously detect levels of multiple autoantibody specificities within a single serum sample: dsDNA, chromatin, Ro/SSA, La/SSB, Sm, SmRNP, and RNP [7,35].",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n5",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Mixed linear regression models were fitted on normalized FI values of each soluble mediator over time using the lme4 package in R (version 2.15.0). Using mixed models, intercepts were modeled as random effects to account for the initial soluble mediator le",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n6",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "To determine if other forms of immune dysregulation contribute to preclinical SLE pathogenesis, we measured SLE-associated autoantibodies and soluble mediators in samples from 84 individuals collected prior to SLE classification",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n7",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "To better understand the temporal relationship between soluble mediator dysregulation and autoantibody production, we next compared the timing of autoantibody specificity detection and soluble mediator dysregulation as patients moved toward SLE classificat",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n8",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Cases who later developed SLE exhibited increased inflammatory mediators from multiple immune pathways more than 3.5 years pre-classification (Fig. 1 and Table 1).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n9",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Cases moving toward SLE classification gained an average of 0.5 dysregulated mediators per year, compared to only 0.06 in controls (p < 0.001; Fig. 2A and Table 2).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n10",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Of note, multiple TNF superfamily members, including TNFRI, TNFRII, BLyS, and APRIL, were dysregulated only as patients approached SLE classification (Fig. 1 and Table 1).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n11",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "The detection of most lupus-associated autoantibody specificities occurred significantly later than the onset of IL-4, IL-5, IL-6, IFN-γ, or MIG dysregulation (Fig. 3 and Table 3).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n12",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Over the entire pre-classification period, random forest models incorporating ANA and anti-Ro/SSA positivity with levels of IL-5, IL-6, and the IFN-γ-induced chemokine, MIG, distinguished future SLE patients with 92% (±1.8%) accuracy, compared to 78% accur",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n13",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "However, ANA negative, IL-5 and IFN-γ high cases (SLE cluster 1) were more likely to develop nephritis (p = 0.008), while cases who were ANA positive were more likely to develop arthritis (p = 0.028) as they transitioned to classified SLE.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n14",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Indeed, these two mediators were elevated in about 20% of future SLE patients at least 6 years prior to disease transition and in approximately 90% of SLE patients by two years after classification.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n15",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Thus, the early elevation of IFN-γ, followed by significant increases in BLyS and APRIL within one year of disease classification when SLE is imminent, supports the model that simultaneous dysregulation of T helper, regulatory, IFN-related, and TNF-related",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n16",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "IL-5 1.38 (1.24 e 1.62) 0.86 (0.64 e 1.26) 4.35E-06",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n17",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Cases moving toward SLE classification gained an average of 0.5 dysregulated mediators per year, compared to only 0.06 in controls (p < 0.001; Fig. 2A and Table 2).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n18",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Mixed linear regression models confirmed that cases had significant longitudinal increases in the levels of these mediators (Table 2), including BLyS (p = 0.008, Fig. 2G) and APRIL (p = 0.013, Fig. 2H), compared to minimal changes in controls during the sa",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n19",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "anti-dsDNA 3.14 (2.13, 4.63) 5.28 (3.56, 7.82) 4.22 (2.85, 6.25) 3.06 (2.11, 4.44) 4.11 (2.80, 6.06)",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n20",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Combined IL-6, anti-Ro/SSA, IL-5, ANA, MIG 0.93 (0.87, 0.97) 0.89 (0.77, 0.96) 0.96 (0.90, 0.99) 0.84(0.71, 0.93) 92% ± 1.78%",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n21",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "However, ANA negative, IL-5 and IFN-γ high cases (SLE cluster 1) were more likely to develop nephritis (p = 0.008), while cases who were ANA positive were more likely to develop arthritis (p = 0.028) as they transitioned to classified SLE.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n22",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Future prospective, longitudinal studies of individuals with autoantibody positivity ± immune dysregulation, prior to onset of clinical signs and symptoms, will be necessary to determine which autoimmune disease(s) are associated with particular dysregulat",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n23",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Although the cellular sources of dysregulated soluble mediators in preclinical SLE remain unknown and are the subject of future study",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-n24",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Additional, future studies will be required to determine if dysregulation of signaling pathways that leads to aberrant cellular activation and secretion of inflammatory mediators is due to genetic, epigenetic, and/or environmental triggers",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r0",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Samples were obtained from the DoDSR. Demographic and clinical information, including medication history and American College of Rheumatology (ACR) criteria for SLE classification, were extracted from medical records by study personnel.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r1",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Serum levels of BLyS (R & D Systems, Minneapolis, MN) and a proliferation-inducing ligand (APRIL) (eBioscience/Affymetrix, San Diego, CA) were assessed using enzyme-linked immunosorbent assay (ELISA) per manufacturer's protocol.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r2",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Normalized fluorescence intensity values for an additional 30 immune mediators, including cytokines, chemokines, and soluble TNFR superfamily members (Supplemental Table 2), were determined by xMAP multiplex assays (eBioscience/Affymetrix) [18].",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r3",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "The BioPlex 2200® system (Bio-Rad Technologies) was used to simultaneously detect levels of multiple autoantibody specificities within a single serum sample: dsDNA, chromatin, Ro/SSA, La/SSB, Sm, SmRNP, and RNP [7,35].",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r4",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Mixed linear regression models were fitted on normalized FI values of each soluble mediator over time using the lme4 package in R (version 2.15.0).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r5",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "IL-5 1.38 (1.24 e 1.62) 0.86 (0.64 e 1.26) 4.35E-06",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r6",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Cases moving toward SLE classification gained an average of 0.5 dysregulated mediators per year, compared to only 0.06 in controls (p < 0.001; Fig. 2A and Table 2).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r7",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Mixed linear regression models confirmed that cases had significant longitudinal increases in the levels of these mediators (Table 2), including BLyS (p = 0.008, Fig. 2G) and APRIL (p = 0.013, Fig. 2H)",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r8",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "anti-dsDNA 3.14 (2.13, 4.63) 5.28 (3.56, 7.82) 4.22 (2.85, 6.25) 3.06 (2.11, 4.44) 4.11 (2.80, 6.06)",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r9",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Combined IL-6, anti-Ro/SSA, IL-5, ANA, MIG 0.93 (0.87, 0.97) 0.89 (0.77, 0.96) 0.96 (0.90, 0.99) 0.84(0.71, 0.93) 92% ± 1.78%",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r10",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "However, ANA negative, IL-5 and IFN-γ high cases (SLE cluster 1) were more likely to develop nephritis (p = 0.008), while cases who were ANA positive were more likely to develop arthritis (p = 0.028)",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r11",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Cases who later developed SLE exhibited increased inflammatory mediators from multiple immune pathways more than 3.5 years pre-classification (Fig. 1 and Table 1).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r12",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Cases moving toward SLE classification gained an average of 0.5 dysregulated mediators per year, compared to only 0.06 in controls (p < 0.001; Fig. 2A and Table 2).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r13",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Of note, multiple TNF superfamily members, including TNFRI, TNFRII, BLyS, and APRIL, were dysregulated only as patients approached SLE classification (Fig. 1 and Table 1).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r14",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "The detection of most lupus-associated autoantibody specificities occurred significantly later than the onset of IL-4, IL-5, IL-6, IFN-γ, or MIG dysregulation (Fig. 3 and Table 3).",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r15",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Over the entire pre-classification period, random forest models incorporating ANA and anti-Ro/SSA positivity with levels of IL-5, IL-6, and the IFN-γ-induced chemokine, MIG, distinguished future SLE patients with 92% (±1.8%) accuracy",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r16",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "However, ANA negative, IL-5 and IFN-γ high cases (SLE cluster 1) were more likely to develop nephritis (p = 0.008), while cases who were ANA positive were more likely to develop arthritis (p = 0.028)",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r17",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Indeed, these two mediators were elevated in about 20% of future SLE patients at least 6 years prior to disease transition and in approximately 90% of SLE patients by two years after classification.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r18",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Thus, the early elevation of IFN-γ, followed by significant increases in BLyS and APRIL within one year of disease classification when SLE is imminent, supports the model that simultaneous dysregulation",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r19",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "To determine if other forms of immune dysregulation contribute to preclinical SLE pathogenesis, we measured SLE-associated autoantibodies and soluble mediators",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r20",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "To determine if other forms of immune dysregulation contribute to preclinical SLE pathogenesis",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r21",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "To determine if other forms of immune dysregulation contribute to preclinical SLE pathogenesis",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r22",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "To better understand the temporal relationship between soluble mediator dysregulation and autoantibody production, we next compared the timing",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r23",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "The data presented above suggest that altered soluble mediators are detected years before patients reach SLE classification and may improve the prognostic accuracy of ANA positivity",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r24",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Our current findings suggest that dysregulation of these cytokines, particularly IL-5 (Th2-type) and IL-6 (Th2/17-type), may be an essential early step in SLE pathogenesis.",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r25",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Thus, the early elevation of IFN-γ, followed by significant increases in BLyS and APRIL within one year of disease classification when SLE is imminent, supports the model",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r26",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Future prospective, longitudinal studies of individuals with autoantibody positivity ± immune dysregulation, prior to onset of clinical signs and symptoms, will be necessary to determine which autoimmune disease(s) are associated with particular dysregulat",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r27",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Although the cellular sources of dysregulated soluble mediators in preclinical SLE remain unknown and are the subject of future study",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "x:a-r28",
+      "@type": "Item",
+      "format": "text/plain",
+      "content": "Additional, future studies will be required to determine if dysregulation of signaling pathways that leads to aberrant cellular activation and secretion of inflammatory mediators is due to genetic, epigenetic, and/or environmental triggers",
+      "has_container": "x:doc"
+    },
+    {
+      "@id": "https://doi.org/10.1016/j.jaut.2016.06.001",
+      "@type": [
+        "x:_schema_SourceDocument",
+        "SourceDocument"
+      ],
+      "title": "Dysregulation of innate and adaptive serum mediators precedes systemic lupus erythematosus classification and improves prognostic accuracy of autoantibodies",
+      "content": "Dysregulation of innate and adaptive serum mediators precedes systemic lupus erythematosus classification and improves prognostic accuracy of autoantibodies\n\nJournal of Autoimmunity 74 (2016) 182-193. Longitudinal study of 84 pre-SLE individuals and 86 matched controls from the Department of Defense Serum Repository measuring autoantibodies and 32 soluble mediators.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": [
+        "x:author-0",
+        "x:author-1",
+        "x:author-2",
+        "x:author-3",
+        "x:author-4",
+        "x:author-5",
+        "x:author-6",
+        "x:author-7",
+        "x:author-8",
+        "x:author-9"
+      ],
+      "description": "x:a-n0"
+    },
+    {
+      "@id": "x:n1",
+      "@type": [
+        "x:_schema_Study",
+        "Study"
+      ],
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classification and 86 matched healthy controls measuring autoantibodies and soluble immune mediators",
+      "content": "Longitudinal analysis of serum samples from 84 individuals before SLE classification and 86 matched healthy controls measuring autoantibodies and soluble immune mediators\n\nSamples from the Department of Defense Serum Repository (DoDSR) collected prior to and at/after SLE classification (average 5.98 years pre-classification). Cases had average 2.96 samples, controls average 2 samples. 416 total samples analyzed. Samples divided into four time periods relative to SLE classification for longitudinal analysis.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n1"
+    },
+    {
+      "@id": "x:n2",
+      "@type": [
+        "x:_schema_Protocol",
+        "Protocol"
+      ],
+      "title": "Enzyme-linked immunosorbent assay (ELISA) for BLyS (R&D Systems) and APRIL (eBioscience/Affymetrix) per manufacturer's protocol",
+      "content": "Enzyme-linked immunosorbent assay (ELISA) for BLyS (R&D Systems) and APRIL (eBioscience/Affymetrix) per manufacturer's protocol\n\nSerum levels of BLyS and APRIL assessed using ELISA kits from R&D Systems (Minneapolis, MN) and eBioscience/Affymetrix (San Diego, CA) respectively, following manufacturer protocols.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n2"
+    },
+    {
+      "@id": "x:n3",
+      "@type": [
+        "x:_schema_Protocol",
+        "Protocol"
+      ],
+      "title": "xMAP multiplex assays (eBioscience/Affymetrix) for 30 immune mediators including cytokines, chemokines, and soluble TNFR superfamily members",
+      "content": "xMAP multiplex assays (eBioscience/Affymetrix) for 30 immune mediators including cytokines, chemokines, and soluble TNFR superfamily members\n\nNormalized fluorescence intensity values for 30 immune mediators determined by xMAP multiplex assays. Quality control performed; four mediators (IFN-α, TNF-α, IL-10, IL-15) excluded due to >50% measurements below detection limit. Average inter-assay CV 10.5%, intra-assay CV <10%.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n3"
+    },
+    {
+      "@id": "x:n4",
+      "@type": [
+        "x:_schema_Protocol",
+        "Protocol"
+      ],
+      "title": "BioPlex 2200 system (Bio-Rad Technologies) for simultaneous detection of autoantibody specificities: dsDNA, chromatin, Ro/SSA, La/SSB, Sm, SmRNP, and RNP",
+      "content": "BioPlex 2200 system (Bio-Rad Technologies) for simultaneous detection of autoantibody specificities: dsDNA, chromatin, Ro/SSA, La/SSB, Sm, SmRNP, and RNP\n\nSemi-quantitative values for anti-dsDNA reported as IU/mL (positive ≥10 IU/mL). All other autoantibody specificities reported in autoantibody index (AI) units based on fluorescence intensity (range 0-8) using manufacturer-specified positive cutoff (positive ≥1 AI). Factor XIIIb levels evaluated as quality control.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n4"
+    },
+    {
+      "@id": "x:n5",
+      "@type": [
+        "x:_schema_Protocol",
+        "Protocol"
+      ],
+      "title": "Mixed linear regression models fitted on normalized FI values of each soluble mediator over time using lme4 package in R (version 2.15.0) with intercepts as random effects and disease status as fixed…",
+      "content": "Mixed linear regression models fitted on normalized FI values of each soluble mediator over time using lme4 package in R (version 2.15.0) with intercepts as random effects and disease status as fixed effect\n\nUsed to assess longitudinal changes in soluble mediator levels. Non-parametric rank-based analysis with GraphPad Prism 6.0 for asymmetric distributions. P-values adjusted by false discovery rate (FDR) using fdrtools package. Kaplan-Meier survival curves for timing of dysregulation. Cox proportional hazard models for hazard ratios. Random forest classification with randomForest R package (ntree=2000, mtry=sqrt(p), importance=TRUE, proximity=TRUE). Stepwise variable selection using Genuer and Tuleau-Malot algorithm.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n5"
+    },
+    {
+      "@id": "x:n6",
+      "@type": [
+        "x:_schema_Question",
+        "Question"
+      ],
+      "title": "What immune dysregulation beyond autoantibody accumulation contributes to preclinical SLE pathogenesis and transition to clinical disease?",
+      "content": "What immune dysregulation beyond autoantibody accumulation contributes to preclinical SLE pathogenesis and transition to clinical disease?\n\nThe paper investigates whether soluble mediators from innate and adaptive immune pathways are dysregulated prior to SLE classification and whether they improve prognostic accuracy over autoantibodies alone.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n6"
+    },
+    {
+      "@id": "x:n7",
+      "@type": [
+        "x:_schema_Question",
+        "Question"
+      ],
+      "title": "What is the temporal relationship between soluble mediator dysregulation and autoantibody accumulation during preclinical SLE development?",
+      "content": "What is the temporal relationship between soluble mediator dysregulation and autoantibody accumulation during preclinical SLE development?\n\nThe study compares timing of autoantibody specificity detection and soluble mediator dysregulation as patients approach SLE classification.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n7"
+    },
+    {
+      "@id": "x:n8",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "Multiple soluble mediators including IL-5, IL-6, and IFN-γ are significantly elevated in pre-SLE individuals more than 3.5 years before classification, prior to or concurrent with autoantibody positi…",
+      "content": "Multiple soluble mediators including IL-5, IL-6, and IFN-γ are significantly elevated in pre-SLE individuals more than 3.5 years before classification, prior to or concurrent with autoantibody positivity.\n\nIn the earliest time period (>3.5 years pre-classification), cases showed elevated IL-6 (q=6.83×10⁻⁶), IL-12p70 (q=0.013), IFN-γ (q=0.035), IL-4 (q=0.01), IL-5 (q=3.6×10⁻⁶), IP-10 (q=0.023), and decreased TGF-β (q=0.023) compared to matched controls.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n8"
+    },
+    {
+      "@id": "x:n9",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "Innate cytokines, IFN-associated chemokines, and soluble TNF superfamily mediators increase longitudinally in pre-SLE cases approaching classification but not in healthy controls.",
+      "content": "Innate cytokines, IFN-associated chemokines, and soluble TNF superfamily mediators increase longitudinally in pre-SLE cases approaching classification but not in healthy controls.\n\nCases gained an average of 0.5 dysregulated mediators per year vs 0.06 in controls (p<0.001). Significant longitudinal increases in IP-10 (p<0.001), MIG (p<0.001), IL-2 (p=0.008), IL-5 (p=0.001), IL-21 (p=0.007), BLyS (p=0.008), APRIL (p=0.013), TNFRI (p<0.001), TNFRII (p<0.001).",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n9"
+    },
+    {
+      "@id": "x:n10",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "BLyS and APRIL levels are comparable in pre-SLE cases and controls until less than 10 months before classification, then increase significantly in cases.",
+      "content": "BLyS and APRIL levels are comparable in pre-SLE cases and controls until less than 10 months before classification, then increase significantly in cases.\n\nBLyS and APRIL were not significantly different >3.5 years pre-classification (q=0.927 and q=0.672) but became significantly elevated in the period 0.9 years before to 0.1 years after classification (q=0.003 and q=0.019). Mixed models confirmed significant longitudinal increases in cases vs controls (BLyS p=0.008, APRIL p=0.013).",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n10"
+    },
+    {
+      "@id": "x:n11",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "Dysregulation of adaptive immune mediators (IL-4, IL-5, IL-6, IFN-γ, MIG) precedes autoantibody accumulation in preclinical SLE.",
+      "content": "Dysregulation of adaptive immune mediators (IL-4, IL-5, IL-6, IFN-γ, MIG) precedes autoantibody accumulation in preclinical SLE.\n\nEach of these mediators was elevated in >50% of cases by 2 years pre-classification and 85-95% by 2 years post-classification. Hazard ratios show mediator dysregulation significantly more likely than autoantibody positivity for all tested autoantibodies (anti-dsDNA, anti-chromatin, anti-Ro/SSA, anti-La/SSB, anti-RNP, anti-Sm).",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n11"
+    },
+    {
+      "@id": "x:n12",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "Random forest models incorporating ANA and anti-Ro/SSA positivity with IL-5, IL-6, and MIG levels distinguish future SLE patients with 92% accuracy across the entire pre-classification period, compar…",
+      "content": "Random forest models incorporating ANA and anti-Ro/SSA positivity with IL-5, IL-6, and MIG levels distinguish future SLE patients with 92% accuracy across the entire pre-classification period, compared to 78% accuracy using ANA positivity alone.\n\nIn the combined model spanning all pre-classification time: sensitivity 0.93 (0.87-0.97), specificity 0.89 (0.77-0.96), PPV 0.96 (0.90-0.99), NPV 0.84 (0.71-0.93), accuracy 92% (±1.78%). ANA-only model: accuracy 78% (±2.42%). Soluble mediators alone (IP-10, IL-5, IL-6): accuracy 84% (±2.95%).",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n12"
+    },
+    {
+      "@id": "x:n13",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "A distinct ANA-negative but IL-5/IFN-γ-high pre-SLE cluster is associated with higher risk of nephritis at classification, while ANA-positive cases are more likely to develop arthritis.",
+      "content": "A distinct ANA-negative but IL-5/IFN-γ-high pre-SLE cluster is associated with higher risk of nephritis at classification, while ANA-positive cases are more likely to develop arthritis.\n\nSLE cluster 1 (ANA-negative, IL-5 high, IFN-γ high) showed no difference in sex, race, age, or medication history compared to ANA-positive cluster, but had higher nephritis risk (p=0.008). ANA-positive cluster had higher arthritis risk (p=0.028).",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n13"
+    },
+    {
+      "@id": "x:n14",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "Early dysregulation of Th-type cytokines IL-5 (Th2) and IL-6 (Th2/Th17) may be an essential early step in SLE pathogenesis, contributing to all stages of disease.",
+      "content": "Early dysregulation of Th-type cytokines IL-5 (Th2) and IL-6 (Th2/Th17) may be an essential early step in SLE pathogenesis, contributing to all stages of disease.\n\nIL-5 and IL-6 elevated in ~20% of future SLE patients at least 6 years pre-classification and ~90% by 2 years post-classification. They were independent classifiers in most multivariate random forest models. IL-5 and IL-6 support T cell survival and antibody production, suggesting they promote autoantibody production.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n14"
+    },
+    {
+      "@id": "x:n15",
+      "@type": [
+        "x:_schema_Claim",
+        "Claim"
+      ],
+      "title": "IFN-γ elevation precedes autoantibodies and drives BLyS/APRIL production, supporting a model where simultaneous dysregulation of T helper, regulatory, IFN-related, and TNF-related pathways erodes imm…",
+      "content": "IFN-γ elevation precedes autoantibodies and drives BLyS/APRIL production, supporting a model where simultaneous dysregulation of T helper, regulatory, IFN-related, and TNF-related pathways erodes immune tolerance.\n\nIFN-γ elevated >3.5 years pre-classification. IFN-γ and IFN-α stimulate BLyS/APRIL production. BLyS/APRIL increase significantly within 1 year of classification. ANA positivity did not exclude IFN-γ from multivariate models, suggesting distinct roles.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n15"
+    },
+    {
+      "@id": "x:n16",
+      "@type": [
+        "x:_schema_Evidence",
+        "Evidence"
+      ],
+      "title": "In pre-SLE cases >3.5 years before classification, IL-5 median normalized FI 1.38 (IQR 1.24-1.62) vs controls 0.86 (0.64-1.26), q=3.6×10⁻⁶; IL-6 1.69 (1.40-2.15) vs 1.14 (0.88-1.44), q=8.26×10⁻⁶; IFN…",
+      "content": "In pre-SLE cases >3.5 years before classification, IL-5 median normalized FI 1.38 (IQR 1.24-1.62) vs controls 0.86 (0.64-1.26), q=3.6×10⁻⁶; IL-6 1.69 (1.40-2.15) vs 1.14 (0.88-1.44), q=8.26×10⁻⁶; IFN-γ 2.56 (2.20-2.98) vs 2.20 (1.74-2.75), q=0.035.\n\nFrom Table 1: median normalized fluorescence intensity values with interquartile ranges for cases (n=61) and controls (n=56) in the earliest time period, with FDR-adjusted q-values.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n16",
+      "sourceDocument": "https://doi.org/10.1016/j.jaut.2016.06.001"
+    },
+    {
+      "@id": "x:n17",
+      "@type": [
+        "x:_schema_Evidence",
+        "Evidence"
+      ],
+      "title": "Cases gained an average of 0.5 dysregulated mediators per year (p<0.001) and 0.3 autoantibody specificities per year (p<0.001), while controls gained 0.06 mediators/year and 0 autoantibody specificit…",
+      "content": "Cases gained an average of 0.5 dysregulated mediators per year (p<0.001) and 0.3 autoantibody specificities per year (p<0.001), while controls gained 0.06 mediators/year and 0 autoantibody specificities/year.\n\nFrom mixed linear regression models (Table 2) and Supplemental Fig. 3/Table 2. Cases had mean 12.7 elevated mediators at classification (up from 8.8 >3.5 years prior) vs controls 6.3 (up from 5.7). Cases had mean 3.0 autoantibody specificities at classification (up from 1.0) vs controls consistently 0.1.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n17",
+      "sourceDocument": "https://doi.org/10.1016/j.jaut.2016.06.001"
+    },
+    {
+      "@id": "x:n18",
+      "@type": [
+        "x:_schema_Evidence",
+        "Evidence"
+      ],
+      "title": "BLyS increased significantly in cases (slope 93.93 pg/ml/year) vs controls (18.38 pg/ml/year), p=0.008; APRIL increased in cases (slope 1415 pg/ml/year) vs controls (288 pg/ml/year), p=0.013, with si…",
+      "content": "BLyS increased significantly in cases (slope 93.93 pg/ml/year) vs controls (18.38 pg/ml/year), p=0.008; APRIL increased in cases (slope 1415 pg/ml/year) vs controls (288 pg/ml/year), p=0.013, with significant differences only in the period <0.9 years before classification.\n\nFrom Table 2 mixed linear regression slopes and Table 1 q-values. BLyS and APRIL not different >3.5 years pre-classification (q=0.927, q=0.672) but significantly elevated 0.9 years before to 0.1 years after (q=0.003, q=0.019).",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n18",
+      "sourceDocument": "https://doi.org/10.1016/j.jaut.2016.06.001"
+    },
+    {
+      "@id": "x:n19",
+      "@type": [
+        "x:_schema_Evidence",
+        "Evidence"
+      ],
+      "title": "Hazard ratios for mediator dysregulation vs autoantibody positivity: IL-5 vs anti-dsDNA 5.28 (3.56-7.82), IL-6 vs anti-dsDNA 4.22 (2.85-6.25), IFN-γ vs anti-dsDNA 3.06 (2.11-4.44), MIG vs anti-dsDNA …",
+      "content": "Hazard ratios for mediator dysregulation vs autoantibody positivity: IL-5 vs anti-dsDNA 5.28 (3.56-7.82), IL-6 vs anti-dsDNA 4.22 (2.85-6.25), IFN-γ vs anti-dsDNA 3.06 (2.11-4.44), MIG vs anti-dsDNA 4.11 (2.80-6.06); all p<10⁻⁸.\n\nFrom Table 3: composite ratio of cases with elevated mediator to cases with positive autoantibody at any given time. Hazard ratio >1 indicates mediator more likely positive than autoantibody. Robust log-rank test p-values.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n19",
+      "sourceDocument": "https://doi.org/10.1016/j.jaut.2016.06.001"
+    },
+    {
+      "@id": "x:n20",
+      "@type": [
+        "x:_schema_Evidence",
+        "Evidence"
+      ],
+      "title": "Random forest model across entire pre-classification period: combined predictors (ANA, anti-Ro/SSA, IL-5, IL-6, MIG) achieved 92% accuracy (±1.78%), sensitivity 0.93, specificity 0.89, PPV 0.96, NPV …",
+      "content": "Random forest model across entire pre-classification period: combined predictors (ANA, anti-Ro/SSA, IL-5, IL-6, MIG) achieved 92% accuracy (±1.78%), sensitivity 0.93, specificity 0.89, PPV 0.96, NPV 0.84; ANA-only model 78% accuracy (±2.42%).\n\nFrom Table 4 'ALL' time period. Ten independent pre-SLE datasets generated with replacement; final model consisted of predictors appearing in at least 5 of 10 best RF models. Average prediction accuracy calculated across the ten datasets.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n20",
+      "sourceDocument": "https://doi.org/10.1016/j.jaut.2016.06.001"
+    },
+    {
+      "@id": "x:n21",
+      "@type": [
+        "x:_schema_Evidence",
+        "Evidence"
+      ],
+      "title": "ANA-negative, IL-5-high, IFN-γ-high pre-SLE cluster (SLE cluster 1) had significantly higher nephritis risk (p=0.008) at classification compared to ANA-positive cluster, which had higher arthritis ri…",
+      "content": "ANA-negative, IL-5-high, IFN-γ-high pre-SLE cluster (SLE cluster 1) had significantly higher nephritis risk (p=0.008) at classification compared to ANA-positive cluster, which had higher arthritis risk (p=0.028).\n\nFrom multidimensional scaling of RF proximity matrix (Fig. 4). Clusters compared for sex, race, age, medication history, and individual ACR criteria using Fisher's exact test, chi-square, or unpaired t-test.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n21",
+      "sourceDocument": "https://doi.org/10.1016/j.jaut.2016.06.001"
+    },
+    {
+      "@id": "x:n22",
+      "@type": [
+        "x:_schema_Request",
+        "Request"
+      ],
+      "title": "Conduct prospective longitudinal studies of individuals with autoantibody positivity ± immune dysregulation prior to clinical symptoms to determine which autoimmune diseases associate with particular…",
+      "content": "Conduct prospective longitudinal studies of individuals with autoantibody positivity ± immune dysregulation prior to clinical symptoms to determine which autoimmune diseases associate with particular dysregulated immune pathways.\n\nThe paper states future prospective studies are needed to determine which autoimmune diseases are associated with particular dysregulated immune pathways present before/concurrent with particular autoantibody specificities or clinical rheumatic disease.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n22"
+    },
+    {
+      "@id": "x:n23",
+      "@type": [
+        "x:_schema_Request",
+        "Request"
+      ],
+      "title": "Determine the cellular sources of dysregulated soluble mediators in preclinical SLE.",
+      "content": "Determine the cellular sources of dysregulated soluble mediators in preclinical SLE.\n\nThe discussion explicitly states the cellular sources remain unknown and are the subject of future study.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n23"
+    },
+    {
+      "@id": "x:n24",
+      "@type": [
+        "x:_schema_Request",
+        "Request"
+      ],
+      "title": "Determine if dysregulation of signaling pathways leading to aberrant cellular activation and secretion of inflammatory mediators is due to genetic, epigenetic, and/or environmental triggers such as v…",
+      "content": "Determine if dysregulation of signaling pathways leading to aberrant cellular activation and secretion of inflammatory mediators is due to genetic, epigenetic, and/or environmental triggers such as vitamin D deficiency or latent EBV infection.\n\nThe discussion lists these as additional future studies required.",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-n24"
+    },
+    {
+      "@id": "x:r0",
+      "@type": [
+        "x:_rel_describesActivity",
+        "describesActivity",
+        "RelationInstance"
+      ],
+      "source": "https://doi.org/10.1016/j.jaut.2016.06.001",
+      "destination": "x:n1",
+      "title": "Dysregulation of innate and adaptive serum mediators precedes systemic lupus er… -describesActivity-> Longitudinal analysis of serum samples from 84 individuals before SLE classific…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r0"
+    },
+    {
+      "@id": "x:r1",
+      "@type": [
+        "x:_rel_follows",
+        "follows",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n2",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -follows-> Enzyme-linked immunosorbent assay (ELISA) for BLyS (R&D Systems) and APRIL (eBi…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r1"
+    },
+    {
+      "@id": "x:r2",
+      "@type": [
+        "x:_rel_follows",
+        "follows",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n3",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -follows-> xMAP multiplex assays (eBioscience/Affymetrix) for 30 immune mediators includin…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r2"
+    },
+    {
+      "@id": "x:r3",
+      "@type": [
+        "x:_rel_follows",
+        "follows",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n4",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -follows-> BioPlex 2200 system (Bio-Rad Technologies) for simultaneous detection of autoan…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r3"
+    },
+    {
+      "@id": "x:r4",
+      "@type": [
+        "x:_rel_follows",
+        "follows",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n5",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -follows-> Mixed linear regression models fitted on normalized FI values of each soluble m…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r4"
+    },
+    {
+      "@id": "x:r5",
+      "@type": [
+        "x:_rel_grounds",
+        "grounds",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n16",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -grounds-> In pre-SLE cases >3.5 years before classification, IL-5 median normalized FI 1.…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r5"
+    },
+    {
+      "@id": "x:r6",
+      "@type": [
+        "x:_rel_grounds",
+        "grounds",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n17",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -grounds-> Cases gained an average of 0.5 dysregulated mediators per year (p<0.001) and 0.…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r6"
+    },
+    {
+      "@id": "x:r7",
+      "@type": [
+        "x:_rel_grounds",
+        "grounds",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n18",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -grounds-> BLyS increased significantly in cases (slope 93.93 pg/ml/year) vs controls (18.…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r7"
+    },
+    {
+      "@id": "x:r8",
+      "@type": [
+        "x:_rel_grounds",
+        "grounds",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n19",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -grounds-> Hazard ratios for mediator dysregulation vs autoantibody positivity: IL-5 vs an…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r8"
+    },
+    {
+      "@id": "x:r9",
+      "@type": [
+        "x:_rel_grounds",
+        "grounds",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n20",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -grounds-> Random forest model across entire pre-classification period: combined predictor…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r9"
+    },
+    {
+      "@id": "x:r10",
+      "@type": [
+        "x:_rel_grounds",
+        "grounds",
+        "RelationInstance"
+      ],
+      "source": "x:n1",
+      "destination": "x:n21",
+      "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classific… -grounds-> ANA-negative, IL-5-high, IFN-γ-high pre-SLE cluster (SLE cluster 1) had signifi…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r10"
+    },
+    {
+      "@id": "x:r11",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n16",
+      "destination": "x:n8",
+      "title": "In pre-SLE cases >3.5 years before classification, IL-5 median normalized FI 1.… -supports-> Multiple soluble mediators including IL-5, IL-6, and IFN-γ are significantly el…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r11"
+    },
+    {
+      "@id": "x:r12",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n17",
+      "destination": "x:n9",
+      "title": "Cases gained an average of 0.5 dysregulated mediators per year (p<0.001) and 0.… -supports-> Innate cytokines, IFN-associated chemokines, and soluble TNF superfamily mediat…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r12"
+    },
+    {
+      "@id": "x:r13",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n18",
+      "destination": "x:n10",
+      "title": "BLyS increased significantly in cases (slope 93.93 pg/ml/year) vs controls (18.… -supports-> BLyS and APRIL levels are comparable in pre-SLE cases and controls until less t…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r13"
+    },
+    {
+      "@id": "x:r14",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n19",
+      "destination": "x:n11",
+      "title": "Hazard ratios for mediator dysregulation vs autoantibody positivity: IL-5 vs an… -supports-> Dysregulation of adaptive immune mediators (IL-4, IL-5, IL-6, IFN-γ, MIG) prece…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r14"
+    },
+    {
+      "@id": "x:r15",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n20",
+      "destination": "x:n12",
+      "title": "Random forest model across entire pre-classification period: combined predictor… -supports-> Random forest models incorporating ANA and anti-Ro/SSA positivity with IL-5, IL…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r15"
+    },
+    {
+      "@id": "x:r16",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n21",
+      "destination": "x:n13",
+      "title": "ANA-negative, IL-5-high, IFN-γ-high pre-SLE cluster (SLE cluster 1) had signifi… -supports-> A distinct ANA-negative but IL-5/IFN-γ-high pre-SLE cluster is associated with …",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r16"
+    },
+    {
+      "@id": "x:r17",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n16",
+      "destination": "x:n14",
+      "title": "In pre-SLE cases >3.5 years before classification, IL-5 median normalized FI 1.… -supports-> Early dysregulation of Th-type cytokines IL-5 (Th2) and IL-6 (Th2/Th17) may be …",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r17"
+    },
+    {
+      "@id": "x:r18",
+      "@type": [
+        "x:_rel_supports",
+        "supports",
+        "RelationInstance"
+      ],
+      "source": "x:n18",
+      "destination": "x:n15",
+      "title": "BLyS increased significantly in cases (slope 93.93 pg/ml/year) vs controls (18.… -supports-> IFN-γ elevation precedes autoantibodies and drives BLyS/APRIL production, suppo…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r18"
+    },
+    {
+      "@id": "x:r19",
+      "@type": [
+        "x:_rel_addresses",
+        "addresses",
+        "RelationInstance"
+      ],
+      "source": "x:n8",
+      "destination": "x:n6",
+      "title": "Multiple soluble mediators including IL-5, IL-6, and IFN-γ are significantly el… -addresses-> What immune dysregulation beyond autoantibody accumulation contributes to precl…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r19"
+    },
+    {
+      "@id": "x:r20",
+      "@type": [
+        "x:_rel_addresses",
+        "addresses",
+        "RelationInstance"
+      ],
+      "source": "x:n9",
+      "destination": "x:n6",
+      "title": "Innate cytokines, IFN-associated chemokines, and soluble TNF superfamily mediat… -addresses-> What immune dysregulation beyond autoantibody accumulation contributes to precl…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r20"
+    },
+    {
+      "@id": "x:r21",
+      "@type": [
+        "x:_rel_addresses",
+        "addresses",
+        "RelationInstance"
+      ],
+      "source": "x:n10",
+      "destination": "x:n6",
+      "title": "BLyS and APRIL levels are comparable in pre-SLE cases and controls until less t… -addresses-> What immune dysregulation beyond autoantibody accumulation contributes to precl…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r21"
+    },
+    {
+      "@id": "x:r22",
+      "@type": [
+        "x:_rel_addresses",
+        "addresses",
+        "RelationInstance"
+      ],
+      "source": "x:n11",
+      "destination": "x:n7",
+      "title": "Dysregulation of adaptive immune mediators (IL-4, IL-5, IL-6, IFN-γ, MIG) prece… -addresses-> What is the temporal relationship between soluble mediator dysregulation and au…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r22"
+    },
+    {
+      "@id": "x:r23",
+      "@type": [
+        "x:_rel_addresses",
+        "addresses",
+        "RelationInstance"
+      ],
+      "source": "x:n12",
+      "destination": "x:n6",
+      "title": "Random forest models incorporating ANA and anti-Ro/SSA positivity with IL-5, IL… -addresses-> What immune dysregulation beyond autoantibody accumulation contributes to precl…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r23"
+    },
+    {
+      "@id": "x:r24",
+      "@type": [
+        "x:_rel_addresses",
+        "addresses",
+        "RelationInstance"
+      ],
+      "source": "x:n14",
+      "destination": "x:n6",
+      "title": "Early dysregulation of Th-type cytokines IL-5 (Th2) and IL-6 (Th2/Th17) may be … -addresses-> What immune dysregulation beyond autoantibody accumulation contributes to precl…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r24"
+    },
+    {
+      "@id": "x:r25",
+      "@type": [
+        "x:_rel_addresses",
+        "addresses",
+        "RelationInstance"
+      ],
+      "source": "x:n15",
+      "destination": "x:n6",
+      "title": "IFN-γ elevation precedes autoantibodies and drives BLyS/APRIL production, suppo… -addresses-> What immune dysregulation beyond autoantibody accumulation contributes to precl…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r25"
+    },
+    {
+      "@id": "x:r26",
+      "@type": [
+        "x:_rel_request_target",
+        "request_target",
+        "RelationInstance"
+      ],
+      "source": "x:n22",
+      "destination": "x:n8",
+      "title": "Conduct prospective longitudinal studies of individuals with autoantibody posit… -request_target-> Multiple soluble mediators including IL-5, IL-6, and IFN-γ are significantly el…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r26"
+    },
+    {
+      "@id": "x:r27",
+      "@type": [
+        "x:_rel_request_target",
+        "request_target",
+        "RelationInstance"
+      ],
+      "source": "x:n23",
+      "destination": "x:n14",
+      "title": "Determine the cellular sources of dysregulated soluble mediators in preclinical… -request_target-> Early dysregulation of Th-type cytokines IL-5 (Th2) and IL-6 (Th2/Th17) may be …",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r27"
+    },
+    {
+      "@id": "x:r28",
+      "@type": [
+        "x:_rel_request_target",
+        "request_target",
+        "RelationInstance"
+      ],
+      "source": "x:n24",
+      "destination": "x:n15",
+      "title": "Determine if dysregulation of signaling pathways leading to aberrant cellular a… -request_target-> IFN-γ elevation precedes autoantibodies and drives BLyS/APRIL production, suppo…",
+      "created": "2026-11-06T16:43:35.762Z",
+      "modified": "2026-11-06T16:43:35.762Z",
+      "creator": "x:agent",
+      "description": "x:a-r28"
+    }
+  ]
+}

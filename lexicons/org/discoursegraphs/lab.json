@@ -1,0 +1,42 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.lab",
+  "description": "A lab. Its custodian, the PI, holds the rotation key for its DID.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "name",
+          "did",
+          "custodian",
+          "createdAt"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "did": {
+            "type": "string",
+            "format": "did"
+          },
+          "custodian": {
+            "type": "string",
+            "format": "did"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@dg/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Demo reference server for the Discourse Graphs services API.",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "pdfjs-dist": "^6.5.438"
+  }
+}

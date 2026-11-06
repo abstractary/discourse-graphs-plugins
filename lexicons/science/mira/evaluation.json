@@ -1,0 +1,28 @@
+{
+  "lexicon": 1,
+  "id": "science.mira.evaluation",
+  "description": "DRAFT. A signed judgment about one exact version of a node. Follows mira:Evaluation on the endorsements-proposal-1 branch, plus how the check was done.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["createdAt", "destination"],
+        "properties": {
+          "createdAt": { "type": "string", "format": "datetime" },
+          "updatedAt": { "type": "string", "format": "datetime" },
+          "destination": { "type": "ref", "ref": "at.linkedopendata.defs#ref", "description": "The node judged. Should be pinned with a cid, so the judgment covers exact content." },
+          "scale": { "type": "ref", "ref": "at.linkedopendata.defs#ref", "description": "The evaluation scale, as in mira:EvaluationScale." },
+          "magnitude": { "type": "ref", "ref": "at.linkedopendata.defs#decimal" },
+          "term": { "type": "string", "maxLength": 128, "description": "A named point on a scale, such as eLife's strength-of-evidence terms.", "knownValues": ["exceptional", "compelling", "convincing", "solid", "incomplete", "inadequate"] },
+          "method": { "type": "string", "maxLength": 128, "description": "How this was checked.", "knownValues": ["quoteChecked", "sourceRead", "dataReanalyzed", "replicated", "expertJudgment"] },
+          "note": { "type": "string", "maxLength": 4096 },
+          "attributedTo": { "type": "array", "items": { "type": "ref", "ref": "at.linkedopendata.defs#ref" } },
+          "provenance": { "type": "ref", "ref": "science.mira.defs#provenance" },
+          "previousVersionCid": { "type": "string", "format": "cid" }
+        }
+      }
+    }
+  }
+}

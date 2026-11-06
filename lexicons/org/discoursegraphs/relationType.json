@@ -1,0 +1,66 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.relationType",
+  "description": "A relation type in a grammar, with the node type pairs it allows.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "label",
+          "complement",
+          "rules",
+          "createdAt"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "complement": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "base": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "#rule"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": [
+        "source",
+        "target"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "target": {
+          "type": "string",
+          "format": "at-uri"
+        }
+      }
+    }
+  }
+}

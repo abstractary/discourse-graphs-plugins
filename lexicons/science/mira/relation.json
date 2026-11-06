@@ -1,0 +1,32 @@
+{
+  "lexicon": 1,
+  "id": "science.mira.relation",
+  "description": "DRAFT. One asserted edge between two nodes, signed by whoever asserts it. Lets a person relate records they do not own. Image of dgb:RelationInstance.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["createdAt", "predicate", "source", "destination"],
+        "properties": {
+          "createdAt": { "type": "string", "format": "datetime" },
+          "updatedAt": { "type": "string", "format": "datetime" },
+          "predicate": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "The relation. Open set, so communities can add their own.",
+            "knownValues": ["supports", "opposes", "addresses", "informs", "follows", "isGroundedIn", "observationBase", "observationStatement", "observationOriginActivity", "sourceDocument", "requestFor", "requestTarget", "describesActivity", "sameAs"]
+          },
+          "source": { "type": "ref", "ref": "at.linkedopendata.defs#ref" },
+          "destination": { "type": "ref", "ref": "at.linkedopendata.defs#ref" },
+          "title": { "type": "string", "maxLength": 5000 },
+          "warrant": { "type": "string", "maxLength": 4096, "description": "Why this relation holds, in the asserter's words." },
+          "attributedTo": { "type": "array", "items": { "type": "ref", "ref": "at.linkedopendata.defs#ref" }, "description": "Who made this assertion, when that differs from the repo owner." },
+          "provenance": { "type": "ref", "ref": "science.mira.defs#provenance" },
+          "previousVersionCid": { "type": "string", "format": "cid" }
+        }
+      }
+    }
+  }
+}

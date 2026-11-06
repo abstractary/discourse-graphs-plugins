@@ -1,0 +1,44 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.canvasItem",
+  "description": "One item on a canvas, so edits to different items never collide.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "canvas",
+          "z",
+          "item",
+          "createdAt"
+        ],
+        "properties": {
+          "canvas": {
+            "type": "string",
+            "format": "at-uri"
+          },
+          "z": {
+            "type": "integer"
+          },
+          "item": {
+            "type": "unknown",
+            "description": "A JSON Canvas node or edge, or a stroke."
+          },
+          "removed": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@dg/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Discourse Graphs library: graph, grammar, canvases, papers and provenance",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@dg/contract": "*",
+    "@ipld/dag-cbor": "9.2.2",
+    "multiformats": "13.3.2"
+  }
+}

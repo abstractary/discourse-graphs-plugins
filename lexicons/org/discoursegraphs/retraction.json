@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.retraction",
+  "description": "Withdraws a relation. Only its author or the lab custodian can.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "target",
+          "createdAt"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "format": "at-uri"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

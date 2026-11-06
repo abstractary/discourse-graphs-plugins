@@ -1,0 +1,14 @@
+{
+  "name": "@dg/contract",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Records, identity formats and the two contracts every other module depends on",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@ipld/dag-cbor": "9.2.2",
+    "multiformats": "13.3.2"
+  }
+}

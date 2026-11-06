@@ -1,0 +1,655 @@
+import {
+  MarkdownView,
+  TFile,
+  getAllTags,
+  normalizePath,
+  type App,
+  type EventRef,
+  type Plugin,
+  type WorkspaceLeaf,
+} from "obsidian";
+import {
+  canonicalJson,
+  uuidv7,
+  validateRecord,
+  type DgRecord,
+  type HostRef,
+  type Json,
+} from "@dg/contract/records.ts";
+import {
+  CONTRACT_VERSION,
+  fail,
+  neverRejects,
+  ok,
+  type Appearance,
+  type Asset,
+  type Host,
+  type HostEvent,
+  type HostListener,
+  type Page,
+  type Skin,
+  type TextSummary,
+} from "@dg/contract/host.ts";
+
+export const ROOT = "discourse-graph";
+export const RECORDS = `${ROOT}/records`;
+const ASSETS = `${ROOT}/assets`;
+const UNIT_FOLDERS = "Discourse Units";
+const PAPER_FILES = "Paper files";
+const ID_KEY = "dg-id";
+// A raw rename on disk arrives as a delete then a create, so a delete waits this
+// long to see whether the same id comes back at a new path.
+const RENAME_WINDOW_MS = 1200;
+
+const MIME: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  svg: "image/svg+xml",
+  webp: "image/webp",
+};
+
+const sanitize = (title: string): string =>
+  title.replace(/[\\/:*?"<>|#^[\]]/g, "-").trim();
+
+// Most file systems stop at 255 bytes, and a sentence of evidence can run past that.
+const MAX_NAME_BYTES = 200;
+
+/** The whole title stays on the unit. This only decides what the file is called. */
+const fileName = (title: string, unit?: string): string => {
+  const whole = sanitize(title);
+  const encoder = new TextEncoder();
+  if (encoder.encode(whole).length <= MAX_NAME_BYTES) return whole;
+  let short = whole.slice(0, MAX_NAME_BYTES);
+  while (encoder.encode(short).length > MAX_NAME_BYTES) short = short.slice(0, -1);
+  const atWord = short.slice(0, short.lastIndexOf(" ")).trim() || short;
+  // Two long claims can open the same way, so the end of the id keeps them apart.
+  return unit ? `${atWord}... ${unit.slice(-6)}` : `${atWord}...`;
+};
+
+const stripFrontmatter = (text: string): string =>
+  text.replace(/^---\n[\s\S]*?\n---\n?/, "");
+
+/** Today's plugin already gives each node an id, so importing never edits a note. */
+const LEGACY_ID_KEY = "nodeInstanceId";
+
+const idFromText = (text: string): string | null => {
+  const frontmatter = text.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
+  for (const key of [ID_KEY, LEGACY_ID_KEY]) {
+    const found = frontmatter.match(new RegExp(`^${key}:\\s*(\\S+)`, "m"))?.[1];
+    if (found) return found;
+  }
+  return null;
+};
+
+type LocalData = {
+  deviceId?: string;
+  personId?: string;
+  local?: Record<string, Json>;
+};
+
+export type ObsidianHost = {
+  host: Host;
+  /** Synchronous, for the editor's draw path. */
+  refOfFile: (file: TFile) => HostRef;
+  forgetCursor: () => void;
+  useCursor: (view: MarkdownView) => void;
+  cursorView: () => MarkdownView | null;
+  dispose: () => void;
+};
+
+export const SURFACE_VIEW = "dg-contract-panel";
+
+const appearanceNow = (): Appearance =>
+  document.body.classList.contains("theme-dark") ? "dark" : "light";
+
+/** Read from the theme's own variables, so a custom theme carries into frames. */
+const skinNow = (): Skin => {
+  const style = getComputedStyle(document.body);
+  const read = (name: string): string => style.getPropertyValue(name).trim();
+  // "??" marks font slots the person hasn't set.
+  const fonts = (name: string): string => read(name).replace(/"\?\?",\s*/g, "");
+  const px = (name: string, fallback: number): number =>
+    Number.parseFloat(read(name)) || fallback;
+  return {
+    font: fonts("--font-interface"),
+    textFont: fonts("--font-text"),
+    size: px("--font-ui-small", 13),
+    ink: read("--text-normal"),
+    muted: read("--text-muted"),
+    page: read("--background-primary"),
+    panel: read("--background-secondary"),
+    line: read("--background-modifier-border"),
+    accent: read("--interactive-accent"),
+    radius: px("--radius-s", 4),
+  };
+};
+
+export const createObsidianHost = async ({
+  app,
+  plugin,
+  openSurface,
+  closeDialog,
+}: {
+  app: App;
+  plugin: Plugin;
+  openSurface: Host["openSurface"];
+  closeDialog: Host["closeDialog"];
+}): Promise<ObsidianHost> => {
+  const { vault, metadataCache, workspace, fileManager } = app;
+  const listeners = new Set<HostListener>();
+  const emit = (event: HostEvent): void => {
+    for (const listener of listeners) listener(event);
+  };
+
+  const idToPath = new Map<string, string>();
+  const pathToId = new Map<string, string>();
+  const remember = (id: string, path: string): void => {
+    idToPath.set(id, path);
+    pathToId.set(path, id);
+  };
+
+  const isText = (file: unknown): file is TFile =>
+    file instanceof TFile &&
+    file.extension === "md" &&
+    !file.path.startsWith(`${ROOT}/`);
+
+  const cachedId = (file: TFile): string | undefined => {
+    const frontmatter = metadataCache.getFileCache(file)?.frontmatter;
+    return (frontmatter?.[ID_KEY] ?? frontmatter?.[LEGACY_ID_KEY]) as string | undefined;
+  };
+
+  /** A synced copy ("Note 2.md") carries the same id, and the first file keeps it. */
+  const ownedElsewhere = (id: string, file: TFile): boolean => {
+    const owner = idToPath.get(id);
+    return Boolean(owner && owner !== file.path && vault.getFileByPath(owner));
+  };
+
+  const idOf = async (file: TFile): Promise<string | null> => {
+    const known = pathToId.get(file.path);
+    if (known) return known;
+    const id = cachedId(file) ?? idFromText(await vault.cachedRead(file));
+    if (!id || ownedElsewhere(id, file)) return null;
+    remember(id, file.path);
+    return id;
+  };
+
+  const refOf = async (file: TFile): Promise<HostRef> => {
+    const id = await idOf(file);
+    return id ? `id:${id}` : `path:${file.path}`;
+  };
+
+  const refOfFile = (file: TFile): HostRef => {
+    const id = pathToId.get(file.path) ?? cachedId(file);
+    return id && !ownedElsewhere(id, file) ? `id:${id}` : `path:${file.path}`;
+  };
+
+  const textFiles = (): TFile[] =>
+    vault
+      .getMarkdownFiles()
+      .filter(isText)
+      .sort((a, b) => (a.path < b.path ? -1 : 1));
+
+  const resolve = async (ref: HostRef): Promise<TFile | null> => {
+    if (ref.startsWith("path:")) return vault.getFileByPath(ref.slice(5));
+    const id = ref.slice(3);
+    const known = idToPath.get(id);
+    const file = known ? vault.getFileByPath(known) : null;
+    if (file) {
+      const current = idFromText(await vault.read(file));
+      if (current === id) return file;
+    }
+    for (const candidate of textFiles()) {
+      const text = await vault.cachedRead(candidate);
+      if (idFromText(text) === id) {
+        remember(id, candidate.path);
+        return candidate;
+      }
+    }
+    return null;
+  };
+
+  const summary = async (file: TFile): Promise<TextSummary> => ({
+    ref: await refOf(file),
+    title: file.basename,
+    modifiedAt: new Date(file.stat.mtime).toISOString(),
+    scope: "page",
+  });
+
+  const notFound = (ref: string): ReturnType<typeof fail> =>
+    fail("not-found", `No text for ${ref}. It may have been removed.`);
+
+  let data: LocalData = ((await plugin.loadData()) as LocalData | null) ?? {};
+  const saveData = async (): Promise<void> => plugin.saveData(data);
+  if (!data.deviceId || !data.personId) {
+    data.deviceId ??= uuidv7();
+    data.personId ??= uuidv7();
+    await saveData();
+  }
+  const deviceLog = `${RECORDS}/${data.deviceId}.jsonl`;
+
+  const ensureFolder = async (path: string): Promise<void> => {
+    if (!(await vault.adapter.exists(path))) await vault.createFolder(path);
+  };
+
+  const spaceId = async (): Promise<string> => {
+    const path = `${ROOT}/space.json`;
+    if (await vault.adapter.exists(path)) {
+      return (JSON.parse(await vault.adapter.read(path)) as { id: string }).id;
+    }
+    await ensureFolder(ROOT);
+    const id = uuidv7();
+    await vault.adapter.write(path, JSON.stringify({ id }));
+    return id;
+  };
+
+  const recordFiles = async (): Promise<string[]> => {
+    if (!(await vault.adapter.exists(RECORDS))) return [];
+    const { files } = await vault.adapter.list(RECORDS);
+    return files.filter((file) => file.endsWith(".jsonl")).sort();
+  };
+
+  const readLines = async (path: string): Promise<string[]> => {
+    const lines = (await vault.adapter.read(path)).split("\n");
+    // A line with no trailing newline may still be mid-write, so leave it for later.
+    lines.pop();
+    return lines;
+  };
+
+  let known: Set<string> | null = null;
+  const loadKnown = async (): Promise<Set<string>> => {
+    if (known) return known;
+    const set = new Set<string>();
+    for (const path of await recordFiles()) {
+      for (const line of await readLines(path)) {
+        set.add(canonicalJson(JSON.parse(line)));
+      }
+    }
+    known = set;
+    return set;
+  };
+
+  let writes: Promise<unknown> = Promise.resolve();
+  const inOrder = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = writes.then(work, work);
+    writes = next.catch(() => undefined);
+    return next;
+  };
+
+  let lastView: MarkdownView | null = null;
+  let beside: WorkspaceLeaf | null = null;
+
+  /**
+   * Text opens beside a panel and never replaces it, the same as Roam's sidebar.
+   * Further cards reuse that pane, so a reading session doesn't pile up splits.
+   */
+  const besideSurface = (): WorkspaceLeaf => {
+    const recent = workspace.getMostRecentLeaf();
+    const fromSurface = recent?.view.getViewType() === SURFACE_VIEW;
+    if (!fromSurface) return workspace.getLeaf(false);
+    if (beside && workspace.getLeafById((beside as WorkspaceLeaf & { id: string }).id)) return beside;
+    beside = workspace.getLeaf("split", "vertical");
+    return beside;
+  };
+  const removals = new Map<string, number>();
+
+  const noticeArrival = async (file: TFile): Promise<void> => {
+    const text = await vault.cachedRead(file);
+    const id = idFromText(text);
+    if (!id) return;
+    const pending = removals.get(id);
+    const moved = idToPath.get(id) !== file.path;
+    remember(id, file.path);
+    if (pending !== undefined) {
+      window.clearTimeout(pending);
+      removals.delete(id);
+      emit({ type: "text-renamed", ref: `id:${id}`, title: file.basename });
+    } else if (moved) {
+      emit({ type: "text-renamed", ref: `id:${id}`, title: file.basename });
+    }
+  };
+
+  const refs: EventRef[] = [
+    vault.on("create", (file) => {
+      if (file.path.startsWith(`${RECORDS}/`)) {
+        known = null;
+        emit({ type: "records-changed" });
+      } else if (isText(file)) void noticeArrival(file);
+    }),
+    vault.on("modify", (file) => {
+      if (file.path.startsWith(`${RECORDS}/`)) {
+        known = null;
+        emit({ type: "records-changed" });
+      } else if (isText(file)) {
+        void refOf(file).then((ref) => emit({ type: "text-changed", ref }));
+      }
+    }),
+    vault.on("delete", (file) => {
+      const id = pathToId.get(file.path);
+      pathToId.delete(file.path);
+      if (!id) {
+        if (file instanceof TFile && file.extension === "md") {
+          emit({ type: "text-removed", ref: `path:${file.path}` });
+        }
+        return;
+      }
+      // A rename on disk reports the new path first, so by now the note has
+      // already arrived somewhere else and this is only its old path going away.
+      if (idToPath.get(id) !== file.path) return;
+      removals.set(
+        id,
+        window.setTimeout(() => {
+          removals.delete(id);
+          idToPath.delete(id);
+          emit({ type: "text-removed", ref: `id:${id}` });
+        }, RENAME_WINDOW_MS),
+      );
+    }),
+    vault.on("rename", (file, oldPath) => {
+      const id = pathToId.get(oldPath);
+      pathToId.delete(oldPath);
+      if (!isText(file)) return;
+      if (id) remember(id, file.path);
+      // Moving a note isn't renaming it, and a file's name can be shorter than the unit's title.
+      if (oldPath.split("/").pop() === file.name) return;
+      void refOf(file).then((ref) =>
+        emit({ type: "text-renamed", ref, title: file.basename }),
+      );
+    }),
+    workspace.on("file-open", (file) => {
+      if (!file) {
+        emit({ type: "focus-changed", ref: null });
+        return;
+      }
+      void refOf(file).then((ref) => emit({ type: "focus-changed", ref }));
+    }),
+    workspace.on("active-leaf-change", (leaf) => {
+      if (leaf?.view instanceof MarkdownView) lastView = leaf.view;
+    }),
+    workspace.on("css-change", () => {
+      emit({
+        type: "appearance-changed",
+        appearance: appearanceNow(),
+        skin: skinNow(),
+      });
+    }),
+  ];
+
+  const pageOfCursor = (after?: string): Record<string, number> =>
+    after ? (JSON.parse(after) as Record<string, number>) : {};
+
+  const host: Host = {
+    describe: async () =>
+      ok({
+        contract: CONTRACT_VERSION,
+        host: "obsidian",
+        adapterVersion: "0.0.1",
+        space: { id: await spaceId(), name: vault.getName() },
+        person: { id: data.personId!, name: "Vault owner" },
+        appearance: appearanceNow(),
+        skin: skinNow(),
+        sharedSpace: false,
+      }),
+
+    listText: async ({ after, limit }) => {
+      const files = textFiles();
+      const start = after ? Number(after) : 0;
+      const end = Math.min(start + limit, files.length);
+      const items = await Promise.all(files.slice(start, end).map(summary));
+      const page: Page<TextSummary> = {
+        items,
+        next: String(end),
+        done: end >= files.length,
+      };
+      return ok(page);
+    },
+
+    readText: async ({ ref }) => {
+      const file = await resolve(ref);
+      if (!file) return notFound(ref);
+      const cache = metadataCache.getFileCache(file);
+      const links = await Promise.all(
+        (cache?.links ?? []).flatMap((link) => {
+          const target = metadataCache.getFirstLinkpathDest(link.link, file.path);
+          return target ? [refOf(target)] : [];
+        }),
+      );
+      return ok({
+        ...(await summary(file)),
+        body: stripFrontmatter(await vault.read(file)),
+        tags: (cache ? (getAllTags(cache) ?? []) : []).map((tag) => tag.slice(1)),
+        links,
+      });
+    },
+
+    searchText: async ({ query, tag, limit }) => {
+      const matches = textFiles().filter((file) => {
+        const titled = query === undefined || file.basename.includes(query);
+        if (!titled) return false;
+        if (tag === undefined) return true;
+        const cache = metadataCache.getFileCache(file);
+        return (cache ? (getAllTags(cache) ?? []) : []).includes(`#${tag}`);
+      });
+      return ok(await Promise.all(matches.slice(0, limit).map(summary)));
+    },
+
+    listBacklinks: async ({ ref }) => {
+      const target = await resolve(ref);
+      if (!target) return notFound(ref);
+      const sources = Object.entries(metadataCache.resolvedLinks)
+        .filter(([, links]) => links[target.path] !== undefined)
+        .flatMap(([path]) => {
+          const file = vault.getFileByPath(path);
+          return file && isText(file) ? [file] : [];
+        });
+      return ok(await Promise.all(sources.map(summary)));
+    },
+
+    createText: async ({ title, body = "", unit }) => {
+      const stored = fileName(title, unit);
+      const path = normalizePath(`${stored}.md`);
+      const existing = vault.getFileByPath(path);
+      if (existing) {
+        return fail("conflict", `"${stored}" already exists.`, await refOf(existing));
+      }
+      const id = unit ?? uuidv7();
+      const file = await vault.create(path, `---\n${ID_KEY}: ${id}\n---\n${body}`);
+      remember(id, file.path);
+      return ok(await summary(file));
+    },
+
+    removeText: async ({ ref }) => {
+      const file = await resolve(ref);
+      if (!file) return notFound(ref);
+      await fileManager.trashFile(file);
+      return ok(null);
+    },
+
+    saveFile: async ({ name, dataBase64 }) => {
+      if (!vault.getFolderByPath(PAPER_FILES)) await vault.createFolder(PAPER_FILES);
+      const path = normalizePath(`${PAPER_FILES}/${sanitize(name)}`);
+      const bytes = Uint8Array.from(atob(dataBase64), (char) => char.charCodeAt(0));
+      const held = vault.getFileByPath(path);
+      if (held) await vault.modifyBinary(held, bytes.buffer);
+      else await vault.createBinary(path, bytes.buffer);
+      return ok({ where: path });
+    },
+
+    fileInFolder: async ({ ref, folder }) => {
+      const file = await resolve(ref);
+      if (!file) return notFound(ref);
+      const path = normalizePath(`${UNIT_FOLDERS}/${sanitize(folder)}`);
+      if (file.parent?.path === path) return ok(null);
+      for (const part of [UNIT_FOLDERS, path]) {
+        if (!vault.getFolderByPath(part)) await vault.createFolder(part);
+      }
+      await fileManager.renameFile(file, normalizePath(`${path}/${file.name}`));
+      return ok(null);
+    },
+
+    renameText: async ({ ref, title }) => {
+      const file = await resolve(ref);
+      if (!file) return notFound(ref);
+      const parent = file.parent?.path;
+      const folder = parent && parent !== "/" ? `${parent}/` : "";
+      const path = normalizePath(`${folder}${fileName(title)}.md`);
+      if (vault.getFileByPath(path)) {
+        return fail("conflict", `"${title}" already exists.`);
+      }
+      await fileManager.renameFile(file, path);
+      return ok(await summary(file));
+    },
+
+    pinText: async ({ ref, unit }) => {
+      const file = await resolve(ref);
+      if (!file) return notFound(ref);
+      let id = await idOf(file);
+      if (!id) {
+        id = unit ?? uuidv7();
+        const fresh = id;
+        await fileManager.processFrontMatter(file, (frontmatter) => {
+          (frontmatter as Record<string, string>)[ID_KEY] = fresh;
+        });
+        remember(id, file.path);
+      }
+      return ok(await summary(file));
+    },
+
+    listRecords: async ({ after, limit }) => {
+      const cursor = pageOfCursor(after);
+      const items: DgRecord[] = [];
+      let done = true;
+      for (const path of await recordFiles()) {
+        const lines = await readLines(path);
+        let line = cursor[path] ?? 0;
+        while (line < lines.length && items.length < limit) {
+          items.push(JSON.parse(lines[line]!) as DgRecord);
+          line += 1;
+        }
+        cursor[path] = line;
+        if (line < lines.length) done = false;
+      }
+      return ok({ items, next: JSON.stringify(cursor), done });
+    },
+
+    putRecords: async ({ records }) =>
+      inOrder(async () => {
+        const problems = records.flatMap((record) => validateRecord(record));
+        if (problems.length > 0) return fail("invalid", problems.join("; "));
+        const seen = await loadKnown();
+        const fresh = records.filter((record) => !seen.has(canonicalJson(record)));
+        if (fresh.length === 0) return ok({ stored: 0 });
+        await ensureFolder(ROOT);
+        await ensureFolder(RECORDS);
+        const text = fresh.map((record) => `${JSON.stringify(record)}\n`).join("");
+        const file = vault.getFileByPath(deviceLog);
+        if (file) await vault.append(file, text);
+        else await vault.create(deviceLog, text);
+        for (const record of fresh) seen.add(canonicalJson(record));
+        known = seen;
+        return ok({ stored: fresh.length });
+      }),
+
+    readAsset: async ({ ref }) => {
+      const file = vault.getFileByPath(ref);
+      if (!file) return fail("not-found", `No asset ${ref}.`);
+      const bytes = new Uint8Array(await vault.readBinary(file));
+      let binary = "";
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      const mime = MIME[file.extension] ?? "application/octet-stream";
+      const asset: Asset = {
+        name: file.name,
+        mime,
+        dataUrl: `data:${mime};base64,${btoa(binary)}`,
+      };
+      return ok(asset);
+    },
+
+    writeAsset: async ({ asset }) => {
+      await ensureFolder(ROOT);
+      await ensureFolder(ASSETS);
+      const encoded = asset.dataUrl.split(",")[1] ?? "";
+      const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+      const path = `${ASSETS}/${uuidv7()}-${sanitize(asset.name)}`;
+      await vault.createBinary(path, bytes.buffer);
+      return ok({ ref: path });
+    },
+
+    getFocus: async () => {
+      const file = workspace.getActiveFile();
+      return ok({ ref: file ? await refOf(file) : null });
+    },
+
+    reveal: async ({ ref, placement }) => {
+      const file = await resolve(ref);
+      if (!file) return notFound(ref);
+      const leaf = placement === "side" ? workspace.getRightLeaf(false) : besideSurface();
+      if (!leaf) return fail("unavailable", "No pane to open in.");
+      await leaf.openFile(file, { active: true });
+      return ok(null);
+    },
+
+    insertLink: async ({ ref, label }) => {
+      const target = await resolve(ref);
+      if (!target) return notFound(ref);
+      if (!lastView?.file) return fail("no-target", "No cursor to insert at.");
+      const editor = lastView.editor;
+      const text = label ? `[[${target.basename}|${label}]]` : `[[${target.basename}]]`;
+      editor.replaceRange(text, editor.getCursor());
+      await lastView.save();
+      return ok(null);
+    },
+
+    readSelection: async () => {
+      const view = workspace.getActiveViewOfType(MarkdownView) ?? lastView;
+      const text = view?.editor.getSelection() ?? "";
+      return ok(text ? { text } : null);
+    },
+
+    replaceSelection: async ({ ref }) => {
+      const target = await resolve(ref);
+      if (!target) return notFound(ref);
+      const view = workspace.getActiveViewOfType(MarkdownView) ?? lastView;
+      if (!view?.editor.somethingSelected()) return fail("no-target", "Nothing is selected.");
+      view.editor.replaceSelection(`[[${target.basename}]]`);
+      await view.save();
+      return ok(null);
+    },
+
+    openSurface,
+    closeDialog,
+
+    getLocal: async ({ key }) => ok(data.local?.[key] ?? null),
+    setLocal: async ({ key, value }) =>
+      inOrder(async () => {
+        data = { ...data, local: { ...data.local, [key]: value } };
+        await saveData();
+        return ok(null);
+      }),
+
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+
+  return {
+    host: neverRejects(host),
+    refOfFile,
+    forgetCursor: () => {
+      lastView = null;
+    },
+    useCursor: (view) => {
+      lastView = view;
+    },
+    cursorView: () => lastView,
+    dispose: () => {
+      for (const ref of refs) vault.offref(ref);
+      for (const timer of removals.values()) window.clearTimeout(timer);
+      listeners.clear();
+    },
+  };
+};

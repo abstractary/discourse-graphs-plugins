@@ -1,0 +1,13 @@
+{
+  "name": "@dg/sync",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Talks to compute servers and labs. The only module that touches the network",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@dg/contract": "*"
+  }
+}

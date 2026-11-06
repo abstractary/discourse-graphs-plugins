@@ -1,0 +1,13 @@
+{
+  "name": "@dg/plugin-roam",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Roam extension",
+  "dependencies": {
+    "@dg/contract": "*",
+    "@dg/core": "*",
+    "@dg/native": "*",
+    "@dg/sync": "*"
+  }
+}

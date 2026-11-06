@@ -1,0 +1,15 @@
+name: Idea or question
+description: Something this demo should explore, or something that isn't clear
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What's on your mind?
+    validations:
+      required: true
+  - type: textarea
+    id: who
+    attributes:
+      label: Who would this help, and when?
+      placeholder: A person reading a paper alone, a lab reviewing work together, and so on.

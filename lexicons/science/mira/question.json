@@ -1,0 +1,75 @@
+{
+  "lexicon": 1,
+  "id": "science.mira.question",
+  "description": "Generated from mira:Question by lod-at-gen. DRAFT.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Scientific unknowns that we want to make known, and are addressable by the systematic application of research methods",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "attributedTo": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            },
+            "description": "Examples of a Creator include a person, an organization, or a service. Typically, the name of a Creator should be used to indicate the entity."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "A name given to the resource."
+          },
+          "description": {
+            "type": "union",
+            "refs": [
+              "at.linkedopendata.richtext#text",
+              "at.linkedopendata.defs#ref"
+            ],
+            "description": "Description may include but is not limited to: an abstract, a table of contents, a graphical representation, or a free-text account of the resource."
+          },
+          "container": {
+            "type": "string",
+            "format": "uri",
+            "description": "The Container to which this Item belongs."
+          },
+          "format": {
+            "type": "string",
+            "description": "Examples of dimensions include size and duration. Recommended best practice is to use a controlled vocabulary such as the list of Internet Media Types [MIME]."
+          },
+          "content": {
+            "type": "string",
+            "description": "The content of the Item in plain text format."
+          },
+          "sameAs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "IRIs of the same resource elsewhere, e.g. the Linked Data node this record was converted from (owl:sameAs)."
+          },
+          "previousVersionCid": {
+            "type": "string",
+            "format": "cid",
+            "description": "CID of the version this one replaces (proposal §3 rule 9)."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.membership",
+  "description": "A person joining a lab, which gives the custodian a rotation key on their DID.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "lab",
+          "member",
+          "createdAt"
+        ],
+        "properties": {
+          "lab": {
+            "type": "string",
+            "format": "did"
+          },
+          "member": {
+            "type": "string",
+            "format": "did"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

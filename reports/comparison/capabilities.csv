@@ -1,0 +1,120 @@
+area,capability,roam,obsidian,ours,note
+Grammar and settings,Default node and relation types,on,on,full,
+Grammar and settings,Types carry format and color,on,on,full,Read from today's plugins on import
+Grammar and settings,Settings screen for node types,on,on,none,
+Grammar and settings,Settings screen for relation types and allowed pairs,on,on,none,
+Grammar and settings,Node templates,on,on,none,
+Grammar and settings,Folder per node type,none,on,none,
+Grammar and settings,Node type defined by a query,flag,none,none,Decision 5 drops this
+Grammar and settings,Score attributes,on,none,none,
+Grammar and settings,Configurable trigger keys,on,on,none,
+Grammar and settings,Export and import of the schema,none,on,none,
+Grammar and settings,Personal and shared settings,on,none,none,
+Node creation,Create a typed node,on,on,full,From the canvas
+Node creation,Reuse an existing node while creating,on,on,full,
+Node creation,Relate while creating,none,on,full,Dropping a connection on empty canvas
+Node creation,Create from selected text in the editor,on,on,full,"Select, press the key, pick a type"
+Node creation,Hotkey menu in the editor,on,on,full,Same key and menu in both bases
+Node creation,Insert a link at the cursor,on,on,part,Replaces a selection; no insert at a bare cursor
+Node creation,Convert the current page to a node,on,on,full,
+Node creation,Create from a candidate tag,on,on,none,
+Node creation,Apply a template on create,on,on,none,
+Node creation,Block-level nodes,on,none,none,
+Node creation,Turn an image into a node,on,on,none,
+Node creation,Bulk identify existing notes,none,on,part,Import does this once; harness only
+Node creation,Inline node search and insert,on,none,none,
+Recognition and inline UI,Recognize nodes from titles or frontmatter,on,on,part,At import; not live
+Recognition and inline UI,Relation badge beside links,flag,on,full,Live Preview and Reading view; Roam links tags and aliases; off switch per device
+Recognition and inline UI,Context popover from a link,flag,on,part,Opens the context panel rather than a popover
+Recognition and inline UI,Candidate tag styling,on,on,none,
+Recognition and inline UI,Type shown in base views,on,on,part,Dot color on link badges only
+Relations,Stored relations,on,on,full,Records with union merge
+Relations,Pattern-derived relations,on,none,part,Title sources become proposals; If specs aren't read
+Relations,Add a relation from a panel within the grammar,on,on,full,
+Relations,Complement wording by direction,on,on,full,
+Relations,Duplicate guard,on,on,full,
+Relations,Delete a relation,on,on,part,Method exists; no button
+Relations,Review imported or proposed relations,on,on,full,
+Relations,Browse all relations in a table,on,none,none,
+Relations,Provenance on a relation,none,on,full,Shown on hover; person inside a lab and lab from outside it
+Context and browsing,Context panel,on,on,full,
+Context and browsing,Follows the current page,on,on,full,
+Context and browsing,Follows the canvas selection,on,on,full,
+Context and browsing,Walk to a related node,on,on,full,
+Context and browsing,Group by target,on,none,none,
+Context and browsing,Canvas references,on,none,none,
+Context and browsing,Search with filters and sort,flag,on,part,Title search when adding a node
+Context and browsing,Docked search panel,flag,none,none,
+Context and browsing,Left sidebar sections,flag,none,none,
+Canvas,Node cards bound to notes,on,on,full,
+Canvas,Relation arrows with labels,on,on,full,
+Canvas,Draw a relation between cards,on,on,full,
+Canvas,Grammar check on connect,on,on,full,
+Canvas,Deleting an arrow keeps the relation,on,on,full,
+Canvas,Deleting a card removes its arrows,on,on,full,
+Canvas,Renames reach the card,on,on,full,
+Canvas,Open a node beside the canvas,on,on,full,
+Canvas,Merge outside changes,on,on,full,Per item
+Canvas,Notes and text,on,on,full,
+Canvas,Edit a title from its card,on,on,none,
+Canvas,Freehand drawing,on,on,part,One pen; no eraser
+Canvas,Undo and redo,on,on,part,Removing and Tidy only
+Canvas,Drag a link or block in from the base,on,on,part,Plain text becomes a note
+Canvas,Shapes frames lines media and embeds,on,on,none,
+Canvas,Align group lock rotate and reorder,on,on,none,
+Canvas,Copy and paste,on,on,none,
+Canvas,Export PNG or SVG,on,on,none,
+Canvas,Convert a shape or arrow,on,on,none,
+Canvas,Key image on a card,on,on,none,Off by default in both
+Canvas,Create a relation type from the canvas,none,on,none,
+Canvas,Canvas drawer and clipboard,on,none,none,
+Canvas,Embed a canvas in a block,on,none,none,
+Canvas,Real-time co-editing,flag,none,none,
+Queries and views,Query builder conditions,on,none,none,
+Queries and views,Saved queries and drawer,on,none,none,
+Queries and views,Custom Datalog,on,none,none,
+Queries and views,Table results,on,none,none,
+Queries and views,Charts timeline and Kanban,on,none,none,
+Queries and views,Result actions,on,none,none,
+Queries and views,SmartBlock and JavaScript API,on,none,none,
+Queries and views,Base view per type,none,on,none,
+Import export and sharing,Export to Markdown JSON CSV Neo4j JSON-LD PDF,on,none,none,
+Import export and sharing,Send results to a page or canvas,on,none,none,
+Import export and sharing,Send to GitHub,on,none,none,
+Import export and sharing,Publish to groups,flag,flag,part,Shared canvases reach the lab
+Import export and sharing,Import shared nodes,flag,flag,part,Arrive by sync with their canvas
+Import export and sharing,Refresh imported nodes,flag,flag,part,New revisions arrive by sync
+Import export and sharing,Shared assets,flag,flag,part,Original files in the lab repository; no images
+Collaboration and identity,Database sync,flag,flag,part,Lab records sync through the reference server; not the whole graph
+Collaboration and identity,Spaces accounts and groups,flag,flag,part,Labs with join requests on a reference server; no real accounts
+Collaboration and identity,Per-person clipboard and settings,on,none,none,
+Collaboration and identity,Merge teammates' writes without a server,on,none,part,Tested as outside records
+Telemetry help and AI,Usage analytics,on,none,part,Local log with no content; nothing is sent
+Telemetry help and AI,Error reporting,on,none,none,
+Telemetry help and AI,Feedback,on,on,none,
+Telemetry help and AI,Help links,on,on,part,A walkthrough of the interface; no links out
+Telemetry help and AI,AI suggestions and embeddings,flag,flag,part,"Ask a canvas, grounded in chosen units; no suggestions or embeddings"
+New in ours,Same panels and gestures in both bases,none,none,full,One bundle
+New in ours,Canvases move between bases as records,none,none,part,Harness only
+New in ours,Change a node's type from its card,none,none,full,
+New in ours,Auto layout,none,none,full,Tidy in nine modes: logic and debate and timeline and kinds and people and focus and three centrality rankings
+New in ours,Start the next card by dropping a connection,none,none,full,
+New in ours,Import today's plugin data with a dry run,none,none,part,Harness only; older Roam settings layout
+New in ours,JSON Canvas output,none,none,part,Method exists; no button
+New in ours,Empty states that teach,none,none,full,
+New in ours,No network calls,none,none,full,CSP blocks them in the frame
+New in ours,Every unit has a global id that survives retyping,none,none,full,"DID plus TID, also stored in the text"
+New in ours,Records validate against AT Protocol lexicons,none,none,full,science.mira and org.discoursegraphs
+New in ours,Identity with no account or network,none,none,full,did:plc computed on the device
+New in ours,Lab attribution and PI custody,none,none,part,Marks on every unit and PLC operations; no custody screen
+New in ours,Reads published science.mira records,none,none,part,Tested on the 20 MATSUlab records; test harness only
+New in ours,Guided walkthrough on the real interface,none,none,full,Real gestures with a way to remove its examples
+New in ours,One list of canvases in every base,none,none,full,Shared panel plus a native page or note for each canvas
+New in ours,"Upload a paper, choosing server, model and schema",none,none,full,
+New in ours,"A canvas for each paper, with units staged until exported",none,none,full,
+New in ours,"Export a paper or chosen units to a workspace, lab canvas or folder",none,none,full,
+New in ours,"Lab paper repository with uploader, extractor and breadcrumbs",none,none,full,Downloading the original file has no button yet
+New in ours,Reactions and notes on shared units,none,none,full,
+New in ours,AI mode with chosen units as grounding,none,none,full,Tested with search-only answers and a fake model
+New in ours,Provenance and everywhere a unit lives,none,none,full,
+New in ours,"Join a lab by identifier, with AI provisioned on acceptance",none,none,full,

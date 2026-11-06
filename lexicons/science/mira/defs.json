@@ -1,0 +1,28 @@
+{
+  "lexicon": 1,
+  "id": "science.mira.defs",
+  "description": "DRAFT. Shared objects for optional fields on claim, evidence and relation.",
+  "defs": {
+    "provenance": {
+      "type": "object",
+      "description": "How a record came to exist. Declared at the source, not guessed by a detector.",
+      "required": ["method"],
+      "properties": {
+        "method": { "type": "string", "maxLength": 64, "knownValues": ["authored", "aiAssisted", "aiGenerated", "imported"] },
+        "agent": { "type": "string", "maxLength": 512, "description": "The model or tool, with its version." },
+        "reviewedBy": { "type": "array", "items": { "type": "string", "format": "did" }, "description": "People who checked it before publication." }
+      }
+    },
+    "anchor": {
+      "type": "object",
+      "description": "The exact place in a source that grounds a statement. Maps to a W3C Web Annotation text quote selector.",
+      "required": ["source"],
+      "properties": {
+        "source": { "type": "ref", "ref": "at.linkedopendata.defs#ref" },
+        "exact": { "type": "string", "maxLength": 4096, "description": "The quoted words." },
+        "page": { "type": "string", "maxLength": 32 },
+        "figure": { "type": "string", "maxLength": 64 }
+      }
+    }
+  }
+}

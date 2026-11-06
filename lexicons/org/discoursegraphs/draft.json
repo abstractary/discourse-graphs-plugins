@@ -1,0 +1,39 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.draft",
+  "description": "A discourse unit with no type yet. Moves to its type collection, under the same record key, once it has one.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "title",
+          "createdAt"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "attributedTo": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

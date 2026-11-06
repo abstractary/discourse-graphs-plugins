@@ -1,0 +1,40 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.snapshot",
+  "description": "Text for readers in other spaces. The base stays the source of truth.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "node",
+          "format",
+          "createdAt"
+        ],
+        "properties": {
+          "node": {
+            "type": "string",
+            "format": "at-uri"
+          },
+          "format": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "text": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

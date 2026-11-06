@@ -1,0 +1,487 @@
+{
+  "source": "1-s2.0-S0049017217307229-main.pdf",
+  "models": [
+    "nvidia/nemotron-3-ultra-550b-a55b:free"
+  ],
+  "edited": true,
+  "paper": {
+    "title": "Predicting eventual development of lupus nephritis at the time of diagnosis of systemic lupus erythematosus",
+    "doi": "10.1016/j.semarthrit.2018.02.012",
+    "authors": [
+      {
+        "name": "Oh Chan Kwon"
+      },
+      {
+        "name": "Jung Sun Lee"
+      },
+      {
+        "name": "Byeongzu Ghang"
+      },
+      {
+        "name": "Yong-Gil Kim"
+      },
+      {
+        "name": "Chang-Keun Lee"
+      },
+      {
+        "name": "Bin Yoo"
+      },
+      {
+        "name": "Seokchan Hong"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "g0",
+      "type": "Question",
+      "text": "What factors at the time of SLE diagnosis predict future development of lupus nephritis?",
+      "anchor": "To investigate factors predictive of future lupus nephritis development when systemic lupus erythematosus (SLE) is diagnosed."
+    },
+    {
+      "id": "g1",
+      "type": "Claim",
+      "text": "Low albumin-to-globulin ratio (AGR) at SLE diagnosis is strongly associated with increased risk of future lupus nephritis development.",
+      "anchor": "In particular, a low AGR (aHR 4.972, 95% CI: 2.394 – 10.326, p < 0.001) was strongly associated with an increased risk of future lupus nephritis development."
+    },
+    {
+      "id": "g2",
+      "type": "Claim",
+      "text": "Young age, low C3, high anti-dsDNA titre, and presence of anti-Sm antibody at SLE diagnosis are associated with risk of future lupus nephritis.",
+      "anchor": "Young age, low C3, high anti-dsDNA titre and presence of anti-Sm antibody at diagnosis of SLE were associated with a risk of future lupus nephritis"
+    },
+    {
+      "id": "g3",
+      "type": "Claim",
+      "text": "Low AGR has the greatest hazard for lupus nephritis among the predictive factors (aHR 4.972).",
+      "anchor": "Notably, the factor associated with the greatest hazard for lupus nephritis was a low AGR (aHR 4.972, 95% CI: 2.394 – 10.326, p < 0.001)."
+    },
+    {
+      "id": "g4",
+      "type": "Claim",
+      "text": "AGR has the highest discrimination ability (AUC 0.769) for lupus nephritis development compared to albumin (AUC 0.754) and globulin (AUC 0.600).",
+      "anchor": "AGR, with the highest AUC, had the highest discrimination ability for development of lupus nephritis among the three variables."
+    },
+    {
+      "id": "g5",
+      "type": "Claim",
+      "text": "The cumulative incidence of lupus nephritis in Korean SLE patients is 34.8%.",
+      "anchor": "Thus, the cumulative incidence of lupus nephritis was 34.8% (136 of 391)"
+    },
+    {
+      "id": "g6",
+      "type": "Claim",
+      "text": "Low AGR reflects a greater proportion of immunoglobulin relative to total protein, suggesting higher autoantibody burden.",
+      "anchor": "one possible explanation is that a low AGR, indicating a greater proportion of globulin relative to total protein, reflects the higher amounts of antibodies in the serum of patients with SLE."
+    },
+    {
+      "id": "g7",
+      "type": "Claim",
+      "text": "Anti-dsDNA antibody titre as a continuous variable shows a 4% increased risk of lupus nephritis per 100 IU/ml increase.",
+      "anchor": "Based on the aHR, we estimated that risk of developing lupus nephritis increased by 4% per 100 IU/ml increase of anti-dsDNA titre."
+    },
+    {
+      "id": "g8",
+      "type": "Claim",
+      "text": "The study is limited by its retrospective, single-center design in a Korean population, and AGR may be susceptible to measurement variability though less so as a ratio.",
+      "anchor": "First, this study was retrospective in design, and was a single center study in Korea. Thus further studies are required with larger number of subjects from different ethnic populations to confirm the present results."
+    },
+    {
+      "id": "g9",
+      "type": "Evidence",
+      "text": "Of 278 SLE patients without nephritis at baseline, 37 developed biopsy-proven lupus nephritis during a median follow-up of 44.9 months.",
+      "anchor": "Of 278 patients newly diagnosed with SLE during the study period but without lupus nephritis at that time, 241 did not and 37 did develop nephritis on follow-up. The median follow-up duration was 44.9 (range: 29.0 – 68.4) months."
+    },
+    {
+      "id": "g10",
+      "type": "Evidence",
+      "text": "Median time to lupus nephritis development was 30.1 months (range 16.2–54.7).",
+      "anchor": "The median time to development of lupus nephritis was 30.1 (range: 16.2 – 54.7) months."
+    },
+    {
+      "id": "g11",
+      "type": "Evidence",
+      "text": "Patients who developed nephritis were significantly younger at diagnosis (28.4 vs 40.8 years), had lower serum albumin (3.24 vs 3.86 g/dl), lower AGR (0.801 vs 1.044), lower C3 (55.8 vs 87.3 mg/dl), lower C4 (9.2 vs 15.8 mg/dl), higher anti-dsDNA titre (97.0 vs 8.1 IU/ml), higher SLEDAI (13.0 vs 8.2), higher frequency of anti-Sm (31.3% vs 13.8%), anti-RNP (54.1% vs 28.7%), and anti-beta2 glycoprotein IgM (16.7% vs 5.6%), and received higher cumulative glucocorticoid dose.",
+      "anchor": "At initial diagnosis of SLE, patients who developed lupus nephritis during follow-up were significantly younger [28.4 (± 9.7) years vs. 40.8 (± 14.4) years, p < 0.001] and had a lower serum albumin level [3.24 (± 0.62) g/dl vs. 3.86 (± 0.54) g/dl, p < 0.00"
+    },
+    {
+      "id": "g12",
+      "type": "Evidence",
+      "text": "Univariate analysis identified younger age, lower AGR, lower C3, lower C4, higher anti-dsDNA titre, and presence of anti-Sm and anti-RNP antibodies as significantly associated with increased risk of lupus nephritis.",
+      "anchor": "On univariate analysis, factors significantly associated with an increased risk of developing lupus nephritis included younger age, lower AGR, lower C3, lower C4, higher anti-dsDNA titre and the presence of anti-Sm and anti-RNP antibodies (Table 2)."
+    },
+    {
+      "id": "g13",
+      "type": "Evidence",
+      "text": "Multivariate analysis showed age (aHR 0.928, 95% CI 0.895–0.961), C3 (aHR 0.977, 95% CI 0.966–0.989), anti-dsDNA titre (aHR 1.004, 95% CI 1.000–1.007), anti-Sm antibody (aHR 2.097, 95% CI 1.040–4.229), and low AGR (aHR 4.972, 95% CI 2.394–10.326) as independent predictors.",
+      "anchor": "On multivariate analysis, the following factors remained significant: age [adjusted hazard ratio (aHR) 0.928, 95% confidence interval (CI): 0.895 – 0.961, p < 0.001], C3 (aHR 0.977, 95% CI: 0.966 – 0.989, p < 0.001), anti-dsDNA titre (aHR 1.004, 95% CI: 1."
+    },
+    {
+      "id": "g14",
+      "type": "Evidence",
+      "text": "The multivariable model had high discrimination ability (c-index 0.898, 95% CI 0.855–0.947).",
+      "anchor": "The discrimination ability of the multivariable model was high (c index 0.898, 95% CI: 0.855 – 0.947)."
+    },
+    {
+      "id": "g15",
+      "type": "Evidence",
+      "text": "ROC analysis: albumin AUC 0.754 (cut-off 3.35 g/dl), globulin AUC 0.600 (cut-off 3.85 g/dl), AGR AUC 0.769 (cut-off 0.807).",
+      "anchor": "The results of ROC analyses of albumin, globulin and AGR are as follows: albumin [area under the curve (AUC) 0.754, 95% CI: 0.671 – 0.838, cut-off value 3.35 g/dl], globulin (AUC 0.600, 95% CI: 0.507 – 0.692, cut-off value 3.85 g/dl), and AGR (AUC 0.769, 9"
+    },
+    {
+      "id": "g16",
+      "type": "Evidence",
+      "text": "Kaplan-Meier analysis showed significantly higher rate of lupus nephritis in patients with AGR <0.807 (p<0.001).",
+      "anchor": "Kaplan–Meier analysis of these two groups showed a significantly higher rate of lupus nephritis developing in the group with an AGR of < 0.807 (p < 0.001) (Fig. 2)."
+    },
+    {
+      "id": "g17",
+      "type": "Evidence",
+      "text": "Among 391 Korean SLE patients, 99 had nephritis at presentation and 37 developed nephritis during follow-up, yielding a cumulative incidence of 34.8%.",
+      "anchor": "Among the 391 Korean SLE patients, 99 patients had evident nephritis at initial presentation and 37 patients developed nephritis during follow up. Thus, the cumulative incidence of lupus nephritis was 34.8% (136 of 391)"
+    },
+    {
+      "id": "g18",
+      "type": "Study",
+      "text": "Retrospective cohort study of 278 newly diagnosed SLE patients without baseline nephritis at Asan Medical Center, Seoul (2005–2015), followed for development of biopsy-proven lupus nephritis.",
+      "anchor": "The electronic medical records of patients who were diagnosed with SLE at a tertiary referral hospital in Seoul, South Korea between January 2005 and December 2015 were retrospectively reviewed."
+    },
+    {
+      "id": "g19",
+      "type": "Protocol",
+      "text": "Calculate albumin-to-globulin ratio (AGR) as albumin/(total protein − albumin).",
+      "anchor": "AGR was calculated using the equation AGR = albumin/(total protein − albumin)."
+    },
+    {
+      "id": "g20",
+      "type": "Protocol",
+      "text": "Cox proportional hazards regression with univariate screening (p<0.05) followed by multivariate analysis to identify independent predictors of lupus nephritis.",
+      "anchor": "Cox proportional hazard model was used to identify predictors of lupus nephritis. Univariate analysis was performed for each variable, and variables found to be statistically significant (p < 0.05) were included in multivariate analysis."
+    },
+    {
+      "id": "g21",
+      "type": "Protocol",
+      "text": "Assess proportional hazards assumption via log[−log(survival)] curves and Schoenfeld residuals.",
+      "anchor": "The proportional hazards assumption was confirmed by examination of log[−log(survival)] curves and by testing Schoenfeld partial residuals, and no relevant violations were found."
+    },
+    {
+      "id": "g22",
+      "type": "Protocol",
+      "text": "Evaluate model discrimination using Harrell's c-index.",
+      "anchor": "The discrimination ability of the multivariable model was evaluated using Harrell's overall c index."
+    },
+    {
+      "id": "g23",
+      "type": "Protocol",
+      "text": "Perform ROC analysis to determine optimal cut-off values for albumin, globulin, and AGR.",
+      "anchor": "Receiver operating characteristics (ROC) analysis was performed, and the best cut-off value was determined."
+    },
+    {
+      "id": "g24",
+      "type": "Protocol",
+      "text": "Kaplan-Meier survival analysis with log-rank test to compare nephritis-free survival by AGR cut-off.",
+      "anchor": "Survival rates were analysed using the Kaplan–Meier method and were compared using the log-rank test."
+    },
+    {
+      "id": "g25",
+      "type": "Protocol",
+      "text": "Diagnose lupus nephritis by kidney biopsy classified per ISN/RPS 2003 system, with biopsy indicated per ACR recommendations (proteinuria ≥1 g/24h or ≥0.5 g/24h plus haematuria ≥5 RBCs/HPF or cellular casts).",
+      "anchor": "Kidney biopsy was performed according to ACR recommendations, including the following indications: increasing serum creatinine level of unknown cause or proteinuria ≥ 1 g per 24 h (either in a 24-h urine specimen or on a spot protein/creatinine ratio) or a"
+    },
+    {
+      "id": "g26",
+      "type": "Protocol",
+      "text": "Classify SLE per ACR 1997 criteria.",
+      "anchor": "All patients met the American College of Rheumatology (ACR) classification criteria for SLE [13]."
+    },
+    {
+      "id": "g27",
+      "type": "Protocol",
+      "text": "Assess disease activity using SLEDAI.",
+      "anchor": "The SLE Disease Activity Index, a validated measure of lupus disease activity [14], was assessed at the time SLE was diagnosed."
+    },
+    {
+      "id": "g28",
+      "type": "SourceDocument",
+      "text": "Predicting eventual development of lupus nephritis at the time of diagnosis of systemic lupus erythematosus",
+      "doi": "10.1016/j.semarthrit.2018.02.012",
+      "url": "https://doi.org/10.1016/j.semarthrit.2018.02.012",
+      "anchor": "Predicting eventual development of lupus nephritis at the time of diagnosis of systemic lupus erythematosus"
+    },
+    {
+      "id": "g29",
+      "type": "Request",
+      "text": "Further studies with larger numbers of subjects from different ethnic populations are required to confirm the present results.",
+      "anchor": "Thus further studies are required with larger number of subjects from different ethnic populations to confirm the present results."
+    }
+  ],
+  "edges": [
+    {
+      "relation": "describesActivity",
+      "subject": "g28",
+      "object": "g18",
+      "anchor": "The electronic medical records of patients who were diagnosed with SLE at a tertiary referral hospital in Seoul, South Korea between January 2005 and December 2015 were retrospectively reviewed."
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g9"
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g10"
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g11"
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g12"
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g13"
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g14"
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g15"
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g16"
+    },
+    {
+      "relation": "grounds",
+      "subject": "g18",
+      "object": "g17"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g19"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g20"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g21"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g22"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g23"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g24"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g25"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g26"
+    },
+    {
+      "relation": "follows",
+      "subject": "g18",
+      "object": "g27"
+    },
+    {
+      "relation": "supports",
+      "subject": "g9",
+      "object": "g1",
+      "anchor": "In particular, a low AGR (aHR 4.972, 95% CI: 2.394 – 10.326, p < 0.001) was strongly associated with an increased risk of future lupus nephritis development."
+    },
+    {
+      "relation": "supports",
+      "subject": "g9",
+      "object": "g2"
+    },
+    {
+      "relation": "supports",
+      "subject": "g10",
+      "object": "g1"
+    },
+    {
+      "relation": "supports",
+      "subject": "g10",
+      "object": "g2"
+    },
+    {
+      "relation": "supports",
+      "subject": "g11",
+      "object": "g1"
+    },
+    {
+      "relation": "supports",
+      "subject": "g11",
+      "object": "g2"
+    },
+    {
+      "relation": "supports",
+      "subject": "g12",
+      "object": "g1"
+    },
+    {
+      "relation": "supports",
+      "subject": "g12",
+      "object": "g2"
+    },
+    {
+      "relation": "supports",
+      "subject": "g13",
+      "object": "g1",
+      "anchor": "On multivariate analysis, the following factors remained significant: age [adjusted hazard ratio (aHR) 0.928, 95% confidence interval (CI): 0.895 – 0.961, p < 0.001], C3 (aHR 0.977, 95% CI: 0.966 – 0.989, p < 0.001), anti-dsDNA titre (aHR 1.004, 95% CI: 1."
+    },
+    {
+      "relation": "supports",
+      "subject": "g13",
+      "object": "g2",
+      "anchor": "On multivariate analysis, the following factors remained significant: age [adjusted hazard ratio (aHR) 0.928, 95% confidence interval (CI): 0.895 – 0.961, p < 0.001], C3 (aHR 0.977, 95% CI: 0.966 – 0.989, p < 0.001), anti-dsDNA titre (aHR 1.004, 95% CI: 1."
+    },
+    {
+      "relation": "supports",
+      "subject": "g13",
+      "object": "g3",
+      "anchor": "Notably, the factor associated with the greatest hazard for lupus nephritis was a low AGR (aHR 4.972, 95% CI: 2.394 – 10.326, p < 0.001)."
+    },
+    {
+      "relation": "supports",
+      "subject": "g13",
+      "object": "g7",
+      "anchor": "Based on the aHR, we estimated that risk of developing lupus nephritis increased by 4% per 100 IU/ml increase of anti-dsDNA titre."
+    },
+    {
+      "relation": "supports",
+      "subject": "g14",
+      "object": "g4",
+      "anchor": "The discrimination ability of the multivariable model was high (c index 0.898, 95% CI: 0.855 – 0.947)."
+    },
+    {
+      "relation": "supports",
+      "subject": "g15",
+      "object": "g4",
+      "anchor": "AGR, with the highest AUC, had the highest discrimination ability for development of lupus nephritis among the three variables."
+    },
+    {
+      "relation": "supports",
+      "subject": "g16",
+      "object": "g1",
+      "anchor": "Kaplan–Meier analysis of these two groups showed a significantly higher rate of lupus nephritis developing in the group with an AGR of < 0.807 (p < 0.001) (Fig. 2)."
+    },
+    {
+      "relation": "supports",
+      "subject": "g16",
+      "object": "g3",
+      "anchor": "Kaplan–Meier analysis of these two groups showed a significantly higher rate of lupus nephritis developing in the group with an AGR of < 0.807 (p < 0.001) (Fig. 2)."
+    },
+    {
+      "relation": "supports",
+      "subject": "g17",
+      "object": "g5",
+      "anchor": "Thus, the cumulative incidence of lupus nephritis was 34.8% (136 of 391)"
+    },
+    {
+      "relation": "addresses",
+      "subject": "g1",
+      "object": "g0"
+    },
+    {
+      "relation": "addresses",
+      "subject": "g2",
+      "object": "g0"
+    },
+    {
+      "relation": "addresses",
+      "subject": "g3",
+      "object": "g0"
+    },
+    {
+      "relation": "addresses",
+      "subject": "g4",
+      "object": "g0"
+    },
+    {
+      "relation": "addresses",
+      "subject": "g5",
+      "object": "g0"
+    },
+    {
+      "relation": "supports",
+      "subject": "g6",
+      "object": "g1",
+      "anchor": "one possible explanation is that a low AGR, indicating a greater proportion of globulin relative to total protein, reflects the higher amounts of antibodies in the serum of patients with SLE."
+    },
+    {
+      "relation": "supports",
+      "subject": "g7",
+      "object": "g2"
+    },
+    {
+      "relation": "request_target",
+      "subject": "g29",
+      "object": "g1"
+    },
+    {
+      "relation": "request_target",
+      "subject": "g29",
+      "object": "g2"
+    },
+    {
+      "relation": "request_target",
+      "subject": "g29",
+      "object": "g3"
+    },
+    {
+      "relation": "request_target",
+      "subject": "g29",
+      "object": "g4"
+    },
+    {
+      "relation": "request_target",
+      "subject": "g29",
+      "object": "g5"
+    },
+    {
+      "relation": "request_target",
+      "subject": "g29",
+      "object": "g6"
+    },
+    {
+      "relation": "request_target",
+      "subject": "g29",
+      "object": "g7"
+    },
+    {
+      "relation": "request_target",
+      "subject": "g29",
+      "object": "g8"
+    }
+  ]
+}

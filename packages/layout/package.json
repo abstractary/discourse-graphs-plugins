@@ -1,0 +1,13 @@
+{
+  "name": "@dg/layout",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tidy: pure layout and centrality, with no UI",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@dg/contract": "*"
+  }
+}

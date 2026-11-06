@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+
+# Test output. Each suite writes here, so only what the docs cite is kept.
+reports/*
+!reports/comparison/
+!reports/modes/
+reports/modes/*
+!reports/modes/sources.md
+
+# Local data and scratch work
+server/data/
+sandbox/
+proof/
+spike-canvas/

@@ -1,0 +1,14 @@
+{
+  "name": "@dg/native",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "UI drawn in the base itself: capture, badges, dialogs and the walkthrough",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@dg/contract": "*",
+    "@dg/core": "*"
+  }
+}

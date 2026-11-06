@@ -1,0 +1,134 @@
+{
+  "lexicon": 1,
+  "id": "science.mira.evidence",
+  "description": "Generated from mira:Evidence by lod-at-gen. DRAFT.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A specific empirical observation from a particular application of a research method",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "createdAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "isGroundedIn": {
+            "type": "ref",
+            "ref": "at.linkedopendata.defs#ref"
+          },
+          "depiction": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "A figure or image of this evidence."
+          },
+          "seeAlso": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "A related page, such as the original node in a lab graph."
+          },
+          "observationStatement": {
+            "type": "ref",
+            "ref": "at.linkedopendata.defs#ref",
+            "description": "Observation statement"
+          },
+          "observationOriginActivity": {
+            "type": "ref",
+            "ref": "at.linkedopendata.defs#ref",
+            "description": "An experiment or study at the origin of the data on which the observation is based"
+          },
+          "observationBase": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            },
+            "description": "The data on which the observation is based"
+          },
+          "sourceDocument": {
+            "type": "ref",
+            "ref": "at.linkedopendata.defs#ref",
+            "description": "A document that described the activity which led to the data on which the observation is based"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "attributedTo": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            },
+            "description": "Examples of a Creator include a person, an organization, or a service. Typically, the name of a Creator should be used to indicate the entity."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "A name given to the resource."
+          },
+          "description": {
+            "type": "union",
+            "refs": [
+              "at.linkedopendata.richtext#text",
+              "at.linkedopendata.defs#ref"
+            ],
+            "description": "Description may include but is not limited to: an abstract, a table of contents, a graphical representation, or a free-text account of the resource."
+          },
+          "container": {
+            "type": "string",
+            "format": "uri",
+            "description": "The Container to which this Item belongs."
+          },
+          "supports": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            },
+            "description": "Supports"
+          },
+          "opposes": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            },
+            "description": "Opposes"
+          },
+          "format": {
+            "type": "string",
+            "description": "Examples of dimensions include size and duration. Recommended best practice is to use a controlled vocabulary such as the list of Internet Media Types [MIME]."
+          },
+          "content": {
+            "type": "string",
+            "description": "The content of the Item in plain text format."
+          },
+          "sameAs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "IRIs of the same resource elsewhere, e.g. the Linked Data node this record was converted from (owl:sameAs)."
+          },
+          "previousVersionCid": {
+            "type": "string",
+            "format": "cid",
+            "description": "CID of the version this one replaces (proposal §3 rule 9)."
+          }
+        }
+      }
+    }
+  }
+}

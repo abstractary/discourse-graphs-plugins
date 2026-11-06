@@ -1,0 +1,18 @@
+{
+  "name": "@dg/surfaces",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HTML panels that run in a sandboxed frame",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@dg/contract": "*",
+    "@dg/layout": "*",
+    "@xyflow/react": "^12.12.1",
+    "perfect-freehand": "^1.2.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}

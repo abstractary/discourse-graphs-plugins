@@ -12,7 +12,7 @@ Measured in both apps at 1280 to 1920 px wide windows:
 | Beside a sidebar | 701 to 1,341 px | 629 to 1,013 px |
 | Full pane | 1,001 to 1,876 px | 1,048 to 1,688 px |
 
-Below 560 px, tool labels drop to icons. Nothing wraps at 300 px.
+Below 900 px, tool labels drop to icons. Nothing wraps at 300 px.
 
 ## Tokens
 

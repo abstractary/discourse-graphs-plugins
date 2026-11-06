@@ -103,7 +103,7 @@ Details an adapter must get right:
 
 ## Identity and AT Protocol
 
-[ids.ts](../packages/contract/src/ids.ts) makes ids, [atproto.ts](../packages/contract/src/atproto.ts) turns records into AT records with CIDs, and [core/identity.ts](../core/identity.ts) handles DIDs. [lexicons/](../lexicons/) holds the lexicons. `science.mira.*` is copied from the unfiled draft in `mira-lexicon/`, and `org.discoursegraphs.*` adds tool records beside the team's prototype.
+[ids.ts](../packages/contract/src/ids.ts) makes ids, [atproto.ts](../packages/contract/src/atproto.ts) turns records into AT records with CIDs, and [core/identity.ts](../packages/core/src/identity.ts) handles DIDs. [lexicons/](../lexicons/) holds the lexicons. `science.mira.*` is copied from the unfiled draft in `mira-lexicon/`, and `org.discoursegraphs.*` adds tool records beside the team's prototype.
 
 Records stay in their local log, which is what lets offline devices merge. AT records are a projection of that log, with lexicon validation in the tests. Nothing has been published: no PLC registration, no PDS and no lexicon records.
 
@@ -111,7 +111,7 @@ A node's collection follows its type, so its AT URI can change while its id and 
 
 ## Surface API
 
-[surface.ts](../packages/contract/src/surface.ts) lists what the canvas and context panel use: nodes, relations, canvases, the grammar, reveal and focus. [core/index.ts](../core/index.ts) answers these the same way on both hosts. Surfaces never receive a `HostRef`, so they can't depend on a base.
+[surface.ts](../packages/contract/src/surface.ts) lists what the canvas and context panel use: nodes, relations, canvases, the grammar, reveal and focus. [core/index.ts](../packages/core/src/index.ts) answers these the same way on both hosts. Surfaces never receive a `HostRef`, so they can't depend on a base.
 
 ## Usage logging
 
@@ -346,4 +346,4 @@ See [testing.md](testing.md).
 
 ## Not in this draft
 
-Publishing to a PDS, a person-facing import flow, a custody screen, the node card and grammar surfaces, and sending usage anywhere. Sync and the services around it came later, and [services.md](services.md) describes them. [packages/core/](../packages/core/) is real but holds the graph in memory and hasn't met a large graph. [adapters/](adapters/) are proofs, not production plugins.
+Publishing to a PDS, a person-facing import flow, a custody screen, the node card and grammar surfaces, and sending usage anywhere. Sync and the services around it came later, and [services.md](services.md) describes them. [packages/core/](../packages/core/) is real but holds the graph in memory and hasn't met a large graph. [The adapters](../plugins/) are proofs, not production plugins.

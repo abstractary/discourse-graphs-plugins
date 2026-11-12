@@ -17,6 +17,10 @@ export type WalkthroughBase = {
   note: string;
   /** The button that lists canvases, in the base's own UI. */
   canvasesButton: string;
+  /** What to say about it, when it takes more than one click, such as a menu. */
+  canvasesHint?: string;
+  /** The base's own menus, which a step's target can open: they rise above the shade so they can be used. */
+  menus?: string;
   /** Brings that button into view, if the base can hide it. */
   showNavigation?: () => Promise<void>;
   /** Where a canvas's own note or page shows up. */
@@ -182,6 +186,11 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
   const { core } = base;
   const skin = core.info.skin;
   const parts = buildStencil(skin);
+  if (base.menus) {
+    const lift = document.createElement("style");
+    lift.textContent = `${base.menus} { z-index: ${Z + 3} !important; }`;
+    parts.root.append(lift);
+  }
   const examples = none();
   const remembered = (await base.getLocal(EXAMPLES_KEY)) as Examples | null;
   if (remembered) Object.assign(examples, remembered);
@@ -278,7 +287,7 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
     {
       id: "canvases",
       title: "Find your canvases",
-      body: "A canvas lays nodes out so you can see the whole argument. We've made one, with two more nodes. Click here to see your canvases.",
+      body: `A canvas lays nodes out so you can see the whole argument. We've made one, with two more nodes. ${base.canvasesHint ?? "Click here to see your canvases."}`,
       target: () => ({ host: base.canvasesButton }),
       enter: async () => {
         await base.showNavigation?.();

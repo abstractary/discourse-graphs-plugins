@@ -175,7 +175,7 @@ for (const m of metadata) {
       title: title.replace(/^@analysis\//, ""),
       type: T.study.id,
       prov: { question: question.id },
-      facts: { seeAlso: [`${blob(`output/evidence_bundles/${m.dir}/README.md`)}`], conditions: ["Discourse graph exports of 11 and 13 February 2026"] },
+      facts: { seeAlso: [`${blob(`output/evidence_bundles/${m.dir}/README.md`)}`], conditions: ["Discourse graph exports of 11 and 13 February 2026"], design: "observational" },
     }));
   }
 }
@@ -422,7 +422,7 @@ const summary = claims.map((c) => {
   return { claim: c.title, supporting: support.supporting.length, runs: support.runs.length, protocols: support.protocols.length, flags: support.flags };
 });
 writeFileSync(join(OUT, "records.json"), `${JSON.stringify(records, null, 1)}\n`);
-writeFileSync(join(OUT, "graph.jsonld"), `${JSON.stringify(toProcessJsonLd(graph, context), null, 1)}\n`);
+writeFileSync(join(OUT, "graph.jsonld"), `${JSON.stringify(toProcessJsonLd(graph, context, cids), null, 1)}\n`);
 writeFileSync(join(OUT, "summary.json"), `${JSON.stringify({ commit: COMMIT, records: records.length, sameBytes: sameBytes ? { notebookOutput: sameBytes.title, bundleOutput: evd7.outputs.find((o) => o.facts?.cid === sameBytes.facts?.cid)?.title, cid: sameBytes.facts?.cid } : null, claims: summary }, null, 1)}\n`);
 const count = (kind: string) => records.filter((r) => r.kind === kind).length;
 console.log(`${records.length} records: ${count("node")} units, ${count("relation")} relations, ${count("canvas")} canvases, ${count("canvas-item")} canvas items, ${count("snapshot")} snapshots`);

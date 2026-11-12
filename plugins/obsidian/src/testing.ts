@@ -1,7 +1,7 @@
 // What the real-host test scripts drive. A release build leaves all of this out.
 import { appendFileSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
-import { MarkdownView, type FileSystemAdapter } from "obsidian";
+import { MarkdownView, Menu, type FileSystemAdapter } from "obsidian";
 import { createNode, foldRecords, type DgRecord, type HostRef } from "@dg/contract/records.ts";
 import type { Host } from "@dg/contract/host.ts";
 import type { SurfaceMethod } from "@dg/contract/surface.ts";
@@ -37,7 +37,9 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   const boundaryProbe = createFrameProbe(() => plugin.surfaceFrame("boundary"));
   const pdfProbe = createFrameProbe(() => plugin.surfaceFrame("pdf"));
   const dialogProbe = createFrameProbe(() => plugin.dialogFrame);
+  const searchProbe = createFrameProbe(() => plugin.surfaceFrame("search"));
   let caller: ReturnType<typeof surfaceCaller> | null = null;
+  const probes = new Map<string, ReturnType<typeof createFrameProbe>>();
 
   const makeDriver = (adapter: ObsidianHost): ConformanceDriver => {
     const { vault, workspace } = plugin.app;
@@ -240,6 +242,17 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       boundaryText: (selector: string) => boundaryProbe.text(selector),
       boundaryTheme: () => boundaryProbe.theme(),
       openLibrary: () => plugin.openCanvases(),
+      /** Any panel by its surface name: `at("run", "text", selector)`. */
+      at: (surface: Parameters<DiscourseGraphsPlugin["surfaceFrame"]>[0], method: "text" | "count" | "locate" | "value", selector: string) => {
+        const key = String(surface);
+        if (!probes.has(key)) probes.set(key, surface === ("dialog" as never) ? dialogProbe : createFrameProbe(() => plugin.surfaceFrame(surface)));
+        return probes.get(key)![method](selector);
+      },
+      openRuns: (id?: string) => plugin.openRuns(id),
+      extractGraph: (path: string) => plugin.extractGraph(path),
+      openSide: (surface: "search" | "context") => plugin.openSide(surface),
+      openSettings: () => plugin.openSettings(),
+      findUnit: (intent?: "link") => plugin.findUnit(intent),
       boundaryCount: (selector: string) => boundaryProbe.count(selector),
       boundaryLocate: (selector: string) => boundaryProbe.locate(selector),
       libraryText: (selector: string) => canvasesProbe.text(selector),
@@ -345,6 +358,45 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       ctx: contextProbe,
       list: canvasesProbe,
       dialog: dialogProbe,
+      search: searchProbe,
+      openSearch: () => host.openSurface({ route: { surface: "search" }, placement: "side" }),
+      /** The ribbon's menu, shown where a test can read it. */
+      showMenu: async (variant: "plain" | "section" | "label" | "full" = "full") => {
+        try {
+          const menu = new Menu();
+          if (variant === "full") plugin.fillMenu(menu);
+          if (variant === "plain") menu.addItem((item) => item.setTitle("Plain").onClick(() => {}));
+          if (variant === "section") menu.addItem((item) => item.setTitle("Sectioned").setSection("discourse-graphs").onClick(() => {}));
+          if (variant === "label") menu.addItem((item) => item.setTitle("Label").setIsLabel(true));
+          menu.showAtPosition({ x: 60, y: 60 });
+          await sleep(150);
+          return Array.from(document.querySelectorAll(".menu .menu-item, .menu .menu-separator")).map((item) =>
+            item.classList.contains("menu-separator") ? "---" : `${item.classList.contains("is-label") ? "# " : ""}${item.textContent?.trim() ?? ""}`,
+          );
+        } catch (error) {
+          return `error: ${String(error)}`;
+        }
+      },
+      dialogOpen: () => Boolean(document.querySelector('[data-dg="dialog"]')),
+      prefs: async () => (await plugin.ensureCore()).prefs(),
+      setPrefs: async (changes: Record<string, unknown>) => (await plugin.ensureCore()).setPrefs(changes),
+      /** A note open in the editor with the cursor at its end, for links put in at the cursor. */
+      writeAtEnd: async (title: string, body: string) => {
+        const made = await host.createText({ title, body });
+        if (!made.ok) throw new Error(made.error.message);
+        await host.reveal({ ref: made.value.ref, placement: "main" });
+        await sleep(400);
+        const editor = plugin.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+        if (editor) {
+          editor.focus();
+          editor.setCursor(editor.lastLine(), editor.getLine(editor.lastLine()).length);
+        }
+        return made.value.ref;
+      },
+      noteBody: async (ref: string) => {
+        const text = await host.readText({ ref });
+        return text.ok ? text.value.body : null;
+      },
       openDialog: (surface: "upload" | "welcome") => plugin.openDialog(surface),
       syncNow: () => plugin.sync?.now(),
       firstRun: async () => {
@@ -403,7 +455,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   };
 
   const stop = (): void => {
-    for (const each of [probe, contextProbe, canvasesProbe, holonProbe, boundaryProbe, pdfProbe, dialogProbe]) each.stop();
+    for (const each of [probe, contextProbe, canvasesProbe, holonProbe, boundaryProbe, pdfProbe, dialogProbe, searchProbe]) each.stop();
   };
 
   return { ...slice(), runConformance, openPanel, verifyPanel, exportExchange, importExchange, measureRecords, stop };

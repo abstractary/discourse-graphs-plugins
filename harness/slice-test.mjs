@@ -198,7 +198,8 @@ await s(`s.writeOutside(${JSON.stringify({ v: 2, id: itemId, kind: "canvas-item"
 check("outside.item-appears-live", await at('[data-dg="note-From a teammate"]', 9000));
 
 const evidenceRef = await s(`s.findRef(${q(host.titleOf("EVD", evidence))})`);
-await click(card(evidence), 2);
+// A person's own title edits on a double-click, so the open button opens the note.
+await click(`[data-dg="open-${evidence}"]`);
 await sleep(1200);
 check("card.opens-in-base", await s(`s.visible(${q(evidenceRef)})`));
 await s(`s.focusCanvas(${q(ids.canvas)})`);
@@ -229,9 +230,12 @@ const label = await at(".react-flow__edge-text");
 await clickAt(...centre(label));
 await sleep(250);
 await key("Backspace", 8);
+// Delete on a link asks whether it's only coming off this canvas; this one is.
+const asked = await at('[data-dg="link-delete"]', 3000);
+if (asked) await click('[data-dg="link-delete-canvas"]');
 await sleep(800);
 const afterEdge = await summary();
-check("delete.edge-keeps-relation", afterEdge.liveItems === beforeDelete.liveItems - 2 && afterEdge.relations.filter((state) => state === "active").length === beforeDelete.relations.filter((state) => state === "active").length, `${afterEdge.liveItems} items`);
+check("delete.edge-keeps-relation", asked && afterEdge.liveItems === beforeDelete.liveItems - 2 && afterEdge.relations.filter((state) => state === "active").length === beforeDelete.relations.filter((state) => state === "active").length, `${afterEdge.liveItems} items`);
 
 check("theme.follows-host", (await s("s.frameTheme()")) === (await s("s.theme()")), await s("s.theme()"));
 const skin = await s("s.skin()");
@@ -244,7 +248,7 @@ for (const width of [300, 480, 725, null]) {
   await sleep(500);
   const label = width ?? "full";
   const scroll = await s("s.scroll()");
-  const tools = await at(".tools");
+  const tools = await at(".bar");
   check(`band.${label}-fits`, scroll.scrollWidth <= scroll.clientWidth && tools.height <= 44, `scroll ${scroll.scrollWidth}/${scroll.clientWidth}, tools ${Math.round(tools.height)} ${scroll.outside?.join(" ") ?? ""}`);
   await host.shot(`${OUT}/../style/${host.name}-${label}.png`);
 }

@@ -15,16 +15,25 @@ export type Actions = {
   /** Goes into a canvas held inside this one. */
   openCanvas?: (id: string) => void;
   canvasTitle?: (id: string) => string | null;
+  /** The paper this canvas was read from, so its own cards don't each repeat it. */
+  paper?: string;
+  /** Opens the passage a unit was read from, in the reader. */
+  readPassage?: (node: string) => void;
   chooseType: (node: string, anchor: DOMRect) => void;
   saveBox: (item: string, box: Box) => void;
   saveText: (item: string, text: string) => void;
   react: (node: string, value: Reaction | null) => void;
+  /** Opens the title editor on a card. Only for the person's own units. */
+  editTitle?: (item: string) => void;
+  stopEditing?: () => void;
+  rename?: (node: string, title: string) => void;
 };
 
 export const ActionsContext = createContext<Actions | null>(null);
 
 /** Cards that are themselves holons: they open into their own canvas. */
-const HOLON_BASES = new Set(["question", "claim", "evidence", "output"]);
+/** No unit opens as a graph of its own: a unit is a leaf. Only a canvas card opens inside. */
+const HOLON_BASES = new Set<string>();
 
 const useActions = (): Actions => useContext(ActionsContext)!;
 
@@ -46,6 +55,50 @@ export type CardData = {
   /** Reactions and notes. Only cards on a shared canvas have this. */
   social?: UnitSocial;
   grounded?: boolean;
+  /** The title is being edited on the card. */
+  editing?: boolean;
+};
+
+/** A unit's title, edited where it's read. Enter keeps it, Escape leaves it as it was. */
+const TitleEditor = ({ initial, onDone, onCancel }: { initial: string; onDone: (title: string) => void; onCancel: () => void }) => {
+  const [draft, setDraft] = useState(initial);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const finished = useRef(false);
+  useEffect(() => {
+    input.current?.focus();
+    input.current?.select();
+  }, []);
+  const finish = (keep: boolean) => {
+    if (finished.current) return;
+    finished.current = true;
+    if (keep && draft.trim() && draft.trim() !== initial) onDone(draft);
+    else onCancel();
+  };
+  return (
+    <textarea
+      ref={input}
+      className="card-title-edit nodrag nowheel"
+      aria-label="Unit title"
+      data-dg="card-title-edit"
+      rows={Math.max(1, Math.ceil(draft.length / 30))}
+      value={draft}
+      onChange={(event) => setDraft(event.target.value.replace(/\n/g, " "))}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === "Enter") {
+          event.preventDefault();
+          finish(true);
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          finish(false);
+        }
+      }}
+      onBlur={() => finish(true)}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    />
+  );
 };
 
 const REACTIONS: { value: Reaction; label: string; icon: "star" | "check" | "close" }[] = [
@@ -93,8 +146,9 @@ const Reactions = ({ node, title, social }: { node: string; title: string; socia
 /** Height grows with the title: a claim is never cut off on its card. */
 export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>) => {
   const actions = useActions();
-  const { node, text, minHeight, score, social, grounded } = data;
+  const { node, text, minHeight, score, social, grounded, editing } = data;
   const title = node?.title ?? text;
+  const renamable = Boolean(node?.mine && actions.rename);
   return (
     <div
       className={grounded ? "card grounded" : "card"}
@@ -124,6 +178,18 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
         >
           {node?.abbreviation ?? "Type"}
         </button>
+        {node?.paper && node.paper.id !== actions.paper ? (
+          <button
+            type="button"
+            className="from-paper nodrag"
+            data-dg={`paper-${title}`}
+            title={`Read from ${node.paper.title}. Click to open its passage.`}
+            onClick={() => actions.readPassage?.(node.id)}
+            onDoubleClick={(event) => event.stopPropagation()}
+          >
+            {node.paper.label}
+          </button>
+        ) : null}
         {score ? <span className="score" data-dg={`score-${title}`}>{score}</span> : null}
         <span className="card-end">
           {node && HOLON_BASES.has(node.base ?? "") && actions.openInside ? (
@@ -155,7 +221,22 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
           {node ? <Mark credit={node.credit} dg={`credit-${title}`} /> : null}
         </span>
       </div>
-      <div className="card-title">{plain(title)}</div>
+      {editing && node && renamable ? (
+        <TitleEditor initial={node.title} onDone={(next) => actions.rename!(node.id, next)} onCancel={() => actions.stopEditing?.()} />
+      ) : (
+        <div
+          className="card-title"
+          data-dg={`title-${title}`}
+          onDoubleClick={(event) => {
+            // A person's own title edits in place. A teammate's opens, as the rest of the card does.
+            if (!renamable) return;
+            event.stopPropagation();
+            actions.editTitle?.(id);
+          }}
+        >
+          {plain(title)}
+        </div>
+      )}
       {node && !node.hasText && !node.staged ? <div className="card-note">No text in this base</div> : null}
       {node && social ? <Reactions node={node.id} title={title} social={social} /> : null}
     </div>

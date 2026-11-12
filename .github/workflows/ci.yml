@@ -23,3 +23,14 @@ jobs:
       - run: npm test
       - run: npm run test:server
       - run: npm run build
+
+  ontology:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install rdflib pyshacl
+      # One wrong graph per rule, then the worked example. test/shapes.test.ts runs the same cases in the app's own check.
+      - run: npm run validate:ontology

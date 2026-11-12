@@ -178,6 +178,13 @@ export type OutputLocator = {
 
 export type ParameterSpec = { name: string; type?: string; unit?: string; default?: Json };
 
+export const STUDY_DESIGNS = ["experimental", "observational", "computational", "replication", "review"] as const;
+export type StudyDesign = (typeof STUDY_DESIGNS)[number];
+
+export const VARIABLE_ROLES = ["independent", "dependent", "controlled"] as const;
+/** What a study varies, measures or holds fixed. */
+export type StudyVariable = { name: string; role: (typeof VARIABLE_ROLES)[number]; unit?: string };
+
 export const PROVENANCE_METHODS = ["authored", "aiAssisted", "aiGenerated", "imported"] as const;
 export type ProvenanceMethod = (typeof PROVENANCE_METHODS)[number];
 /** How a unit was made: MIRA's `defs#provenance`. */
@@ -189,14 +196,30 @@ export type UnitFacts = {
   version?: string;
   /** Protocol: the parameters it declares. */
   parameters?: ParameterSpec[];
+  /** Protocol: its steps as short names, in order. The full text stays in the note. */
+  steps?: string[];
+  /** Protocol: reagents, instruments and software it calls for, as RRIDs where they have one. */
+  materials?: string[];
   /** Protocol or Code: the same thing elsewhere, such as a protocols.io DOI. */
   sameAs?: string[];
   /** Study: the conditions or factors it varies. */
   conditions?: string[];
+  /** Study: what the design expects to see, in a sentence. */
+  hypothesis?: string;
+  design?: StudyDesign;
+  variables?: StudyVariable[];
+  /** Study: the planned sample size. */
+  sampleSize?: number;
+  /** Study: where the design was registered before it ran, as a DOI or URL. */
+  preregistration?: string;
   /** Run. */
   status?: RunStatus;
   startedAt?: string;
   endedAt?: string;
+  /** Run: which of its study's conditions it carried out. */
+  condition?: string;
+  /** Run: where it departed from the protocol version it pins, a sentence each. */
+  deviations?: string[];
   /** Run: the values its parameters took. */
   parameterValues?: JsonObject;
   /** Run: who carried it out, as DIDs or ORCID iDs. */
@@ -265,6 +288,8 @@ export type UnitSource = {
   /** The passage it was read from, word for word. */
   anchor?: string;
   description?: string;
+  /** A source unit that stands for the paper itself, among the sources the paper cites. */
+  own?: true;
 };
 
 /** Ties a node to text in one space. A HostRef means nothing anywhere else. */
@@ -373,6 +398,7 @@ export const TIDY_MODES = [
   "timeline",
   "kinds",
   "people",
+  "sources",
   "focus",
   "connected",
   "bridges",
@@ -434,6 +460,7 @@ export type PaperRecord = Envelope<"paper"> &
     authors: string[];
     doi?: string;
     url?: string;
+    license?: string;
     /** What made the extraction, so a reader can weigh it. */
     model: string;
     schema: string;
@@ -1333,6 +1360,29 @@ const validateFacts = (value: unknown): string[] => {
   }
   for (const key of ["cid", "sourceCid"]) {
     if (facts[key] !== undefined && !isCid(facts[key])) problems.push(`facts.${key} must be a CID`);
+  }
+  if (facts.design !== undefined && !(STUDY_DESIGNS as readonly string[]).includes(facts.design as string)) {
+    problems.push("facts.design is not a known design");
+  }
+  for (const key of ["steps", "materials", "deviations", "conditions"]) {
+    if (facts[key] !== undefined && !(Array.isArray(facts[key]) && (facts[key] as unknown[]).every(isString))) {
+      problems.push(`facts.${key} must be a list of text`);
+    }
+  }
+  for (const key of ["hypothesis", "condition", "preregistration"]) {
+    if (facts[key] !== undefined && !isString(facts[key])) problems.push(`facts.${key} must be text`);
+  }
+  if (facts.sampleSize !== undefined && !(Number.isInteger(facts.sampleSize) && (facts.sampleSize as number) >= 0)) {
+    problems.push("facts.sampleSize must be a whole number");
+  }
+  if (
+    facts.variables !== undefined &&
+    !(
+      Array.isArray(facts.variables) &&
+      (facts.variables as StudyVariable[]).every((item) => isString(item?.name) && (VARIABLE_ROLES as readonly string[]).includes(item?.role))
+    )
+  ) {
+    problems.push("facts.variables must be a list of {name, role}");
   }
   const provenance = facts.provenance as HowMade | undefined;
   if (provenance !== undefined && !(PROVENANCE_METHODS as readonly string[]).includes(provenance?.method)) {

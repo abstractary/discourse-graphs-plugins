@@ -6,6 +6,7 @@ import { startBadges } from "./badges.ts";
 import { connectFrame } from "@dg/native/frame.ts";
 import { askBreadcrumb, closeDialogFrame, openDialogFrame } from "@dg/native/dialog.ts";
 import { createServices } from "@dg/sync/client.ts";
+import { createLlm } from "@dg/sync/providers.ts";
 import { startLabSync } from "@dg/sync/lab-sync.ts";
 import { canvasShowing, leaveCanvasPage, startCanvasPages } from "./canvases.ts";
 import {
@@ -44,6 +45,7 @@ let testMode = false;
 let canvasFrame: HTMLIFrameElement | null = null;
 let contextFrame: HTMLIFrameElement | null = null;
 let canvasesFrame: HTMLIFrameElement | null = null;
+let searchFrame: HTMLIFrameElement | null = null;
 let dialogFrame: HTMLIFrameElement | null = null;
 let openCanvasId: string | null = null;
 let sync: ReturnType<typeof startLabSync> | undefined;
@@ -61,6 +63,13 @@ const ensureCore = async (): Promise<Core> => {
     titleFormat: (abbreviation) => `[[${abbreviation}]] - {content}`,
     canvasFormat: "Canvas/{content}",
     services,
+    llm: createLlm({ browser: true, fetch: (url, init) => window.fetch(url, init) }),
+    // Roam has no keychain. The key stays in this browser's own storage, never in the graph, and the panel says so.
+    secrets: {
+      kind: "plain",
+      get: async (id) => ((await local.get(`secret:${id}`)) as string | null) || null,
+      set: async (id, value) => local.set(`secret:${id}`, value),
+    },
     demoGraphs: __DEMO_GRAPHS__,
     askBreadcrumb: (paper) =>
       askBreadcrumb({
@@ -90,6 +99,7 @@ const mountFrame = (surface: SurfaceRoute): HTMLIFrameElement => {
   if (surface.surface === "canvas") canvasFrame = frame;
   if (surface.surface === "context") contextFrame = frame;
   if (surface.surface === "canvases") canvasesFrame = frame;
+  if (surface.surface === "search") searchFrame = frame;
   connectFrame({
     frame,
     route: surface,
@@ -117,7 +127,7 @@ const mountInSidebar = async (surface: SurfaceRoute): Promise<void> => {
   const sidebar = document.querySelector("#right-sidebar");
   if (!sidebar) throw new Error("no right sidebar");
   const id = sideId(surface.surface);
-  const frame = surface.surface === "canvases" ? canvasesFrame : contextFrame;
+  const frame = surface.surface === "canvases" ? canvasesFrame : surface.surface === "search" ? searchFrame : contextFrame;
   if (document.getElementById(id)?.isConnected && frame) return;
   document.getElementById(id)?.remove();
   const holder = document.createElement("div");
@@ -358,6 +368,14 @@ api.ui.commandPalette?.addCommand?.({
 });
 const openCanvases = (): void => void openSurface({ route: { surface: "canvases" }, placement: "side" });
 api.ui.commandPalette?.addCommand?.({ label: "Discourse Graphs: Find a canvas", callback: openCanvases });
+api.ui.commandPalette?.addCommand?.({
+  label: "Discourse Graphs: Find a unit",
+  callback: () => void ensureCore().then(() => openSurface({ route: { surface: "find" }, placement: "dialog" })),
+});
+api.ui.commandPalette?.addCommand?.({
+  label: "Discourse Graphs: Search units",
+  callback: () => void ensureCore().then(() => openSurface({ route: { surface: "search" }, placement: "side" })),
+});
 api.ui.commandPalette?.addCommand?.({
   label: "Discourse Graphs: New canvas",
   callback: () =>

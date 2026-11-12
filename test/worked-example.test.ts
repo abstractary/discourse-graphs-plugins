@@ -4,6 +4,7 @@ import test from "node:test";
 import { foldRecords, validateRecord, type DgRecord, type JsonObject, type NodeRecord } from "@dg/contract/records.ts";
 import { toProcessJsonLd } from "@dg/core/jsonld.ts";
 import { baseOf, claimSupport, protocolCids } from "@dg/core/process.ts";
+import { shapeProblems } from "@dg/core/shapes.ts";
 
 // The worked example is generated from real files by examples/worked-example/build.ts.
 // These checks keep it in step with the code without needing the MATSUlab checkout.
@@ -37,8 +38,13 @@ test("a notebook output and a bundle file with the same bytes have the same CID"
   assert.notEqual(shared[0]![0]!.prov?.generatedBy, shared[0]![1]!.prov?.generatedBy, "two runs made the same bytes");
 });
 
-test("the JSON-LD view matches the committed graph", () => {
+test("the JSON-LD view matches the committed graph", async () => {
   const context = JSON.parse(readFileSync("ontology/dg_process.context.jsonld", "utf8"))["@context"] as JsonObject;
   const committed = JSON.parse(readFileSync("examples/worked-example/graph.jsonld", "utf8"));
-  assert.deepEqual(toProcessJsonLd(graph, context), committed);
+  const document = toProcessJsonLd(graph, context, await protocolCids(graph));
+  assert.deepEqual(document, committed);
+  // The in-app shapes agree with pyshacl on it: nothing wrong, one known gap.
+  const problems = shapeProblems(document);
+  assert.deepEqual(problems.filter((problem) => problem.severity === "Violation"), []);
+  assert.deepEqual([...new Set(problems.filter((problem) => problem.severity === "Warning").map((problem) => problem.rule))], ["run-no-study"]);
 });

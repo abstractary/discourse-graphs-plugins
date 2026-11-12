@@ -1,3 +1,4 @@
+import type { AiCall } from "./llm.ts";
 import type { DgRecord } from "./records.ts";
 
 /**
@@ -34,7 +35,7 @@ export type ExtractedEdge = { relation: string; subject: string; object: string;
 export type ExtractionGraph = {
   source?: string;
   models?: string[];
-  paper?: { title?: string; doi?: string; authors?: { name: string }[] };
+  paper?: { title?: string; doi?: string; url?: string; license?: string; authors?: { name: string }[] };
   nodes: ExtractedNode[];
   edges: ExtractedEdge[];
 };
@@ -128,6 +129,8 @@ export type Services = {
     question: string;
     units: AiUnit[];
     grounded?: string[];
+    /** A person's own model, called by the lab's server with their key. The server uses it for this one question and keeps nothing. */
+    provider?: AiCall;
     onDelta: (text: string) => void;
   }) => Promise<AiAnswer>;
 };

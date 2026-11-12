@@ -18,19 +18,27 @@ import {
 } from "@xyflow/react";
 import { getStroke } from "perfect-freehand";
 import type { CanvasItem, CanvasRecord, NodeTypeRecord, TidyMode, WithoutId } from "@dg/contract/records.ts";
-import type { CanvasItemView, CanvasView, Credit, NodeSummary, RelationOption } from "@dg/contract/surface.ts";
+import type { CanvasItemView, CanvasView, Credit, LinkDelete, NodeSummary, RelationOption, RepositoryCanvas, SearchHit } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Chip, Icon, Mark, plain } from "../shared/ui.tsx";
+import { Chip, Icon, Mark, plain, type IconName } from "../shared/ui.tsx";
 import { scoreLabel, scoresFor } from "@dg/layout/centrality.ts";
 import { sidesFor } from "@dg/layout/edges.ts";
 import { relationColor } from "../shared/relations.ts";
 import { AiBar } from "./AiBar.tsx";
+import { Thumb } from "../library/Repository.tsx";
 import { ExportMenu } from "./ExportMenu.tsx";
 import { Legend } from "./Legend.tsx";
 import { MODES, arrange, leaningOf, measureOf, type Card, type RelationLink } from "@dg/layout/modes.ts";
 import { ActionsContext, nodeTypes, type Actions, type Box, type CardData } from "./nodes.tsx";
 import { HolonBar, isHolon, useHolonCanvas } from "./holons.tsx";
 import { DRAG_TYPE, Drawer, useUnitsDrawer } from "./Drawer.tsx";
+import { useHistory } from "./history.ts";
+import { useFit } from "./fit.ts";
+import { LinkAskDialog, type LinkAsk } from "./LinkAsk.tsx";
+import { CLIP_TYPE, clipFromTransfer, writeClip, type Clip } from "./clipboard.ts";
+import { MOD, Marked } from "../search/parts.tsx";
+
+const MOD_KEY = MOD === "Ctrl" ? "Ctrl+" : MOD;
 
 /** Three columns fit the common 725 px frame beside a sidebar. */
 // Keeps a link's tooltip inside the frame.
@@ -106,7 +114,7 @@ const toEdge = ({ id, item }: CanvasItemView, view: CanvasView, boxes: Map<strin
     labelStyle: { fill: color },
     markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
     className: relation?.state === "pending" ? "edge-pending" : "",
-    data: { ...(kind ? { kind } : {}), ...(relation ? { credit: relation.credit } : {}) },
+    data: { ...(kind ? { kind } : {}), ...(relation ? { credit: relation.credit } : {}), ...(item.dg ? { relation: item.dg.relation } : {}) },
   };
 };
 
@@ -164,6 +172,8 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [exportOpen, setExportOpen] = useState(false);
   const flow = useReactFlow();
   const [canvases, setCanvases] = useState<CanvasRecord[]>([]);
+  /** Each canvas as a picture of itself, read when the canvas menu opens. */
+  const [pictures, setPictures] = useState<Record<string, RepositoryCanvas>>({});
   const [current, setCurrent] = useState<string | undefined>(route.id);
   const [view, setView] = useState<CanvasView | null>(null);
   const [nodes, setNodes] = useState<FlowNode[]>([]);
@@ -173,15 +183,31 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [addAt, setAddAt] = useState<Anchor | null>(null);
   const [linking, setLinking] = useState<Linking | null>(null);
   const [menu, setMenu] = useState(false);
+  useEffect(() => {
+    if (!menu) return;
+    void call("repository.canvases", {})
+      .then((list) => setPictures(Object.fromEntries(list.map((item) => [item.id, item]))))
+      .catch(() => {});
+  }, [menu, call]);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const bar = useRef<HTMLElement>(null);
+  const moreButton = useRef<HTMLButtonElement>(null);
   const [naming, setNaming] = useState(false);
   const [canvasName, setCanvasName] = useState("");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<NodeSummary[]>([]);
+  const [results, setResults] = useState<SearchHit[]>([]);
   const [active, setActive] = useState(0);
   const [relationMenu, setRelationMenu] = useState<RelationMenu | null>(null);
   const [typeMenu, setTypeMenu] = useState<TypeMenu | null>(null);
   const [notice, setNotice] = useState("");
-  const [undo, setUndo] = useState<{ label: string; apply: () => Promise<unknown> } | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [linkAsk, setLinkAsk] = useState<LinkAsk | null>(null);
+  /** Relations Delete should also withdraw, decided before the delete runs. */
+  const withdrawing = useRef<string[]>([]);
+  /** Where the pointer last was over the canvas, so a paste lands there. */
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  /** Units this canvas is placing itself, which record their own undo step. */
+  const placingHere = useRef(new Set<string>());
   const [followed, setFollowed] = useState<string | null>(null);
   const dragging = useRef(new Set<string>());
   const ink = useRef<number[][]>([]);
@@ -195,6 +221,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const report = useCallback((error: unknown) => {
     setNotice(error instanceof Error ? error.message : String(error));
   }, []);
+  const { record, drop, undo, redo, status: done, dismiss, next } = useHistory(current, report);
 
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -202,6 +229,8 @@ export const App = ({ connection }: { connection: Connection }) => {
   // Read through a ref: a refresh already in flight must not undo a canvas switch.
   const currentRef = useRef(current);
   currentRef.current = current;
+  // Units picked for a question belong to the canvas they were picked on.
+  useEffect(() => setGrounded([]), [current]);
 
   // Going into a holon, or up to one, stays in this tab.
   const switchTo = useCallback((id: string) => {
@@ -212,7 +241,8 @@ export const App = ({ connection }: { connection: Connection }) => {
   const drawerData = useUnitsDrawer({ connection, current, report });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerHeight, setDrawerHeight] = useState(280);
-  const [arrived, setArrived] = useState<string[]>([]);
+  /** Units just put on this canvas, waiting for their cards to draw; `fromHere` when this canvas placed them. */
+  const [arrived, setArrived] = useState<{ units: string[]; fromHere: boolean }>({ units: [], fromHere: true });
   const [fresh, setFresh] = useState<string[]>([]);
   const canvasesRef = useRef(canvases);
   canvasesRef.current = canvases;
@@ -278,6 +308,37 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   // A base's sidebar opening halves the frame. What's in the middle stays in the middle.
   const hasCanvas = canvases.length > 0;
+  // Labels show while they fit, then icons, then a More menu, measured on this bar.
+  const fit = useFit(bar, [hasCanvas, current, canvases, notice, aiOn]);
+  // The bar is one tab stop; arrow keys move along it, as a toolbar's should.
+  const barFocus = useRef(0);
+  const barButtons = (): HTMLButtonElement[] =>
+    Array.from(bar.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []).filter((button) => button.offsetParent !== null);
+  const rememberBarFocus = (event: React.FocusEvent) => {
+    const at = barButtons().indexOf(event.target as HTMLButtonElement);
+    if (at >= 0) barFocus.current = at;
+  };
+  const moveAlongBar = (event: React.KeyboardEvent) => {
+    const list = barButtons();
+    const at = list.indexOf(document.activeElement as HTMLButtonElement);
+    if (at < 0 || !list.length) return;
+    const to =
+      event.key === "ArrowRight" ? (at + 1) % list.length
+      : event.key === "ArrowLeft" ? (at - 1 + list.length) % list.length
+      : event.key === "Home" ? 0
+      : event.key === "End" ? list.length - 1
+      : null;
+    if (to === null) return;
+    event.preventDefault();
+    list[to]!.focus();
+  };
+  useEffect(() => {
+    const list = barButtons();
+    const keep = Math.min(barFocus.current, list.length - 1);
+    list.forEach((button, index) => {
+      button.tabIndex = index === keep ? 0 : -1;
+    });
+  });
   useEffect(() => {
     const box = area.current;
     if (!box) return undefined;
@@ -306,7 +367,6 @@ export const App = ({ connection }: { connection: Connection }) => {
     }) => {
       if (!current) return { ids: [] as string[] };
       setNotice("");
-      setUndo(null);
       return call("canvas.write", { canvas: current, ...args });
     },
     [call, current],
@@ -314,9 +374,9 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   /** Finds room near a spot, so a new item never lands on top of an old one. */
   const freeSpot = useCallback(
-    (start: { x: number; y: number }, size: { width: number; height: number }) => {
+    (start: { x: number; y: number }, size: { width: number; height: number }, ignore?: Set<string>) => {
       const taken = flow.getNodes().flatMap((node) =>
-        node.type === "ink"
+        node.type === "ink" || ignore?.has(node.id)
           ? []
           : [{
               x: node.position.x,
@@ -363,12 +423,48 @@ export const App = ({ connection }: { connection: Connection }) => {
   );
 
   const updateItem = useCallback(
-    (id: string, change: (item: CanvasItem) => CanvasItem) => {
+    (id: string, change: (item: CanvasItem) => CanvasItem, label: string) => {
       const entry = items.current.get(id);
       if (!entry) return;
-      void write({ upserts: [{ id, item: withoutId(change(entry.item)), z: entry.z }] }).catch(report);
+      const { z } = entry;
+      const before = withoutId(entry.item);
+      const after = withoutId(change(entry.item));
+      void write({ upserts: [{ id, item: after, z }] })
+        .then(() =>
+          record({
+            label,
+            undo: () => write({ upserts: [{ id, item: before, z }] }),
+            redo: () => write({ upserts: [{ id, item: after, z }] }),
+          }),
+        )
+        .catch(report);
     },
-    [write, report],
+    [write, report, record],
+  );
+
+  /** Renames a unit from its card. Only its author can, so a teammate's title stays put. */
+  const rename = useCallback(
+    async (node: string, title: string) => {
+      const before = viewRef.current?.nodes[node]?.title;
+      const after = title.replace(/\s+/g, " ").trim();
+      if (!before || !after || after === before) return;
+      // Recorded as it starts: renaming a note can take a moment while the base updates its links.
+      const renaming = call("node.rename", { id: node, title: after });
+      const step = {
+        label: `Renamed “${plain(after)}”`,
+        ready: renaming,
+        undo: () => call("node.rename", { id: node, title: before }),
+        redo: () => call("node.rename", { id: node, title: after }),
+      };
+      record(step);
+      try {
+        await renaming;
+      } catch (error) {
+        drop(step);
+        report(error);
+      }
+    },
+    [call, record, drop, report],
   );
 
   /** Menus sit where they were asked for, but never past the frame's edge. */
@@ -393,22 +489,36 @@ export const App = ({ connection }: { connection: Connection }) => {
         setTypeMenu({ node, x, y });
       },
       saveBox: (item, box: Box) =>
-        updateItem(item, (old) => ({
-          ...old,
-          x: Math.round(box.x),
-          y: Math.round(box.y),
-          width: Math.round(box.width),
-          height: Math.round(box.height),
-        })),
-      saveText: (item, text) => updateItem(item, (old) => ({ ...old, text }) as CanvasItem),
+        updateItem(
+          item,
+          (old) => ({
+            ...old,
+            x: Math.round(box.x),
+            y: Math.round(box.y),
+            width: Math.round(box.width),
+            height: Math.round(box.height),
+          }),
+          "Resized",
+        ),
+      saveText: (item, text) => updateItem(item, (old) => ({ ...old, text }) as CanvasItem, "Edited a note"),
+      editTitle: (item) => setEditing(item),
+      stopEditing: () => setEditing(null),
+      rename: (node, title) => {
+        setEditing(null);
+        void rename(node, title);
+      },
       openInside: (node, base) => {
-        if (isHolon(base)) void holon.openInside({ level: base, id: node });
+        // A unit is a leaf: it opens as its text and context, never as a graph of its own.
+        void base;
+        void node;
       },
       openCanvas: (id) => (route.pinned ? void call("canvas.show", { id }).catch(report) : switchTo(id)),
       canvasTitle: (id) => canvasesRef.current.find((canvas) => canvas.id === id)?.title ?? null,
       gesture: holon.prefs.holonGesture,
+      ...(view?.paper?.id ? { paper: view.paper.id } : {}),
+      readPassage: (node) => void call("node.view", { id: node }).then((seen) => (seen.provenance.pdf ? call("pdf.show", { ref: seen.provenance.pdf.ref, unit: node }) : null)).catch(report),
     }),
-    [call, report, updateItem, inFrame, holon.openInside, holon.prefs.holonGesture, route.pinned, switchTo],
+    [call, report, updateItem, inFrame, holon.openInside, holon.prefs.holonGesture, route.pinned, switchTo, rename, view?.paper?.id],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
@@ -435,7 +545,8 @@ export const App = ({ connection }: { connection: Connection }) => {
       const fromNode = nodeOfItem(from);
       const toNode_ = nodeOfItem(to);
       if (!fromNode || !toNode_) {
-        await write({ upserts: [{ item: { fromNode: from.id, toNode: to.id }, z: nextZ() }] });
+        const { ids } = await write({ upserts: [{ item: { fromNode: from.id, toNode: to.id }, z: nextZ() }] });
+        record({ label: "Drew an arrow", undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) });
         return;
       }
       const a = flow.getNode(link.source);
@@ -446,7 +557,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       });
       await askRelation({ item: from.id, node: fromNode }, { item: to.id, node: toNode_ }, middle);
     },
-    [askRelation, flow, nextZ, write],
+    [askRelation, flow, nextZ, write, record],
   );
 
   /** Dropping a connection on empty canvas starts the next card of the argument. */
@@ -473,9 +584,26 @@ export const App = ({ connection }: { connection: Connection }) => {
     const [from, to] = option.flipped ? [target, source] : [source, target];
     setRelationMenu(null);
     try {
-      const relation = await call("relation.assert", { type: option.type, source: from.node, target: to.node });
-      await write({
-        upserts: [{ item: { fromNode: from.item, toNode: to.item, dg: { relation: relation.id } }, z: nextZ() }],
+      const ends = { type: option.type, source: from.node, target: to.node };
+      const relation = await call("relation.assert", ends);
+      const z = nextZ();
+      const edge = (id: string) => ({ fromNode: from.item, toNode: to.item, dg: { relation: id } });
+      const { ids } = await write({ upserts: [{ item: edge(relation.id), z }] });
+      const item = ids[0]!;
+      // Undo takes back a relation this made. One that was already there stays.
+      let asserted: string | null = relation.made ? relation.id : null;
+      record({
+        label: `Linked: ${option.label}`,
+        undo: async () => {
+          await write({ removes: [item] });
+          if (asserted) await call("relation.withdraw", { id: asserted });
+        },
+        redo: async () => {
+          await write({ restores: [item] });
+          if (!relation.made) return;
+          asserted = (await call("relation.assert", ends)).id;
+          await write({ upserts: [{ id: item, item: edge(asserted), z }] });
+        },
       });
     } catch (error) {
       report(error);
@@ -501,6 +629,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         upserts: [{ item: { type: "text", text: node.title, ...spot, ...size, dg: { node: node.id } }, z: nextZ() }],
       });
       const item = ids[0];
+      record({ label: `Added “${plain(node.title)}”`, undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) });
       if (link?.from && item) {
         const screen = flow.flowToScreenPosition({ x: spot.x + size.width / 2, y: spot.y - 30 });
         await askRelation(link.from, { item, node: node.id }, screen);
@@ -566,28 +695,322 @@ export const App = ({ connection }: { connection: Connection }) => {
     };
     const origin = at ? { x: Math.round(at.x - Math.min(size.width, CARD_WIDTH) / 2), y: Math.round(at.y - 20) } : freeSpot(startingPoint(size), size);
     try {
+      for (const box of laid) placingHere.current.add(box.id);
       const { ids: written } = await call("canvas.placeUnits", {
         canvas: current,
         places: laid.map((box) => ({ node: box.id, x: origin.x + box.x - left, y: origin.y + box.y - top, width: box.width, height: box.height })),
       });
       const cards = units.length;
       setNotice("");
-      setUndo({ label: cards === 1 ? "Placed 1 unit" : `Placed ${cards} units`, apply: () => write({ removes: written }) });
+      record({ label: cards === 1 ? "Placed 1 unit" : `Placed ${cards} units`, undo: () => write({ removes: written }), redo: () => write({ restores: written }) });
     } catch (error) {
       report(error);
     }
   };
 
+  /** Text pasted or dropped becomes a note where it landed. */
+  const addText = async (text: string, at: { x: number; y: number } | null): Promise<void> => {
+    const spot = at ? { x: Math.round(at.x), y: Math.round(at.y) } : freeSpot(startingPoint(NOTE), NOTE);
+    try {
+      const { ids } = await write({ upserts: [{ item: { type: "text", text, ...spot, ...NOTE }, z: nextZ() }] });
+      record({ label: "Added a note", undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) });
+    } catch (error) {
+      report(error);
+    }
+  };
+
+  const prefsRef = useRef(holon.prefs);
+  prefsRef.current = holon.prefs;
+  /** The delete about to run follows a remembered choice, so the status can offer to ask again. */
+  const fromRemembered = useRef(false);
+
+  /**
+   * Delete on a link asks whether the relation is only coming off this canvas
+   * or being withdrawn, unless the person made one answer their default. Links
+   * that go because a card went are only taken off.
+   */
+  const beforeDelete = useCallback(
+    async ({ edges: lost }: { nodes: FlowNode[]; edges: Edge[] }): Promise<boolean> => {
+      withdrawing.current = [];
+      fromRemembered.current = false;
+      const shown_ = viewRef.current;
+      const chosen = lost.flatMap((edge) => {
+        const relation = (edge.data as { relation?: string } | undefined)?.relation;
+        const known = relation ? shown_?.relations[relation] : undefined;
+        return edge.selected && relation && known && (known.state === "active" || known.state === "pending") ? [{ id: relation, ...known }] : [];
+      });
+      if (!chosen.length) return true;
+      const mine = [...new Set(chosen.filter((relation) => relation.mine).map((relation) => relation.id))];
+      const decide = (choice: LinkDelete) => {
+        withdrawing.current = choice === "withdraw" ? mine : [];
+      };
+      const preference = prefsRef.current.linkDelete;
+      if (preference !== "ask") {
+        decide(preference);
+        fromRemembered.current = true;
+        return true;
+      }
+      return new Promise<boolean>((resolve) => {
+        setLinkAsk({
+          links: chosen.map((relation) => ({
+            label: relation.label,
+            from: shown_?.nodes[relation.source]?.title ?? "",
+            to: shown_?.nodes[relation.target]?.title ?? "",
+          })),
+          mine: mine.length,
+          others: [...new Set(chosen.filter((relation) => !relation.mine).map((relation) => (relation.credit.kind === "lab" ? `its author in ${relation.credit.name}` : relation.credit.name)))],
+          answer: (choice, remember) => {
+            setLinkAsk(null);
+            if (choice === "cancel") return resolve(false);
+            if (remember) void call("prefs.set", { linkDelete: choice }).catch(report);
+            decide(choice);
+            resolve(true);
+          },
+        });
+      });
+    },
+    [call, report],
+  );
+
+  /** Takes items off the canvas, and withdraws the relations Delete was told to. Undo asserts them again. */
+  const removeItems = async (ids: string[], label?: string): Promise<void> => {
+    if (!ids.length) return;
+    const pulled = withdrawing.current;
+    withdrawing.current = [];
+    const remembered = fromRemembered.current;
+    fromRemembered.current = false;
+    const ends = new Map(pulled.flatMap((id) => (viewRef.current?.relations[id] ? [[id, viewRef.current.relations[id]!] as const] : [])));
+    const drawn = ids.flatMap((id) => {
+      const entry = items.current.get(id);
+      const relation = entry && "fromNode" in entry.item ? (entry.item as { dg?: { relation?: string } }).dg?.relation : undefined;
+      return entry && relation && ends.has(relation) ? [{ id, z: entry.z, item: withoutId(entry.item), relation }] : [];
+    });
+    const linksOnly = ids.every((id) => {
+      const entry = items.current.get(id);
+      return entry && "fromNode" in entry.item;
+    });
+    // The relation each withdrawn one is now, since undo asserts a fresh one.
+    const now = new Map(pulled.map((id) => [id, id]));
+    const withdraw = async () => {
+      for (const id of now.values()) await call("relation.withdraw", { id });
+    };
+    try {
+      await write({ removes: ids });
+      await withdraw();
+      const count = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
+      record({
+        label:
+          label ??
+          (pulled.length
+            ? `Withdrew ${count(pulled.length, "relation", "relations")}`
+            : linksOnly
+              ? `Took ${count(ids.length, "link", "links")} off this canvas`
+              : `Removed ${count(ids.length, "item", "items")}`),
+        ...(remembered ? { remembered: true } : {}),
+        undo: async () => {
+          await write({ restores: ids });
+          for (const [original, end] of ends) {
+            const again = await call("relation.assert", { type: end.type, source: end.source, target: end.target });
+            now.set(original, again.id);
+            const edges = drawn.filter((edge) => edge.relation === original);
+            if (edges.length) {
+              await write({
+                upserts: edges.map((edge) => ({ id: edge.id, z: edge.z, item: { ...edge.item, dg: { relation: again.id } } as WithoutId<CanvasItem> })),
+              });
+            }
+          }
+        },
+        redo: async () => {
+          await write({ removes: ids });
+          await withdraw();
+        },
+      });
+    } catch (error) {
+      report(error);
+    }
+  };
+
+  /** The selection, with the links between its cards, as a canvas clip. */
+  const clipOfSelection = (): Clip | null => {
+    const chosen = flow.getNodes().filter((node) => node.selected);
+    if (!chosen.length || !currentRef.current) return null;
+    const ids = new Set(chosen.map((node) => node.id));
+    const entries = [...items.current.values()].filter(
+      (entry) => ids.has(entry.id) || ("fromNode" in entry.item && ids.has(entry.item.fromNode) && ids.has(entry.item.toNode)),
+    );
+    return { v: 1, canvas: currentRef.current, items: entries.map(({ id, z, item }) => ({ id, z, item })) };
+  };
+
+  const textOfClip = (clip: Clip): string =>
+    clip.items
+      .flatMap(({ item }) => {
+        if ("fromNode" in item) return [];
+        const unit = (item as { dg?: { node?: string } }).dg?.node;
+        const title = unit ? viewRef.current?.nodes[unit]?.title : undefined;
+        return [plain(title ?? (item.type === "text" ? item.text : item.type === "file" ? item.file : item.type === "link" ? item.url : ""))];
+      })
+      .filter(Boolean)
+      .join("\n");
+
+  /**
+   * Puts a clip's items here, keeping their layout, at the pointer if it's over
+   * the canvas. A unit stays one card per canvas, so one that's already here is
+   * lit instead. Notes and drawings are copied; units keep being the same unit.
+   */
+  const pasteClip = async (clip: Clip, at: { x: number; y: number } | null): Promise<void> => {
+    if (!current) return;
+    type Placed = { x: number; y: number; width: number; height: number };
+    const boxes = clip.items.filter((entry) => !("fromNode" in entry.item)) as { id: string; z: number; item: CanvasItem & Placed }[];
+    if (!boxes.length) return;
+    const unitOf = (item: CanvasItem) => (item as { dg?: { node?: string } }).dg?.node;
+    const here = new Set([...items.current.values()].flatMap((entry) => (nodeOfItem(entry) ? [nodeOfItem(entry)!] : [])));
+    const left = Math.min(...boxes.map(({ item }) => item.x));
+    const top = Math.min(...boxes.map(({ item }) => item.y));
+    const size = {
+      width: Math.max(...boxes.map(({ item }) => item.x + item.width)) - left,
+      height: Math.max(...boxes.map(({ item }) => item.y + item.height)) - top,
+    };
+    const origin = at
+      ? { x: Math.round(at.x - Math.min(size.width, CARD_WIDTH) / 2), y: Math.round(at.y - 20) }
+      : clip.canvas === current
+        ? { x: left + 32, y: top + 32 }
+        : freeSpot(startingPoint(size), size);
+    const moved = (item: Placed) => ({ x: Math.round(origin.x + item.x - left), y: Math.round(origin.y + item.y - top) });
+    const already = boxes.flatMap(({ item }) => (unitOf(item) && here.has(unitOf(item)!) ? [unitOf(item)!] : []));
+    const units = boxes.filter(({ item }) => unitOf(item) && !here.has(unitOf(item)!));
+    const others = boxes.filter(({ item }) => !unitOf(item) && !(item as { guide?: boolean }).guide);
+    const written: string[] = [];
+    try {
+      if (units.length) {
+        for (const { item } of units) placingHere.current.add(unitOf(item)!);
+        const { ids } = await call("canvas.placeUnits", {
+          canvas: current,
+          places: units.map(({ item }) => ({ node: unitOf(item)!, ...moved(item), width: item.width, height: item.height })),
+        });
+        written.push(...ids);
+      }
+      if (others.length) {
+        let z = nextZ();
+        const { ids } = await write({ upserts: others.map(({ item }) => ({ item: withoutId({ ...item, ...moved(item) } as CanvasItem), z: z++ })) });
+        written.push(...ids);
+        const copied = new Map(others.map((entry, index) => [entry.id, ids[index]!]));
+        const arrows = clip.items.filter(
+          ({ item }) => "fromNode" in item && !(item as { dg?: unknown }).dg && copied.has(item.fromNode) && copied.has(item.toNode),
+        );
+        if (arrows.length) {
+          const { ids: more } = await write({
+            upserts: arrows.map(({ item }) => {
+              const edge = item as CanvasItem & { fromNode: string; toNode: string };
+              return { item: withoutId({ ...edge, fromNode: copied.get(edge.fromNode)!, toNode: copied.get(edge.toNode)! } as CanvasItem), z: z++ };
+            }),
+          });
+          written.push(...more);
+        }
+      }
+      if (already.length) void call("canvas.highlight", { units: already }).catch(report);
+      if (!written.length) {
+        setNotice(already.length === 1 ? "That unit is already on this canvas" : "Those units are already on this canvas");
+        return;
+      }
+      const pasted = units.length + others.length;
+      record({
+        label: `Pasted ${pasted === 1 ? "1 item" : `${pasted} items`}${already.length ? `, ${already.length} already here` : ""}`,
+        undo: () => write({ removes: written }),
+        redo: () => write({ restores: written }),
+      });
+    } catch (error) {
+      report(error);
+    }
+  };
+
+  // Copy, cut and paste go through the clipboard, so they work between canvases and tabs.
+  const clipboard = useRef({ clipOfSelection, textOfClip, pasteClip, removeItems, addText });
+  clipboard.current = { clipOfSelection, textOfClip, pasteClip, removeItems, addText };
+  useEffect(() => {
+    const typing = (event: Event): boolean => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("input, textarea, [contenteditable='true']")) return true;
+      const selection = window.getSelection();
+      return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
+    };
+    const copy = (event: ClipboardEvent, cut: boolean): void => {
+      if (typing(event) || !event.clipboardData) return;
+      const clip = clipboard.current.clipOfSelection();
+      if (!clip) return;
+      event.preventDefault();
+      writeClip(event.clipboardData, clip, clipboard.current.textOfClip(clip));
+      const count = clip.items.filter((entry) => !("fromNode" in entry.item)).length;
+      if (cut) void clipboard.current.removeItems(clip.items.map((entry) => entry.id), `Cut ${count === 1 ? "1 item" : `${count} items`}`);
+      else setNotice(count === 1 ? "Copied 1 item" : `Copied ${count} items`);
+    };
+    const onCopy = (event: ClipboardEvent) => copy(event, false);
+    const onCut = (event: ClipboardEvent) => copy(event, true);
+    const onPaste = (event: ClipboardEvent): void => {
+      if (typing(event)) return;
+      const at = pointer.current ? flow.screenToFlowPosition(pointer.current) : null;
+      const clip = clipFromTransfer(event.clipboardData);
+      if (clip) {
+        event.preventDefault();
+        void clipboard.current.pasteClip(clip, at);
+        return;
+      }
+      const text = event.clipboardData?.getData("text/plain").trim();
+      if (text) {
+        event.preventDefault();
+        void clipboard.current.addText(text, at);
+      }
+    };
+    // A keyboard copy with nothing selected as text still copies the cards.
+    const onKey = (event: KeyboardEvent): void => {
+      const mod = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+      if (!mod || event.altKey || event.shiftKey || (key !== "c" && key !== "x")) return;
+      if (typing(event) || !clipboard.current.clipOfSelection()) return;
+      event.preventDefault();
+      document.execCommand(key === "c" ? "copy" : "cut");
+    };
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("cut", onCut);
+    document.addEventListener("paste", onPaste);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("cut", onCut);
+      document.removeEventListener("paste", onPaste);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [flow]);
+
   // Units put here from another panel, such as a PDF highlight, come into view.
   useEffect(() => on("units-placed", ({ canvas, units }) => {
-    if (canvas === currentRef.current) setArrived(units);
-  }), [on]);
+    if (canvas !== currentRef.current) return;
+    const fromHere = units.every((unit) => placingHere.current.has(unit));
+    for (const unit of units) placingHere.current.delete(unit);
+    setArrived({ units, fromHere });
+    if (fromHere) return;
+    // Units sent from another panel, such as search, are an edit to this canvas too. The step is
+    // recorded now, in order; which cards it takes off is worked out when it's undone.
+    let taken: string[] = [];
+    record({
+      label: units.length === 1 ? "Put 1 unit here" : `Put ${units.length} units here`,
+      undo: async () => {
+        const entries = [...items.current.values()];
+        const cards = entries.filter((entry) => units.includes(nodeOfItem(entry) ?? "")).map((entry) => entry.id);
+        const links = entries.filter((entry) => "fromNode" in entry.item && (cards.includes(entry.item.fromNode) || cards.includes(entry.item.toNode))).map((entry) => entry.id);
+        taken = [...cards, ...links];
+        await write({ removes: taken });
+      },
+      redo: () => write({ restores: taken }),
+    });
+  }), [on, record, write]);
   useEffect(() => {
-    if (!arrived.length) return;
-    const cards = flow.getNodes().filter((node) => arrived.includes((node.data as CardData).node?.id ?? ""));
-    if (cards.length < arrived.length) return;
-    setArrived([]);
-    setFresh(arrived);
+    const { units: arriving, fromHere } = arrived;
+    if (!arriving.length) return;
+    const cards = flow.getNodes().filter((node) => arriving.includes((node.data as CardData).node?.id ?? ""));
+    // Their drawn sizes decide where they fit, so wait until each has been measured.
+    if (cards.length < arriving.length || cards.some((node) => !node.measured?.height)) return;
+    setArrived({ units: [], fromHere: true });
+    setFresh(arriving);
     // Pan only as far as it takes to bring them in, so the rest of the argument stays in view.
     const box = area.current?.getBoundingClientRect();
     if (box) {
@@ -605,11 +1028,45 @@ export const App = ({ connection }: { connection: Connection }) => {
       const dy = bottom > box.bottom - MARGIN ? Math.max(box.bottom - MARGIN - bottom, box.top + MARGIN - top) : top < box.top + MARGIN ? box.top + MARGIN - top : 0;
       const [only] = cards;
       const entry = only ? items.current.get(only.id) : undefined;
-      if ((dx || dy) && cards.length === 1 && only && entry && !("fromNode" in entry.item)) {
-        // One card sent from another panel, such as a highlight, comes to where the person is looking.
+      if (!fromHere && cards.length > 1) {
+        // Several sent from another panel are laid out together, at their drawn sizes, in a clear spot in view.
+        const ids = new Set(cards.map((node) => node.id));
+        const boxes: Card[] = cards.map((node) => {
+          const summary = (node.data as CardData).node;
+          return {
+            id: node.id,
+            x: 0,
+            y: 0,
+            width: node.measured?.width ?? CARD_WIDTH,
+            height: node.measured?.height ?? 80,
+            ...(summary ? { at: summary.at, credit: { key: summary.credit.id, label: summary.credit.name }, ...(summary.paper ? { source: { key: summary.paper.id, label: summary.paper.label } } : {}), ...(summary.typeLabel ? { kind: { key: summary.typeLabel, label: summary.typeLabel } } : {}) } : {}),
+          };
+        });
+        const links: RelationLink[] = flow
+          .getEdges()
+          .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
+          .map((edge) => ({ from: edge.source, to: edge.target, ...((edge.data as { kind?: string } | undefined)?.kind ? { kind: (edge.data as { kind: string }).kind } : {}) }));
+        const { places } = arrange({ mode: "logic", boxes, links, frame: { width: box.width, height: box.height }, previous: "kinds" });
+        const laid = boxes.map((card) => ({ ...card, ...(places.get(card.id) ?? { x: 0, y: 0 }) }));
+        const left = Math.min(...laid.map((card) => card.x));
+        const top = Math.min(...laid.map((card) => card.y));
+        const size = { width: Math.max(...laid.map((card) => card.x + card.width)) - left, height: Math.max(...laid.map((card) => card.y + card.height)) - top };
+        const spot = freeSpot(startingPoint(size), size, ids);
+        const upserts = laid.flatMap((card) => {
+          const known = items.current.get(card.id);
+          return known && !("fromNode" in known.item)
+            ? [{ id: card.id, z: known.z, item: withoutId({ ...known.item, x: Math.round(spot.x + card.x - left), y: Math.round(spot.y + card.y - top) }) }]
+            : [];
+        });
+        void write({ upserts }).catch(report);
+      } else if (!fromHere && cards.length === 1 && only && entry && !("fromNode" in entry.item)) {
+        // One card sent from another panel, such as a highlight, comes to where the person is looking,
+        // and never onto another card: where it already sits counts only if that spot is clear.
         const size = { width: only.measured?.width ?? CARD_WIDTH, height: only.measured?.height ?? 80 };
-        const spot = freeSpot(startingPoint(size), size);
-        void write({ upserts: [{ id: only.id, z: entry.z, item: withoutId({ ...entry.item, ...spot }) }] }).catch(report);
+        const spot = freeSpot(dx || dy ? startingPoint(size) : only.position, size, new Set([only.id]));
+        if (spot.x !== Math.round(only.position.x) || spot.y !== Math.round(only.position.y)) {
+          void write({ upserts: [{ id: only.id, z: entry.z, item: withoutId({ ...entry.item, ...spot }) }] }).catch(report);
+        }
       } else if (dx || dy) void flow.setViewport({ x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom }, { duration: 280 });
     }
   }, [arrived, nodes, flow, freeSpot, startingPoint, write, report]);
@@ -623,7 +1080,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   useEffect(() => {
     if (!adding) return;
     setActive(0);
-    void call("node.query", { text: query, limit: 8 }).then(setResults).catch(report);
+    void call("search.query", { text: query, limit: 8 }).then(({ hits }) => setResults(hits)).catch(report);
   }, [adding, query, call, report]);
 
   const openAdd = useCallback(() => {
@@ -636,8 +1093,10 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   const addNote = useCallback(() => {
     const spot = freeSpot(startingPoint(NOTE), NOTE);
-    void write({ upserts: [{ item: { type: "text", text: "Note", ...spot, ...NOTE }, z: nextZ() }] }).catch(report);
-  }, [freeSpot, startingPoint, write, nextZ, report]);
+    void write({ upserts: [{ item: { type: "text", text: "Note", ...spot, ...NOTE }, z: nextZ() }] })
+      .then(({ ids }) => record({ label: "Added a note", undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) }))
+      .catch(report);
+  }, [freeSpot, startingPoint, write, nextZ, report, record]);
 
   const mode: TidyMode = view?.canvas.layout?.mode ?? "logic";
 
@@ -658,7 +1117,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         ...(summary
           ? {
               at: summary.at,
-              credit: { key: summary.credit.id, label: summary.credit.name },
+              credit: { key: summary.credit.id, label: summary.credit.name }, ...(summary.paper ? { source: { key: summary.paper.id, label: summary.paper.label } } : {}),
               ...(summary.typeLabel ? { kind: { key: summary.typeLabel, label: summary.typeLabel } } : {}),
             }
           : {}),
@@ -713,17 +1172,22 @@ export const App = ({ connection }: { connection: Connection }) => {
       .then(async ({ ids }) => {
         await call("canvas.setLayout", { id: view.canvas.id, layout: next });
         const added = ids.slice(moves.length).filter((id) => !kept.has(id));
-        setUndo({
+        const keptForward = headings.filter((heading) => heading.id);
+        record({
           label: `Tidied: ${label}`,
-          apply: async () => {
+          undo: async () => {
             await write({ upserts: [...back, ...movedHeadings], removes: added, restores: gone });
             await call("canvas.setLayout", { id: view.canvas.id, layout: before });
+          },
+          redo: async () => {
+            await write({ upserts: [...moves, ...keptForward], restores: added, removes: gone });
+            await call("canvas.setLayout", { id: view.canvas.id, layout: next });
           },
         });
         window.setTimeout(() => void flow.fitView({ maxZoom: 1, minZoom: 0.7, padding: 0.12, duration: 200 }), 120);
       })
       .catch(report);
-  }, [call, flow, followed, write, report, view]);
+  }, [call, flow, followed, write, report, view, record]);
 
   // Cards placed by a tool arrive stacked on a grid, so the first person to open them tidies.
   const needsLayout = view?.canvas.needsLayout === true;
@@ -744,6 +1208,7 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   const closeMenus = useCallback(() => {
     setMenu(false);
+    setMoreOpen(false);
     setNaming(false);
     setRelationMenu(null);
     setTypeMenu(null);
@@ -754,8 +1219,30 @@ export const App = ({ connection }: { connection: Connection }) => {
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if ((event.target as HTMLElement).closest?.("input, textarea")) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
       const key = event.key.toLowerCase();
+      const mod = event.metaKey || event.ctrlKey;
+      // Text being edited keeps its own undo; everything else on the canvas has this one.
+      if (mod && !event.altKey && key === "z") {
+        event.preventDefault();
+        void (event.shiftKey ? redo() : undo());
+        return;
+      }
+      if (event.ctrlKey && !event.metaKey && key === "y") {
+        event.preventDefault();
+        void redo();
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (key === "f2") {
+        const picked = flow.getNodes().filter((node) => node.selected && node.type === "card");
+        const summary = (picked[0]?.data as CardData | undefined)?.node;
+        if (picked.length === 1 && summary) {
+          event.preventDefault();
+          if (summary.mine) setEditing(picked[0]!.id);
+          else setNotice(summary.credit.kind === "lab" ? `This unit is from ${summary.credit.name}. Only its author can rename it.` : `Only ${summary.credit.name} can rename this unit.`);
+        }
+        return;
+      }
       if (key === "escape") {
         closeMenus();
         setTool("select");
@@ -781,7 +1268,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [actions, addNote, aiOn, closeMenus, flow, mode, openAdd, tidyUp]);
+  }, [actions, addNote, aiOn, closeMenus, flow, mode, openAdd, tidyUp, undo, redo]);
 
   const finishStroke = (): void => {
     const raw = ink.current;
@@ -805,7 +1292,9 @@ export const App = ({ connection }: { connection: Connection }) => {
         },
         z: nextZ(),
       }],
-    }).catch(report);
+    })
+      .then(({ ids }) => record({ label: "Drew a line", undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) }))
+      .catch(report);
   };
 
   const inkPoint = (event: React.PointerEvent): number[] => {
@@ -869,9 +1358,10 @@ export const App = ({ connection }: { connection: Connection }) => {
         const lit = litHere ? (summary && holon.lit.includes(summary.id) ? "lit" : "dim") : "";
         const arriving = summary && fresh.includes(summary.id) ? "arrived" : "";
         const classes = [followed && summary?.id === followed ? "followed" : "", lit, arriving].filter(Boolean).join(" ");
-        return classes ? { ...marked, className: classes } : marked;
+        const edited = editing === node.id ? { ...marked, data: { ...marked.data, editing: true } } : marked;
+        return classes ? { ...edited, className: classes } : edited;
       }),
-    [nodes, followed, grounded, measure, scores, holon.lit, litHere, fresh],
+    [nodes, followed, grounded, measure, scores, holon.lit, litHere, fresh, editing],
   );
 
   // Zooming far into a holon card opens it; zooming far out goes up a level.
@@ -887,23 +1377,9 @@ export const App = ({ connection }: { connection: Connection }) => {
     (_event: MouseEvent | TouchEvent | null, viewport: { x: number; y: number; zoom: number }) => {
       const pointer = gesture.current;
       gesture.current = null;
-      if (!pointer || holon.prefs.holonGesture !== "semantic") return;
-      if (viewport.zoom >= 1.9) {
-        const box = area.current?.getBoundingClientRect();
-        if (!box) return;
-        // The card under the pointer, or the one in the middle for a pinch or keyboard zoom.
-        const at = Number.isNaN(pointer.x) ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : pointer;
-        const center = flow.screenToFlowPosition(at);
-        const under = flow.getNodes().find((node) => {
-          const width = node.measured?.width ?? 0;
-          const height = node.measured?.height ?? 0;
-          return center.x >= node.position.x && center.x <= node.position.x + width && center.y >= node.position.y && center.y <= node.position.y + height;
-        });
-        const summary = under ? (under.data as CardData).node : undefined;
-        if (summary && isHolon(summary.base)) void holon.openInside({ level: summary.base, id: summary.id });
-      } else if (viewport.zoom <= 0.25 && holon.info && holon.info.path.length > 1) {
-        void holon.openInside(holon.info.path[holon.info.path.length - 2]!.ref);
-      }
+      // Zooming only zooms. A card never opens as a graph of its own, so there is nothing to zoom into.
+      void pointer;
+      void viewport;
     },
     [flow, holon],
   );
@@ -945,67 +1421,83 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   const title = canvases.find((canvas) => canvas.id === current)?.title ?? "Canvas";
   const modeLabel = MODES.find((entry) => entry.mode === mode)!.label;
+  /** The panels that work beside a canvas, opened from its bar. */
+  // Panels open beside the canvas. Context keeps its word longest, since no icon says "context".
+  const panelButtons: { dg: string; label: string; title: string; icon: IconName; keep?: boolean; open: () => void }[] = [
+    { dg: "open-search", label: "Search", title: "Search units in the side panel", icon: "search", open: () => void call("panel.open", { surface: "search" }).catch(report) },
+    { dg: "open-context", label: "Context", title: "Open the context panel", icon: "context", keep: true, open: () => void call("panel.open", { surface: "context" }).catch(report) },
+    { dg: "open-pdf", label: "PDF", title: "Read a PDF beside the canvas", icon: "pdf", open: () => void call("pdf.show", {}).catch(report) },
+  ];
 
   return (
     <ActionsContext.Provider value={actions}>
       <div className="shell" ref={shell}>
-        <div className="picker">
-          <button
-            type="button"
-            className="canvas-button"
-            data-dg="canvas-menu"
-            aria-haspopup="menu"
-            aria-expanded={menu}
-            onClick={() => {
-              setMenu((on_) => !on_);
-              setNaming(false);
-            }}
-          >
-            <span>{title}</span>
-            <Icon name="chevron" />
-          </button>
-        </div>
-        <div className="tools" role="toolbar" aria-label="Canvas tools">
-          <button
-            ref={addButton}
-            type="button"
-            className="tool"
-            data-dg="add-node"
-            aria-label="Add node"
-            title="Add node (N)"
-            aria-expanded={adding}
-            onClick={() => (adding ? closeAdd() : openAdd())}
-          >
-            <Icon name="plus" />
-            <span className="tool-label">Add node</span>
-          </button>
-          <button type="button" className="tool" data-dg="add-note" aria-label="Add note" title="Add note (T)" onClick={addNote}>
-            <Icon name="note" />
-            <span className="tool-label">Note</span>
-          </button>
-          <button
-            type="button"
-            className="tool"
-            data-dg="draw"
-            aria-label="Draw"
-            title="Draw (D)"
-            aria-pressed={tool === "draw"}
-            onClick={() => setTool((old) => (old === "draw" ? "select" : "draw"))}
-          >
-            <Icon name="pen" />
-            <span className="tool-label">Draw</span>
-          </button>
-          <div className="split" role="group" aria-label="Tidy">
+        <header className="bar" ref={bar} data-fit={fit} role="toolbar" aria-label="Canvas" onKeyDown={moveAlongBar} onFocus={rememberBarFocus}>
+          <div className="picker" data-fit-min="96">
             <button
               type="button"
+              className="canvas-button"
+              data-dg="canvas-menu"
+              aria-haspopup="menu"
+              aria-expanded={menu}
+              title={`${title}: canvases, export and more`}
+              onClick={() => {
+                setMenu((on_) => !on_);
+                setNaming(false);
+              }}
+            >
+              <span>{title}</span>
+              <Icon name="chevron" />
+            </button>
+          </div>
+          <div className="tool-group create" role="group" aria-label="Add">
+            <button
+              ref={addButton}
+              type="button"
               className="tool"
+              data-dg="add-node"
+              aria-label="Add node"
+              title="Add node · N"
+              aria-expanded={adding}
+              onClick={() => (adding ? closeAdd() : openAdd())}
+            >
+              <Icon name="plus" />
+              <span className="tool-label">Add node</span>
+            </button>
+            {fit !== "more" ? (
+              <>
+                <button type="button" className="tool" data-dg="add-note" aria-label="Add note" title="Add note · T" onClick={addNote}>
+                  <Icon name="note" />
+                  <span className="tool-label">Note</span>
+                </button>
+                <button
+                  type="button"
+                  className="tool"
+                  data-dg="draw"
+                  aria-label="Draw"
+                  title="Draw · D"
+                  aria-pressed={tool === "draw"}
+                  onClick={() => setTool((old) => (old === "draw" ? "select" : "draw"))}
+                >
+                  <Icon name="pen" />
+                  <span className="tool-label">Draw</span>
+                </button>
+              </>
+            ) : null}
+          </div>
+          <div className="tool-group split" role="group" aria-label="Tidy">
+            <button
+              type="button"
+              className="tool keep"
               data-dg="tidy"
               aria-label={`Tidy by ${modeLabel}`}
-              title={`Tidy by ${modeLabel} (L)`}
+              title={`Tidy by ${modeLabel} · L`}
               onClick={() => tidyUp(mode)}
             >
               <Icon name="tidy" />
-              <span className="tool-label">Tidy</span>
+              <span className="tool-label">
+                Tidy <span className="tool-mode">{modeLabel}</span>
+              </span>
             </button>
             <button
               ref={tidyButton}
@@ -1021,54 +1513,104 @@ export const App = ({ connection }: { connection: Connection }) => {
               <Icon name="chevron" />
             </button>
           </div>
-          <button
-            type="button"
-            className="tool"
-            data-dg="export"
-            aria-label="Export"
-            title="Export a paper or selected nodes"
-            aria-expanded={exportOpen}
-            onClick={() => setExportOpen((on_) => !on_)}
-          >
-            <Icon name="export" />
-            <span className="tool-label">Export</span>
-          </button>
-          <button
-            type="button"
-            className="tool"
-            data-dg="ai"
-            aria-label="AI"
-            title="Ask about this canvas"
-            aria-pressed={aiOn}
-            onClick={() => setAiOn((on_) => !on_)}
-          >
-            <Icon name="ai" />
-            <span className="tool-label">AI</span>
-          </button>
-          <button
-            type="button"
-            className="tool"
-            data-dg="open-context"
-            aria-label="Context"
-            title="Open the context panel"
-            onClick={() => void call("panel.open", { surface: "context" }).catch(report)}
-          >
-            <Icon name="context" />
-            <span className="tool-label">Context</span>
-          </button>
-        </div>
-        <div className="status" role="status">
-          <span>{undo?.label ?? notice}</span>
-          {undo ? (
+          <div className="status" role="status" data-fit-min="0">
+            <span data-dg="status-text">{notice || done?.label || ""}</span>
+            {!notice && done?.remembered ? (
+              <button
+                type="button"
+                className="status-link"
+                data-dg="link-delete-ask-again"
+                title="Ask again each time a link is deleted"
+                onClick={() => {
+                  dismiss();
+                  void call("prefs.set", { linkDelete: "ask" }).then(() => setNotice("Delete will ask about links again")).catch(report);
+                }}
+              >
+                Ask next time
+              </button>
+            ) : null}
+          </div>
+          <div className="tool-group history" role="group" aria-label="History">
             <button
               type="button"
+              className="tool icon-only"
               data-dg="undo"
-              onClick={() => void undo.apply().catch(report)}
+              aria-label={next.undo ? `Undo: ${next.undo}` : "Nothing to undo"}
+              title={next.undo ? `Undo: ${next.undo} · ${MOD_KEY}Z` : "Nothing to undo"}
+              disabled={!next.undo}
+              onClick={() => void undo()}
             >
-              Undo
+              <Icon name="undo" />
             </button>
-          ) : null}
-        </div>
+            <button
+              type="button"
+              className="tool icon-only"
+              data-dg="redo"
+              aria-label={next.redo ? `Redo: ${next.redo}` : "Nothing to redo"}
+              title={next.redo ? `Redo: ${next.redo} · ${MOD_KEY}⇧Z` : "Nothing to redo"}
+              disabled={!next.redo}
+              onClick={() => void redo()}
+            >
+              <Icon name="redo" />
+            </button>
+          </div>
+          <div className="tool-group panels" role="group" aria-label="Panels">
+            {fit !== "more" ? (
+              <button
+                type="button"
+                className="tool keep"
+                data-dg="ai"
+                aria-label="Ask AI"
+                title="Ask about this canvas"
+                aria-pressed={aiOn}
+                onClick={() => setAiOn((on_) => !on_)}
+              >
+                <Icon name="ai" />
+                <span className="tool-label">Ask AI</span>
+              </button>
+            ) : null}
+            {panelButtons
+              .filter((panel) => fit !== "more" || panel.dg !== "open-pdf")
+              .map((panel) => (
+                <button key={panel.dg} type="button" className={panel.keep ? "tool keep" : "tool"} data-dg={panel.dg} aria-label={panel.label} title={panel.title} onClick={panel.open}>
+                  <Icon name={panel.icon} />
+                  <span className="tool-label">{panel.label}</span>
+                </button>
+              ))}
+            {fit === "more" ? (
+              <button
+                ref={moreButton}
+                type="button"
+                className="tool icon-only"
+                data-dg="toolbar-more"
+                aria-label="More tools"
+                title="Note, Draw, Ask AI and PDF"
+                aria-haspopup="menu"
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen((on_) => !on_)}
+              >
+                <Icon name="more" />
+              </button>
+            ) : null}
+          </div>
+        </header>
+        {moreOpen && fit === "more" ? (
+          <div className="popover menu more-menu" role="menu" aria-label="More tools">
+            <button type="button" role="menuitem" data-dg="add-note" onClick={() => { setMoreOpen(false); addNote(); }}>
+              <Icon name="note" /> Note <kbd>T</kbd>
+            </button>
+            <button type="button" role="menuitem" data-dg="draw" onClick={() => { setMoreOpen(false); setTool((old) => (old === "draw" ? "select" : "draw")); }}>
+              <Icon name="pen" /> Draw <kbd>D</kbd>
+            </button>
+            <hr />
+            <button type="button" role="menuitem" data-dg="ai" onClick={() => { setMoreOpen(false); setAiOn((on_) => !on_); }}>
+              <Icon name="ai" /> Ask AI
+            </button>
+            <button type="button" role="menuitem" data-dg="open-pdf" onClick={() => { setMoreOpen(false); void call("pdf.show", {}).catch(report); }}>
+              <Icon name="pdf" /> Read a PDF
+            </button>
+          </div>
+        ) : null}
         <HolonBar
           connection={connection}
           current={current}
@@ -1092,7 +1634,16 @@ export const App = ({ connection }: { connection: Connection }) => {
                     aria-current={canvas.id === current}
                     onClick={() => switchCanvas(canvas.id)}
                   >
-                    {canvas.title}
+                    {pictures[canvas.id] ? <Thumb thumb={pictures[canvas.id]!.thumb} /> : <span className="thumb thumb-empty" aria-hidden="true" />}
+                    <span className="canvas-pick">
+                      <span className="canvas-pick-title">{canvas.title}</span>
+                      {pictures[canvas.id] ? (
+                        <span className="repo-kind" data-kind={pictures[canvas.id]!.kind}>
+                          <Icon name={pictures[canvas.id]!.kind === "paper" ? "pdf" : "canvas"} /> {pictures[canvas.id]!.kind === "paper" ? "From a PDF" : "Workspace"}
+                          <span className="cvs-meta"> · {pictures[canvas.id]!.cards} {pictures[canvas.id]!.cards === 1 ? "card" : "cards"}</span>
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -1108,7 +1659,10 @@ export const App = ({ connection }: { connection: Connection }) => {
                   <Icon name="export" /> Upload a paper
                 </button>
                 <button type="button" className="new" data-dg="open-library" onClick={() => { setMenu(false); void call("panel.open", { surface: "canvases" }).catch(report); }}>
-                  <Icon name="canvas" /> Open the Library
+                  <Icon name="library" /> Open the Library
+                </button>
+                <button type="button" className="new" data-dg="export" onClick={() => { setMenu(false); setExportOpen(true); }}>
+                  <Icon name="export" /> Export…
                 </button>
               </>
             )}
@@ -1161,20 +1715,25 @@ export const App = ({ connection }: { connection: Connection }) => {
                 if (event.key === "ArrowDown") setActive((old) => Math.min(old + 1, results.length - 1));
                 if (event.key === "ArrowUp") setActive((old) => Math.max(old - 1, 0));
                 if (event.key === "Escape") closeAdd();
-                if (event.key === "Enter" && results[active]) void addCard(results[active]!);
+                if (event.key === "Enter" && results[active]) void addCard(results[active]!.node);
               }}
             />
             <ul>
-              {results.map((node, index) => (
-                <li key={node.id}>
+              {results.map((hit, index) => (
+                <li key={hit.node.id}>
                   <button
                     type="button"
-                    data-dg={`result-${node.title}`}
+                    data-dg={`result-${hit.node.title}`}
                     data-active={index === active}
-                    onClick={() => void addCard(node)}
+                    onClick={() => void addCard(hit.node)}
                   >
-                    <Chip node={node} />
-                    <span className="result-title">{plain(node.title)}</span>
+                    <Chip node={hit.node} />
+                    <span className="result-text">
+                      <span className="result-title"><Marked text={hit.node.title} marks={hit.titleMarks} /></span>
+                      {hit.match ? (
+                        <span className="result-match"><Marked text={hit.match.snippet} marks={hit.match.marks} /></span>
+                      ) : null}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -1199,6 +1758,12 @@ export const App = ({ connection }: { connection: Connection }) => {
             event.preventDefault();
             if ([...event.dataTransfer.types].includes(DRAG_TYPE)) event.dataTransfer.dropEffect = "copy";
           }}
+          onPointerMove={(event) => {
+            pointer.current = { x: event.clientX, y: event.clientY };
+          }}
+          onPointerLeave={() => {
+            pointer.current = null;
+          }}
           onDrop={(event) => {
             event.preventDefault();
             const units = event.dataTransfer.getData(DRAG_TYPE);
@@ -1209,9 +1774,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             const text = event.dataTransfer.getData("text/plain").trim();
             if (!text) return;
             const point = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-            void write({
-              upserts: [{ item: { type: "text", text, x: Math.round(point.x), y: Math.round(point.y), ...NOTE }, z: nextZ() }],
-            }).catch(report);
+            void addText(text, point);
           }}
         >
           <ReactFlow
@@ -1248,28 +1811,29 @@ export const App = ({ connection }: { connection: Connection }) => {
             onNodeDragStop={(_, node, selected) => {
               const moved = selected.length > 0 ? selected : [node];
               for (const item of moved) dragging.current.delete(item.id);
+              const back: { id: string; z: number; item: WithoutId<CanvasItem> }[] = [];
               const upserts = moved.flatMap((item) => {
                 const entry = items.current.get(item.id);
                 if (!entry || "fromNode" in entry.item) return [];
-                return [{
-                  id: item.id,
-                  z: entry.z,
-                  item: withoutId({ ...entry.item, x: Math.round(item.position.x), y: Math.round(item.position.y) }),
-                }];
+                const x = Math.round(item.position.x);
+                const y = Math.round(item.position.y);
+                if (x === (entry.item as { x: number }).x && y === (entry.item as { y: number }).y) return [];
+                back.push({ id: item.id, z: entry.z, item: withoutId(entry.item) });
+                return [{ id: item.id, z: entry.z, item: withoutId({ ...entry.item, x, y }) }];
               });
-              void write({ upserts }).catch(report);
-            }}
-            onDelete={({ nodes: gone, edges: lost }) => {
-              const ids = [...gone, ...lost].map((item) => item.id);
-              void write({ removes: ids })
+              if (!upserts.length) return;
+              void write({ upserts })
                 .then(() =>
-                  setUndo({
-                    label: ids.length === 1 ? "Removed 1 item" : `Removed ${ids.length} items`,
-                    apply: () => write({ restores: ids }),
+                  record({
+                    label: upserts.length === 1 ? "Moved 1 item" : `Moved ${upserts.length} items`,
+                    undo: () => write({ upserts: back }),
+                    redo: () => write({ upserts }),
                   }),
                 )
                 .catch(report);
             }}
+            onBeforeDelete={beforeDelete}
+            onDelete={({ nodes: gone, edges: lost }) => void removeItems([...gone, ...lost].map((item) => item.id))}
             deleteKeyCode={["Backspace", "Delete"]}
             // On by default, and it swallows double-clicks meant for cards and notes.
             zoomOnDoubleClick={false}
@@ -1293,6 +1857,7 @@ export const App = ({ connection }: { connection: Connection }) => {
               view={view}
               grounded={grounded}
               onClear={() => setGrounded([])}
+              onClose={() => setAiOn(false)}
               onCite={(id) => {
                 const card = flow.getNodes().find((node) => (node.data as CardData).node?.id === id);
                 if (card) void flow.fitView({ nodes: [card], maxZoom: 1, duration: 220 });
@@ -1334,6 +1899,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             <span>{edgeTip.credit.kind === "lab" ? `From ${edgeTip.credit.name}` : `By ${edgeTip.credit.name}`}</span>
           </div>
         ) : null}
+        {linkAsk ? <LinkAskDialog ask={linkAsk} /> : null}
         {relationMenu ? (
           <div className="popover menu relation-menu" role="menu" style={{ left: relationMenu.x, top: relationMenu.y }}>
             {relationMenu.options.length === 0 ? (
@@ -1359,7 +1925,21 @@ export const App = ({ connection }: { connection: Connection }) => {
                 onClick={() => {
                   const target = typeMenu.node;
                   setTypeMenu(null);
-                  void call("node.setType", { id: target, type: type.id }).catch(report);
+                  const before = viewRef.current?.nodes[target]?.type ?? null;
+                  if (before === type.id) return;
+                  // A new type renames the note too, so the step is recorded as it starts.
+                  const typing = call("node.setType", { id: target, type: type.id });
+                  const step = {
+                    label: `Made it a ${type.label}`,
+                    ready: typing,
+                    undo: () => call("node.setType", { id: target, type: before }),
+                    redo: () => call("node.setType", { id: target, type: type.id }),
+                  };
+                  record(step);
+                  typing.catch((error: unknown) => {
+                    drop(step);
+                    report(error);
+                  });
                 }}
               >
                 {type.label}

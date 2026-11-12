@@ -69,33 +69,24 @@ const roots = await until(async () => {
 });
 check("core.roots", roots, roots?.map((r) => r.title).join(", "));
 
-// A note's unit opens as its holon: its own canvas, with the boundary beside it.
-const evd7 = records.find((r) => r.kind === "node" && r.title.startsWith("Three undergraduate researchers") && r.title.endsWith("month."));
-await s(`s.call("focus.set", ${q({ node: evd7.id })})`);
-await s("s.openNoteAsHolon()");
-const claimBar = await until(async () => ((await holonBar()) ?? "").includes("Three undergraduate") ? holonBar() : null);
-check("canvas.note-opens-its-holon", claimBar, claimBar);
-const claimBoundary = await until(async () => ((await boundaryTitle()) ?? "").startsWith("Three undergraduate") ? boundaryTitle() : null);
-check("boundary.follows-the-canvas", claimBoundary, claimBoundary);
-await host.shot(`${OUT}/obsidian-claim-canvas.png`);
-
-// The breadcrumb goes up, in the same tab.
-await click('[data-dg="holon-up-question"]');
-const questionBar = await until(async () => ((await holonBar()) ?? "").includes("How does a shared issue board") && !((await holonBar()) ?? "").includes("Three undergraduate") ? holonBar() : null);
-check("canvas.breadcrumb-goes-up", questionBar, questionBar);
+// A canvas tied to a question shows where it sits, and the boundary panel follows it.
+// A unit no longer opens as a graph of its own (12 Nov 2026): it is a leaf.
+const exchange = records.find((r) => r.kind === "canvas" && r.title.startsWith("Issue exchange"));
+await s(`s.open(${q(exchange.id)})`);
+await s("s.openBoundary()");
+const questionBar = await until(async () => ((await holonBar()) ?? "").includes("How does a shared issue board") ? holonBar() : null);
+check("canvas.shows-its-place", questionBar, questionBar);
 const questionBoundary = await until(async () => ((await boundaryTitle()) ?? "").startsWith("How does a shared issue board") ? boundaryTitle() : null);
-check("boundary.follows-up", questionBoundary, questionBoundary);
+check("boundary.follows-the-canvas", questionBoundary, questionBoundary);
+await host.shot(`${OUT}/obsidian-question-canvas.png`);
 const tabTitle = () => s(`s.hostText('.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner-title')`);
 const followed = await until(async () => ((await tabTitle()) ?? "").startsWith("Issue exchange") ? tabTitle() : null);
 check("tab.title-follows-the-canvas", followed, followed);
 check("canvas.nested-card", ((await s(`s.text('[data-dg="nested-EVD 7: from claim to the notebook"]')`)) ?? "").includes("A canvas inside this one"));
 
-// A card's open-inside button goes in; a holon without a canvas gets one.
+// No unit card offers to open as a graph of its own.
 const first = node("29% of MATSUlab issues (n=445) were claimed as experiments.");
-await click(`[data-dg="inside-${first.title}"]`);
-const madeBar = await until(async () => ((await holonBar()) ?? "").includes("29% of MATSUlab") ? holonBar() : null);
-check("canvas.open-inside-makes-and-opens", madeBar, madeBar);
-await host.shot(`${OUT}/obsidian-made-canvas.png`);
+check("canvas.units-are-leaves", (await s(`s.count('[data-dg^="inside-"]')`)) === 0);
 
 // A highlight from any panel lands on the canvas.
 await s(`s.call("canvas.highlight", ${q({ units: [first.id] })})`);
@@ -106,13 +97,14 @@ check("canvas.highlight-crosses-panels", lit === 1);
 await s("s.openLibrary()");
 const meta = await until(() => s(`s.libraryText('[data-dg="repo-meta-Issue exchange: what the analysis shows"]')`));
 check("library.is-the-repository", (meta ?? "").includes("holds 1 canvas"), meta);
+check("library.pictures", (await s(`s.libraryCount(".repo-list svg.thumb")`)) >= 2);
 await host.shot(`${OUT}/obsidian-library.png`);
 
-// The gesture choice is in the plugin's settings, and every panel sees changes.
+// Choices live in the plugin's settings, and every panel sees changes.
 check("settings.tab", await s(`app.setting.pluginTabs.some((tab) => tab.plugin?.manifest?.id === "discourse-graphs-demo")`));
-await s(`s.call("prefs.set", { holonGesture: "doubleClick" })`);
-check("prefs.round-trip", (await s(`s.call("prefs.get", {})`)).holonGesture === "doubleClick");
-await s(`s.call("prefs.set", { holonGesture: "button" })`);
+await s(`s.call("prefs.set", { notebookText: true })`);
+check("prefs.round-trip", (await s(`s.call("prefs.get", {})`)).notebookText === true);
+await s(`s.call("prefs.set", { notebookText: false })`);
 
 check("boundary.theme", (await s("s.boundaryTheme()")) === (await s("s.theme()")));
 

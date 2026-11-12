@@ -550,6 +550,7 @@ const releaseSummary = (r: ReleaseRecord): ReleaseSummary => ({
 export const repository = (input: HolonInput): RepositoryCanvas[] => {
   const index = holonIndex(input);
   const canvases = [...input.graph.documents.values()].filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed);
+  const papers = [...input.graph.documents.values()].filter((r): r is Extract<DgRecord, { kind: "paper" }> => r.kind === "paper" && !("removed" in r && r.removed));
   const releasesOf = (id: DgId) => index.releases.filter((r) => r.canvas === id).sort((a, b) => a.at.localeCompare(b.at));
   const embeds = (id: DgId) => liveCanvasItems({ graph: input.graph, canvas: id }).flatMap((r) => canvasOn(r.item) ?? []);
   return canvases
@@ -566,6 +567,27 @@ export const repository = (input: HolonInput): RepositoryCanvas[] => {
         const n = index.nodeById.get(u);
         return n && index.flagsOf(n).some((f) => f !== "replicated");
       });
+      const paper = papers.find((item) => item.canvas === canvas.id);
+      // The picture is the canvas itself: every card at its own place and size, capped so a huge canvas stays light.
+      const laid = cardsOf(input.graph, canvas.id);
+      const drawn = laid.cards.slice(0, 160);
+      const left = Math.min(0, ...drawn.map((card) => card.x));
+      const top = Math.min(0, ...drawn.map((card) => card.y));
+      const at = new Map(drawn.map((card, position) => [card.id, position]));
+      const thumb = {
+        width: Math.max(1, ...drawn.map((card) => card.x + card.width - left)),
+        height: Math.max(1, ...drawn.map((card) => card.y + card.height - top)),
+        cards: drawn.map((card) => ({
+          x: Math.round(card.x - left),
+          y: Math.round(card.y - top),
+          w: Math.round(card.width),
+          h: Math.round(card.height),
+          base: card.canvas ? "canvas" : ((card.unit && index.base(card.unit)) ?? "none"),
+        })),
+        links: laid.links.flatMap((link): [number, number][] => (at.has(link.from) && at.has(link.to) ? [[at.get(link.from)!, at.get(link.to)!]] : [])),
+      };
+      const labDid = canvas.shared ?? canvas.lab;
+      const labName = labDid ? index.labs.find((lab) => lab.did === labDid)?.name : undefined;
       const releases = releasesOf(canvas.id);
       const forkSource = canvas.forkOf ? index.releases.find((r) => r.id === canvas.forkOf!.uri) : undefined;
       const sourceCanvas = forkSource ? (input.graph.documents.get(forkSource.canvas) as CanvasRecord | undefined) : undefined;
@@ -588,6 +610,12 @@ export const repository = (input: HolonInput): RepositoryCanvas[] => {
         nestedIn: canvases.filter((c) => embeds(c.id).includes(canvas.id)).map((c) => c.id),
         gaps: flagged.length,
         privacy: releases.some((r) => r.published) ? "published" : canvas.shared || canvas.lab ? "lab" : "private",
+        kind: paper ? "paper" : "workspace",
+        ...(paper ? { paper: paper.title } : {}),
+        by: canvas.by.name,
+        mine: canvas.by.id === input.me.id,
+        ...(labDid ? { lab: labName ?? "A lab" } : {}),
+        thumb,
       } satisfies RepositoryCanvas;
     })
     .sort((a, b) => b.editedAt.localeCompare(a.editedAt));
@@ -755,7 +783,7 @@ export const canvasOfHolon = (input: HolonInput, holon: string): DgId | null =>
     .filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed && r.holon === holon)
     .sort((a, b) => b.editedAt.localeCompare(a.editedAt))[0]?.id ?? null;
 
-export const DEFAULT_PREFS: Prefs = { holonGesture: "button" };
+export const DEFAULT_PREFS: Prefs = { holonGesture: "button", linkDelete: "ask", captureKey: "\\", notebookText: false };
 const PREFS_KEY = "prefs";
 
 const latest = (records: DgRecord[]): DgRecord[] => {

@@ -161,6 +161,8 @@ export const unitFeature = (
               schema: paper.schema,
               extractedBy: paper.by.name,
               at: paper.at,
+              authors: paper.authors,
+              ...(paper.license ? { license: paper.license } : {}),
               ...(paper.doi ? { doi: paper.doi } : {}),
               ...(node.source?.anchor ? { anchor: node.source.anchor } : {}),
               ...(node.source?.description ? { description: node.source.description } : {}),

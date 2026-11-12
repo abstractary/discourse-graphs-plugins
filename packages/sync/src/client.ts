@@ -181,8 +181,10 @@ export const createServices = ({
       await json(link.server, labPath(link, `/papers/${encodeURIComponent(paper)}/breadcrumbs`), { token: link.token!, body: { person } });
     },
 
-    ask: async ({ link, question, units, grounded, onDelta }) => {
-      const response = await open(link.server, "/v1/ai/ask", { token: link.token!, body: { question, units, grounded } });
+    ask: async ({ link, question, units, grounded, provider, onDelta }) => {
+      // The server picks the address for a provider itself, so a base URL is not sent.
+      const own = provider ? { kind: provider.provider, model: provider.model, key: provider.key } : undefined;
+      const response = await open(link.server, "/v1/ai/ask", { token: link.token!, body: { question, units, grounded, ...(own ? { provider: own } : {}) } });
       let answer: Awaited<ReturnType<Services["ask"]>> | null = null;
       let failure: string | null = null;
       await readLines(response, (line) => {

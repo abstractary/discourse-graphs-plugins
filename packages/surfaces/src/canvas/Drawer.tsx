@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { AvailableUnit, UnitsAvailable, UnitsSegment } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, Mark, plain } from "../shared/ui.tsx";
+import { Highlighted, Icon, Mark } from "../shared/ui.tsx";
 
 /**
  * The units waiting to go on this canvas, in a drawer that rises from under
@@ -177,7 +177,7 @@ export const Drawer = ({
                         >
                           <span className="drawer-check" aria-hidden="true">{selected.includes(unit.id) ? <Icon name="check" /> : null}</span>
                           <span className="chip" data-base={unit.base ?? "none"}>{unit.abbreviation ?? "—"}</span>
-                          <span className="drawer-unit-title">{plain(unit.title)}</span>
+                          <span className="drawer-unit-title"><Highlighted text={unit.title} query={query} /></span>
                           <span className="drawer-unit-meta">
                             {unit.links ? <span className="drawer-links" title={`${unit.links} ${unit.links === 1 ? "link" : "links"} to cards on this canvas`}>↔ {unit.links}</span> : null}
                             <Mark credit={unit.credit} />

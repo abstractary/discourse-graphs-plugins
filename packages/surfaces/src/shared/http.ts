@@ -5,24 +5,41 @@ type EventName = SurfaceEvent["event"];
 
 /**
  * The same Connection a frame gets inside a base, over HTTP instead of a
- * MessagePort. The local app's server holds the core; this tab gets a port of
- * its own there, so events reach only this tab.
+ * MessagePort. The local app's server holds the core, and this page gets one
+ * port there, with one event stream that every panel listens to. A browser
+ * keeps only six connections open to a host, so a stream per panel would leave
+ * none for the calls themselves.
  */
-export const connectOverHttp = (route: Connection["route"]): Connection & { close: () => void } => {
+type Hub = { tab: string; stream: EventSource; panels: Set<(message: SurfaceEvent) => void>; next: number };
+let hub: Hub | null = null;
+
+const joinHub = (): Hub => {
+  if (hub) return hub;
   const tab = crypto.randomUUID();
-  const listeners = new Map<EventName, Set<(message: never) => void>>();
   const stream = new EventSource(`/events?tab=${tab}`);
+  const panels = new Set<(message: SurfaceEvent) => void>();
   stream.onmessage = ({ data }) => {
     const message = JSON.parse(data as string) as SurfaceEvent;
+    for (const panel of panels) panel(message);
+  };
+  hub = { tab, stream, panels, next: 0 };
+  return hub;
+};
+
+export const connectOverHttp = (route: Connection["route"]): Connection & { close: () => void } => {
+  const shared = joinHub();
+  const listeners = new Map<EventName, Set<(message: never) => void>>();
+  const deliver = (message: SurfaceEvent) => {
     for (const listener of listeners.get(message.event) ?? []) listener(message as never);
   };
-  let next = 0;
+  shared.panels.add(deliver);
   const call: Call = async (method, params) => {
-    next += 1;
+    // Ids are the page's, since every panel's calls come back on the one port.
+    shared.next += 1;
     const response = await fetch("/rpc", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ tab, id: `h${next}`, method, params }),
+      body: JSON.stringify({ tab: shared.tab, id: `h${shared.next}`, method, params }),
     });
     const answer = (await response.json()) as { ok: boolean; result?: unknown; error?: { message: string } };
     if (!answer.ok) throw new Error(answer.error?.message ?? "Failed");
@@ -30,7 +47,13 @@ export const connectOverHttp = (route: Connection["route"]): Connection & { clos
   };
   return {
     route,
-    close: () => stream.close(),
+    close: () => {
+      shared.panels.delete(deliver);
+      if (shared.panels.size === 0 && hub === shared) {
+        shared.stream.close();
+        hub = null;
+      }
+    },
     call,
     on: (name, listener) => {
       const set = listeners.get(name) ?? new Set();

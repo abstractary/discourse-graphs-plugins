@@ -1,14 +1,44 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasDiff, HolonCanvas, HolonEvent, ReleaseSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, plain } from "../shared/ui.tsx";
-import { BaseChip, Composition, DiffView, Flag, Preview, counted, when } from "../holon/parts.tsx";
+import { Icon } from "../shared/ui.tsx";
+import { DiffView, Flag, Preview, counted, when } from "../holon/parts.tsx";
+
+type Scope = "everyone" | "lab" | "mine";
+const SCOPES: { value: Scope; label: string; hint: string }[] = [
+  { value: "everyone", label: "Everyone", hint: "Every canvas this graph holds, from any lab" },
+  { value: "lab", label: "Lab", hint: "Your lab's canvases and your own" },
+  { value: "mine", label: "Mine", hint: "Canvases you made" },
+];
 
 /**
- * The Library's Canvases tab, as the canvas repository: each canvas with its
- * holon, what it holds, its edits and releases, its forks and nesting. Opening
- * a canvas goes to the canvas tab; its versions open in place, so they fit the
- * 300 px sidebar.
+ * A canvas as a picture of itself: every card where it really sits, coloured
+ * by its unit's type, with the links between them. Two canvases with the same
+ * name look different, and a paper's canvas looks unlike a hand-built one.
+ */
+export const Thumb = ({ thumb }: { thumb: RepositoryCanvas["thumb"] }) => {
+  if (thumb.cards.length === 0) return <span className="thumb thumb-empty" aria-hidden="true" />;
+  const pad = Math.max(thumb.width, thumb.height) * 0.04;
+  const centre = (card: RepositoryCanvas["thumb"]["cards"][number]) => [card.x + card.w / 2, card.y + card.h / 2] as const;
+  return (
+    <svg className="thumb" viewBox={`${-pad} ${-pad} ${thumb.width + pad * 2} ${thumb.height + pad * 2}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      {thumb.links.map(([from, to], position) => {
+        const [x1, y1] = centre(thumb.cards[from]!);
+        const [x2, y2] = centre(thumb.cards[to]!);
+        return <line key={position} x1={x1} y1={y1} x2={x2} y2={y2} vectorEffect="non-scaling-stroke" />;
+      })}
+      {thumb.cards.map((card, position) => (
+        <rect key={position} data-base={card.base} x={card.x} y={card.y} width={card.w} height={card.h} rx={Math.min(card.w, card.h) * 0.12} />
+      ))}
+    </svg>
+  );
+};
+
+/**
+ * The Library's Canvases tab: each canvas as a picture of its real graph, its
+ * title, and whether it was read from a PDF or built as a workspace. The scope
+ * narrows the same list, from everyone's canvases to the lab's to your own.
+ * A canvas's history, releases and forks open in place, so they fit a 300 px sidebar.
  */
 export const Repository = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
   const { call, on } = connection;
@@ -16,6 +46,8 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
   const [query, setQuery] = useState("");
   const [privacy, setPrivacy] = useState<"all" | "private" | "lab" | "published">("all");
   const [withGaps, setWithGaps] = useState(false);
+  const [scope, setScope] = useState<Scope>("everyone");
+  const [kind, setKind] = useState<"all" | "paper" | "workspace">("all");
   const [open, setOpen] = useState<string | null>(null);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
@@ -32,11 +64,15 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
     const needle = query.trim().toLowerCase();
     return (canvases ?? []).filter(
       (c) =>
-        (!needle || c.title.toLowerCase().includes(needle) || c.holon?.title.toLowerCase().includes(needle) || c.people.some((p) => p.toLowerCase().includes(needle))) &&
+        (!needle || c.title.toLowerCase().includes(needle) || c.paper?.toLowerCase().includes(needle) || c.people.some((p) => p.toLowerCase().includes(needle))) &&
+        // Each scope holds the one inside it: yours are part of the lab's, and the lab's part of everyone's.
+        (scope === "everyone" || c.mine || (scope === "lab" && Boolean(c.lab))) &&
+        (kind === "all" || c.kind === kind) &&
         (privacy === "all" || c.privacy === privacy) &&
         (!withGaps || c.gaps > 0),
     );
-  }, [canvases, query, privacy, withGaps]);
+  }, [canvases, query, privacy, withGaps, scope, kind]);
+  const inScope = (value: Scope): number => (canvases ?? []).filter((c) => value === "everyone" || c.mine || (value === "lab" && Boolean(c.lab))).length;
   const titleOf = (id: string) => canvases?.find((c) => c.id === id)?.title ?? "a canvas";
 
   const show = (id: string) => void call("canvas.show", { id }).catch(report);
@@ -63,10 +99,24 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
           <button type="button" data-dg="canvases-create" onClick={() => void create()}>Create</button>
         </div>
       ) : null}
+      {(canvases?.length ?? 0) > 0 ? (
+        <div className="repo-scope" role="group" aria-label="Whose canvases" data-dg="canvases-scope">
+          {SCOPES.map((item) => (
+            <button key={item.value} type="button" aria-pressed={scope === item.value} title={item.hint} data-dg={`scope-${item.value}`} onClick={() => setScope(item.value)}>
+              {item.label} <span>{inScope(item.value)}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
       {(canvases?.length ?? 0) > 3 ? (
         <>
-          <input className="cvs-search" data-dg="canvases-search" aria-label="Find a canvas" placeholder="Find by title, holon or person" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input className="cvs-search" data-dg="canvases-search" aria-label="Find a canvas" placeholder="Find by title, paper or person" value={query} onChange={(e) => setQuery(e.target.value)} />
           <div className="repo-filters">
+            <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} aria-label="Kind of canvas" data-dg="canvases-kind">
+              <option value="all">Any kind</option>
+              <option value="paper">Read from a PDF</option>
+              <option value="workspace">Workspaces</option>
+            </select>
             <select value={privacy} onChange={(e) => setPrivacy(e.target.value as typeof privacy)} aria-label="Privacy">
               <option value="all">Any privacy</option>
               <option value="private">Private</option>
@@ -83,14 +133,16 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
         {shown.map((c) => (
           <li key={c.id} data-open={open === c.id}>
             <div className="repo-row">
-              <button type="button" className="repo-main" data-dg={`canvases-open-${c.title}`} onClick={() => show(c.id)}>
+              <button type="button" className="repo-main" data-dg={`canvases-open-${c.title}`} data-kind={c.kind} onClick={() => show(c.id)}>
+                <Thumb thumb={c.thumb} />
+                <span className="repo-text">
                 <span className="cvs-title">{c.title}</span>
-                <span className="repo-holon">
-                  {c.holon ? <><BaseChip base={c.holon.ref.level} /> <span>{plain(c.holon.title)}</span></> : <span className="cvs-meta">Not part of the holarchy</span>}
+                <span className="repo-kind" data-kind={c.kind} data-dg={`repo-kind-${c.title}`} title={c.kind === "paper" ? `Made by reading ${c.paper ?? "a PDF"}. It holds that paper's units.` : "Built by hand to work out an argument."}>
+                  <Icon name={c.kind === "paper" ? "pdf" : "canvas"} /> {c.kind === "paper" ? "From a PDF" : "Workspace"}
+                  <span className="cvs-meta"> · {c.mine ? "yours" : c.by}{c.lab ? ` · ${c.lab}` : ""}</span>
                 </span>
-                <Composition units={c.units} />
                 <span className="cvs-meta" data-dg={`repo-meta-${c.title}`}>
-                  {counted(c.cards, "card")} · {counted(c.edits, "edit")} · {c.releases.length ? `${counted(c.releases.length, "release")}, latest ${c.releases.at(-1)!.name}` : "no releases"}
+                  {counted(c.cards, "card")} · {c.releases.length ? `${counted(c.releases.length, "release")}, latest ${c.releases.at(-1)!.name}` : "no releases"}
                   {c.forkOf ? ` · fork of ${c.forkOf.title} ${c.forkOf.release}` : ""}
                   {c.forks ? ` · ${counted(c.forks, "fork")}` : ""}
                   {c.nested.length ? ` · holds ${counted(c.nested.length, "canvas")}` : ""}
@@ -100,6 +152,7 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
                 <span className="repo-tags">
                   <span className="hv-privacy-dot" data-level={c.privacy} /> {c.privacy === "lab" ? "Lab" : c.privacy === "published" ? "Published" : "Private"}
                   {c.gaps ? <Flag name={`${c.gaps} with gaps`} /> : null}
+                </span>
                 </span>
               </button>
               <button type="button" className="repo-toggle" aria-expanded={open === c.id} aria-label={`Versions of ${c.title}`} title="History, releases and forks" onClick={() => setOpen(open === c.id ? null : c.id)} data-dg={`versions-${c.title}`}>

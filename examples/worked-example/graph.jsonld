@@ -176,6 +176,48 @@
    "@id": "dgp:informs",
    "@type": "@id",
    "@container": "@set"
+  },
+  "versionCid": "dgp:versionCid",
+  "steps": {
+   "@id": "dgp:steps",
+   "@container": "@list"
+  },
+  "parameters": {
+   "@id": "dgp:parameters",
+   "@type": "@json"
+  },
+  "materials": {
+   "@id": "dgp:materials",
+   "@container": "@set"
+  },
+  "hypothesis": "dgp:hypothesis",
+  "design": "dgp:design",
+  "variables": {
+   "@id": "dgp:variables",
+   "@type": "@json"
+  },
+  "sampleSize": {
+   "@id": "dgp:sampleSize",
+   "@type": "xsd:integer"
+  },
+  "preregistration": {
+   "@id": "dgp:preregistration",
+   "@type": "@id"
+  },
+  "condition": "dgp:condition",
+  "deviations": {
+   "@id": "dgp:deviations",
+   "@container": "@set"
+  },
+  "seeAlso": {
+   "@id": "http://www.w3.org/2000/01/rdf-schema#seeAlso",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "license": "schema:license",
+  "openalex": {
+   "@id": "schema:sameAs",
+   "@type": "@id"
   }
  },
  "@graph": [
@@ -223,6 +265,10 @@
    ],
    "conditions": [
     "Discourse graph exports of 11 and 13 February 2026"
+   ],
+   "design": "observational",
+   "seeAlso": [
+    "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd1-conversion-rate/README.md"
    ]
   },
   {
@@ -240,6 +286,10 @@
    ],
    "conditions": [
     "Discourse graph exports of 11 and 13 February 2026"
+   ],
+   "design": "observational",
+   "seeAlso": [
+    "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd7-student-onboarding/README.md"
    ]
   },
   {
@@ -255,7 +305,8 @@
    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
    "path": "src/calculate_metrics.py",
    "sourceCid": "bafkreig3f33fw5hieqxm46bcsrwu4xad34vz7qu6xrv4rypwvktegyhrru",
-   "language": "python"
+   "language": "python",
+   "license": "CC-BY-4.0"
   },
   {
    "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
@@ -270,7 +321,8 @@
    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
    "path": "src/parse_jsonld.py",
    "sourceCid": "bafkreihd4fi2ahdpjeraydfxgyid52bugtk7l3fan5xdte6ybygcwsdf5u",
-   "language": "python"
+   "language": "python",
+   "license": "CC-BY-4.0"
   },
   {
    "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b",
@@ -285,7 +337,8 @@
    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
    "path": "src/parse_roam_json.py",
    "sourceCid": "bafkreibgtgdom3urmydszkcmsgi3xy6tapfr7plow5fq46ptkcok4ry76e",
-   "language": "python"
+   "language": "python",
+   "license": "CC-BY-4.0"
   },
   {
    "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2s2b",
@@ -300,7 +353,8 @@
    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
    "path": "src/generate_visualizations.py",
    "sourceCid": "bafkreieu75fxm4al3trcrjo6rr2qtkvextf2qo2eox6xicxy6wtb6jm3ri",
-   "language": "python"
+   "language": "python",
+   "license": "CC-BY-4.0"
   },
   {
    "id": "at://did:web:records.example/science.mira.protocol/3merpnmdk2t2b",
@@ -317,7 +371,8 @@
     "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b",
     "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2s2b"
    ],
-   "version": "08493f6"
+   "version": "08493f6",
+   "versionCid": "bafkreihck6y2kcxzvcpihb5jfsr3f7pzxuyd4jya22r4onmdcipbj4vzjm"
   },
   {
    "id": "at://did:web:records.example/science.mira.study/3merpnmdk2u2b",
@@ -359,6 +414,9 @@
    "status": "completed",
    "agents": [
     "https://orcid.org/0000-0002-0286-5310"
+   ],
+   "seeAlso": [
+    "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd1-conversion-rate/README.md"
    ]
   },
   {
@@ -536,7 +594,8 @@
    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
    "path": "src/handoff_visualizations.py",
    "sourceCid": "bafkreig43yuujojtlm73ot5bqrriocrzov7436g6otpxgfgpfab3ipky74",
-   "language": "python"
+   "language": "python",
+   "license": "CC-BY-4.0"
   },
   {
    "id": "at://did:web:records.example/science.mira.protocol/3merpnmdk3a2b",
@@ -554,7 +613,8 @@
     "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2s2b",
     "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk372b"
    ],
-   "version": "08493f6"
+   "version": "08493f6",
+   "versionCid": "bafkreig3n3s2sxjl67k2aofwmowyilahbw33ti4d274rnhn4cz47ol6a4i"
   },
   {
    "id": "at://did:web:records.example/science.mira.study/3merpnmdk3b2b",
@@ -601,6 +661,9 @@
    "status": "completed",
    "agents": [
     "https://orcid.org/0000-0002-0286-5310"
+   ],
+   "seeAlso": [
+    "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd5-issue-funnel/README.md"
    ]
   },
   {
@@ -753,7 +816,8 @@
    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
    "path": "src/experiment_lifecycle_visualizations.py",
    "sourceCid": "bafkreihmag3frkcwpim6frifl76euwrfnk3tzqzgofh4v7jdhsejxmulzi",
-   "language": "python"
+   "language": "python",
+   "license": "CC-BY-4.0"
   },
   {
    "id": "at://did:web:records.example/science.mira.protocol/3merpnmdk3m2b",
@@ -770,7 +834,8 @@
     "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
     "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b"
    ],
-   "version": "08493f6"
+   "version": "08493f6",
+   "versionCid": "bafkreiacbp5x6dddzkh7qd36kwb46x7vbacvdsfp2y7s7luug5sg5hcfvy"
   },
   {
    "id": "at://did:web:records.example/science.mira.study/3merpnmdk3n2b",
@@ -812,6 +877,9 @@
    "status": "completed",
    "agents": [
     "https://orcid.org/0000-0002-0286-5310"
+   ],
+   "seeAlso": [
+    "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd6-time-to-result/README.md"
    ]
   },
   {
@@ -939,7 +1007,8 @@
    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
    "path": "src/student_timeline_analysis.py",
    "sourceCid": "bafkreigwbkwgbsj7gifl3eivf3ary5cev23gaa2yretbxxhw7umx7dj6ie",
-   "language": "python"
+   "language": "python",
+   "license": "CC-BY-4.0"
   },
   {
    "id": "at://did:web:records.example/science.mira.protocol/3merpnmdk3x2b",
@@ -953,7 +1022,8 @@
    "implementedBy": [
     "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk3w2b"
    ],
-   "version": "08493f6"
+   "version": "08493f6",
+   "versionCid": "bafkreiepl6pcesxss4y66lsaeynajuqjfsswskpvbd6dr4mfrxvz3xnziu"
   },
   {
    "id": "at://did:web:records.example/science.mira.study/3merpnmdk3y2b",
@@ -980,6 +1050,9 @@
    "status": "completed",
    "agents": [
     "https://orcid.org/0000-0002-0286-5310"
+   ],
+   "seeAlso": [
+    "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd7-student-onboarding/README.md"
    ]
   },
   {
@@ -1365,6 +1438,7 @@
     "did:web:lab.records.example"
    ],
    "created": "2026-11-06T00:00:00.000Z",
+   "versionCid": "bafkreihldw5b3cwhj5vkwpztcvu7n2d3frxi2gu3vgjn4vlwumwhibzbku",
    "provenance": {
     "method": "aiGenerated",
     "agent": "MIRA extraction app (demo replay)"
@@ -1379,6 +1453,7 @@
     "did:web:lab.records.example"
    ],
    "created": "2026-11-06T00:00:00.000Z",
+   "versionCid": "bafkreidram5xzd7ctfd3djxlyucy3wh2j26hffb33tvczmi3k76rwrfnr4",
    "provenance": {
     "method": "aiGenerated",
     "agent": "MIRA extraction app (demo replay)"
@@ -1393,6 +1468,7 @@
     "did:web:lab.records.example"
    ],
    "created": "2026-11-06T00:00:00.000Z",
+   "versionCid": "bafkreiatgdxvd7gklgtlmhcxvxrowau6r3hkml4hsqm7j5duk6zo4ncmde",
    "provenance": {
     "method": "aiGenerated",
     "agent": "MIRA extraction app (demo replay)"
@@ -1407,6 +1483,7 @@
     "did:web:lab.records.example"
    ],
    "created": "2026-11-06T00:00:00.000Z",
+   "versionCid": "bafkreiczk5m3gfyp4jgzavcasdn2on67rf7jgijmyev7kucnh6whe6qw4q",
    "provenance": {
     "method": "aiGenerated",
     "agent": "MIRA extraction app (demo replay)"

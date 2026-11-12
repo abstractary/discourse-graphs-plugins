@@ -87,7 +87,7 @@ The first time it loads, it asks whether you're joining a lab. Then try this:
 2. Open a paper, and press **Tidy**.
 3. Click a card, then open the context panel to see its provenance.
 4. Select a few cards and press **Export**.
-5. Run **Upload a paper**, and try `demo/papers/lupus-nephritis-prediction.pdf` with **Demo replay**.
+5. Run **Upload a paper**, choose `demo/papers/lupus-nephritis-prediction.pdf` with **Demo replay**, and press **Extract graph**.
 6. To try a lab, run **Join or start a lab** in one app, and join with its identifier from the other.
 7. Run **Start walkthrough** for a guided tour of the basics.
 
@@ -107,6 +107,8 @@ AI mode quotes the closest units word for word until a model is connected. To co
 - Extraction sends the file to the server you pick.
 - A paper with a DOI has its extraction and DOI kept on the Discourse Graphs service. The file isn't kept. With no DOI, nothing is kept there.
 - Sharing with a lab sends what's on shared canvases, and the original file only if you say so.
+- Ask AI with your own key sends your question and the units on that canvas to the provider you chose: Anthropic (`api.anthropic.com`), an OpenAI-compatible address you set (such as `api.openai.com`, `openrouter.ai`, or a model server on your own computer), or Google Gemini (`generativelanguage.googleapis.com`). The key is kept in Obsidian's keychain and is sent only to that provider, or to your lab's server if you choose that route. You need your own account with the provider, which may charge you.
+- Reading a PDF or a Jupyter notebook sends nothing.
 
 ## How it's built
 
@@ -178,6 +180,10 @@ Because both plugins share one core, a skill written once works in both. [docs/a
 
 | Read this | For |
 |---|---|
+| [User guide](docs/guide/README.md) | How the schema works and how to use every panel, with pictures |
+| [Schema reference](docs/guide/schema.md) | Every type, field, link and rule |
+| [LLM and MCP spec](docs/llm-and-mcp-spec.md) | Own-key AI as built, and the design for the MCP server, Zotero and Jupyter |
+| [Interface audit](docs/ui-audit.md) | What was found in the Obsidian interface, what was fixed and what is open |
 | [Architecture](docs/ARCHITECTURE.md) | Modules, boundaries and why they're where they are |
 | [Contract](docs/CONTRACT.md) | Records, identity, the host contract, and settled decisions |
 | [Services](docs/services.md) | The server API: compute, graph store, labs, sync, AI |

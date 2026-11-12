@@ -34,7 +34,7 @@ export const useHolonCanvas = ({
 }) => {
   const { call, on, route } = connection;
   const [info, setInfo] = useState<CanvasHolon | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>({ holonGesture: "button" });
+  const [prefs, setPrefs] = useState<Prefs>({ holonGesture: "button", linkDelete: "ask", captureKey: "\\", notebookText: false });
   const [lit, setLit] = useState<string[]>([]);
 
   const load = useCallback(async () => {
@@ -140,14 +140,7 @@ export const HolonBar = ({
               </span>
             );
           })
-        ) : (
-          <span className="holon-loose">
-            Not part of the holarchy yet
-            <button type="button" className="holon-link" aria-expanded={menu === "tie"} onClick={() => setMenu(menu === "tie" ? null : "tie")} data-dg="holon-tie">
-              Make it a holon's canvas <Icon name="chevron" />
-            </button>
-          </span>
-        )}
+        ) : null}
       </nav>
       <span className="holon-end">
         {lit.length ? (
@@ -177,14 +170,10 @@ export const HolonBar = ({
       ) : null}
       {menu === "holon" ? (
         <div className="popover holon-menu" role="menu" aria-label="Holon options">
-          <p>Open a card's holon with</p>
-          {GESTURES.map((g) => (
-            <button key={g.value} type="button" role="menuitemradio" aria-checked={prefs.holonGesture === g.value} title={g.hint} onClick={() => { setGesture(g.value); setMenu(null); }} data-dg={`gesture-${g.value}`}>
-              <span className="holon-radio" aria-hidden="true">{prefs.holonGesture === g.value ? "●" : "○"}</span> {g.label}
-            </button>
-          ))}
-          <hr />
           <button type="button" role="menuitem" onClick={() => { setMenu(null); void call("panel.open", { surface: "boundary" }).catch(report); }}>Show the boundary panel</button>
+          {info.ref ? null : (
+            <button type="button" role="menuitem" onClick={() => setMenu("tie")} data-dg="holon-tie">Make this the canvas of a question or claim…</button>
+          )}
           {info.ref ? (
             <button type="button" role="menuitem" onClick={() => tie(null)} data-dg="holon-untie">Stop being this holon's canvas</button>
           ) : null}

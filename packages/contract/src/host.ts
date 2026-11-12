@@ -104,12 +104,17 @@ export type SurfaceName =
   | "boundary"
   /** A PDF reader. `id` is the file's asset ref; none shows the choice of PDFs. */
   | "pdf"
+  /** Unit search, in a side panel. */
+  | "search"
+  /** The quick finder, in a pop-up: find a unit, then open it, link it or put it on the canvas. */
+  | "find"
   | "context"
   | "upload"
   | "welcome"
   | "node"
   | "view"
   | "grammar"
+  | "run"
   | "check";
 export type SurfaceRoute = {
   surface: SurfaceName;

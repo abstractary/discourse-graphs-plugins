@@ -1,6 +1,6 @@
 # The process ontology
 
-The process layer of a discourse graph, as dg-contract writes it. Draft, 11 November 2026.
+The process layer of a discourse graph, as dg-contract writes it. Draft 0.2, 12 November 2026. For a plain-language account, see the [user guide](../docs/guide/README.md) and the [schema reference](../docs/guide/schema.md).
 
 It extends the base schema in [DiscourseGraphs/schemas](https://github.com/DiscourseGraphs/schemas) (`dg_base`, `dg_core`) and leaves it unchanged.
 
@@ -20,7 +20,31 @@ It extends the base schema in [DiscourseGraphs/schemas](https://github.com/Disco
 | `dg_process.shacl.ttl` | SHACL shapes. Violations mean the data is wrong. Warnings mark gaps such as ungrounded evidence, an unsupported claim, a run in no study, or an unpinned code version |
 | `dg_process.context.jsonld` | The JSON-LD context for `toProcessJsonLd` in `packages/core/src/jsonld.ts` |
 | `mappings.sssom.tsv` | SSSOM mappings to PROV-O, MIRA, schema.org (RO-Crate, Workflow Run RO-Crate 0.6), Bioschemas and OBI/IAO |
-| `validate.py` | Runs the shapes over an export: `python3 -I ontology/validate.py examples/worked-example/graph.jsonld` (needs `rdflib`, `pyshacl`) |
+| `validate.py` | Runs the shapes over an export: `python3 -I ontology/validate.py examples/worked-example/graph.jsonld` (needs `rdflib`, `pyshacl`). With `--self-test` it runs the cases below. It also reports keys the context doesn't define, which JSON-LD would drop silently |
+| `tests/cases.json` | One deliberately wrong graph for each rule, with the rule it must break. Run by `validate.py --self-test` and by `test/shapes.test.ts` |
+
+## What changed in 0.2
+
+An audit on 12 November 2026 ran the shapes against deliberately wrong graphs. Most rules fired. These didn't, or weren't there:
+
+| Gap found | Fix |
+|---|---|
+| A run that ended before it started passed | `run-time-order` |
+| A pin whose target had changed passed, though the app flags it as drift | `run-code-drift`, `run-protocol-drift` and `evidence-output-drift`, as SPARQL constraints. The export now writes each protocol's current version CID so drift can be checked in RDF |
+| A bare ORCID iD became a relative IRI | The export writes `https://orcid.org/…`, and `run-agents` checks it |
+| A run could support a claim, and evidence could support a question | `argument-subject`, `argument-object`, `addresses-subject` |
+| A node typed as both a run and a plan was caught only by Python code | `run-not-plan`, in SHACL |
+| An output derived from a run passed | `output-derivedFrom-target` |
+| Results couldn't say which rule they broke | Every rule is a named shape with its own message |
+| A misspelt key vanished from the graph without a word | The validator lists keys the context doesn't define |
+| Nothing ran the validator | `npm run validate:ontology`, a CI job, and the same rules in `packages/core/src/shapes.ts`, held together by shared test cases |
+| Protocol, Study and Run had almost no fields of their own | `steps`, `materials`, `parameters`; `hypothesis`, `design`, `variables`, `sampleSize`, `preregistration`; `condition`, `deviations` |
+| CIDs were accepted at 21 characters | The pattern now asks for the full 59 |
+
+Still open:
+- **Pins and PROV.** `dgp:follows`, `dgp:instrument` and `dgp:used` point at a pin, not at the thing itself, so a plain PROV reader doesn't see `prov:used`. Either the export should also write the direct PROV triples, or `dgp:Pin` should be declared a `prov:Influence`.
+- **Axioms on `dg_core` terms.** This file says `dg:Evidence` is a `prov:Entity`. That belongs in a separate alignment file, so importing the process layer doesn't change the core.
+- **`dgp:steps` is an RDF list.** SHACL can't easily check that each member is a string.
 
 ## Choices
 
@@ -49,13 +73,6 @@ It extends the base schema in [DiscourseGraphs/schemas](https://github.com/Disco
 
 **OBI and IAO.** Their IRIs are annotations, never keys.
 
-## What this borrows from the W3C Holon Graph work
+## Holons
 
-The Holon Graph Community Group's architecture is a draft with a single editor. Its files disagree on several terms. Its namespace isn't settled.
-
-**Borrowed patterns:**
-- A view only projects the graph and never writes back.
-- Containment doesn't have to be exclusive.
-- Shapes act as a holon's boundary.
-
-**Not adopted:** its vocabulary.
+Earlier drafts borrowed patterns from the W3C Holon Graph Community Group's draft. On 12 November 2026 the direction changed: the layers are finite (everyone, lab, person, canvas), a unit is a leaf, and views narrow by scope. Nothing in the ontology depended on the holon vocabulary, so nothing here changed.

@@ -258,3 +258,37 @@ test('an OpenRouter error inside a 200 stream becomes an error line', async (t) 
   assert.equal(lastLine(lines).type, 'error');
   assert.ok(!lines.some((line) => line.type === 'result'));
 });
+
+test("a member's own key is used for that one question, at the provider's own address", async (t) => {
+  const seen: Seen = {};
+  const anthropicBaseUrl = await fakeModel(t, anthropicStream(['From ', 'your key [g1].']), seen);
+  // The server has no key of its own here.
+  const server = await startTestServer(t, { anthropicBaseUrl });
+  const lab = await createLab(server);
+  const lines = await ask(server, lab.adminToken, {
+    question: 'What predicts nephritis?',
+    units,
+    provider: { kind: 'anthropic', model: 'claude-haiku-5-5', key: 'members-own-key', baseUrl: 'http://attacker.example' },
+  });
+  const result = lastLine(lines);
+  assert.equal(result.mode, 'model');
+  assert.equal(result.model, 'claude-haiku-5-5');
+  assert.deepEqual(result.citations, ['g1']);
+  assert.equal(seen.headers?.['x-api-key'], 'members-own-key');
+  assert.equal(seen.body.model, 'claude-haiku-5-5');
+  assert.ok(!JSON.stringify(lines).includes('members-own-key'), 'the key is never echoed');
+
+  const bad = lastLine(await ask(server, lab.adminToken, { question: 'x', units, provider: { kind: 'other', model: 'm', key: 'k' } }));
+  assert.equal(bad.type, 'error');
+});
+
+test("a member's own Gemini key streams through the Gemini format", async (t) => {
+  const seen: Seen = {};
+  const geminiBaseUrl = await fakeModel(t, sse([{ candidates: [{ content: { parts: [{ text: 'Low C3 [g2].' }] } }] }]), seen);
+  const server = await startTestServer(t, { geminiBaseUrl });
+  const lab = await createLab(server);
+  const result = lastLine(await ask(server, lab.adminToken, { question: 'C3?', units, provider: { kind: 'gemini', model: 'gemini-3.8-flash', key: 'g-key' } }));
+  assert.deepEqual([result.mode, result.answer], ['model', 'Low C3 [g2].']);
+  assert.equal(seen.headers?.['x-goog-api-key'], 'g-key');
+  assert.match(String(seen.url), /models\/gemini-3\.8-flash:streamGenerateContent\?alt=sse$/);
+});

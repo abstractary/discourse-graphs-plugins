@@ -1,7 +1,7 @@
 import type { DgRecord } from "@dg/contract/records.ts";
 import { liveCanvasItems, revise, staysLocal } from "@dg/contract/records.ts";
 import type { LabLink } from "@dg/contract/services.ts";
-import type { AiStatus, BreadcrumbDefault, IdentityView, LabView } from "@dg/contract/surface.ts";
+import type { BreadcrumbDefault, IdentityView, LabView } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 
 const BREADCRUMB_KEY = "breadcrumb-default";
@@ -20,7 +20,7 @@ export const labFeature = (
     /** Shown in the base, because the panel that was open has just closed. */
     askBreadcrumb?: (paper: { id: string; title: string }) => void;
   },
-): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "paper.getFile" | "canvas.share" | "ai.status" | "ai.ask"> & {
+): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "paper.getFile" | "canvas.share"> & {
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
   canvasClosed: (args: { id: string }) => Promise<void>;
@@ -108,20 +108,6 @@ export const labFeature = (
     }
   };
 
-  const unitsOnCanvas = (canvas: string) =>
-    liveCanvasItems({ graph: context.graph(), canvas }).flatMap(({ item }) => {
-      const id = (item as { dg?: { node?: string } }).dg?.node;
-      const node = id ? context.nodeOf(id) : undefined;
-      if (!node) return [];
-      return [{
-        id: node.id,
-        type: context.typeOf(node.type)?.label ?? "Unit",
-        title: node.title,
-        ...(node.source?.description ? { description: node.source.description } : {}),
-        ...(node.source?.anchor ? { anchor: node.source.anchor } : {}),
-      }];
-    });
-
   return {
     shareable,
     take,
@@ -172,27 +158,6 @@ export const labFeature = (
       if (!lab) throw new Error("Join a lab first.");
       if (canvas) await context.put([revise({ record: canvas, changes: { shared: lab.did }, by: context.me() })]);
       return null;
-    },
-    "ai.status": async (): Promise<AiStatus> => {
-      const link = context.services ? await context.services.link() : null;
-      if (!link?.token) return { ready: false, why: "AI comes with a lab. Join one, or set one up, from Canvases." };
-      try {
-        const info = await services().check(link.server);
-        return { ready: true, ...(info.ai ?? {}) };
-      } catch {
-        return { ready: false, why: "Couldn't reach your lab's server." };
-      }
-    },
-    "ai.ask": async ({ canvas, question, grounded, requestId }) => {
-      const link = await services().link();
-      if (!link?.token) throw new Error("AI comes with a lab. Join one, or set one up, from Canvases.");
-      return services().ask({
-        link,
-        question,
-        units: unitsOnCanvas(canvas),
-        ...(grounded && grounded.length > 0 ? { grounded } : {}),
-        onDelta: (text) => context.send({ event: "ai-delta", requestId, text }),
-      });
     },
     canvasClosed: async ({ id }) => {
       const canvas = context.canvasOf(id);

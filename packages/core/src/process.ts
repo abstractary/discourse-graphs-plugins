@@ -248,7 +248,11 @@ export const planNotebookImport = async ({
 
   // Code: the same repo and path is the same unit; changed sources are a new version of it.
   const facts = { ...(repo ? { repo } : {}), ...(commit ? { commit } : {}), path, sourceCid, ...(language.name ? { language: language.name } : {}) };
-  const existingCode = nodes.find((node) => node.type === types.code.id && node.facts?.path === path && node.facts?.repo === repo);
+  // The same repo and path is the same unit. Failing that, the same sources are: a notebook read from a
+  // repository and again from a copy in the base is one piece of code, not two.
+  const existingCode =
+    nodes.find((node) => node.type === types.code.id && node.facts?.path === path && node.facts?.repo === repo) ??
+    nodes.find((node) => node.type === types.code.id && node.facts?.sourceCid === sourceCid);
   let code: NodeRecord;
   if (!existingCode) {
     code = createNode({ ...stamp, title: titleOf(notebook, path), type: types.code.id, facts: { ...facts, provenance: { method: "imported", agent: "nbformat import" } } });
@@ -371,7 +375,36 @@ export const provenanceOf = (graph: FoldedGraph, id: DgId): ProvenanceLinks => {
     }
     if (record.target === id && kind === "grounds" && fromBase === "run" && toBase === "evidence") prov.isGroundedIn ??= record.source;
   }
+  // Evidence read from a paper rests on that paper, whether or not the extraction drew the link.
+  if (node?.source?.paper && baseOf(graph, node) === "evidence" && !prov.sourceDocument) {
+    const own = paperSource(graph, node.source.paper);
+    if (own) prov.sourceDocument = own;
+  }
   return prov;
+};
+
+/** The source unit that stands for a paper itself, among the sources it cites. */
+export const paperSource = (graph: FoldedGraph, paper: DgId): DgId | undefined => {
+  let fallback: DgId | undefined;
+  for (const record of graph.documents.values()) {
+    if (record.kind !== "node" || record.removed || record.source?.paper !== paper || baseOf(graph, record) !== "source") continue;
+    if (record.source.own) return record.id;
+    fallback ??= record.id;
+  }
+  return fallback;
+};
+
+/** Every protocol a run followed. A lab's run pins one; a run a paper reports often names several methods. */
+export const protocolsFollowed = (graph: FoldedGraph, run: DgId): Pin[] => {
+  const node = nodeIn(graph, run);
+  const pins: Pin[] = node?.prov?.follows ? [node.prov.follows] : [];
+  for (const { record, state } of graph.relations.values()) {
+    if (state === "rejected" || state === "withdrawn" || record.source !== run) continue;
+    const type = graph.documents.get(record.type) as RelationTypeRecord | undefined;
+    if (type?.base !== "follows" || baseOf(graph, nodeIn(graph, record.target)) !== "protocol") continue;
+    if (!pins.some((pin) => pin.uri === record.target)) pins.push({ uri: record.target });
+  }
+  return pins;
 };
 
 export type Pinned = { id: DgId; pinned?: string; current?: string; changed: boolean; missing: boolean };
@@ -384,6 +417,8 @@ export type EvidenceChain = {
   study?: DgId;
   question?: DgId;
   protocol?: Pinned;
+  /** Every protocol the run followed, the pinned one first. */
+  protocols: Pinned[];
   code: Pinned[];
   source?: DgId;
   /** Lab evidence with neither an output nor a run, and no source either. */
@@ -427,9 +462,8 @@ export const evidenceChain = (graph: FoldedGraph, evidence: DgId, protocols: Map
   const run = nodeIn(graph, runId);
   const runProv = run ? provenanceOf(graph, run.id) : {};
   const study = nodeIn(graph, runProv.partOf);
-  const protocol = runProv.follows
-    ? check(runProv.follows.uri, runProv.follows.cid, protocols.get(runProv.follows.uri), Boolean(nodeIn(graph, runProv.follows.uri)))
-    : undefined;
+  const followed = (run ? protocolsFollowed(graph, run.id) : []).map((pin) => check(pin.uri, pin.cid, protocols.get(pin.uri), Boolean(nodeIn(graph, pin.uri))));
+  const protocol = followed[0];
   const code = (runProv.instrument ?? []).map((pin) => {
     const record = nodeIn(graph, pin.uri);
     return check(pin.uri, pin.cid, record?.facts?.sourceCid, Boolean(record));
@@ -442,6 +476,7 @@ export const evidenceChain = (graph: FoldedGraph, evidence: DgId, protocols: Map
     ...(study ? { study: study.id } : {}),
     ...(study?.prov?.question ? { question: study.prov.question } : {}),
     ...(protocol ? { protocol } : {}),
+    protocols: followed,
     code,
     ...(prov.sourceDocument ? { source: prov.sourceDocument } : {}),
     ungrounded: !outputs.length && !run && !prov.sourceDocument,
@@ -486,7 +521,7 @@ export const claimSupport = (graph: FoldedGraph, claim: DgId, protocols: Map<DgI
   const supporting = argumentsInto(graph, claim, "supports").map((id) => evidenceChain(graph, id, protocols));
   const opposing = argumentsInto(graph, claim, "opposes").map((id) => evidenceChain(graph, id, protocols));
   const runs = [...new Set(supporting.flatMap((chain) => (chain.run ? [chain.run] : [])))];
-  const protocolIds = [...new Set(supporting.flatMap((chain) => (chain.protocol ? [chain.protocol.id] : [])))];
+  const protocolIds = [...new Set(supporting.flatMap((chain) => chain.protocols.map((item) => item.id)))];
   const runsByProtocol = new Map<DgId, Set<DgId>>();
   for (const chain of supporting) {
     if (!chain.protocol || !chain.run) continue;
@@ -505,7 +540,7 @@ export const claimSupport = (graph: FoldedGraph, claim: DgId, protocols: Map<DgI
       singleRun: supporting.length > 0 && supporting.every((chain) => chain.run) && runs.length === 1,
       replicated: [...runsByProtocol.values()].some((set) => set.size >= 2),
       singleMethod: protocolIds.length === 1 && supporting.length > 1,
-      drift: all.some((chain) => chain.protocol?.changed || chain.code.some((item) => item.changed)),
+      drift: all.some((chain) => chain.protocols.some((item) => item.changed) || chain.code.some((item) => item.changed)),
       staleOutput: all.some((chain) => chain.outputs.some((item) => item.changed || item.missing)),
       failedRuns: [...new Set(all.flatMap((chain) => (chain.runStatus === "failed" && chain.run ? [chain.run] : [])))],
       ungrounded: all.filter((chain) => chain.ungrounded).map((chain) => chain.evidence),

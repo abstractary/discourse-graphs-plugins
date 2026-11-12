@@ -6,7 +6,8 @@ import type { NodeTypeRecord } from "@dg/contract/records.ts";
 import type { CanvasSummary, PdfDocument, PdfMark } from "@dg/contract/surface.ts";
 import { captureChoices } from "@dg/contract/keys.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, plain } from "../shared/ui.tsx";
+import { Highlighted, Icon, plain } from "../shared/ui.tsx";
+import { useFit } from "../canvas/fit.ts";
 import { boxesFor, findQuote, foldText, type Box, type DocText, type TextPiece } from "./quote.ts";
 
 /**
@@ -79,6 +80,9 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [reveal, setReveal] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const filePicker = useRef<HTMLInputElement>(null);
+  const bar = useRef<HTMLElement>(null);
+  // Labels show while they fit, as on the canvas bar.
+  const barFit = useFit(bar, [loaded, ref, marks.length]);
   const pageEls = useRef(new Map<number, HTMLDivElement>());
 
   const report = useCallback((error: unknown) => setProblem(error instanceof Error ? error.message : String(error)), []);
@@ -130,6 +134,27 @@ export const App = ({ connection }: { connection: Connection }) => {
     };
   }, [ref, call, report]);
   useEffect(() => () => loaded?.close(), [loaded]);
+
+  /** Reads the whole paper into a graph: from the saved extraction beside it, or else by asking where to read it. */
+  const [extracting, setExtracting] = useState(false);
+  const extractGraph = useCallback(async () => {
+    if (!ref || !doc || extracting) return;
+    setExtracting(true);
+    try {
+      const saved = await call("paper.saved", { name: doc.name, ref });
+      if (!saved) {
+        await call("dialog.open", { surface: "upload", id: ref });
+        return;
+      }
+      const paper = await call("paper.extract", { ref, saved: true });
+      say(`Read ${paper.units} units and ${paper.relations} links from ${saved.name}.`);
+      await call("canvas.show", { id: paper.canvas });
+    } catch (error) {
+      report(error);
+    } finally {
+      setExtracting(false);
+    }
+  }, [call, doc, extracting, ref, report, say]);
 
   const rereadMarks = useCallback(() => {
     if (!ref) return;
@@ -297,26 +322,52 @@ export const App = ({ connection }: { connection: Connection }) => {
         void add(event.dataTransfer.files[0]);
       }}
     >
-      <header className="pdf-bar">
-        <button type="button" className="pdf-title" aria-haspopup="dialog" aria-expanded={picker} onClick={() => setPicker((on_) => !on_)} data-dg="pdf-picker" title={title}>
+      <header className="pdf-bar" ref={bar} data-fit={barFit}>
+        <button type="button" className="pdf-title" data-fit-min="96" aria-haspopup="dialog" aria-expanded={picker} onClick={() => setPicker((on_) => !on_)} data-dg="pdf-picker" title={title}>
           <span>{ref ? title : "Choose a PDF"}</span>
           <Icon name="chevron" />
         </button>
         {loaded ? (
           <div className="pdf-tools" role="toolbar" aria-label="Reading">
             <span className="pdf-page-at" data-dg="pdf-page">
-              <input aria-label="Page" value={pageNow} onChange={(event) => goTo(Number(event.target.value) || 1)} inputMode="numeric" />
+              <input
+                aria-label="Page"
+                key={pageNow}
+                defaultValue={pageNow}
+                inputMode="numeric"
+                onFocus={(event) => event.target.select()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") goTo(Number((event.target as HTMLInputElement).value) || pageNow);
+                  if (event.key === "Escape") (event.target as HTMLInputElement).value = String(pageNow);
+                }}
+                onBlur={(event) => {
+                  const wanted = Number(event.target.value);
+                  if (wanted && wanted !== pageNow) goTo(wanted);
+                  else event.target.value = String(pageNow);
+                }}
+              />
               <span>of {pageCount}</span>
             </span>
             <button type="button" className="tool" aria-label="Zoom out" title="Zoom out" onClick={() => zoom(1 / STEP)}><Icon name="minus" /></button>
             <button type="button" className="tool pdf-zoom" aria-pressed={fit} title="Fit the page width" onClick={() => setFit(true)} data-dg="pdf-fit">{Math.round(scale * 100)}%</button>
             <button type="button" className="tool" aria-label="Zoom in" title="Zoom in" onClick={() => zoom(STEP)}><Icon name="plus" /></button>
-            <button type="button" className="tool" aria-haspopup="menu" aria-expanded={listOpen} onClick={() => setListOpen((on_) => !on_)} data-dg="pdf-units" title="Units read from this PDF" aria-label={`${marks.length} units read from this PDF`}>
-              <Icon name="marker" /><span className="tool-label">Units</span> <span className="pdf-count">{marks.length}</span>
+            <button type="button" className="tool keep" aria-haspopup="menu" aria-expanded={listOpen} onClick={() => setListOpen((on_) => !on_)} data-dg="pdf-units" title="Units read from this PDF" aria-label={`${marks.length} units read from this PDF`}>
+              <Icon name="marker" /><span className="tool-label">Units</span><span className="pdf-count">{marks.length}</span>
             </button>
           </div>
         ) : null}
-        <span className="pdf-gap" />
+        <span className="pdf-gap" data-fit-min="0" />
+        {ref && doc && doc.ref === ref ? (
+          doc.paper ? (
+            <button type="button" className="tool" onClick={() => void call("canvas.show", { id: doc.paper!.canvas }).catch(report)} data-dg="pdf-canvas" title="Open this paper's canvas">
+              <Icon name="canvas" /><span className="tool-label">Canvas</span>
+            </button>
+          ) : (
+            <button type="button" className="tool" disabled={extracting} onClick={() => void extractGraph()} data-dg="pdf-extract" title="Read the whole paper into a graph of questions, claims and evidence">
+              <Icon name="ai" /><span className="tool-label">{extracting ? "Reading…" : "Extract graph"}</span>
+            </button>
+          )
+        ) : null}
         <button type="button" className="tool" onClick={() => filePicker.current?.click()} data-dg="pdf-add" title="Add a PDF to the vault">
           <Icon name="plus" /><span className="tool-label">Add PDF</span>
         </button>
@@ -531,7 +582,7 @@ const Chooser = ({
   const row = (d: PdfDocument) => (
     <li key={d.ref}>
       <button type="button" aria-current={d.ref === current ? "true" : undefined} onClick={() => onOpen(d.ref)} data-dg={`pdf-open-${d.name}`}>
-        <span className="pdf-doc-title">{d.title}</span>
+        <span className="pdf-doc-title"><Highlighted text={d.title} query={query} /></span>
         <span className="pdf-doc-meta">
           {[d.title !== d.name.replace(/\.pdf$/i, "") ? d.name : null, d.folder, sizeOf(d.size), d.units ? `${d.units} ${d.units === 1 ? "unit" : "units"} read` : null].filter(Boolean).join(" · ")}
         </span>

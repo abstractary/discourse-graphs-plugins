@@ -16,7 +16,8 @@
     "build:local": "node scripts/build-local.mjs",
     "local": "node local/src/main.ts",
     "seed:example": "node local/src/seed.ts",
-    "example": "node examples/worked-example/build.ts"
+    "example": "node examples/worked-example/build.ts",
+    "validate:ontology": "python3 -I ontology/validate.py --self-test && python3 -I ontology/validate.py"
   },
   "devDependencies": {
     "@atproto/crypto": "0.5.7",

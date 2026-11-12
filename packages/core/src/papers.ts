@@ -16,8 +16,8 @@ import {
   type RelationRecord,
   type RelationTypeRecord,
 } from "@dg/contract/records.ts";
-import type { ExtractionGraph } from "@dg/contract/services.ts";
-import type { PaperSummary } from "@dg/contract/surface.ts";
+import type { ExtractedEdge, ExtractedNode, ExtractionGraph } from "@dg/contract/services.ts";
+import type { PaperSummary, SavedExtraction } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 
 type TypeSpec = { label: string; abbreviation: string; base: BaseNodeType; lexicon?: string; color?: string };
@@ -52,6 +52,107 @@ const heightOf = (title: string): number => Math.max(64, 34 + 18 * Math.ceil(tit
 
 const spec = (type: string): TypeSpec => NODE_TYPES[type] ?? { label: type, abbreviation: type.slice(0, 3).toUpperCase(), base: "claim" };
 
+const stemOf = (name: string): string => name.replace(/\.[^.]+$/, "");
+const fromBase64 = (text: string): Uint8Array => Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
+const textOfDataUrl = (dataUrl: string): string => new TextDecoder().decode(fromBase64(dataUrl.split(",")[1] ?? ""));
+const bareDoi = (text: string | undefined): string | undefined => text?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").trim() || undefined;
+
+const surname = (name: string): string => name.trim().split(/\s+/).pop() ?? name;
+/** A paper in a few words, the way it's cited in conversation: "Carroll 2020", "Dambre et al. 2012". */
+export const paperLabel = (paper: { title: string; authors: string[]; filename: string; doi?: string }, sourceText = ""): string => {
+  const [first, second, ...rest] = paper.authors;
+  const who = !first ? "" : rest.length ? `${surname(first)} et al.` : second ? `${surname(first)} & ${surname(second)}` : surname(first);
+  const arxiv = /arxiv\.(\d{2})\d{2}\./i.exec(paper.doi ?? "")?.[1];
+  const year = /(?:^|[^\d])((?:19|20)\d{2})(?:[^\d]|$)/.exec(paper.filename)?.[1] ?? (arxiv ? `20${arxiv}` : undefined) ?? [...sourceText.matchAll(/\b((?:19|20)\d{2})\b/g)].pop()?.[1];
+  if (!who) return paper.title.length > 28 ? `${paper.title.slice(0, 27).trimEnd()}…` : paper.title;
+  return year ? `${who} ${year}` : who;
+};
+
+/** The names a saved extraction of `paper.pdf` goes by, best first. */
+const SAVED_SUFFIXES = [".graph.json", ".mira.jsonld", ".jsonld", ".json"];
+export const savedNamesFor = (filename: string): string[] => SAVED_SUFFIXES.map((suffix) => `${stemOf(filename)}${suffix}`.toLowerCase());
+/** The paper a saved extraction's own name points at: `paper.graph.json` is about `paper`. */
+const savedStem = (name: string): string => {
+  const lower = name.toLowerCase();
+  const suffix = SAVED_SUFFIXES.find((item) => lower.endsWith(item));
+  return suffix ? name.slice(0, name.length - suffix.length) : stemOf(name);
+};
+
+type LdNode = Record<string, unknown> & { "@id"?: string; "@type"?: string | string[] };
+const typesOf = (node: LdNode): string[] => (Array.isArray(node["@type"]) ? node["@type"] : node["@type"] ? [node["@type"]] : []);
+const text = (value: unknown): string | undefined => (typeof value === "string" && value.trim() ? value : undefined);
+
+/** MIRA's own JSON-LD, as MIRA extraction exports it: units, relation instances, and each one's passage as an Item. */
+const fromMiraJsonLd = (document: { "@graph"?: unknown }, name: string): ExtractionGraph => {
+  const all = (Array.isArray(document["@graph"]) ? document["@graph"] : []) as LdNode[];
+  const byId = new Map(all.flatMap((node) => (node["@id"] ? [[node["@id"], node] as const] : [])));
+  const passage = (node: LdNode): string | undefined => text(byId.get(String(node.description ?? ""))?.content);
+  const schemas = new Set(all.filter((node) => typesOf(node).includes("NodeSchema")).map((node) => node["@id"]));
+  const nodes: ExtractedNode[] = [];
+  const edges: ExtractedEdge[] = [];
+  for (const node of all) {
+    const types = typesOf(node);
+    const id = node["@id"];
+    if (!id) continue;
+    if (types.includes("RelationInstance")) {
+      const relation = types.find((type) => type !== "RelationInstance" && !type.includes(":"));
+      const [subject, object] = [text(node.source), text(node.destination)];
+      const anchor = passage(node);
+      if (relation && subject && object) edges.push({ relation, subject, object, ...(anchor ? { anchor } : {}) });
+      continue;
+    }
+    if (!types.some((type) => schemas.has(type))) continue;
+    const type = types.find((item) => !schemas.has(item)) ?? "Claim";
+    const content = text(node.content) ?? text(node.title) ?? "";
+    const [first, ...rest] = content.split(/\n\n/);
+    const anchor = passage(node);
+    const doi = /^https?:\/\/(dx\.)?doi\.org\//i.test(id) ? bareDoi(id) : undefined;
+    nodes.push({
+      id,
+      type,
+      text: first || content,
+      ...(rest.length ? { description: rest.join("\n\n") } : {}),
+      ...(anchor ? { anchor } : {}),
+      ...(doi ? { doi } : {}),
+    });
+  }
+  const authors = all
+    .filter((node) => typesOf(node).includes("UserAccount") && /author/i.test(node["@id"] ?? ""))
+    .flatMap((node) => (text(node.accountName) ? [{ name: String(node.accountName) }] : []));
+  const sources = nodes.filter((node) => node.type === "SourceDocument");
+  const own = sources.find((node) => edges.some((edge) => edge.relation === "describesActivity" && edge.subject === node.id)) ?? sources[0];
+  return { source: `${savedStem(name)}.pdf`, paper: { ...(own?.doi ? { doi: own.doi } : {}), authors }, nodes, edges };
+};
+
+/** A saved extraction file, read into the one shape the importer takes. Says plainly when the file is something else. */
+export const parseExtraction = (name: string, content: string): ExtractionGraph => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new Error(`${name} isn't valid JSON.`);
+  }
+  const data = parsed as Partial<ExtractionGraph> & { "@graph"?: unknown };
+  if (Array.isArray(data?.["@graph"])) {
+    const graph = fromMiraJsonLd(data, name);
+    if (!graph.nodes.length) throw new Error(`${name} holds no MIRA units.`);
+    return graph;
+  }
+  if (!Array.isArray(data?.nodes) || !Array.isArray(data?.edges)) throw new Error(`${name} isn't a saved extraction. It needs nodes and edges.`);
+  const nodes = data.nodes.filter((node) => node && typeof node.id === "string" && typeof node.type === "string" && typeof node.text === "string" && node.text.trim());
+  if (!nodes.length) throw new Error(`${name} holds no units.`);
+  const edges = data.edges.filter((edge) => edge && typeof edge.relation === "string" && typeof edge.subject === "string" && typeof edge.object === "string");
+  return { ...data, nodes, edges } as ExtractionGraph;
+};
+
+const describeSaved = (name: string, graph: ExtractionGraph): SavedExtraction => ({
+  name,
+  ...(graph.paper?.title ? { title: graph.paper.title } : {}),
+  ...(graph.models?.[0] ? { model: graph.models[0] } : {}),
+  units: graph.nodes.length,
+  relations: graph.edges.length,
+});
+
 export type PaperMeta = { filename: string; model: string; server: string; schema: string };
 
 /** Turns one extraction into records. Units get no note or page until they're exported. */
@@ -59,10 +160,12 @@ export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperM
   const stamp = context.stamp();
   const fresh: DgRecord[] = [];
 
-  const known = new Map<string, NodeTypeRecord>(context.nodeTypes().map((type) => [type.label.toLowerCase(), type]));
+  // A type is the same type only when its meaning matches too: a "Protocol" someone made as a kind of source isn't MIRA's.
+  const keyOf = (label: string, base: string | undefined): string => `${label.toLowerCase()}|${base ?? ""}`;
+  const known = new Map<string, NodeTypeRecord>(context.nodeTypes().map((type) => [keyOf(type.label, type.base), type]));
   const typeFor = (name: string): NodeTypeRecord => {
     const wanted = spec(name);
-    const found = known.get(wanted.label.toLowerCase());
+    const found = known.get(keyOf(wanted.label, wanted.base));
     if (found) return found;
     const made = createNodeType({
       ...stamp,
@@ -75,7 +178,7 @@ export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperM
         ...(wanted.color ? { color: wanted.color } : {}),
       },
     });
-    known.set(wanted.label.toLowerCase(), made);
+    known.set(keyOf(wanted.label, wanted.base), made);
     fresh.push(made);
     return made;
   };
@@ -91,7 +194,16 @@ export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperM
     return made;
   };
 
-  const title = graph.paper?.title ?? meta.filename.replace(/\.[^.]+$/, "");
+  // The paper's own source unit, among any it cites: the one that reports the work, or carries its DOI.
+  const sources = graph.nodes.filter((node) => spec(node.type).base === "source");
+  const ownSource =
+    sources.find((node) => graph.edges.some((edge) => edge.relation === "describesActivity" && edge.subject === node.id)) ??
+    sources.find((node) => bareDoi(node.doi) && bareDoi(node.doi) === bareDoi(graph.paper?.doi)) ??
+    (sources.length === 1 ? sources[0] : undefined);
+  // Only the DOI the extraction states for the paper itself counts: it decides what may be kept on a server.
+  const doi = bareDoi(graph.paper?.doi);
+  const url = graph.paper?.url ?? ownSource?.url;
+  const title = graph.paper?.title ?? stemOf(meta.filename);
   const canvas = createCanvas({ ...stamp, title, fields: { needsLayout: true } });
   const paper = createPaper({
     ...stamp,
@@ -103,7 +215,9 @@ export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperM
       model: meta.model,
       schema: meta.schema,
       server: meta.server,
-      ...(graph.paper?.doi ? { doi: graph.paper.doi } : {}),
+      ...(doi ? { doi } : {}),
+      ...(url ? { url } : {}),
+      ...(graph.paper?.license ? { license: graph.paper.license } : {}),
     },
   });
   canvas.paper = paper.id;
@@ -120,7 +234,12 @@ export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperM
         paper: paper.id,
         ...(extracted.anchor ? { anchor: extracted.anchor } : {}),
         ...(extracted.description ? { description: extracted.description } : {}),
+        ...(extracted === ownSource ? { own: true as const } : {}),
       },
+      // A source keeps its identifier, so the same paper cited from two canvases can be recognised.
+      ...(spec(extracted.type).base === "source" && (bareDoi(extracted.doi) ?? (extracted === ownSource ? doi : undefined))
+        ? { facts: { doi: (bareDoi(extracted.doi) ?? doi)! } }
+        : {}),
     });
     nodeIds.set(extracted.id, node.id);
     const item = {
@@ -151,7 +270,7 @@ export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperM
 export const paperFeature = (
   context: Context,
   demoGraphs: { filename: string; graph: ExtractionGraph }[],
-): Pick<Handlers, "paper.extract" | "paper.importGraph" | "paper.loadDemo" | "paper.list" | "paper.share"> & {
+): Pick<Handlers, "paper.extract" | "paper.saved" | "paper.importGraph" | "paper.loadDemo" | "paper.list" | "paper.share"> & {
   summary: (paper: PaperRecord) => PaperSummary;
   graphOf: (paper: PaperRecord) => ExtractionGraph;
 } => {
@@ -208,6 +327,39 @@ export const paperFeature = (
     const { records, paper } = planPaper(context, graph, meta);
     await context.put(records);
     return paper;
+  };
+
+  /** The saved extraction beside a paper's file: same name, in its folder first, then anywhere in the base. */
+  const savedBeside = async (name: string, ref?: string): Promise<{ name: string; graph: ExtractionGraph } | null> => {
+    const listed = await context.host.listFiles({ extensions: ["json", "jsonld"], limit: 5000 });
+    if (!listed.ok) return null;
+    const wanted = savedNamesFor(name);
+    const folder = ref?.includes("/") ? ref.slice(0, ref.lastIndexOf("/")) : undefined;
+    const found = listed.value
+      .filter((file) => wanted.includes(file.name.toLowerCase()))
+      .sort(
+        (a, b) =>
+          Number(b.folder === folder) - Number(a.folder === folder) ||
+          wanted.indexOf(a.name.toLowerCase()) - wanted.indexOf(b.name.toLowerCase()),
+      );
+    for (const file of found) {
+      const read = await context.host.readAsset({ ref: file.ref });
+      if (!read.ok) continue;
+      try {
+        return { name: file.name, graph: parseExtraction(file.name, textOfDataUrl(read.value.dataUrl)) };
+      } catch {
+        // A JSON file of the same name that isn't an extraction.
+      }
+    }
+    return null;
+  };
+
+  /** A picked PDF is kept where the reader looks, so its units can be opened at their passage. */
+  const keepFile = async (file: { name: string; mediaType: string; dataBase64: string }): Promise<void> => {
+    if (!/\.pdf$/i.test(file.name) || !file.dataBase64) return;
+    const listed = await context.host.listFiles({ extensions: ["pdf"], limit: 5000 });
+    if (listed.ok && listed.value.some((entry) => entry.name === file.name)) return;
+    await context.host.writeAsset({ asset: { name: file.name, mime: "application/pdf", dataUrl: `data:application/pdf;base64,${file.dataBase64}` } });
   };
 
   /** Only a paper with a DOI ever reaches Discourse Graphs, and only its graph. */
@@ -274,23 +426,55 @@ export const paperFeature = (
       }
       return made;
     },
-    "paper.extract": async ({ file, server, model, schema, share }) => {
-      if (!context.services) throw new Error("No services are set up here.");
-      const servers = await context.services.servers();
-      const name = servers.find(({ url }) => url === server)?.name ?? server;
+    "paper.saved": async ({ name, ref, text: content }) => {
+      if (content !== undefined) return describeSaved(name, parseExtraction(name, content));
+      const found = await savedBeside(name, ref);
+      return found ? describeSaved(found.name, found.graph) : null;
+    },
+    "paper.extract": async ({ file: picked, ref, saved, server, model, schema, share }) => {
       const status = (message: string): void => context.send({ event: "job-status", message });
-      const graph = await context.services.extract({
-        url: server,
-        filename: file.name,
-        mediaType: file.mediaType,
-        dataBase64: file.dataBase64,
-        model,
-        schema,
-        onStatus: status,
-      });
-      status("Making the paper's canvas");
-      let paper = await importGraph(graph, { filename: file.name, model: graph.models?.[0] ?? model, server: name, schema });
-      paper = await keepGraph(paper, graph);
+      let file = picked;
+      if (!file && ref) {
+        const asset = await context.host.readAsset({ ref });
+        if (!asset.ok) throw new Error(asset.error.message);
+        file = { name: asset.value.name, mediaType: asset.value.mime, dataBase64: asset.value.dataUrl.split(",")[1] ?? "" };
+      }
+      if (!file) throw new Error("Choose a paper first.");
+      const name = file.name;
+      let paper: PaperRecord;
+      let graph: ExtractionGraph;
+
+      if (saved) {
+        const found = saved === true ? await savedBeside(name, ref) : { name: saved.name, graph: parseExtraction(saved.name, saved.text) };
+        if (!found) throw new Error(`No saved extraction sits beside ${name}.`);
+        graph = found.graph;
+        const from = `Saved extraction (${found.name})`;
+        const madeBy = graph.models?.[0] ?? "Unknown";
+        // The same saved file read twice is the same paper, so the second time opens the first.
+        const already = papers().find((entry) => entry.filename === name && entry.server === from && entry.model === madeBy && context.canvasOf(entry.canvas) && !context.canvasOf(entry.canvas)!.removed);
+        if (already) return summary(already);
+        status("Making the paper's canvas");
+        if (picked) await keepFile(picked);
+        paper = await importGraph(graph, { filename: name, model: madeBy, server: from, schema: schema ?? "mira" });
+      } else {
+        if (!context.services) throw new Error("No services are set up here.");
+        if (!server || !model || !schema) throw new Error("Choose a server, a model and a schema first.");
+        const servers = await context.services.servers();
+        const serverName = servers.find(({ url }) => url === server)?.name ?? server;
+        graph = await context.services.extract({
+          url: server,
+          filename: name,
+          mediaType: file.mediaType,
+          dataBase64: file.dataBase64,
+          model,
+          schema,
+          onStatus: status,
+        });
+        status("Making the paper's canvas");
+        if (picked) await keepFile(picked);
+        paper = await importGraph(graph, { filename: name, model: graph.models?.[0] ?? model, server: serverName, schema });
+        paper = await keepGraph(paper, graph);
+      }
       if (share) {
         status("Adding it to the lab's repository");
         paper = await shareToLab(paper, share.includeFile ? file : undefined);

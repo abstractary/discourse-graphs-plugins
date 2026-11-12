@@ -29,6 +29,7 @@ import {
   type JsonObject,
   type LabRecord,
   type NodeRecord,
+  type PaperRecord,
   type NodeTypeRecord,
   type RelationTypeRecord,
 } from "@dg/contract/records.ts";
@@ -47,12 +48,14 @@ import type {
   SurfaceMessage,
   SurfaceMethod,
   SurfaceMethods,
+  NotebookImported,
   SurfacePort,
 } from "@dg/contract/surface.ts";
 import { withUsageLog, type UsageEvent } from "@dg/contract/usage.ts";
 import { atUriOf, cidOf, toAtRecord, type AtRecord } from "@dg/contract/atproto.ts";
 import { holonFeature } from "./holons.ts";
 import { readingFeature } from "./reading.ts";
+import { searchFeature } from "./search.ts";
 import {
   addCustodian,
   createIdentity,
@@ -64,7 +67,12 @@ import {
 import { planAtImport, planImport, type ExistingGraph, type ImportReport } from "./migrate.ts";
 import type { Context, Handlers } from "./context.ts";
 import { labFeature } from "./labs.ts";
-import { paperFeature } from "./papers.ts";
+import { aiFeature } from "./ai.ts";
+import { methodFeature } from "./method.ts";
+import { similarFeature } from "./similar.ts";
+import type { AiModel, AiSettings, Llm, SecretStore } from "@dg/contract/llm.ts";
+import { paperFeature, paperLabel } from "./papers.ts";
+import { paperSource } from "./process.ts";
 import { unitFeature } from "./units.ts";
 
 const USAGE_KEY = "usage";
@@ -109,6 +117,25 @@ export type Core = CoreForAdapter & {
   focusCanvas: (id: DgId) => Promise<void>;
   prefs: () => Promise<Prefs>;
   setPrefs: (changes: Partial<Prefs>) => Promise<Prefs>;
+  badgesOn: () => boolean;
+  /** How many entries the on-device usage log holds, and emptying it. */
+  usageCount: () => number;
+  clearUsage: () => Promise<void>;
+  /** A unit's title, for a tab that shows one. */
+  unitTitle: (id: DgId) => string | null;
+  /** Reads a saved Jupyter notebook in the base into Code, a Run and its Outputs. */
+  importNotebook: (args: { ref: string; text?: boolean }) => Promise<NotebookImported>;
+  /** The saved extraction beside a paper's file, and reading the paper into a graph. */
+  savedExtraction: (args: SurfaceMethods["paper.saved"]["params"]) => Promise<SurfaceMethods["paper.saved"]["result"]>;
+  extractPaper: (args: SurfaceMethods["paper.extract"]["params"]) => Promise<SurfaceMethods["paper.extract"]["result"]>;
+  showCanvas: (id: DgId) => Promise<null>;
+  /** The model setup, and changing it, for a base's own settings page. */
+  ai: {
+    settings: () => Promise<AiSettings>;
+    configure: (changes: SurfaceMethods["ai.configure"]["params"]) => Promise<AiSettings>;
+    models: (args: SurfaceMethods["ai.models"]["params"]) => Promise<AiModel[]>;
+    test: () => Promise<{ ok: boolean; message: string; model?: string }>;
+  };
 };
 
 export const createCore = async ({
@@ -117,9 +144,15 @@ export const createCore = async ({
   canvasFormat = "Canvas - {content}",
   keys = memoryKeys(),
   services,
+  llm,
+  secrets,
   demoGraphs = [],
   askBreadcrumb,
 }: {
+  /** Calls a model provider with a person's own key. Without it, the lab's model or quoted units answer. */
+  llm?: Llm;
+  /** Where a key is kept, such as the system keychain. */
+  secrets?: SecretStore;
   host: Host;
   /** Servers and labs. Without this, everything else still works. */
   services?: Services;
@@ -165,6 +198,7 @@ export const createCore = async ({
   const seen = new Set<string>();
   // Set once the holon feature exists; a note opened before then just waits.
   let holonHooks: ReturnType<typeof holonFeature> | undefined;
+  let searchHooks: ReturnType<typeof searchFeature> | undefined;
   const missingText = new Set<HostRef>();
   let { appearance, skin } = info;
   let focused: DgId | null = null;
@@ -366,9 +400,26 @@ export const createCore = async ({
     return { kind: "person", id: record.by.id, name: nameOf(record.by) };
   };
 
+  const paperLabels = new Map<string, { version: string; label: string }>();
+  /** The paper a unit was read from, in a few words. Kept per paper, since every card asks. */
+  const paperOf = (node: NodeRecord): NodeSummary["paper"] => {
+    const id = node.source?.paper;
+    const paper = id ? (graph.documents.get(id) as PaperRecord | undefined) : undefined;
+    if (!paper || paper.kind !== "paper") return undefined;
+    const version = `${paper.title}|${paper.authors.join(",")}|${paper.filename}`;
+    let kept = paperLabels.get(paper.id);
+    if (!kept || kept.version !== version) {
+      const own = paperSource(graph, paper.id);
+      kept = { version, label: paperLabel(paper, own ? (nodeOf(own)?.title ?? "") : "") };
+      paperLabels.set(paper.id, kept);
+    }
+    return { id: paper.id, label: kept.label, title: paper.title };
+  };
+
   const summarize = (node: NodeRecord): NodeSummary => {
     const type = typeOf(node.type);
     const anchor = anchorsByNode.get(node.id);
+    const paper = paperOf(node);
     return {
       id: node.id,
       title: node.title,
@@ -378,6 +429,8 @@ export const createCore = async ({
       // Read from a paper or a PDF, and not given a note or page yet.
       ...((node.source || node.facts?.anchor?.exact) && !anchor ? { staged: true } : {}),
       ...(atUriOf(node.id, graph) ? { uri: atUriOf(node.id, graph)! } : {}),
+      ...(node.by.id === me.id ? { mine: true as const } : {}),
+      ...(paper ? { paper } : {}),
       ...(node.type ? { type: node.type } : {}),
       ...(type
         ? {
@@ -554,8 +607,12 @@ export const createCore = async ({
         });
         break;
       }
+      case "text-changed":
+        searchHooks?.invalidate(event.ref);
+        break;
       case "text-removed":
         missingText.add(event.ref);
+        searchHooks?.invalidate(event.ref, true);
         notify();
         break;
       case "focus-changed": {
@@ -703,6 +760,10 @@ export const createCore = async ({
             state: relation.state,
             credit: creditFor(relation.record),
             ...(kind ? { kind } : {}),
+            ...(relation.record.by.id === me.id ? { mine: true as const } : {}),
+            type: relation.record.type,
+            source: relation.record.source,
+            target: relation.record.target,
           };
         }
       }
@@ -773,12 +834,21 @@ export const createCore = async ({
       (item) => !item.removed && (item.item as { dg?: { node?: DgId } }).dg?.node === node && canvasOf(item.canvas)?.shared !== undefined,
     );
 
+  const { settings: _aiSettings, ...aiHandlers } = aiFeature(context, { ...(llm ? { llm } : {}), ...(secrets ? { secrets } : {}) });
+
   const holons = holonFeature(context);
   holonHooks = holons;
   const reading = readingFeature(context);
+  const search = searchFeature(context);
+  searchHooks = search;
+  const { restsOn, ...similarHandlers } = similarFeature(context);
   const handlers: Handlers = {
     ...holons.handlers,
+    ...aiHandlers,
+    ...methodFeature(context, restsOn),
+    ...similarHandlers,
     ...reading.handlers,
+    ...search.handlers,
     ...paperHandlers,
     ...unitHandlers,
     ...labHandlers,
@@ -802,19 +872,50 @@ export const createCore = async ({
       if (!node) throw new Error(`No node ${id}`);
       // The type goes first: the rename fires an event, and parsing that title
       // needs the new format, or the prefix would land in the node's title.
-      await put([revise({ record: node, changes: { type }, by: me })]);
-      const format = typeOf(type)?.titleFormat;
+      if (type === null) {
+        const { type: _gone, ...untyped } = node;
+        await put([revise({ record: untyped as NodeRecord, changes: {}, by: me })]);
+      } else {
+        await put([revise({ record: node, changes: { type }, by: me })]);
+      }
+      const format = type === null ? undefined : typeOf(type)?.titleFormat;
       const anchor = anchorsByNode.get(id);
-      if (anchor && format) {
+      if (anchor && (format || type === null)) {
         const renamed = await host.renameText({
           ref: anchor.ref,
-          title: formatTitle({ format, content: node.title }),
+          title: formatTitle({ ...(format ? { format } : {}), content: node.title }),
         });
         if (!renamed.ok && renamed.error.code !== "conflict") {
           throw new Error(renamed.error.message);
         }
       }
       return summarize(nodeOf(id)!);
+    },
+    "node.rename": async ({ id, title: wanted }) => {
+      const node = nodeOf(id);
+      if (!node || node.removed) throw new Error("That unit is gone.");
+      if (node.by.id !== me.id) throw new Error(`Only ${nameOf(node.by)} can rename this unit.`);
+      const title = wanted.replace(/\s+/g, " ").trim();
+      if (!title) throw new Error("A unit needs a title.");
+      if (title === node.title) return summarize(node);
+      // The record goes first, so the rename's own event finds nothing left to change.
+      await put([revise({ record: node, changes: { title }, by: me })]);
+      const anchor = anchorsByNode.get(id);
+      if (anchor && !missingText.has(anchor.ref)) {
+        const format = typeOf(node.type)?.titleFormat;
+        const renamed = await host.renameText({ ref: anchor.ref, title: formatTitle({ ...(format ? { format } : {}), content: title }) });
+        if (!renamed.ok) {
+          await put([revise({ record: nodeOf(id)!, changes: { title: node.title }, by: me })]);
+          throw new Error(renamed.error.code === "conflict" ? `There's already a note called "${title}".` : renamed.error.message);
+        }
+      }
+      return summarize(nodeOf(id)!);
+    },
+    "node.insertLink": async ({ id }) => {
+      const anchor = anchorsByNode.get(id);
+      if (!anchor || missingText.has(anchor.ref)) throw new Error("This unit has no note to link to yet.");
+      value(await host.insertLink({ ref: anchor.ref }));
+      return null;
     },
     "node.view": async ({ id }) => {
       const node = nodeOf(id);
@@ -859,7 +960,7 @@ export const createCore = async ({
       };
     },
     "relation.options": async ({ source, target }) => relationOptions(source, target),
-    "relation.assert": async ({ type, source, target }) => {
+    "relation.assert": async ({ type, source, target, draw }) => {
       const allowed = relationOptions(source, target).some(
         (option) => option.type === type && !option.flipped,
       );
@@ -871,10 +972,23 @@ export const createCore = async ({
           record.target === target &&
           (state === "active" || state === "pending"),
       );
-      if (existing) return existing.record;
-      const relation = assertRelation({ ...stamp, type, source, target });
-      await put([relation]);
-      return relation;
+      const relation = existing?.record ?? assertRelation({ ...stamp, type, source, target });
+      // Stated away from a canvas, it's drawn on each of the person's canvases that holds both units.
+      const edges: DgRecord[] = [];
+      if (draw) {
+        for (const canvas of documents("canvas")) {
+          if (canvas.removed || canvas.by.id !== me.id) continue;
+          const live = liveCanvasItems({ graph, canvas: canvas.id });
+          const cardOf = (unit: DgId) => live.find((item) => (item.item as { dg?: { node?: DgId } }).dg?.node === unit)?.id;
+          const [fromNode, toNode] = [cardOf(source), cardOf(target)];
+          if (!fromNode || !toNode) continue;
+          if (live.some((item) => (item.item as { dg?: { relation?: DgId } }).dg?.relation === relation.id)) continue;
+          const z = Math.max(0, ...live.map((item) => item.z)) + 1;
+          edges.push(createCanvasItem({ ...stamp, canvas: canvas.id, item: { fromNode, toNode, dg: { relation: relation.id } } as never, z }));
+        }
+      }
+      if (!existing || edges.length) await put([...(existing ? [] : [relation]), ...edges]);
+      return existing ? relation : { ...relation, made: true as const };
     },
     "relation.withdraw": async ({ id, reason }) => {
       await put([retract({ ...stamp, target: id, ...(reason ? { reason } : {}) })]);
@@ -970,8 +1084,8 @@ export const createCore = async ({
       value(await host.openSurface({ route: { surface }, placement: "side" }));
       return null;
     },
-    "dialog.open": async ({ surface }) => {
-      value(await host.openSurface({ route: { surface }, placement: "dialog" }));
+    "dialog.open": async ({ surface, id }) => {
+      value(await host.openSurface({ route: { surface, ...(id ? { id } : {}) }, placement: "dialog" }));
       return null;
     },
     "dialog.close": async () => {
@@ -1133,6 +1247,17 @@ export const createCore = async ({
     holonCanvas: (ref) => holons.holonCanvas(ref),
     locateHolon: (id) => holons.locate(id),
     focusCanvas: (id) => holons.focusCanvas(id),
+    unitTitle: (id) => nodeOf(id)?.title.replace(/\[\[([^\]]+)\]\]/g, "$1") ?? null,
+    importNotebook: (args) => handlers["notebook.import"](args),
+    savedExtraction: (args) => handlers["paper.saved"](args),
+    extractPaper: (args) => handlers["paper.extract"](args),
+    showCanvas: (id) => handlers["canvas.show"]({ id }),
+    ai: {
+      settings: () => handlers["ai.settings"]({}),
+      configure: (changes) => handlers["ai.configure"](changes),
+      models: (args) => handlers["ai.models"](args),
+      test: () => handlers["ai.test"]({}),
+    },
     prefs: () => holons.prefs(),
     setPrefs: (changes) => holons.setPrefs(changes),
     canvasClosed,
@@ -1166,6 +1291,12 @@ export const createCore = async ({
         await put([createCanvasItem({ ...stamp, canvas, item, z: live.length + 1 })]);
       }
       return ok(relation.id);
+    },
+    badgesOn: () => badgesShown,
+    usageCount: () => usage.length,
+    clearUsage: async () => {
+      usage.length = 0;
+      await flushUsage();
     },
     toggleBadges: async () => {
       badgesShown = !badgesShown;

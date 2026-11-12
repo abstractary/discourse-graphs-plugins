@@ -1,11 +1,15 @@
 /* The PDF reader: a bar like the canvas's, pages on the panel color, and marks in each unit type's hue. */
 .pdf-shell { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; background: var(--dg-panel); }
-.pdf-bar { display: flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 6px; background: var(--dg-panel); border-bottom: 1px solid var(--dg-line); box-sizing: border-box; min-width: 0; }
+/* Same weights as the canvas bar: plain buttons, muted icons, labels stepping down as room runs out. */
+.pdf-bar { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 8px; background: var(--dg-page); border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 80%, transparent); box-sizing: border-box; min-width: 0; overflow: hidden; }
 .pdf-title { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: min(360px, 44vw); font-weight: 600; padding: 4px 6px; }
 .pdf-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pdf-tools { display: flex; align-items: center; gap: 2px; flex: none; }
-.tool { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; }
-.tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: var(--hover); }
+.tool { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; box-sizing: border-box; color: color-mix(in oklch, var(--dg-ink) 86%, var(--dg-muted)); }
+.tool .icon { color: var(--dg-muted); }
+.tool:hover, .tool:hover .icon { color: var(--dg-ink); }
+.tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: color-mix(in oklch, var(--dg-accent) 12%, transparent); color: color-mix(in oklch, var(--dg-accent) 80%, var(--dg-ink)); }
+.tool[aria-pressed="true"] .icon, .tool[aria-expanded="true"] .icon { color: inherit; }
 .pdf-zoom { min-width: 48px; justify-content: center; font-variant-numeric: tabular-nums; color: var(--dg-muted); }
 .pdf-page-at { display: inline-flex; align-items: center; gap: 4px; color: var(--dg-muted); font-size: var(--small); margin-right: 4px; }
 .pdf-page-at input { width: 3.2em; padding: 2px 4px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -18,7 +22,8 @@
 .pdf-notice > span { overflow-wrap: anywhere; }
 .pdf-notice button { flex: none; color: var(--dg-accent); padding: 2px 8px; font-weight: 600; }
 .pdf-problem { color: var(--opposes); }
-@media (max-width: 899px) { .tool-label { display: none; } }
+.pdf-bar[data-fit="compact"] .tool:not(.keep) .tool-label, .pdf-bar[data-fit="icons"] .tool-label, .pdf-bar[data-fit="more"] .tool-label { display: none; }
+.pdf-bar[data-fit="icons"] .pdf-page-at > span, .pdf-bar[data-fit="more"] .pdf-page-at > span { display: none; }
 
 .pdf-scroll { position: relative; overflow: auto; padding: 16px 16px 48px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .pdf-wait { color: var(--dg-muted); }

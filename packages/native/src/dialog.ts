@@ -7,14 +7,17 @@ export const closeDialogFrame = (): void => {
   document.getElementById(ID)?.dispatchEvent(new Event("dg-close"));
 };
 
+/** The quick finder sits high, like a base's own switcher, and a click outside it closes it. */
+const FINDER = { width: 640, height: 460 };
+
 /** A pop-up over the base. The panel inside it is the same sandboxed frame as any other. */
 export const openDialogFrame = ({
   html,
   route,
   skin,
   connect,
-  width = 480,
-  height = 640,
+  width = route.surface === "find" ? FINDER.width : 480,
+  height = route.surface === "find" ? FINDER.height : 640,
 }: {
   html: string;
   route: SurfaceRoute;
@@ -23,18 +26,21 @@ export const openDialogFrame = ({
   width?: number;
   height?: number;
 }): void => {
+  const finder = route.surface === "find";
   closeDialogFrame();
   const scrim = document.createElement("div");
   scrim.id = ID;
   scrim.dataset.dg = "dialog";
   scrim.dataset.surface = route.surface;
-  scrim.style.cssText = `position:fixed;inset:0;z-index:${Z};display:flex;align-items:center;justify-content:center;background:rgba(15,18,22,.42);`;
+  scrim.style.cssText = `position:fixed;inset:0;z-index:${Z};display:flex;align-items:${finder ? "flex-start" : "center"};justify-content:center;${finder ? "padding-top:12vh;box-sizing:border-box;" : ""}background:rgba(15,18,22,${finder ? ".22" : ".42"});`;
   const frame = document.createElement("iframe");
   frame.setAttribute("sandbox", "allow-scripts");
   frame.setAttribute("title", "Discourse Graphs");
   frame.srcdoc = html;
   frame.style.cssText = `border:1px solid ${skin.line};border-radius:${skin.radius + 4}px;background:${skin.page};width:min(${width}px,calc(100vw - 32px));height:min(${height}px,calc(100vh - 48px));box-shadow:0 12px 40px rgba(0,0,0,.28);`;
   connect(frame);
+  // The finder is typed into at once, so its frame takes the keyboard as it loads.
+  if (finder) frame.addEventListener("load", () => frame.focus());
   const close = (): void => {
     document.removeEventListener("keydown", onKey, true);
     scrim.remove();
@@ -43,6 +49,7 @@ export const openDialogFrame = ({
     if (event.key === "Escape") close();
   };
   scrim.addEventListener("dg-close", close);
+  if (finder) scrim.addEventListener("pointerdown", (event) => event.target === scrim && close());
   document.addEventListener("keydown", onKey, true);
   scrim.append(frame);
   document.body.append(scrim);

@@ -22,6 +22,8 @@ import {
 import type { Host } from "@dg/contract/host.ts";
 import type { SurfaceMessage, SurfacePort } from "@dg/contract/surface.ts";
 import { createCore } from "@dg/core/index.ts";
+import { createLlm } from "@dg/sync/providers.ts";
+import type { SecretStore } from "@dg/contract/llm.ts";
 import type { KeyStore } from "@dg/core/identity.ts";
 
 const { values } = parseArgs({
@@ -204,7 +206,27 @@ function vaultFiles(folder: string): string[] {
   });
 }
 
-const core = await createCore({ host, keys: fileKeys(values.keys ?? join(homedir(), ".discourse-graphs", "local-app")) });
+const KEYS = values.keys ?? join(homedir(), ".discourse-graphs", "local-app");
+
+/** Model keys sit beside the signing keys, outside the vault, in a file only this user can read. */
+const fileSecrets = (folder: string): SecretStore => {
+  mkdirSync(folder, { recursive: true, mode: 0o700 });
+  const path = join(folder, "secrets.json");
+  const read = (): Record<string, string> => (existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as Record<string, string>) : {});
+  return {
+    kind: "file",
+    get: async (id) => read()[id] ?? null,
+    set: async (id, value) => {
+      const all = read();
+      if (value) all[id] = value;
+      else delete all[id];
+      writeFileSync(path, JSON.stringify(all), { mode: 0o600 });
+    },
+  };
+};
+
+// The call to a provider is made here, in Node, so the page never holds the key.
+const core = await createCore({ host, keys: fileKeys(KEYS), llm: createLlm({ browser: false }), secrets: fileSecrets(KEYS) });
 if (values.name && core.personName() !== values.name) await core.setName(values.name);
 
 // Obsidian, or another device, wrote to the log.

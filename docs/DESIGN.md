@@ -12,7 +12,18 @@ Measured in both apps at 1280 to 1920 px wide windows:
 | Beside a sidebar | 701 to 1,341 px | 629 to 1,013 px |
 | Full pane | 1,001 to 1,876 px | 1,048 to 1,688 px |
 
-Below 900 px, tool labels drop to icons. Nothing wraps at 300 px.
+Bars measure their own width rather than the window's, so a canvas in a narrow split behaves like one in a narrow window. Nothing wraps at 300 px. See "The canvas bar".
+
+## Visual weight
+
+Taken from current practice in Apple's toolbar guidance, Linear's refreshes, Figma UI3, Material 3, Fluent and Obsidian's own UI, all checked 12 Nov 2026:
+
+- **Quiet chrome, color for meaning.** Toolbar buttons are plain until pressed: muted icons, labels a step under full ink, and full ink on hover. Color is kept for node types, relations, the accent on what's selected or on, and found words.
+- **Spacing over rules.** Groups are told apart by space, not by lines. Hairlines that remain sit at 80% of the base's line color.
+- **One emphasis ladder.** Plain for tools, a 12% accent tint for a tool that's on, and a filled accent only where a flow completes, such as Save or Place. Nothing in a toolbar is filled.
+- **Sizes.** Controls 28 px high with 16 px icons. Icon strokes are 1.55, close to Obsidian's own. Text is 400–450 weight, with 600 for names and found words.
+- **Elevation only for what floats.** Popovers and the floating status get a soft two-layer shadow, mixed from black, so dark themes don't glow.
+- **Focus** is a 2 px accent ring on `:focus-visible`.
 
 ## Tokens
 
@@ -29,14 +40,14 @@ Node type and relation hues are DG's own, in OKLCH, because they carry meaning: 
 | Gesture | Result |
 |---|---|
 | Click a card | Selects it, and the context panel follows |
-| Double-click, Enter or the open button | Text opens beside the canvas, which stays in view |
+| Double-click, Enter or the open button | Text opens beside the canvas, which stays in view. On the title of a person's own unit, a double-click edits it instead |
 | Drag between cards | Offers the relations the grammar allows |
 | Drag to empty canvas | Finds or creates the next node, then asks for the relation |
 | Select text, then `\` and a letter | Makes a node and leaves a link in place of the text |
 | Click a link badge, or Enter on it | Opens the context panel on that node. The page and the caret stay put |
 | Hover a link on a canvas | Shows who made it |
 | N, T, D, L | Add node, note, draw, tidy again in the same mode |
-| Delete | Removes from the canvas, with Undo |
+| Delete | Removes from the canvas, with Undo. On a link, it asks first |
 | Click a holon card's open-inside button | Opens that holon's own canvas in the same tab, made from the graph if it has none |
 | Click a step in the holon breadcrumb | Goes back up to that holon's canvas |
 | Double-click, or zoom far in or out, by choice | Opens or leaves a holon, per the device's choice in settings or the Holon menu. See [HOLONS.md](HOLONS.md) |
@@ -45,6 +56,11 @@ Node type and relation hues are DG's own, in OKLCH, because they carry meaning: 
 | U, or the bar under the canvas | Opens the drawer of units not on this canvas yet |
 | Click a unit in the drawer | Selects it. Place puts the selection on together, laid out with its links |
 | Drag a unit, or the selection, from the drawer | Puts it where it's dropped, with its links |
+| Double-click a card's title, or F2 | Edits the title in place, for a person's own units. Enter keeps it, Escape leaves it |
+| Delete on a link | Asks: only off this canvas, or withdraw the relation. "Remember my choice" makes it the default |
+| Copy, cut and paste | Cards go to another canvas with their links, at the pointer. A unit already there is lit instead of doubled |
+| Undo and redo (⌘Z, ⇧⌘Z, or Ctrl+Y) | Steps back and forward through every edit made in this canvas tab |
+| "Find a unit" | The quick finder: Enter opens, ⌘ or Ctrl+Enter puts it on the open canvas, Alt+Enter links it at the cursor |
 
 ## Reading PDFs
 
@@ -67,6 +83,56 @@ The units not on this canvas yet, in a bar under it that rises into a drawer. It
 - **Order.** In each group, the units linked to cards already on this canvas come first, with a count of those links.
 - **List or grid.** The grid shows cards as the canvas draws them, narrower. Search and a type filter sit in the bar.
 - **Placing.** Click selects, and "Place n together" puts the selection on, laid out with Tidy's Logic mode, in a clear spot. Dragging puts a unit, or the selection, where it's dropped. "Place all" puts a whole group on. Their relations come with them, to each other and to the cards already there, and Undo takes them off.
+
+## The canvas bar
+
+Three parts, as current toolbars are built:
+
+- **Leading:** the canvas name. Its menu holds whole-canvas commands: other canvases, New canvas, Upload a paper, the Library and Export.
+- **Center:** the tools that make and arrange: Add node, Note and Draw, then Tidy, whose label names its mode ("Tidy Logic") and whose arrow chooses another.
+- **Trailing:** the last step, Undo and Redo, then Ask AI and the panels (Search, Context, PDF).
+
+It's one tab stop, and the arrow keys move along it. Tooltips give the name and its key ("Add node · N").
+
+As room runs out, the bar steps down four levels, measured on itself (`canvas/fit.ts`), and steps back up when there's room again:
+
+1. Every label.
+2. Only the words no icon can stand for: Tidy and its mode, Ask AI, Context.
+3. Icons only. The last step floats under the bar instead of squeezing it.
+4. Note, Draw, Ask AI and PDF fold into a More menu, with their keys shown.
+
+The PDF reader's bar uses the same levels.
+
+## Search
+
+Two ways in, one search underneath.
+
+- **The search panel** sits in the right sidebar and stays while a person works. Results show the type, the title with the words marked, who it's credited to, a second line when the words were in the note or the PDF passage, and the canvases that hold it.
+- **Filters.** Type, person or lab, and sort (best match, last edited, newest, title). Each filter shows how many results it would keep. Chips choose what's searched: titles, notes, passages.
+- **A result.** Clicking opens its preview: the start of its note, its relations, and Open, Insert link, Put on the open canvas and Context. ⌘ or Ctrl-click picks several, and any can be dragged onto a canvas.
+- **The quick finder** opens high over the base, like its own switcher, from the "Find a unit" command or ⌘K in the local app. It closes after one action, or hands its search to the panel.
+- **The Add node box** on the canvas uses the same search, so it finds a unit by the words in its note too.
+- **Found words** are marked the same way everywhere a search shows results: the search panel, the finder, Add node, the drawer and the PDF chooser. A translucent highlighter sits behind the text's own color, at 600 weight, so a match isn't told by color alone. The row a person is on marks more strongly. In forced-colors mode, the system's Mark colors take over.
+- **Meaning** is planned, not built: [semantic-search-plan.md](semantic-search-plan.md).
+
+## Finding the panels in Obsidian
+
+- **One ribbon icon**, as Obsidian asks of plugins. It opens a menu of everything, under three headings:
+  - Canvases: Open canvas, Library, Holons, New canvas.
+  - Panels: Search units, Context, Holon boundary.
+  - Find and read: Find a unit, Read a PDF, Upload a paper.
+  - Settings closes the menu.
+- **Every panel's ⋯ menu** lists the same entries under "Discourse Graphs", without the panel already open.
+- **Commands** cover every entry, each with an icon, and none has a default key.
+- **Right-click in a note:** Create node from selection (when text is selected), and Link a unit.
+- **Right-click a PDF:** Read in Discourse Graphs.
+
+## Editing on the canvas
+
+- **Titles.** A person renames their own unit on its card, and its note is renamed with it. A teammate's unit says who can rename it.
+- **Links.** Delete asks whether the link is only coming off this canvas or the relation is being withdrawn. Only its author can withdraw a relation, so for anyone else that choice is shown and disabled, with the reason. After a remembered answer, the status line offers "Ask next time". Obsidian's settings have the same choice.
+- **Copy and paste.** The clipboard carries the cards as they are, so they paste onto another canvas, in another tab, with their layout and their links. The same copy pastes into a note as the titles.
+- **Undo.** Every edit in a canvas tab can be undone and redone: moves, sizes, notes, types, titles, links, placing, pasting, tidying, and units put here from search or a PDF. The status line names the last step for a few seconds.
 
 ## Link badges
 

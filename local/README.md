@@ -18,9 +18,11 @@ The app lays out the plugin's panels the way they sit in Obsidian:
 |---|---|
 | Left | The Library, whose Canvases tab is the repository |
 | Middle | A canvas, or the holon explorer, with the PDF reader beside it when it's open |
-| Right | The holon's boundary, and the context panel |
+| Right | The holon's boundary, the context panel, and unit search |
 
 **Reading PDFs.** The PDF button opens the reader beside the canvas. It lists every PDF in the vault, papers first, and a dropped PDF is kept in `Paper files/`. See "Reading PDFs" in `docs/DESIGN.md`.
+
+**Finding units.** The Search tab searches titles, note text and PDF passages, with filters. ⌘K or Ctrl+K, or the search button, opens the quick finder. See "Search" in `docs/DESIGN.md`.
 
 **Opening holons.** A holon card opens into its own canvas in place, and the breadcrumb goes back up. See `docs/HOLONS.md`.
 

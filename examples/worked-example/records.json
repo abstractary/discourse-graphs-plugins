@@ -497,7 +497,8 @@
    ],
    "conditions": [
     "Discourse graph exports of 11 and 13 February 2026"
-   ]
+   ],
+   "design": "observational"
   }
  },
  {
@@ -531,7 +532,8 @@
    ],
    "conditions": [
     "Discourse graph exports of 11 and 13 February 2026"
-   ]
+   ],
+   "design": "observational"
   }
  },
  {

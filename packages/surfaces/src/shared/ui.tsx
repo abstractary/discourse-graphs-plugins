@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { Credit, NodeSummary } from "@dg/contract/surface.ts";
+import { marksOf, wordsOf, type TextMarks } from "@dg/contract/words.ts";
 
 const PATHS: Record<string, ReactNode> = {
   plus: <path d="M8 3.5v9M3.5 8h9" />,
@@ -22,9 +23,17 @@ const PATHS: Record<string, ReactNode> = {
   comment: <path d="M3 3.5h10v7H7l-3 2.5v-2.5H3z" />,
   inside: <path d="M2.5 2.5h11v11h-11zM5.5 5.5h5v5h-5zM5.5 5.5 2.5 2.5M10.5 10.5l3 3" />,
   marker: <path d="M2.5 13.5h11M4.5 11.5l1-3 5.5-5.5 2 2-5.5 5.5zM9.5 4l2 2" />,
+  search: <path d="M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM10.3 10.3l3.2 3.2" />,
+  undo: <path d="M5.5 3.5 2.5 6.5l3 3M3 6.5h6.5a3.5 3.5 0 0 1 0 7H7" />,
+  redo: <path d="M10.5 3.5l3 3-3 3M13 6.5H6.5a3.5 3.5 0 0 0 0 7H9" />,
+  more: <path d="M3.5 8h.01M8 8h.01M12.5 8h.01" />,
+  pdf: <path d="M4 2.5h5l3 3v8H4zM9 2.5v3h3M6 8.5h4M6 10.5h4" />,
+  library: <path d="M3 2.5v11M6 2.5v11M9 3l3.2 10.3" />,
 };
 
-export const Icon = ({ name }: { name: keyof typeof PATHS }) => (
+export type IconName = keyof typeof PATHS;
+
+export const Icon = ({ name }: { name: IconName }) => (
   <svg className="icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
     {PATHS[name]}
   </svg>
@@ -65,3 +74,24 @@ export const plain = (title: string): string => title.replace(/\[\[([^\]]+)\]\]/
 /** A type's own color wins. Without one, the stylesheet colors by base type. */
 export const typeStyle = (node?: NodeSummary): React.CSSProperties | undefined =>
   node?.color ? ({ "--type": node.color } as React.CSSProperties) : undefined;
+
+/** Text with the searched words marked. Link brackets come out first, as on a card. */
+export const Marked = ({ text, marks }: { text: string; marks: TextMarks }) => {
+  if (!marks.length) return <>{plain(text)}</>;
+  const parts: ReactNode[] = [];
+  let at = 0;
+  marks.forEach(([start, end], index) => {
+    if (start > at) parts.push(<Fragment key={`t${index}`}>{text.slice(at, start)}</Fragment>);
+    parts.push(<mark key={`m${index}`}>{text.slice(start, end)}</mark>);
+    at = end;
+  });
+  if (at < text.length) parts.push(<Fragment key="end">{text.slice(at)}</Fragment>);
+  return <>{parts}</>;
+};
+
+/** Marks a search's words in any text, folded the way search folds them. */
+export const Highlighted = ({ text, query }: { text: string; query: string }) => {
+  const shown = plain(text);
+  const words = wordsOf(query);
+  return <Marked text={shown} marks={words.length ? marksOf(shown, words) : []} />;
+};

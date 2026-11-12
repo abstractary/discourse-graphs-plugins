@@ -24,7 +24,8 @@
     rdfs:label "Discourse graph process layer"@en ;
     rdfs:comment "Protocol and Study are the logic of a process; a Run is one execution; Code is the plan in code form; an Output is one data item a run produced. Evidence rests on outputs, so a claim's support can be traced to the runs, protocols and code behind it."@en ;
     dct:created "2026-11-11"^^xsd:date ;
-    owl:versionInfo "0.1 (draft)" ;
+    dct:modified "2026-11-12"^^xsd:date ;
+    owl:versionInfo "0.2 (draft)" ;
     rdfs:seeAlso <https://discoursegraphs.com/schema/dg_core> .
 
 # ---------------------------------------------------------------------------
@@ -141,22 +142,76 @@ dgp:informs  a owl:ObjectProperty ; rdfs:label "informs"@en ;  rdfs:domain dg:Ev
 dgp:cid a owl:DatatypeProperty ;
     rdfs:label "CID"@en ; rdfs:range xsd:string ;
     rdfs:comment "On an Output, a CIDv1 (raw codec, SHA-256) over its own bytes. On a Pin, the CID of the version pinned."@en .
+dgp:versionCid a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "version CID"@en ; rdfs:domain dgp:Protocol ; rdfs:range xsd:string ;
+    rdfs:comment "A CID over the protocol as it stands now: title, type, links and facts. A run's pin is compared with it, so an edited protocol shows as drift."@en .
 dgp:sourceCid a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "source CID"@en ; rdfs:domain dgp:Code ; rdfs:range xsd:string ;
     rdfs:comment "A CID over the code's sources alone, outputs stripped."@en .
-dgp:fingerprint a owl:DatatypeProperty ; rdfs:domain dgp:Run ; rdfs:range xsd:string .
-dgp:status a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:domain dgp:Run ; rdfs:range xsd:string ;
+dgp:fingerprint a owl:DatatypeProperty ; rdfs:label "fingerprint"@en ; rdfs:domain dgp:Run ; rdfs:range xsd:string ;
+    rdfs:comment "The same execution imported twice has the same fingerprint, so it stays one run."@en .
+dgp:status a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:label "status"@en ; rdfs:domain dgp:Run ; rdfs:range xsd:string ;
     rdfs:comment "planned, running, completed or failed. A failed run can still be evidence: a negative result can oppose a claim."@en .
-dgp:commit a owl:DatatypeProperty ; rdfs:domain dgp:Code ; rdfs:range xsd:string .
-dgp:path a owl:DatatypeProperty ; rdfs:range xsd:string .
-dgp:swhid a owl:DatatypeProperty ; rdfs:domain dgp:Code ; rdfs:range xsd:string .
-dgp:outputKind a owl:DatatypeProperty ; rdfs:domain dgp:Output ; rdfs:range xsd:string .
-dgp:byteSize a owl:DatatypeProperty ; rdfs:domain dgp:Output ; rdfs:range xsd:integer .
-dgp:locator a owl:DatatypeProperty ; rdfs:range rdf:JSON ;
+dgp:commit a owl:DatatypeProperty ; rdfs:label "commit"@en ; rdfs:domain dgp:Code ; rdfs:range xsd:string .
+dgp:path a owl:DatatypeProperty ; rdfs:label "path"@en ; rdfs:range xsd:string .
+dgp:swhid a owl:DatatypeProperty ; rdfs:label "Software Heritage id"@en ; rdfs:domain dgp:Code ; rdfs:range xsd:string .
+dgp:outputKind a owl:DatatypeProperty ; rdfs:label "output kind"@en ; rdfs:domain dgp:Output ; rdfs:range xsd:string ;
+    rdfs:comment "dataset, file, figure, table, text or image."@en .
+dgp:byteSize a owl:DatatypeProperty ; rdfs:label "size in bytes"@en ; rdfs:domain dgp:Output ; rdfs:range xsd:integer .
+dgp:locator a owl:DatatypeProperty ; rdfs:label "locator"@en ; rdfs:range rdf:JSON ;
     rdfs:comment "Where an output sits: path, commit, cell id or index, output index, label. Never identity."@en .
-dgp:anchor a owl:DatatypeProperty ; rdfs:domain dg:Evidence ; rdfs:range rdf:JSON .
-dgp:conditions a owl:DatatypeProperty ; rdfs:domain dgp:Study ; rdfs:range xsd:string .
-dgp:parameterValues a owl:DatatypeProperty ; rdfs:domain dgp:Run ; rdfs:range rdf:JSON .
-dgp:environment a owl:DatatypeProperty ; rdfs:domain dgp:Run ; rdfs:range rdf:JSON .
-dgp:provenance a owl:DatatypeProperty ; rdfs:range rdf:JSON ;
+dgp:anchor a owl:DatatypeProperty ; rdfs:label "anchor"@en ; rdfs:domain dg:Evidence ; rdfs:range rdf:JSON ;
+    rdfs:comment "The passage in the source: its exact words, page and figure. A W3C Web Annotation TextQuoteSelector in short form."@en .
+dgp:provenance a owl:DatatypeProperty ; rdfs:label "how it was made"@en ; rdfs:range rdf:JSON ;
     rdfs:comment "How the unit was made: authored, aiAssisted, aiGenerated or imported (mira defs#provenance)."@en .
+
+# ---------------------------------------------------------------------------
+# The three process nodes, in full (0.2). They differ by what they fix:
+#   Protocol   how something is done, whoever does it and whenever;
+#   Study      what one investigation compares and why (default label: Experiment);
+#   Run        what happened on one occasion.
+# A protocol declares; a study chooses; a run records.
+
+# Protocol: the method, reusable across studies.
+dgp:steps a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "steps"@en ; rdfs:domain dgp:Protocol ; rdfs:range rdf:List ;
+    rdfs:comment "The method's steps as short names, in order. The full text stays in the protocol's note."@en .
+dgp:parameters a owl:DatatypeProperty ;
+    rdfs:label "parameters"@en ; rdfs:domain dgp:Protocol ; rdfs:range rdf:JSON ;
+    rdfs:comment "The parameters the method declares: name, type, unit and default. A run gives them values in dgp:parameterValues."@en .
+dgp:materials a owl:DatatypeProperty ;
+    rdfs:label "materials"@en ; rdfs:domain dgp:Protocol ; rdfs:range xsd:string ;
+    rdfs:comment "Reagents, instruments and software the method calls for, as RRIDs where they have one. What a run really took in is dgp:used."@en .
+
+# Study: one designed investigation.
+dgp:hypothesis a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "hypothesis"@en ; rdfs:domain dgp:Study ; rdfs:range xsd:string ;
+    rdfs:comment "What the design expects to see, in a sentence. The argued form is a Claim; this is the design's own statement."@en .
+dgp:design a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "design"@en ; rdfs:domain dgp:Study ; rdfs:range xsd:string ;
+    rdfs:comment "The kind of design: experimental, observational, computational, replication or review."@en .
+dgp:conditions a owl:DatatypeProperty ;
+    rdfs:label "conditions"@en ; rdfs:domain dgp:Study ; rdfs:range xsd:string ;
+    rdfs:comment "The arms or factor levels the design compares. A run names the one it carried out in dgp:condition."@en .
+dgp:variables a owl:DatatypeProperty ;
+    rdfs:label "variables"@en ; rdfs:domain dgp:Study ; rdfs:range rdf:JSON ;
+    rdfs:comment "What is varied, measured and held fixed: name, role (independent, dependent or controlled) and unit."@en .
+dgp:sampleSize a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "planned sample size"@en ; rdfs:domain dgp:Study ; rdfs:range xsd:integer .
+dgp:preregistration a owl:ObjectProperty ;
+    rdfs:label "preregistration"@en ; rdfs:domain dgp:Study ;
+    rdfs:comment "Where the design was registered before it ran, as a DOI or URL."@en .
+
+# Run: one execution.
+dgp:condition a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "condition"@en ; rdfs:domain dgp:Run ; rdfs:range xsd:string ;
+    rdfs:comment "Which of its study's conditions this run carried out."@en .
+dgp:parameterValues a owl:DatatypeProperty ;
+    rdfs:label "parameter values"@en ; rdfs:domain dgp:Run ; rdfs:range rdf:JSON ;
+    rdfs:comment "The values the protocol's parameters took in this run."@en .
+dgp:environment a owl:DatatypeProperty ;
+    rdfs:label "environment"@en ; rdfs:domain dgp:Run ; rdfs:range rdf:JSON ;
+    rdfs:comment "Kernel, language and package versions, or an image digest."@en .
+dgp:deviations a owl:DatatypeProperty ;
+    rdfs:label "deviations"@en ; rdfs:domain dgp:Run ; rdfs:range xsd:string ;
+    rdfs:comment "Where this run departed from the protocol version it pins, one sentence each. A deviation is a fact about the run, not an edit to the protocol."@en .

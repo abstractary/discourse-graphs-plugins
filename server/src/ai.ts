@@ -38,7 +38,38 @@ type OpenRouterChunk = {
   choices?: { delta?: { content?: string } }[];
 };
 
-type TextSource = (config: Config, model: string, prompt: string, signal: AbortSignal) => AsyncGenerator<string>;
+type Target = { key: string; baseUrl: string; keyName: string };
+type TextSource = (target: Target, model: string, prompt: string, signal: AbortSignal) => AsyncGenerator<string>;
+
+// A member's own model, called with their key for this one question. The key is
+// used and dropped: it is never stored, logged or echoed. The address is always
+// the provider's own, so a member can't point the server at another host.
+type OwnProvider = { kind: 'anthropic' | 'openai' | 'gemini'; model: string; key: string };
+const OWN_BASE_URLS = {
+  openai: 'https://api.openai.com/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta',
+};
+
+type GeminiChunk = {
+  error?: unknown;
+  promptFeedback?: { blockReason?: string };
+  candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[];
+};
+
+function parseProvider(value: unknown): OwnProvider | undefined {
+  if (value === undefined) return undefined;
+  const valid =
+    isObject(value) &&
+    ['anthropic', 'openai', 'gemini'].includes(value.kind as string) &&
+    typeof value.model === 'string' &&
+    value.model.trim() !== '' &&
+    typeof value.key === 'string' &&
+    value.key.trim() !== '';
+  if (!valid) {
+    throw new ApiError(400, 'bad-provider', 'Send "provider" with a kind (anthropic, openai or gemini), a model and a key.');
+  }
+  return { kind: value.kind as OwnProvider['kind'], model: (value.model as string).trim(), key: (value.key as string).trim() };
+}
 
 export function aiStatus(config: Config): { mode: 'model' | 'search-only'; model?: string } {
   if (config.anthropicKey) return { mode: 'model', model: config.aiModel ?? ANTHROPIC_DEFAULT_MODEL };
@@ -115,22 +146,23 @@ async function* sseData<T>(body: AsyncIterable<Uint8Array>): AsyncGenerator<T> {
 }
 
 function checkResponse(response: Response, keyName: string): AsyncIterable<Uint8Array> {
+  const own = keyName === OWN_KEY;
   if (response.status === 401 || response.status === 403) {
-    throw new ApiError(502, 'model-refused', `The model service refused the key. Check ${keyName} on the server.`);
+    throw new ApiError(502, 'model-refused', own ? 'The model service refused your key. Check that it is right and still active.' : `The model service refused the key. Check ${keyName} on the server.`);
   }
   if (!response.ok || !response.body) {
-    throw new ApiError(502, 'model-failed', `The model service answered with HTTP ${response.status}. Check AI_MODEL, or try again in a minute.`);
+    throw new ApiError(502, 'model-failed', `The model service answered with HTTP ${response.status}. Check ${own ? 'the model you chose' : 'AI_MODEL'}, or try again in a minute.`);
   }
   return response.body;
 }
 
-async function* anthropicText(config: Config, model: string, prompt: string, signal: AbortSignal): AsyncGenerator<string> {
-  const response = await fetch(`${config.anthropicBaseUrl}/v1/messages`, {
+async function* anthropicText(target: Target, model: string, prompt: string, signal: AbortSignal): AsyncGenerator<string> {
+  const response = await fetch(`${target.baseUrl}/v1/messages`, {
     method: 'POST',
     signal,
     headers: {
       'content-type': 'application/json',
-      'x-api-key': config.anthropicKey ?? '',
+      'x-api-key': target.key,
       'anthropic-version': ANTHROPIC_VERSION,
     },
     body: JSON.stringify({
@@ -141,7 +173,7 @@ async function* anthropicText(config: Config, model: string, prompt: string, sig
       messages: [{ role: 'user', content: prompt }],
     }),
   });
-  for await (const event of sseData<AnthropicEvent>(checkResponse(response, 'ANTHROPIC_API_KEY'))) {
+  for await (const event of sseData<AnthropicEvent>(checkResponse(response, target.keyName))) {
     if (event.type === 'error') {
       throw new ApiError(502, 'model-failed', 'The model service stopped with an error. Try again in a minute.');
     }
@@ -154,13 +186,13 @@ async function* anthropicText(config: Config, model: string, prompt: string, sig
   }
 }
 
-async function* openRouterText(config: Config, model: string, prompt: string, signal: AbortSignal): AsyncGenerator<string> {
-  const response = await fetch(`${config.openRouterBaseUrl}/chat/completions`, {
+async function* openRouterText(target: Target, model: string, prompt: string, signal: AbortSignal): AsyncGenerator<string> {
+  const response = await fetch(`${target.baseUrl}/chat/completions`, {
     method: 'POST',
     signal,
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${config.openRouterKey ?? ''}`,
+      authorization: `Bearer ${target.key}`,
     },
     body: JSON.stringify({
       model,
@@ -171,7 +203,7 @@ async function* openRouterText(config: Config, model: string, prompt: string, si
       ],
     }),
   });
-  for await (const chunk of sseData<OpenRouterChunk>(checkResponse(response, 'OPENROUTER_API_KEY'))) {
+  for await (const chunk of sseData<OpenRouterChunk>(checkResponse(response, target.keyName))) {
     // OpenRouter reports errors inside a 200 stream once the headers are out.
     if (chunk.error) {
       throw new ApiError(502, 'model-failed', 'The model service stopped with an error. Try again in a minute.');
@@ -179,6 +211,41 @@ async function* openRouterText(config: Config, model: string, prompt: string, si
     const text = chunk.choices?.[0]?.delta?.content;
     if (text) yield text;
   }
+}
+
+async function* geminiText(target: Target, model: string, prompt: string, signal: AbortSignal): AsyncGenerator<string> {
+  const response = await fetch(`${target.baseUrl}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+    method: 'POST',
+    signal,
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': target.key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    }),
+  });
+  for await (const chunk of sseData<GeminiChunk>(checkResponse(response, target.keyName))) {
+    if (chunk.error) {
+      throw new ApiError(502, 'model-failed', 'The model service stopped with an error. Try again in a minute.');
+    }
+    if (chunk.promptFeedback?.blockReason) {
+      throw new ApiError(502, 'model-refused', 'The model declined to answer this. Try rewording the question.');
+    }
+    for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+      if (part.text) yield part.text;
+    }
+  }
+}
+
+const OWN_KEY = 'your own key';
+
+function ownSource(config: Config, provider: OwnProvider): { source: TextSource; target: Target } {
+  if (provider.kind === 'anthropic') {
+    return { source: anthropicText, target: { key: provider.key, baseUrl: config.anthropicBaseUrl, keyName: OWN_KEY } };
+  }
+  if (provider.kind === 'gemini') {
+    return { source: geminiText, target: { key: provider.key, baseUrl: config.geminiBaseUrl ?? OWN_BASE_URLS.gemini, keyName: OWN_KEY } };
+  }
+  return { source: openRouterText, target: { key: provider.key, baseUrl: config.openAiBaseUrl ?? OWN_BASE_URLS.openai, keyName: OWN_KEY } };
 }
 
 function buildPrompt(question: string, units: Unit[]): string {
@@ -190,13 +257,18 @@ async function askModel(
   question: string,
   units: Unit[],
   stream: ReturnType<typeof openNdjson>,
+  provider?: OwnProvider,
 ): Promise<void> {
-  const model = aiStatus(config).model ?? '';
-  const source: TextSource = config.anthropicKey ? anthropicText : openRouterText;
+  const model = provider?.model ?? aiStatus(config).model ?? '';
+  const { source, target } = provider
+    ? ownSource(config, provider)
+    : config.anthropicKey
+      ? { source: anthropicText, target: { key: config.anthropicKey, baseUrl: config.anthropicBaseUrl, keyName: 'ANTHROPIC_API_KEY' } }
+      : { source: openRouterText, target: { key: config.openRouterKey ?? '', baseUrl: config.openRouterBaseUrl, keyName: 'OPENROUTER_API_KEY' } };
   stream.write({ type: 'status', message: `Asking ${model}` });
   let answer = '';
   try {
-    for await (const text of source(config, model, buildPrompt(question, units), stream.signal)) {
+    for await (const text of source(target, model, buildPrompt(question, units), stream.signal)) {
       answer += text;
       stream.write({ type: 'delta', text });
     }
@@ -226,7 +298,8 @@ async function ask({ req, res, readJson }: Context, config: Config, store: Store
     if (units.length === 0) {
       throw new ApiError(400, 'no-units', 'No units to work from. Send units, and check that any grounded ids match them.');
     }
-    if (aiStatus(config).mode === 'model') await askModel(config, body.question, units, stream);
+    const provider = parseProvider(body.provider);
+    if (provider || aiStatus(config).mode === 'model') await askModel(config, body.question, units, stream, provider);
     else askSearch(body.question, units, stream);
   } catch (error) {
     if (!stream.signal.aborted) {

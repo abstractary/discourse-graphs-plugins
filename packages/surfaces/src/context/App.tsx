@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Reaction } from "@dg/contract/records.ts";
-import type { ContextEntry, NodeSummary, NodeView, RelationOption } from "@dg/contract/surface.ts";
+import type { ContextEntry, NodeSummary, NodeView, RelationOption, SimilarUnit } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Chip, Icon, plain, Mark } from "../shared/ui.tsx";
+import { Method } from "./Method.tsx";
 
 type Group = { label: string; entries: ContextEntry[] };
 
@@ -19,13 +20,24 @@ const groupsOf = (entries: ContextEntry[]): Group[] => {
     .sort((a, b) => waiting(a) - waiting(b) || a.label.localeCompare(b.label));
 };
 
-const Relate = ({ connection, node, onDone }: { connection: Connection; node: string; onDone: () => void }) => {
+const Relate = ({ connection, node, onDone, initial }: { connection: Connection; node: string; onDone: () => void; initial?: NodeSummary | undefined }) => {
   const { call } = connection;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NodeSummary[]>([]);
   const [picked, setPicked] = useState<NodeSummary | null>(null);
   const [options, setOptions] = useState<RelationOption[]>([]);
   const [notice, setNotice] = useState("");
+
+  // Opened on a unit already chosen, such as one found in another paper: straight to how they relate.
+  useEffect(() => {
+    if (!initial) return;
+    setPicked(initial);
+    setNotice("");
+    void call("relation.options", { source: node, target: initial.id }).then((found) => {
+      setOptions(found);
+      if (found.length === 0) setNotice("The grammar has no relation between these two.");
+    });
+  }, [call, node, initial]);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -46,7 +58,7 @@ const Relate = ({ connection, node, onDone }: { connection: Connection; node: st
 
   const assert = async (option: RelationOption): Promise<void> => {
     const [source, target] = option.flipped ? [picked!.id, node] : [node, picked!.id];
-    await call("relation.assert", { type: option.type, source, target }).catch((error: Error) => setNotice(error.message));
+    await call("relation.assert", { type: option.type, source, target, draw: true }).catch((error: Error) => setNotice(error.message));
     onDone();
   };
 
@@ -84,6 +96,7 @@ const Relate = ({ connection, node, onDone }: { connection: Connection; node: st
                 <button type="button" className="row-main" data-dg={`relate-result-${item.title}`} onClick={() => void pick(item)}>
                   <Chip node={item} />
                   <span>{plain(item.title)}</span>
+                  {item.paper ? <span className="from-paper" title={`Read from ${item.paper.title}`}>{item.paper.label}</span> : null}
                 </button>
               </li>
             ))}
@@ -92,6 +105,53 @@ const Relate = ({ connection, node, onDone }: { connection: Connection; node: st
       )}
       {notice ? <p role="alert">{notice}</p> : null}
     </div>
+  );
+};
+
+/**
+ * Units in other papers and canvases that read close to this one. It looks only
+ * when asked, and only offers: relating two of them is the person's call.
+ */
+const Elsewhere = ({ connection, node, onWalk, onRelate }: { connection: Connection; node: NodeSummary; onWalk: (id: string) => void; onRelate: (other: NodeSummary) => void }) => {
+  const { call, on } = connection;
+  const [found, setFound] = useState<SimilarUnit[] | null>(null);
+  const [looking, setLooking] = useState(false);
+  const look = useCallback(() => {
+    setLooking(true);
+    void call("node.similar", { id: node.id, limit: 6 })
+      .then(setFound)
+      .catch(() => setFound([]))
+      .finally(() => setLooking(false));
+  }, [call, node.id]);
+  // Once open, it keeps up: a unit just related drops off the list.
+  useEffect(() => (found ? on("graph-changed", look) : undefined), [found, look, on]);
+  return (
+    <section className="ctx-group ctx-similar" data-dg="ctx-similar">
+      <h2>Elsewhere {found ? <span>{found.length}</span> : null}</h2>
+      {found === null ? (
+        <button type="button" className="ctx-link ctx-similar-find" data-dg="ctx-similar-find" disabled={looking} onClick={look}>
+          {looking ? "Looking…" : node.paper ? "Find units like this in other papers" : "Find units like this in your papers"}
+        </button>
+      ) : found.length === 0 ? (
+        <p className="ctx-none">Nothing elsewhere reads close to this.</p>
+      ) : (
+        <ul className="rows">
+          {found.map(({ node: other, shared }) => (
+            <li key={other.id}>
+              <button type="button" className="row-main" data-dg={`similar-${other.title}`} onClick={() => onWalk(other.id)} title="Show it here">
+                <Chip node={other} />
+                <span>{plain(other.title)}</span>
+                {other.paper ? <span className="from-paper" title={`Read from ${other.paper.title}`}>{other.paper.label}</span> : null}
+                <span className="row-words">Shares: {shared.join(", ")}</span>
+              </button>
+              <button type="button" className="icon-button" data-dg={`similar-relate-${other.title}`} aria-label="Relate these two" title="Relate these two" onClick={() => onRelate(other)}>
+                <Icon name="link" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 };
 
@@ -109,10 +169,17 @@ const Provenance = ({ view, call, report }: PanelProps) => {
   return (
     <section className="ctx-group" data-dg="ctx-provenance">
       <h2>Where it came from</h2>
-      <p className="ctx-line">
-        Made by {created.credit.name} on {whenText(created.at)}
-        {edited ? `, last changed by ${edited.name} on ${whenText(edited.at)}` : ""}
-      </p>
+      {paper ? (
+        <p className="ctx-line" data-dg="ctx-read-from">
+          Read from a paper{paper.authors?.length ? ` by ${paper.authors.length > 3 ? `${paper.authors[0]} and ${paper.authors.length - 1} others` : paper.authors.join(", ")}` : ""}
+          {edited ? `. Last changed by ${edited.name} on ${whenText(edited.at)}` : ""}
+        </p>
+      ) : (
+        <p className="ctx-line">
+          Made by {created.credit.name} on {whenText(created.at)}
+          {edited ? `, last changed by ${edited.name} on ${whenText(edited.at)}` : ""}
+        </p>
+      )}
       {paper ? (
         <div className="ctx-source" data-dg="ctx-paper">
           <button type="button" className="ctx-link" data-dg="ctx-paper-open" onClick={() => show(paper.canvas)}>{paper.title}</button>
@@ -120,8 +187,12 @@ const Provenance = ({ view, call, report }: PanelProps) => {
           {pdf ? <button type="button" className="ctx-link" data-dg="ctx-pdf-open" onClick={read}>Open the passage in the PDF</button> : null}
           {paper.description ? <p className="ctx-line">{paper.description}</p> : null}
           <p className="ctx-line">
-            Extracted by {paper.extractedBy} on {whenText(paper.at)}, with {paper.model} on {paper.server}, into the {paper.schema} schema
+            {/^Saved extraction \(/.test(paper.server)
+              ? `Added by ${paper.extractedBy} on ${whenText(paper.at)} from a saved extraction, ${paper.server.replace(/^Saved extraction \((.*)\)$/, "$1")}, that ${paper.model} made`
+              : `Extracted by ${paper.extractedBy} on ${whenText(paper.at)}, with ${paper.model} on ${paper.server}`}
+            , into the {paper.schema} schema
             {paper.doi ? `. DOI ${paper.doi}` : ""}
+            {paper.license ? `. ${paper.license}` : ""}
           </p>
         </div>
       ) : null}
@@ -215,6 +286,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [trail, setTrail] = useState<string[]>([]);
   const [pinned, setPinned] = useState(false);
   const [relating, setRelating] = useState(false);
+  const [relateTo, setRelateTo] = useState<NodeSummary | undefined>(undefined);
   const [notice, setNotice] = useState("");
   const pinnedRef = useRef(pinned);
   pinnedRef.current = pinned;
@@ -325,7 +397,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         {notice ? <p role="alert" className="ctx-notice">{notice}</p> : null}
       </header>
 
-      {relating ? <Relate connection={connection} node={node.id} onDone={() => setRelating(false)} /> : null}
+      {relating ? <Relate connection={connection} node={node.id} initial={relateTo} onDone={() => { setRelating(false); setRelateTo(undefined); }} /> : null}
 
       {groups.length === 0 ? <p className="ctx-none">No relations yet.</p> : null}
       {groups.map(({ label, entries }) => (
@@ -337,6 +409,7 @@ export const App = ({ connection }: { connection: Connection }) => {
                 <button type="button" className="row-main" data-dg={`row-${other.title}`} onClick={() => walk(other.id)}>
                   <Chip node={other} />
                   <span>{plain(other.title)}</span>
+                  {other.paper && other.paper.id !== node.paper?.id ? <span className="from-paper" title={`Read from ${other.paper.title}`}>{other.paper.label}</span> : null}
                 </button>
                 {state === "pending" ? (
                   <div className="decide">
@@ -350,6 +423,21 @@ export const App = ({ connection }: { connection: Connection }) => {
           </ul>
         </section>
       ))}
+
+      <Method connection={connection} node={node} onWalk={walk} />
+
+      {["claim", "evidence", "question"].includes(node.base ?? "") ? (
+        <Elsewhere
+          key={node.id}
+          connection={connection}
+          node={node}
+          onWalk={walk}
+          onRelate={(other) => {
+            setRelateTo(other);
+            setRelating(true);
+          }}
+        />
+      ) : null}
 
       {body?.trim() ? (
         <section className="ctx-group">

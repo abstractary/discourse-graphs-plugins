@@ -13,7 +13,7 @@ const ALLOWED = {
   "packages/surfaces": ["@dg/contract", "@dg/layout"],
   "plugins/obsidian": ["@dg/contract", "@dg/core", "@dg/native", "@dg/sync"],
   "plugins/roam": ["@dg/contract", "@dg/core", "@dg/native", "@dg/sync"],
-  local: ["@dg/contract", "@dg/core"],
+  local: ["@dg/contract", "@dg/core", "@dg/sync"],
   server: [],
 };
 

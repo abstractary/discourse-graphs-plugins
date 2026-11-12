@@ -159,6 +159,8 @@ const processFields = (node: NodeRecord, graph: FoldedGraph): JsonObject => {
         partOf: link(prov.partOf, graph),
         instrument: prov.instrument?.map((pin) => pinned(pin, graph)),
         status: facts.status,
+        condition: facts.condition,
+        deviations: facts.deviations,
         parameterValues: facts.parameterValues,
         environment: facts.environment,
       });
@@ -169,6 +171,8 @@ const processFields = (node: NodeRecord, graph: FoldedGraph): JsonObject => {
         sameAs: facts.sameAs,
         version: facts.version,
         parameters: facts.parameters as unknown as JsonObject[] | undefined,
+        steps: facts.steps,
+        materials: facts.materials,
         implementedBy: prov.implementedBy?.map((id) => reference(id, graph)),
       });
     case "study":
@@ -177,6 +181,11 @@ const processFields = (node: NodeRecord, graph: FoldedGraph): JsonObject => {
         question: link(prov.question, graph),
         protocols: prov.protocols?.map((id) => reference(id, graph)),
         conditions: facts.conditions,
+        hypothesis: facts.hypothesis,
+        design: facts.design,
+        variables: facts.variables as unknown as JsonObject[] | undefined,
+        sampleSize: facts.sampleSize,
+        preregistration: facts.preregistration,
       });
     case "code":
       return compact({

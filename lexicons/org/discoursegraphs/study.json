@@ -54,8 +54,67 @@
             "items": {
               "type": "string",
               "maxLength": 1000
-            }
+            },
+            "description": "The arms or factor levels the design compares."
+          },
+          "hypothesis": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "What the design expects to see, in a sentence."
+          },
+          "design": {
+            "type": "string",
+            "knownValues": [
+              "experimental",
+              "observational",
+              "computational",
+              "replication",
+              "review"
+            ]
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "#variable"
+            },
+            "description": "What is varied, measured and held fixed."
+          },
+          "sampleSize": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The planned sample size."
+          },
+          "preregistration": {
+            "type": "string",
+            "format": "uri",
+            "description": "Where the design was registered before it ran."
           }
+        }
+      }
+    },
+    "variable": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "role": {
+          "type": "string",
+          "knownValues": [
+            "independent",
+            "dependent",
+            "controlled"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 100
         }
       }
     }

@@ -7,7 +7,7 @@ import type {
   Pin,
   RelationTypeRecord,
 } from "@dg/contract/records.ts";
-import { baseOf } from "./process.ts";
+import { baseOf, provenanceOf } from "./process.ts";
 
 /**
  * The PROV-O publishing view: every unit and its provenance links as JSON-LD,
@@ -37,15 +37,18 @@ const pinOf = (graph: FoldedGraph, pin: Pin): JsonObject => ({
   ...(pin.cid ? { cid: pin.cid } : {}),
 });
 
+/** A bare ORCID iD is not an IRI. PROV wants one, and ORCID's own form is the https one. */
+const agentIri = (agent: string): string => (/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(agent) ? `https://orcid.org/${agent}` : agent);
+
 const clean = (value: Record<string, unknown>): JsonObject =>
   Object.fromEntries(
     Object.entries(value).filter(([, item]) => item !== undefined && !(Array.isArray(item) && item.length === 0)),
   ) as JsonObject;
 
-const nodeJson = (graph: FoldedGraph, node: NodeRecord): JsonObject | null => {
+const nodeJson = (graph: FoldedGraph, node: NodeRecord, versions?: Map<DgId, string>): JsonObject | null => {
   const base = baseOf(graph, node);
   if (!base) return null;
-  const prov = node.prov ?? {};
+  const prov = provenanceOf(graph, node.id);
   const facts = node.facts ?? {};
   const ref = (id: DgId | undefined) => (id ? iriOf(graph, id) : undefined);
   return clean({
@@ -59,7 +62,16 @@ const nodeJson = (graph: FoldedGraph, node: NodeRecord): JsonObject | null => {
     protocols: prov.protocols?.map((id) => iriOf(graph, id)),
     implementedBy: prov.implementedBy?.map((id) => iriOf(graph, id)),
     conditions: facts.conditions,
+    hypothesis: facts.hypothesis,
+    design: facts.design,
+    variables: facts.variables,
+    sampleSize: facts.sampleSize,
+    preregistration: facts.preregistration,
     version: facts.version,
+    versionCid: base === "protocol" ? versions?.get(node.id) : undefined,
+    steps: facts.steps,
+    parameters: facts.parameters,
+    materials: facts.materials,
     sameAs: facts.sameAs,
     // Execution
     partOf: ref(prov.partOf),
@@ -69,7 +81,10 @@ const nodeJson = (graph: FoldedGraph, node: NodeRecord): JsonObject | null => {
     status: facts.status,
     startedAt: facts.startedAt,
     endedAt: facts.endedAt,
-    agents: facts.agents,
+    agents: facts.agents?.map(agentIri),
+    condition: facts.condition,
+    deviations: facts.deviations,
+    seeAlso: facts.seeAlso,
     fingerprint: facts.fingerprint,
     parameterValues: facts.parameterValues,
     environment: facts.environment,
@@ -80,6 +95,7 @@ const nodeJson = (graph: FoldedGraph, node: NodeRecord): JsonObject | null => {
     sourceCid: facts.sourceCid,
     language: facts.language,
     swhid: facts.swhid,
+    license: facts.license,
     // Observation
     generatedBy: ref(prov.generatedBy),
     derivedFrom: prov.derivedFrom?.map((pin) => pinOf(graph, pin)),
@@ -101,11 +117,15 @@ const nodeJson = (graph: FoldedGraph, node: NodeRecord): JsonObject | null => {
   });
 };
 
-export const toProcessJsonLd = (graph: FoldedGraph, context: JsonObject | string): JsonObject => {
+/**
+ * `versions` holds each protocol's CID as it stands now (`protocolCids`), so a
+ * reader of the export can see drift against a run's pin.
+ */
+export const toProcessJsonLd = (graph: FoldedGraph, context: JsonObject | string, versions?: Map<DgId, string>): JsonObject => {
   const nodes = new Map<DgId, JsonObject>();
   for (const record of graph.documents.values()) {
     if (record.kind !== "node" || record.removed || graph.withdrawn.has(record.id)) continue;
-    const json = nodeJson(graph, record);
+    const json = nodeJson(graph, record, versions);
     if (json) nodes.set(record.id, json);
   }
   for (const { record, state } of graph.relations.values()) {

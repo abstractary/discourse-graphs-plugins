@@ -71,6 +71,8 @@ export const readingFeature = (context: Context) => {
       // The paper's own source unit: made by its extraction, or stated by DOI or title.
       const sources = nodes().filter((node) => baseOf(node) === "source");
       const own =
+        sources.find((node) => node.source?.paper === paper.id && node.source.own) ??
+        sources.find((node) => node.source?.paper === paper.id && paper.doi !== undefined && node.facts?.doi === paper.doi) ??
         sources.find((node) => node.source?.paper === paper.id) ??
         (paper.doi ? sources.find((node) => node.facts?.doi === paper.doi) : undefined) ??
         sources.find((node) => node.title === paper.title);
@@ -183,7 +185,7 @@ export const readingFeature = (context: Context) => {
 
   const handlers: Pick<
     Handlers,
-    "pdf.list" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "units.available" | "canvas.placeUnits"
+    "pdf.list" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "units.available" | "canvas.placeUnits" | "units.put"
   > = {
     "pdf.list": async () => {
       const all = (await files(true)).map(documentOf);
@@ -269,9 +271,9 @@ export const readingFeature = (context: Context) => {
     },
 
     "pdf.show": async ({ ref, unit }) => {
-      if (unit) pendingReveal = { ref, unit };
-      value(await context.host.openSurface({ route: { surface: "pdf", id: ref }, placement: "main" }));
-      if (unit) context.send({ event: "pdf-reveal", ref, unit });
+      if (ref && unit) pendingReveal = { ref, unit };
+      value(await context.host.openSurface({ route: { surface: "pdf", ...(ref ? { id: ref } : {}) }, placement: "main" }));
+      if (ref && unit) context.send({ event: "pdf-reveal", ref, unit });
       return null;
     },
 
@@ -384,6 +386,28 @@ export const readingFeature = (context: Context) => {
       if (fresh.length) await context.put(fresh);
       if (placed.size) context.send({ event: "units-placed", canvas, units: [...placed] });
       return { ids };
+    },
+
+    // A column beside what's there. An open canvas then brings them to where the person is looking.
+    "units.put": async ({ canvas, nodes: ids }) => {
+      if (!context.canvasOf(canvas)) throw new Error("That canvas is gone.");
+      const cards = cardsOn(canvas);
+      const wanted = [...new Set(ids)].filter((id) => context.nodeOf(id) && !context.nodeOf(id)!.removed);
+      const already = wanted.filter((id) => cards.has(id));
+      const fresh = wanted.filter((id) => !cards.has(id));
+      if (fresh.length) {
+        const start = spotFor(canvas, "", 0);
+        let y = start.y;
+        const places = fresh.map((id) => {
+          const height = cardHeight(context.nodeOf(id)!.title);
+          const place = { node: id, x: start.x, y, width: CARD_WIDTH, height };
+          y += height + ROW_GAP;
+          return place;
+        });
+        await handlers["canvas.placeUnits"]({ canvas, places });
+      }
+      if (already.length) context.send({ event: "highlight", units: already });
+      return { placed: fresh, already };
     },
   };
 

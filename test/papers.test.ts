@@ -552,9 +552,7 @@ test("a run a paper reports shows every method it followed, and isn't held to a 
 test("a type someone made under the same name but another meaning isn't taken for MIRA's", async () => {
   const { call, core } = await setup(demo(NEPHRITIS));
   const { createNodeType } = await import("@dg/contract/records.ts");
-  const me = (await call("identity.get", {})) as unknown as { id: string; name: string };
-  void me;
-  const odd = createNodeType({ ...(core as unknown as { stamp?: () => never }).stamp?.(), by: { id: "did:plc:someone", name: "Someone" }, space: "s", at: new Date().toISOString(), fields: { label: "Protocol", base: "source", abbreviation: "PRO", titleFormat: "PRO - {content}" } } as never);
+  const odd = createNodeType({ by: { id: "did:plc:someone", name: "Someone" }, space: "s", at: new Date().toISOString(), fields: { label: "Protocol", base: "source", abbreviation: "PRO", titleFormat: "PRO - {content}" } } as never);
   await core.take([odd]);
   const paper = await call("paper.extract", { file: { ...FILE, name: "reservoir-2021.pdf" }, saved: { name: "reservoir-2021.graph.json", text: JSON.stringify(METHODS) } });
   const protocol = Object.values((await call("canvas.open", { id: paper.canvas })).nodes).find((unit) => unit.title.startsWith("Fit the readout"))!;

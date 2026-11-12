@@ -79,6 +79,8 @@ export type Provenance = {
     anchor?: string;
     description?: string;
   };
+  /** The PDF it was highlighted or extracted from, when the base holds that file. */
+  pdf?: { ref: string; name: string; page?: number; exact?: string };
   lives: {
     text: { title: string } | null;
     canvases: { id: DgId; title: string; shared: boolean }[];
@@ -112,6 +114,71 @@ export type PaperSummary = {
   labPaper?: string;
 };
 
+/** A PDF the base holds, and what the graph knows about it. */
+export type PdfDocument = {
+  ref: string;
+  name: string;
+  /** The paper's or source unit's title, or else the file name. */
+  title: string;
+  folder?: string;
+  size?: number;
+  modifiedAt?: string;
+  paper?: { id: DgId; title: string; canvas: DgId };
+  /** The source unit that stands for this file, once anything was read from it. */
+  source?: DgId;
+  /** Units read from it, by highlight or by extraction. */
+  units: number;
+};
+
+/** The passage a unit was read from, as a W3C text quote: matched by its words, not by position. */
+export type PdfMark = { unit: NodeSummary; exact: string; page?: number };
+
+export type PdfOpened = {
+  document: PdfDocument;
+  dataBase64: string;
+  marks: PdfMark[];
+  /** A unit to scroll to, asked for before this reader opened. */
+  reveal?: DgId;
+};
+
+export type PdfCut = {
+  ref: string;
+  /** The highlighted words, as selected. */
+  exact: string;
+  page: number;
+  /** The unit's title. It starts as the highlight. */
+  title: string;
+  type?: DgId;
+  /** Null keeps it in the graph only. */
+  canvas: DgId | null;
+  /** Makes this canvas first, and puts the unit there. */
+  newCanvas?: string;
+  /** The PDF's own title, from its metadata, for its source unit. */
+  documentTitle?: string;
+};
+
+/** Units grouped by where else they live. A unit in two places is in both groups. */
+export type UnitsSegment = {
+  kind: "canvas" | "folder" | "loose";
+  /** A canvas or folder id, or `loose`. */
+  id: string;
+  title: string;
+  holon?: HolonLevel;
+  units: DgId[];
+};
+
+export type AvailableUnit = NodeSummary & {
+  /** Relations, active or pending, to cards already on this canvas. */
+  links: number;
+};
+
+export type UnitsAvailable = {
+  units: Record<DgId, AvailableUnit>;
+  segments: UnitsSegment[];
+  /** Relations among the units listed, active or pending, so a group can be laid out before it's placed. */
+  relations: { source: DgId; target: DgId; label: string; kind?: string }[];
+};
+
 export type ExportTarget =
   | { kind: "workspace" }
   | { kind: "lab" }
@@ -139,6 +206,173 @@ export type CanvasSummary = {
   links: number;
   editedAt: string;
   credit: Credit;
+};
+
+/**
+ * Holons: every level of the argument holarchy is shown the same way. A lab
+ * holds questions, a question holds the claims that address it, a claim holds
+ * the evidence for and against it, and evidence holds the outputs it rests on.
+ * Containment isn't exclusive: a claim can sit inside two questions. Each
+ * holon is drawn as a canvas, authored when someone has arranged one.
+ */
+export type HolonLevel = "lab" | "question" | "claim" | "evidence" | "output";
+/** A lab is named by its DID; every other holon by its unit's id. */
+export type HolonRef = { level: HolonLevel; id: string };
+/** Whose arguments count as active: only mine, my lab's, or everyone's. */
+export type Stance = "mine" | "lab" | "everyone";
+export type Privacy = "private" | "lab" | "published";
+
+export type HolonPart = {
+  id: DgId;
+  title: string;
+  /** Its base type, such as `claim` or `run`. */
+  base: string;
+  label: string;
+  credit: Credit;
+  privacy: Privacy;
+  /** Set when the part is itself a holon you can open into. */
+  ref?: HolonRef;
+  /** How many parts that holon holds. */
+  holds?: number;
+  /** Short gap names that apply to this part, such as `single run`. */
+  flags: string[];
+};
+
+export type HolonEdge = {
+  id: string;
+  from: DgId;
+  to: DgId;
+  /** An argument (`supports`, `opposes`, `addresses`, `informs`) or a provenance field. */
+  kind: string;
+  /** Arguments have a state; provenance fields are always `field`. */
+  state: "active" | "pending" | "field";
+  by?: string;
+};
+
+export type Crossing = {
+  id: DgId;
+  title: string;
+  base: string;
+  /** In: something this holon rests on from elsewhere. Out: something of it used elsewhere. */
+  direction: "in" | "out";
+  why: string;
+  /** The other holon, when there is one to open. */
+  other?: { ref: HolonRef; title: string };
+};
+
+export type Gap = {
+  rule: string;
+  severity: "violation" | "warning";
+  message: string;
+  units: DgId[];
+};
+
+export type HolonCanvasCard = {
+  /** The canvas item id, or the unit id on a generated canvas. */
+  id: string;
+  unit?: DgId;
+  /** A nested canvas shown as a card. */
+  canvas?: DgId;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type HolonCanvas = {
+  /** Null for a canvas laid out from the graph that nobody has saved. */
+  id: DgId | null;
+  title: string;
+  cards: HolonCanvasCard[];
+  links: { id: string; from: string; to: string; label?: string; relation?: DgId }[];
+  /** Other canvases of the same holon. */
+  others: { id: DgId; title: string }[];
+};
+
+export type HolonEvent = { at: string; by: string; what: string; unit?: DgId };
+
+/** How a card's holon opens. Every way also has the card's own "open inside" button. */
+export type HolonGesture = "button" | "doubleClick" | "semantic";
+/** Per-device choices. */
+export type Prefs = { holonGesture: HolonGesture };
+
+/** A canvas's place in the holarchy, for the canvas tab's breadcrumb. */
+export type CanvasHolon = {
+  ref: HolonRef | null;
+  path: { ref: HolonRef; title: string }[];
+  /** Holons this canvas could be tied to: the lab and the holon units on it. */
+  candidates: { ref: HolonRef; title: string }[];
+};
+
+export type HolonView = {
+  ref: HolonRef;
+  title: string;
+  label: string;
+  base: string;
+  /** One path up to the lab, for the breadcrumb. */
+  path: { ref: HolonRef; title: string }[];
+  /** Every holon this one sits in. */
+  within: { ref: HolonRef; title: string }[];
+  parts: HolonPart[];
+  /** What stands behind evidence or an output: runs, protocols, code, sources. */
+  behind: HolonPart[];
+  edges: HolonEdge[];
+  boundary: {
+    crossings: Crossing[];
+    gaps: Gap[];
+    privacy: { counts: Record<Privacy, number>; next: string };
+    stance: { stance: Stance; active: number; pending: number; pendingBy: string[] };
+  };
+  canvas: HolonCanvas;
+  history: HolonEvent[];
+  /** Gap names that apply to the holon's own unit. */
+  flags: string[];
+  /** Titles for every unit the boundary names, including ones a level or two down. */
+  names: Record<DgId, { title: string; base: string; label: string; ref?: HolonRef }>;
+};
+
+export type ReleaseSummary = {
+  id: DgId;
+  canvas: DgId;
+  name: string;
+  note?: string;
+  at: string;
+  by: string;
+  units: number;
+  published: boolean;
+};
+
+export type RepositoryCanvas = {
+  id: DgId;
+  title: string;
+  holon?: { ref: HolonRef; title: string };
+  cards: number;
+  links: number;
+  /** Units on it by base type. */
+  units: Record<string, number>;
+  people: string[];
+  editedAt: string;
+  /** Edits in the log for this canvas and its items. */
+  edits: number;
+  releases: ReleaseSummary[];
+  forkOf?: { id: DgId; title: string; release: string };
+  forks: number;
+  /** Canvases embedded in this one, and canvases this one is embedded in. */
+  nested: DgId[];
+  nestedIn: DgId[];
+  gaps: number;
+  privacy: Privacy;
+};
+
+export type CanvasDiff = {
+  from: string;
+  to: string;
+  added: { unit: DgId; title: string }[];
+  removed: { unit: DgId; title: string }[];
+  /** Units whose content changed between the two. */
+  changed: { unit: DgId; title: string }[];
+  moved: { unit: DgId; title: string }[];
 };
 
 export type NodeQuery = {
@@ -208,6 +442,36 @@ export type SurfaceMethods = {
   };
   "canvas.list": { params: Record<string, never>; result: CanvasRecord[] };
   /** Every canvas with what a person needs to recognize it. */
+  /** One holon, drawn the same way at every level. */
+  "holon.view": { params: { ref: HolonRef; stance: Stance }; result: HolonView };
+  /** The holon in focus: the active canvas's holon, or the holon of the note being read. */
+  "holon.focus.get": { params: Record<string, never>; result: { ref: HolonRef | null; canvas: DgId | null } };
+  /** A canvas tab or the explorer says which holon it's showing. */
+  "holon.focus.set": { params: { canvas?: DgId; ref?: HolonRef }; result: null };
+  "holon.ofCanvas": { params: { id: DgId }; result: CanvasHolon };
+  /** The holon's own canvas, made from its laid-out view if it has none yet. */
+  "holon.canvas": { params: { ref: HolonRef }; result: { id: DgId; made: boolean } };
+  /** Ties a canvas to a holon, so it becomes that holon's view. */
+  "canvas.setHolon": { params: { id: DgId; holon: string | null }; result: null };
+  /** Lights these units on whatever canvas shows them, from any panel. */
+  "canvas.highlight": { params: { units: DgId[] }; result: null };
+  "prefs.get": { params: Record<string, never>; result: Prefs };
+  "prefs.set": { params: Partial<Prefs>; result: Prefs };
+  /** The holon a unit opens as. A run or protocol opens as the evidence it stands behind. */
+  "holon.locate": { params: { id: DgId }; result: HolonRef | null };
+  /** The top of the holarchy: the labs and spaces in this graph. */
+  "holon.roots": { params: Record<string, never>; result: { ref: HolonRef; title: string; holds: number }[] };
+  /** Every canvas, with its versions, forks, nesting and gaps. */
+  "repository.canvases": { params: Record<string, never>; result: RepositoryCanvas[] };
+  /** A canvas as it stood at a moment in its history. */
+  "canvas.at": { params: { id: DgId; at: string }; result: HolonCanvas };
+  "canvas.history": { params: { id: DgId }; result: { events: HolonEvent[]; releases: ReleaseSummary[] } };
+  /** Saves a holon's laid-out canvas, so it can be arranged, versioned and released. */
+  "canvas.saveHolon": { params: { ref: HolonRef }; result: { id: DgId } };
+  "canvas.release": { params: { id: DgId; name: string; note?: string }; result: ReleaseSummary };
+  "canvas.fork": { params: { release: DgId; title?: string }; result: { id: DgId } };
+  /** `now` stands for the live canvas. */
+  "canvas.diff": { params: { canvas: DgId; from: DgId | "now"; to: DgId | "now" }; result: CanvasDiff };
   "canvas.summaries": { params: Record<string, never>; result: CanvasSummary[] };
   /** Goes to a canvas in the base, in the base's own way. */
   "canvas.show": { params: { id: DgId }; result: null };
@@ -230,6 +494,25 @@ export type SurfaceMethods = {
   };
   /** Asks any open canvas to add this node. Null when no canvas is open. */
   "canvas.place": { params: { node: DgId }; result: null };
+  /** Puts units on a canvas where the caller laid them out, with their relations to each other and to what's there. */
+  "canvas.placeUnits": {
+    params: { canvas: DgId; places: { node: DgId; x: number; y: number; width: number; height: number }[] };
+    result: { ids: DgId[] };
+  };
+  /** Units not on this canvas yet, grouped by the other canvases and folders that hold them. */
+  "units.available": { params: { canvas: DgId }; result: UnitsAvailable };
+  /** PDFs the base holds: papers first, then the rest, newest first. */
+  "pdf.list": { params: Record<string, never>; result: PdfDocument[] };
+  /** With `data: false`, only what the graph knows changes: the marks, for a re-read after an edit. */
+  "pdf.open": { params: { ref: string; data?: boolean }; result: PdfOpened };
+  /** Keeps a dropped or chosen PDF in the base, where a person would look for it. */
+  "pdf.add": { params: { name: string; dataBase64: string }; result: PdfDocument };
+  /** Makes a unit from a highlight, and puts it on a canvas if one was chosen. */
+  "pdf.cut": { params: PdfCut; result: { node: NodeSummary; canvas: DgId | null } };
+  /** Takes back a unit just made from a highlight, and its card. */
+  "pdf.uncut": { params: { node: DgId }; result: null };
+  /** Opens the reader beside the canvas, at a unit's passage if given. */
+  "pdf.show": { params: { ref: string; unit?: DgId }; result: null };
   "canvas.export": { params: { id: DgId }; result: DgCanvas };
   "grammar.get": {
     params: Record<string, never>;
@@ -237,7 +520,7 @@ export type SurfaceMethods = {
   };
   "base.reveal": { params: { id: DgId; placement: Placement }; result: null };
   /** Opens a panel in the base's side area. */
-  "panel.open": { params: { surface: "context" | "canvases" }; result: null };
+  "panel.open": { params: { surface: "context" | "canvases" | "boundary" }; result: null };
   /** Opens a pop-up over the base. */
   "dialog.open": { params: { surface: "upload" | "welcome" }; result: null };
   "dialog.close": { params: Record<string, never>; result: null };
@@ -312,9 +595,16 @@ export type SurfaceResponse =
 
 export type SurfaceEvent =
   | { event: "graph-changed" }
+  | { event: "holon-focus-changed"; ref: HolonRef | null; canvas: DgId | null }
+  | { event: "highlight"; units: DgId[] }
+  | { event: "prefs-changed"; prefs: Prefs }
   | { event: "focus-changed"; node: DgId | null }
   | { event: "appearance-changed"; appearance: Appearance; skin: Skin }
   | { event: "place-node"; node: DgId }
+  /** Units just put on a canvas from another panel, so that canvas can bring them into view. */
+  | { event: "units-placed"; canvas: DgId; units: DgId[] }
+  /** Scroll an open reader to a unit's passage. */
+  | { event: "pdf-reveal"; ref: string; unit: DgId }
   /** Progress on something slow, such as an extraction. */
   | { event: "job-status"; message: string }
   | { event: "ai-delta"; requestId: string; text: string }

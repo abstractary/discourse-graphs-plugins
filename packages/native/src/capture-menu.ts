@@ -6,7 +6,9 @@ import type { CoreForAdapter } from "@dg/contract/core.ts";
  * editor. It never takes focus, so the selection stays alive while it's open.
  * Both adapters use this one menu, so the gesture is the same in each base.
  */
-export type CaptureChoice = { id: string | null; label: string; key: string };
+import { captureChoices, type CaptureChoice } from "@dg/contract/keys.ts";
+
+export { captureChoices, type CaptureChoice };
 
 const ID = "dg-capture-menu";
 
@@ -121,26 +123,6 @@ export const openCaptureMenu = ({
   menu.style.left = `${Math.max(8, Math.min(at.x, window.innerWidth - width - 8))}px`;
   menu.style.top = `${Math.max(8, Math.min(at.y, window.innerHeight - height - 8))}px`;
   paint(0);
-};
-
-/** One letter per type. A clash falls to the next free letter of the label. */
-export const captureChoices = (
-  types: { id: string; label: string; abbreviation?: string }[],
-): CaptureChoice[] => {
-  const taken = new Set<string>();
-  const keyFor = (text: string): string => {
-    for (const letter of text.toLowerCase()) {
-      if (/[a-z]/.test(letter) && !taken.has(letter)) {
-        taken.add(letter);
-        return letter;
-      }
-    }
-    return "";
-  };
-  return [
-    ...types.map(({ id, label, abbreviation }) => ({ id, label, key: keyFor(`${abbreviation ?? ""}${label}`) })),
-    { id: null, label: "No type yet", key: keyFor("no type") },
-  ];
 };
 
 /** The whole gesture, from menu to node, shared by the hotkey and the commands. */

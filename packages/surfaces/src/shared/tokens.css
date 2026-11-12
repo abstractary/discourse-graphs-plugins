@@ -16,6 +16,13 @@
   --claim: oklch(0.62 0.12 75);
   --evidence: oklch(0.58 0.12 155);
   --source: oklch(0.55 0.03 250);
+  /* The process layer: the logic (protocol, study), what ran (run, code), what it made (output). */
+  --protocol: oklch(0.6 0.11 135);
+  --study: oklch(0.6 0.12 345);
+  --run: oklch(0.58 0.12 300);
+  --code: oklch(0.57 0.08 220);
+  --output: oklch(0.6 0.08 60);
+  --canvas-type: oklch(0.55 0.04 280);
   --none: var(--dg-muted);
   --opposes: oklch(0.58 0.16 28);
   --rel-supports: oklch(0.56 0.13 155);
@@ -42,6 +49,12 @@
   --claim: oklch(0.78 0.11 80);
   --evidence: oklch(0.74 0.11 155);
   --source: oklch(0.72 0.02 250);
+  --protocol: oklch(0.76 0.1 135);
+  --study: oklch(0.76 0.1 345);
+  --run: oklch(0.74 0.1 300);
+  --code: oklch(0.74 0.07 220);
+  --output: oklch(0.76 0.07 60);
+  --canvas-type: oklch(0.72 0.04 280);
   --opposes: oklch(0.72 0.14 28);
   --rel-supports: oklch(0.74 0.13 155);
   --rel-opposes: oklch(0.72 0.15 28);
@@ -72,6 +85,13 @@ input::placeholder { color: var(--dg-muted); }
 .chip[data-base="claim"] { --type: var(--claim); }
 .chip[data-base="evidence"] { --type: var(--evidence); }
 .chip[data-base="source"] { --type: var(--source); }
+.chip[data-base="protocol"], .card[data-base="protocol"] { --type: var(--protocol); }
+.chip[data-base="study"], .card[data-base="study"] { --type: var(--study); }
+.chip[data-base="run"], .card[data-base="run"] { --type: var(--run); }
+.chip[data-base="code"], .card[data-base="code"] { --type: var(--code); }
+.chip[data-base="output"], .card[data-base="output"] { --type: var(--output); }
+.chip[data-base="canvas"], .card[data-base="canvas"] { --type: var(--canvas-type); }
+.chip[data-base="lab"] { --type: var(--dg-accent); }
 button.chip:hover { background: color-mix(in oklch, var(--type) calc(var(--chip-tint) + 12%), transparent); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

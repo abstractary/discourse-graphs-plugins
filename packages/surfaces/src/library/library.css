@@ -56,3 +56,23 @@ button.primary:disabled { opacity: 0.45; cursor: default; }
 
 /* A long Lab tab shouldn't hide the way to the others. */
 .cvs > .segments { position: sticky; top: 0; z-index: 2; background: var(--dg-page); }
+
+/* The Canvases tab as the repository. */
+.repo-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--small); }
+.repo-filters select { flex: 1 1 120px; min-width: 0; padding: 3px 6px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; }
+.repo-filters label { display: inline-flex; align-items: center; gap: 4px; color: var(--dg-muted); }
+.repo-list li { display: block; padding-right: 0; }
+.repo-list li[data-open="true"] { background: color-mix(in oklch, var(--dg-accent) 6%, transparent); }
+.repo-row { display: flex; align-items: flex-start; gap: 2px; }
+.repo-list .repo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px; text-align: left; }
+.repo-holon { display: flex; align-items: baseline; gap: 4px; font-size: var(--small); min-width: 0; }
+.repo-holon > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.repo-tags { display: flex; align-items: center; gap: 6px; font-size: var(--tiny); color: var(--dg-muted); }
+.repo-list .repo-toggle { flex: none; padding: 6px 4px; color: var(--dg-muted); }
+.repo-toggle[aria-expanded="true"] .icon { transform: rotate(180deg); }
+.repo-versions { padding: 2px 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.repo-versions h3 { margin: 8px 0 2px; font: 600 var(--small)/1.3 var(--dg-font); color: var(--dg-muted); }
+.repo-versions input[type="range"] { width: 100%; }
+.repo-versions .hv-form input, .repo-versions .hv-form select { flex: 1 1 100%; }
+.repo-versions .hv-form button { color: var(--dg-accent); }
+.repo-versions .hv-releases button { color: var(--dg-accent); padding: 2px 0; }

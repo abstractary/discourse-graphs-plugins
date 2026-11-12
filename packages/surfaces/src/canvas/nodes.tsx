@@ -8,6 +8,13 @@ export type Box = { x: number; y: number; width: number; height: number };
 
 export type Actions = {
   reveal: (node: string) => void;
+  /** Opens a holon card's own canvas, in the same tab. */
+  openInside?: (node: string, base: string | undefined) => void;
+  /** How this device opens a card's holon. */
+  gesture?: "button" | "doubleClick" | "semantic";
+  /** Goes into a canvas held inside this one. */
+  openCanvas?: (id: string) => void;
+  canvasTitle?: (id: string) => string | null;
   chooseType: (node: string, anchor: DOMRect) => void;
   saveBox: (item: string, box: Box) => void;
   saveText: (item: string, text: string) => void;
@@ -15,6 +22,9 @@ export type Actions = {
 };
 
 export const ActionsContext = createContext<Actions | null>(null);
+
+/** Cards that are themselves holons: they open into their own canvas. */
+const HOLON_BASES = new Set(["question", "claim", "evidence", "output"]);
 
 const useActions = (): Actions => useContext(ActionsContext)!;
 
@@ -91,7 +101,11 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
       data-base={node?.base ?? "none"}
       data-dg={`card-${title}`}
       style={{ ...typeStyle(node), minHeight }}
-      onDoubleClick={() => node && actions.reveal(node.id)}
+      onDoubleClick={() => {
+        if (!node) return;
+        if (actions.gesture === "doubleClick" && HOLON_BASES.has(node.base ?? "") && actions.openInside) actions.openInside(node.id, node.base);
+        else actions.reveal(node.id);
+      }}
     >
       <NodeResizer isVisible={selected} minWidth={160} minHeight={48} onResizeEnd={(_, box) => actions.saveBox(id, box)} />
       <Handles />
@@ -112,6 +126,19 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
         </button>
         {score ? <span className="score" data-dg={`score-${title}`}>{score}</span> : null}
         <span className="card-end">
+          {node && HOLON_BASES.has(node.base ?? "") && actions.openInside ? (
+            <button
+              type="button"
+              className="open inside nodrag"
+              data-dg={`inside-${title}`}
+              aria-label="Open inside"
+              title="Open inside: this holon's own canvas"
+              onClick={() => actions.openInside!(node.id, node.base)}
+              onDoubleClick={(event) => event.stopPropagation()}
+            >
+              <Icon name="inside" />
+            </button>
+          ) : null}
           {node?.hasText ? (
             <button
               type="button"
@@ -131,6 +158,29 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
       <div className="card-title">{plain(title)}</div>
       {node && !node.hasText && !node.staged ? <div className="card-note">No text in this base</div> : null}
       {node && social ? <Reactions node={node.id} title={title} social={social} /> : null}
+    </div>
+  );
+});
+
+export type NestedData = { canvas: string; file: string; minHeight: number };
+
+/** A canvas inside this canvas. Obsidian draws the same file node as the embedded canvas. */
+export const NestedNode = memo(({ data }: NodeProps<Node<NestedData>>) => {
+  const actions = useActions();
+  const title = actions.canvasTitle?.(data.canvas) ?? data.file.split("/").pop()?.replace(/\.canvas$/, "") ?? "Canvas";
+  return (
+    <div className="card nested" data-base="canvas" data-dg={`nested-${title}`} style={{ minHeight: data.minHeight }} onDoubleClick={() => actions.openCanvas?.(data.canvas)}>
+      <Handles />
+      <div className="card-head">
+        <span className="chip" data-base="canvas">Canvas</span>
+        <span className="card-end">
+          <button type="button" className="open inside nodrag" aria-label={`Open ${title}`} title="Open this canvas here" onClick={() => actions.openCanvas?.(data.canvas)} onDoubleClick={(event) => event.stopPropagation()}>
+            <Icon name="inside" />
+          </button>
+        </span>
+      </div>
+      <div className="card-title">{title}</div>
+      <div className="card-note">A canvas inside this one</div>
     </div>
   );
 });
@@ -195,4 +245,4 @@ export const InkNode = memo(({ data }: NodeProps<Node<InkData>>) => (
   </svg>
 ));
 
-export const nodeTypes = { card: CardNode, note: NoteNode, zone: ZoneNode, ink: InkNode };
+export const nodeTypes = { card: CardNode, note: NoteNode, zone: ZoneNode, ink: InkNode, nested: NestedNode };

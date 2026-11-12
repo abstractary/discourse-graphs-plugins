@@ -17,11 +17,22 @@ export type SpaceId = string;
 export type HostRef = string;
 export type Author = { id: string; name: string };
 
+/**
+ * The four discourse types, then the process layer. Protocol and Study are the
+ * logic (a reusable method, and one designed investigation). A Run is one
+ * execution. Code is a notebook, script or workflow at a version. An Output is
+ * one data item a run produced. Outputs come from runs, never from plans.
+ */
 export const BASE_NODE_TYPES = [
   "question",
   "claim",
   "evidence",
   "source",
+  "protocol",
+  "study",
+  "run",
+  "code",
+  "output",
 ] as const;
 export type BaseNodeType = (typeof BASE_NODE_TYPES)[number];
 
@@ -60,6 +71,8 @@ export const DOCUMENT_KINDS = [
   "folder-item",
   "reaction",
   "unit-note",
+  "evaluation",
+  "release",
 ] as const;
 export const ASSERTION_KINDS = ["relation", "retraction", "decision"] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
@@ -95,6 +108,156 @@ export type NodeRecord = Envelope<"node"> &
     removed?: boolean;
     /** Where an extracted unit came from. A hand-made node has none. */
     source?: UnitSource;
+    /** Provenance links this unit's author states. Arguments stay relation records. */
+    prov?: ProvenanceLinks;
+    /** What the unit is, beyond its title: a run's times, an output's hash. */
+    facts?: UnitFacts;
+  };
+
+/**
+ * A reference that can name one version. `uri` is a DG id before publishing
+ * and an AT URI after. `cid` pins the version the author used, so a later
+ * edit to the target shows up as drift instead of silently changing the link.
+ */
+export type Pin = { uri: string; cid?: string };
+
+/**
+ * Links only the unit's author states. They change with the unit, as new
+ * versions, so they live on it. Supports, opposes, informs and addresses are
+ * different: other people dispute them, so each stays its own signed record.
+ */
+export type ProvenanceLinks = {
+  /** Study: the question it investigates. */
+  question?: DgId;
+  /** Study: the protocols its design uses. */
+  protocols?: DgId[];
+  /** Protocol: code that carries it out. */
+  implementedBy?: DgId[];
+  /** Run: the study it carries out. */
+  partOf?: DgId;
+  /** Run: the protocol version it followed. */
+  follows?: Pin;
+  /** Run: the code versions it ran. The pin is the code's `sourceCid`. */
+  instrument?: Pin[];
+  /** Run: samples, materials and data it took in, by RRID, DOI or `{uri, cid}`. */
+  used?: Pin[];
+  /** Output: the run that produced it. */
+  generatedBy?: DgId;
+  /** Output: the outputs it was made from. */
+  derivedFrom?: Pin[];
+  /** Evidence: the outputs it rests on, pinned by their content hash. */
+  observationBase?: Pin[];
+  /** Evidence: the run it rests on. Read from its outputs' run when absent. */
+  isGroundedIn?: DgId;
+  /** Evidence: the paper or document it was read from. */
+  sourceDocument?: DgId;
+  /** Source: runs the paper reports. */
+  describesActivity?: DgId[];
+};
+
+export const RUN_STATUSES = ["planned", "running", "completed", "failed"] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
+
+export const OUTPUT_KINDS = ["dataset", "file", "figure", "table", "text", "image"] as const;
+export type OutputKind = (typeof OUTPUT_KINDS)[number];
+
+/**
+ * Where an output sits. None of this is identity: cell ids get regenerated,
+ * output indexes shift when a warning prints, labels can be renamed. The
+ * output's own `cid` is what stays the same.
+ */
+export type OutputLocator = {
+  path?: string;
+  commit?: string;
+  cellId?: string;
+  cellIndex?: number;
+  outputIndex?: number;
+  mime?: string;
+  label?: string;
+};
+
+export type ParameterSpec = { name: string; type?: string; unit?: string; default?: Json };
+
+export const PROVENANCE_METHODS = ["authored", "aiAssisted", "aiGenerated", "imported"] as const;
+export type ProvenanceMethod = (typeof PROVENANCE_METHODS)[number];
+/** How a unit was made: MIRA's `defs#provenance`. */
+export type HowMade = { method: ProvenanceMethod; agent?: string; reviewedBy?: string[] };
+
+/** Small facts only: identifiers and metadata, never full text or files. */
+export type UnitFacts = {
+  /** Protocol: its version label, as the lab writes it. */
+  version?: string;
+  /** Protocol: the parameters it declares. */
+  parameters?: ParameterSpec[];
+  /** Protocol or Code: the same thing elsewhere, such as a protocols.io DOI. */
+  sameAs?: string[];
+  /** Study: the conditions or factors it varies. */
+  conditions?: string[];
+  /** Run. */
+  status?: RunStatus;
+  startedAt?: string;
+  endedAt?: string;
+  /** Run: the values its parameters took. */
+  parameterValues?: JsonObject;
+  /** Run: who carried it out, as DIDs or ORCID iDs. */
+  agents?: string[];
+  /** Run: kernel, language and package versions, or an image digest. */
+  environment?: JsonObject;
+  /** Run: the lab notebook entry, linked by id and never copied. */
+  seeAlso?: string[];
+  /** Run: the same execution imported twice has the same fingerprint. */
+  fingerprint?: string;
+  /** Code. */
+  repo?: string;
+  commit?: string;
+  path?: string;
+  /** Code: a CID over the sources alone, outputs stripped. */
+  sourceCid?: string;
+  language?: string;
+  /** Code: its Software Heritage id, once archived. */
+  swhid?: string;
+  license?: string;
+  /** Output: a CID over the output's own bytes. */
+  cid?: string;
+  /** Output: where the bytes live. The file is never in a record. */
+  uri?: string;
+  mediaType?: string;
+  size?: number;
+  outputKind?: OutputKind;
+  locator?: OutputLocator;
+  caption?: string;
+  /** Evidence: the passage in its source. */
+  anchor?: { source?: string; exact?: string; page?: string; figure?: string };
+  /** Source. */
+  doi?: string;
+  openalex?: string;
+  /** How the unit was made, so a reader can weigh it. */
+  provenance?: HowMade;
+};
+
+export const EVALUATION_METHODS = [
+  "quoteChecked",
+  "sourceRead",
+  "dataReanalyzed",
+  "replicated",
+  "expertJudgment",
+] as const;
+export type EvaluationMethod = (typeof EVALUATION_METHODS)[number];
+
+/**
+ * A reviewer's judgement of one version of a unit or relation, such as a PI
+ * approving a claim. The CID pins what they saw, so an edit afterwards shows
+ * the evaluation as out of date instead of carrying it over.
+ */
+export type EvaluationRecord = Envelope<"evaluation"> &
+  DocumentFields & {
+    target: DgId;
+    targetCid?: string;
+    method: EvaluationMethod;
+    /** For example `endorsed`, `disputed` or `needsWork`. */
+    term?: string;
+    note?: string;
+    removed?: boolean;
   };
 
 export type UnitSource = {
@@ -153,7 +316,13 @@ type CanvasSide = "top" | "right" | "bottom" | "left";
  */
 export type CanvasNode =
   | (CanvasBox & { type: "text"; text: string; dg?: { node: DgId } })
-  | (CanvasBox & { type: "file"; file: string; subpath?: string })
+  | (CanvasBox & {
+      type: "file";
+      file: string;
+      subpath?: string;
+      /** Another canvas, embedded. Obsidian shows a `.canvas` file node as that canvas. */
+      dg?: { canvas: DgId };
+    })
   | (CanvasBox & { type: "link"; url: string })
   | (CanvasBox & {
       type: "group";
@@ -225,6 +394,35 @@ export type CanvasRecord = Envelope<"canvas"> &
     personal?: boolean;
     /** Cards were placed by a tool, so the next person to open it should tidy it. */
     needsLayout?: boolean;
+    /**
+     * The holon this canvas is the inside of: a question, claim or evidence
+     * unit, or a lab's DID. A holon can have several canvases.
+     */
+    holon?: string;
+    /** The release this canvas was forked from, pinned. */
+    forkOf?: Pin;
+  };
+
+/**
+ * A named, pinned point in a canvas's history, like a git tag. The log keeps
+ * every edit anyway; a release says which versions of which cards belong
+ * together, and pins each card's unit, so a fork or a diff has something fixed
+ * to start from. Publishing a canvas publishes a release, never the live canvas.
+ */
+export type ReleaseRecord = Envelope<"release"> &
+  DocumentFields & {
+    canvas: DgId;
+    name: string;
+    note?: string;
+    /** The release before this one on the same canvas. */
+    parent?: DgId;
+    /** Each live canvas item at its revision. */
+    items: { id: DgId; rev: number }[];
+    /** Each card's unit, pinned by its content hash at release time. */
+    units: Pin[];
+    /** Marked for the public archive. Writing it to a PDS is a separate, explicit step. */
+    published?: boolean;
+    removed?: boolean;
   };
 
 /** A processed paper. The original file is never in a record. */
@@ -347,7 +545,9 @@ export type DocumentRecord =
   | FolderRecord
   | FolderItemRecord
   | ReactionRecord
-  | UnitNoteRecord;
+  | UnitNoteRecord
+  | EvaluationRecord
+  | ReleaseRecord;
 export type AssertionRecord =
   | RelationRecord
   | RetractionRecord
@@ -402,13 +602,43 @@ export const createNode = ({
   title,
   type,
   source,
+  prov,
+  facts,
   ...stamp
-}: Stamp & { title: string; type?: DgId; source?: UnitSource }): NodeRecord => ({
+}: Stamp & {
+  title: string;
+  type?: DgId;
+  source?: UnitSource;
+  prov?: ProvenanceLinks;
+  facts?: UnitFacts;
+}): NodeRecord => ({
   ...versioned({ ...stamp, kind: "node" }),
   title,
   ...(type === undefined ? {} : { type }),
   ...(source === undefined ? {} : { source }),
+  ...(prov === undefined ? {} : { prov }),
+  ...(facts === undefined ? {} : { facts }),
 });
+
+export const createRelease = ({
+  fields,
+  ...stamp
+}: Stamp & {
+  fields: Pick<ReleaseRecord, "canvas" | "name" | "note" | "parent" | "items" | "units" | "published">;
+}): ReleaseRecord => ({
+  ...versioned({ ...stamp, kind: "release" }),
+  ...Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined)),
+}) as ReleaseRecord;
+
+export const createEvaluation = ({
+  fields,
+  ...stamp
+}: Stamp & {
+  fields: Pick<EvaluationRecord, "target" | "targetCid" | "method" | "term" | "note">;
+}): EvaluationRecord => ({
+  ...versioned({ ...stamp, kind: "evaluation" }),
+  ...Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined)),
+}) as EvaluationRecord;
 
 export const createPaper = ({
   fields,
@@ -501,7 +731,7 @@ export const createCanvas = ({
   ...stamp
 }: Stamp & {
   title: string;
-  fields?: Pick<CanvasRecord, "paper" | "shared" | "personal" | "needsLayout">;
+  fields?: Pick<CanvasRecord, "paper" | "shared" | "personal" | "needsLayout" | "holon" | "forkOf">;
 }): CanvasRecord => ({
   ...versioned({ ...stamp, kind: "canvas" }),
   title,
@@ -819,6 +1049,8 @@ export const foldRecords = ({
 }): FoldedGraph => {
   const winners = new Map<DgId, DgRecord>();
   for (const record of records) {
+    // A newer client's kinds are kept in the log but never read as something else.
+    if (!isKnownRecord(record)) continue;
     const current = winners.get(record.id);
     if (!current || compareVersions(record, current) > 0) {
       winners.set(record.id, record);
@@ -833,7 +1065,7 @@ export const foldRecords = ({
     if (isDocument(record)) documents.set(record.id, record);
     else if (record.kind === "relation") relations.push(record);
     else if (record.kind === "retraction") retractions.push(record);
-    else if (record.space === localSpace) {
+    else if (record.kind === "decision" && record.space === localSpace) {
       const current = decisions.get(record.target);
       decisions.set(
         record.target,
@@ -970,24 +1202,34 @@ const requiredByKind: Record<RecordKind, string[]> = {
   "folder-item": ["folder", "node"],
   reaction: ["unit"],
   "unit-note": ["unit", "text"],
+  evaluation: ["target", "method"],
+  release: ["canvas", "name"],
   relation: ["type", "source", "target"],
   retraction: ["target"],
   decision: ["target", "decision"],
 };
 
-/** An empty array means valid. Unknown fields are allowed and must be kept. */
+/**
+ * An empty array means valid. Unknown fields are allowed and must be kept.
+ * So are records a newer client wrote, with a kind or format version this
+ * build doesn't know: their envelope is checked, they are stored and synced,
+ * and `foldRecords` leaves them out. Rejecting them would make an older device
+ * drop a newer device's work.
+ */
 export const validateRecord = (value: unknown): string[] => {
   if (typeof value !== "object" || value === null) return ["not an object"];
   const record = value as Record<string, unknown>;
   const problems: string[] = [];
-  if (record.v !== FORMAT_VERSION) problems.push("unknown format version");
+  const newer = Number.isInteger(record.v) && (record.v as number) > FORMAT_VERSION;
+  if (record.v !== FORMAT_VERSION && !newer) problems.push("unknown format version");
   if (!isUnitId(record.id)) problems.push("id must be a DID and a TID");
   if (!isString(record.space)) problems.push("missing space");
   if (!isTimestamp(record.at)) problems.push("at must be a timestamp");
   if (!isAuthor(record.by)) problems.push("by must be an author");
+  if (!isString(record.kind)) return [...problems, "missing kind"];
+  if (newer || !isKnownRecord(record)) return problems;
   const kind = record.kind as RecordKind;
   const required = requiredByKind[kind];
-  if (!required) return [...problems, `unknown kind ${String(record.kind)}`];
   for (const key of required) {
     if (!isString(record[key])) problems.push(`${kind} needs ${key}`);
   }
@@ -1016,6 +1258,85 @@ export const validateRecord = (value: unknown): string[] => {
   }
   if (kind === "person" && !Array.isArray(record.aliases)) {
     problems.push("person needs aliases");
+  }
+  if (kind === "node") {
+    problems.push(...validateProvenance(record.prov), ...validateFacts(record.facts));
+  }
+  if (kind === "release" && !(Array.isArray(record.items) && Array.isArray(record.units))) {
+    problems.push("release needs items and units");
+  }
+  if (kind === "evaluation") {
+    if (!(EVALUATION_METHODS as readonly string[]).includes(record.method as string)) {
+      problems.push("evaluation method is not one of the known methods");
+    }
+    if (record.targetCid !== undefined && !isCid(record.targetCid)) problems.push("targetCid must be a CID");
+  }
+  return problems;
+};
+
+/** True for the kinds and format this build reads. Anything else is kept, not read. */
+export const isKnownRecord = (record: { v?: unknown; kind?: unknown }): boolean =>
+  record.v === FORMAT_VERSION && Object.hasOwn(requiredByKind, String(record.kind));
+
+/** CIDv1 in base32, the form AT Protocol and multiformats print. */
+export const isCid = (value: unknown): value is string =>
+  typeof value === "string" && /^b[a-z2-7]{20,}$/.test(value);
+
+const isPin = (value: unknown): boolean =>
+  typeof value === "object" &&
+  value !== null &&
+  isString((value as Pin).uri) &&
+  ((value as Pin).cid === undefined || isCid((value as Pin).cid));
+
+const ID_LINKS = ["question", "partOf", "generatedBy", "isGroundedIn", "sourceDocument"] as const;
+const ID_LIST_LINKS = ["protocols", "implementedBy", "describesActivity"] as const;
+const PIN_LINKS = ["follows"] as const;
+const PIN_LIST_LINKS = ["instrument", "used", "derivedFrom", "observationBase"] as const;
+
+const validateProvenance = (value: unknown): string[] => {
+  if (value === undefined) return [];
+  if (typeof value !== "object" || value === null) return ["prov must be an object"];
+  const prov = value as Record<string, unknown>;
+  const problems: string[] = [];
+  for (const key of ID_LINKS) {
+    if (prov[key] !== undefined && !isString(prov[key])) problems.push(`prov.${key} must be an id`);
+  }
+  for (const key of ID_LIST_LINKS) {
+    if (prov[key] !== undefined && !(Array.isArray(prov[key]) && (prov[key] as unknown[]).every(isString))) {
+      problems.push(`prov.${key} must be a list of ids`);
+    }
+  }
+  for (const key of PIN_LINKS) {
+    if (prov[key] !== undefined && !isPin(prov[key])) problems.push(`prov.${key} must be {uri, cid}`);
+  }
+  for (const key of PIN_LIST_LINKS) {
+    if (prov[key] !== undefined && !(Array.isArray(prov[key]) && (prov[key] as unknown[]).every(isPin))) {
+      problems.push(`prov.${key} must be a list of {uri, cid}`);
+    }
+  }
+  return problems;
+};
+
+const validateFacts = (value: unknown): string[] => {
+  if (value === undefined) return [];
+  if (typeof value !== "object" || value === null) return ["facts must be an object"];
+  const facts = value as Record<string, unknown>;
+  const problems: string[] = [];
+  if (facts.status !== undefined && !(RUN_STATUSES as readonly string[]).includes(facts.status as string)) {
+    problems.push("facts.status must be planned, running, completed or failed");
+  }
+  if (facts.outputKind !== undefined && !(OUTPUT_KINDS as readonly string[]).includes(facts.outputKind as string)) {
+    problems.push("facts.outputKind is not a known kind");
+  }
+  for (const key of ["startedAt", "endedAt"]) {
+    if (facts[key] !== undefined && !isTimestamp(facts[key])) problems.push(`facts.${key} must be a timestamp`);
+  }
+  for (const key of ["cid", "sourceCid"]) {
+    if (facts[key] !== undefined && !isCid(facts[key])) problems.push(`facts.${key} must be a CID`);
+  }
+  const provenance = facts.provenance as HowMade | undefined;
+  if (provenance !== undefined && !(PROVENANCE_METHODS as readonly string[]).includes(provenance?.method)) {
+    problems.push("facts.provenance.method is not a known method");
   }
   return problems;
 };

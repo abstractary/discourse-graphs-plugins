@@ -48,6 +48,12 @@ const MIME: Record<string, string> = {
   gif: "image/gif",
   svg: "image/svg+xml",
   webp: "image/webp",
+  pdf: "application/pdf",
+};
+
+const splitName = (name: string): [string, string] => {
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? [name.slice(0, dot), name.slice(dot + 1)] : [name, "pdf"];
 };
 
 const sanitize = (title: string): string =>
@@ -567,13 +573,40 @@ export const createObsidianHost = async ({
     },
 
     writeAsset: async ({ asset }) => {
-      await ensureFolder(ROOT);
-      await ensureFolder(ASSETS);
       const encoded = asset.dataUrl.split(",")[1] ?? "";
       const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+      // A document a person added sits with the papers, where they'd look for it.
+      if (asset.mime === "application/pdf") {
+        await ensureFolder(PAPER_FILES);
+        const [stem, extension] = splitName(sanitize(asset.name) || "Document.pdf");
+        let path = normalizePath(`${PAPER_FILES}/${stem}.${extension}`);
+        for (let n = 2; vault.getFileByPath(path); n += 1) path = normalizePath(`${PAPER_FILES}/${stem} ${n}.${extension}`);
+        await vault.createBinary(path, bytes.buffer);
+        return ok({ ref: path });
+      }
+      await ensureFolder(ROOT);
+      await ensureFolder(ASSETS);
       const path = `${ASSETS}/${uuidv7()}-${sanitize(asset.name)}`;
       await vault.createBinary(path, bytes.buffer);
       return ok({ ref: path });
+    },
+
+    listFiles: async ({ extensions, limit }) => {
+      const wanted = new Set(extensions.map((extension) => extension.toLowerCase()));
+      const files = vault
+        .getFiles()
+        .filter((file) => wanted.has(file.extension.toLowerCase()))
+        .sort((a, b) => b.stat.mtime - a.stat.mtime)
+        .slice(0, limit)
+        .map((file) => ({
+          ref: file.path,
+          name: file.name,
+          mime: MIME[file.extension.toLowerCase()] ?? "application/octet-stream",
+          ...(file.parent && file.parent.path !== "/" ? { folder: file.parent.path } : {}),
+          size: file.stat.size,
+          modifiedAt: new Date(file.stat.mtime).toISOString(),
+        }));
+      return ok(files);
     },
 
     getFocus: async () => {

@@ -29,8 +29,9 @@ const NODE_TYPES: Record<string, TypeSpec> = {
   Evidence: { label: "Evidence", abbreviation: "EVD", base: "evidence" },
   Source: { label: "Source", abbreviation: "SRC", base: "source" },
   SourceDocument: { label: "Source", abbreviation: "SRC", base: "source" },
-  Study: { label: "Study", abbreviation: "STU", base: "source", lexicon: "science.mira.study", color: "#d98ab0" },
-  Protocol: { label: "Protocol", abbreviation: "PRO", base: "source", lexicon: "science.mira.protocol", color: "#8fbf6f" },
+  // An extracted MIRA Study is an activity the paper reports, so it is a Run here.
+  Study: { label: "Run", abbreviation: "RUN", base: "run", lexicon: "science.mira.study", color: "#d98ab0" },
+  Protocol: { label: "Protocol", abbreviation: "PRO", base: "protocol", lexicon: "science.mira.protocol", color: "#8fbf6f" },
   Request: { label: "Request", abbreviation: "REQ", base: "question", lexicon: "science.mira.request", color: "#b18cf2" },
 };
 

@@ -1,0 +1,63 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.study",
+  "description": "A designed investigation: its question, the protocols it uses and the conditions it varies. MIRA's science.mira.study is one run of it; DG publishes runs there. Kept here until MIRA has a design-level class.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "title",
+          "createdAt"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "attributedTo": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            }
+          },
+          "provenance": {
+            "type": "ref",
+            "ref": "science.mira.defs#provenance"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "question": {
+            "type": "ref",
+            "ref": "at.linkedopendata.defs#ref",
+            "description": "The question it investigates."
+          },
+          "protocols": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            },
+            "description": "The protocols its design uses."
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          }
+        }
+      }
+    }
+  }
+}

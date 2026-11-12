@@ -27,7 +27,7 @@ const heightOf = (title: string): number => Math.max(64, 34 + 18 * Math.ceil(tit
 const noteBody = (node: NodeRecord, paperTitle: string | undefined): string =>
   [
     node.source?.description,
-    node.source?.anchor ? `> ${node.source.anchor}` : undefined,
+    node.source?.anchor ? `> ${node.source.anchor}` : node.facts?.anchor?.exact ? `> ${node.facts.anchor.exact}` : undefined,
     paperTitle ? `From: ${paperTitle}` : undefined,
   ]
     .filter(Boolean)

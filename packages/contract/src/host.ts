@@ -82,10 +82,28 @@ export type TextUnit = TextSummary & {
 export type Asset = { name: string; mime: string; dataUrl: string };
 export type AssetRef = string;
 
+/** A file the base holds, such as a PDF in a vault. `ref` reads it back with `readAsset`. */
+export type FileSummary = {
+  ref: AssetRef;
+  /** With its extension. */
+  name: string;
+  mime: string;
+  /** Where it sits in the base, for grouping. Absent at the top. */
+  folder?: string;
+  size?: number;
+  modifiedAt?: string;
+};
+
 export type Placement = "main" | "side" | "dialog";
 export type SurfaceName =
   | "canvas"
   | "canvases"
+  /** The holon explorer, for holons without a canvas yet. `id` is `<level>|<id>` or `unit|<id>`. */
+  | "holon"
+  /** A side panel with the boundary of whichever holon is in focus. */
+  | "boundary"
+  /** A PDF reader. `id` is the file's asset ref; none shows the choice of PDFs. */
+  | "pdf"
   | "context"
   | "upload"
   | "welcome"
@@ -170,7 +188,10 @@ export type Host = {
   }) => Promise<Result<{ stored: number }>>;
 
   readAsset: (args: { ref: AssetRef }) => Promise<Result<Asset>>;
+  /** Keeps an asset where the base can read it back. A document goes where a person would look for it. */
   writeAsset: (args: { asset: Asset }) => Promise<Result<{ ref: AssetRef }>>;
+  /** Files of these kinds, by extension without the dot, such as `pdf`. Newest first. */
+  listFiles: (args: { extensions: string[]; limit: number }) => Promise<Result<FileSummary[]>>;
 
   getFocus: () => Promise<Result<{ ref: HostRef | null }>>;
   reveal: (args: {

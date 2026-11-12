@@ -29,6 +29,8 @@ import { ExportMenu } from "./ExportMenu.tsx";
 import { Legend } from "./Legend.tsx";
 import { MODES, arrange, leaningOf, measureOf, type Card, type RelationLink } from "@dg/layout/modes.ts";
 import { ActionsContext, nodeTypes, type Actions, type Box, type CardData } from "./nodes.tsx";
+import { HolonBar, isHolon, useHolonCanvas } from "./holons.tsx";
+import { DRAG_TYPE, Drawer, useUnitsDrawer } from "./Drawer.tsx";
 
 /** Three columns fit the common 725 px frame beside a sidebar. */
 // Keeps a link's tooltip inside the frame.
@@ -72,6 +74,10 @@ const toNode = ({ id, z, item }: CanvasItemView, view: CanvasView): FlowNode | n
         ...(view.social[item.dg.node] ? { social: view.social[item.dg.node] } : {}),
       },
     };
+  }
+  // Another canvas held inside this one: it opens in place, like going into a holon.
+  if (item.type === "file" && item.dg?.canvas) {
+    return { ...base, width: item.width, type: "nested", data: { canvas: item.dg.canvas, file: item.file, minHeight: Math.min(item.height, 120) } };
   }
   const text = item.type === "text" ? item.text : item.type === "file" ? item.file : item.url;
   return { ...sized, type: "note", data: { text } };
@@ -196,6 +202,20 @@ export const App = ({ connection }: { connection: Connection }) => {
   // Read through a ref: a refresh already in flight must not undo a canvas switch.
   const currentRef = useRef(current);
   currentRef.current = current;
+
+  // Going into a holon, or up to one, stays in this tab.
+  const switchTo = useCallback((id: string) => {
+    currentRef.current = id;
+    setCurrent(id);
+  }, []);
+  const holon = useHolonCanvas({ connection, current, switchTo, report, notify: setNotice });
+  const drawerData = useUnitsDrawer({ connection, current, report });
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerHeight, setDrawerHeight] = useState(280);
+  const [arrived, setArrived] = useState<string[]>([]);
+  const [fresh, setFresh] = useState<string[]>([]);
+  const canvasesRef = useRef(canvases);
+  canvasesRef.current = canvases;
 
   const refresh = useCallback(async () => {
     const list = await call("canvas.list", {});
@@ -381,8 +401,14 @@ export const App = ({ connection }: { connection: Connection }) => {
           height: Math.round(box.height),
         })),
       saveText: (item, text) => updateItem(item, (old) => ({ ...old, text }) as CanvasItem),
+      openInside: (node, base) => {
+        if (isHolon(base)) void holon.openInside({ level: base, id: node });
+      },
+      openCanvas: (id) => (route.pinned ? void call("canvas.show", { id }).catch(report) : switchTo(id)),
+      canvasTitle: (id) => canvasesRef.current.find((canvas) => canvas.id === id)?.title ?? null,
+      gesture: holon.prefs.holonGesture,
     }),
-    [call, report, updateItem, inFrame],
+    [call, report, updateItem, inFrame, holon.openInside, holon.prefs.holonGesture, route.pinned, switchTo],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
@@ -503,6 +529,95 @@ export const App = ({ connection }: { connection: Connection }) => {
       report(error);
     }
   };
+
+  /**
+   * Units from the drawer, laid out together the way Tidy's Logic mode would,
+   * then put in a clear spot, or where they were dropped. Their links come too.
+   */
+  const placeGroup = async (ids: string[], at?: { x: number; y: number }): Promise<void> => {
+    if (!current || !drawerData) return;
+    const units = ids.flatMap((id) => (drawerData.units[id] ? [drawerData.units[id]!] : []));
+    if (!units.length) return;
+    const boxes: Card[] = units.map((unit) => ({
+      id: unit.id,
+      x: 0,
+      y: 0,
+      width: CARD_WIDTH,
+      height: cardHeight(unit.title),
+      at: unit.at,
+      credit: { key: unit.credit.id, label: unit.credit.name },
+      ...(unit.typeLabel ? { kind: { key: unit.typeLabel, label: unit.typeLabel } } : {}),
+    }));
+    const chosen = new Set(ids);
+    const links: RelationLink[] = drawerData.relations
+      .filter((relation) => chosen.has(relation.source) && chosen.has(relation.target))
+      .map((relation) => ({ from: relation.source, to: relation.target, label: relation.label, ...(relation.kind ? { kind: relation.kind } : {}) }));
+    const frame = area.current?.getBoundingClientRect();
+    const places =
+      boxes.length === 1
+        ? new Map([[boxes[0]!.id, { x: 0, y: 0 }]])
+        : arrange({ mode: "logic", boxes, links, frame: frame?.width ? { width: frame.width, height: frame.height } : { width: 800, height: 600 }, previous: "kinds" }).places;
+    const laid = boxes.map((box) => ({ ...box, ...(places.get(box.id) ?? { x: 0, y: 0 }) }));
+    const left = Math.min(...laid.map((box) => box.x));
+    const top = Math.min(...laid.map((box) => box.y));
+    const size = {
+      width: Math.max(...laid.map((box) => box.x + box.width)) - left,
+      height: Math.max(...laid.map((box) => box.y + box.height)) - top,
+    };
+    const origin = at ? { x: Math.round(at.x - Math.min(size.width, CARD_WIDTH) / 2), y: Math.round(at.y - 20) } : freeSpot(startingPoint(size), size);
+    try {
+      const { ids: written } = await call("canvas.placeUnits", {
+        canvas: current,
+        places: laid.map((box) => ({ node: box.id, x: origin.x + box.x - left, y: origin.y + box.y - top, width: box.width, height: box.height })),
+      });
+      const cards = units.length;
+      setNotice("");
+      setUndo({ label: cards === 1 ? "Placed 1 unit" : `Placed ${cards} units`, apply: () => write({ removes: written }) });
+    } catch (error) {
+      report(error);
+    }
+  };
+
+  // Units put here from another panel, such as a PDF highlight, come into view.
+  useEffect(() => on("units-placed", ({ canvas, units }) => {
+    if (canvas === currentRef.current) setArrived(units);
+  }), [on]);
+  useEffect(() => {
+    if (!arrived.length) return;
+    const cards = flow.getNodes().filter((node) => arrived.includes((node.data as CardData).node?.id ?? ""));
+    if (cards.length < arrived.length) return;
+    setArrived([]);
+    setFresh(arrived);
+    // Pan only as far as it takes to bring them in, so the rest of the argument stays in view.
+    const box = area.current?.getBoundingClientRect();
+    if (box) {
+      const viewport = flow.getViewport();
+      const MARGIN = 32;
+      const corners = cards.map((node) => {
+        const at = flow.flowToScreenPosition(node.position);
+        return { left: at.x, top: at.y, right: at.x + (node.measured?.width ?? CARD_WIDTH) * viewport.zoom, bottom: at.y + (node.measured?.height ?? 80) * viewport.zoom };
+      });
+      const left = Math.min(...corners.map((c) => c.left));
+      const right = Math.max(...corners.map((c) => c.right));
+      const top = Math.min(...corners.map((c) => c.top));
+      const bottom = Math.max(...corners.map((c) => c.bottom));
+      const dx = right > box.right - MARGIN ? Math.max(box.right - MARGIN - right, box.left + MARGIN - left) : left < box.left + MARGIN ? box.left + MARGIN - left : 0;
+      const dy = bottom > box.bottom - MARGIN ? Math.max(box.bottom - MARGIN - bottom, box.top + MARGIN - top) : top < box.top + MARGIN ? box.top + MARGIN - top : 0;
+      const [only] = cards;
+      const entry = only ? items.current.get(only.id) : undefined;
+      if ((dx || dy) && cards.length === 1 && only && entry && !("fromNode" in entry.item)) {
+        // One card sent from another panel, such as a highlight, comes to where the person is looking.
+        const size = { width: only.measured?.width ?? CARD_WIDTH, height: only.measured?.height ?? 80 };
+        const spot = freeSpot(startingPoint(size), size);
+        void write({ upserts: [{ id: only.id, z: entry.z, item: withoutId({ ...entry.item, ...spot }) }] }).catch(report);
+      } else if (dx || dy) void flow.setViewport({ x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom }, { duration: 280 });
+    }
+  }, [arrived, nodes, flow, freeSpot, startingPoint, write, report]);
+  useEffect(() => {
+    if (!fresh.length) return;
+    const timer = window.setTimeout(() => setFresh([]), 1800);
+    return () => window.clearTimeout(timer);
+  }, [fresh]);
 
   const adding = addAt !== null;
   useEffect(() => {
@@ -656,6 +771,8 @@ export const App = ({ connection }: { connection: Connection }) => {
         setTool((old) => (old === "draw" ? "select" : "draw"));
       } else if (key === "l") {
         tidyUp(mode);
+      } else if (key === "u") {
+        setDrawerOpen((open) => !open);
       } else if (key === "enter") {
         const picked = flow.getNodes().filter((node) => node.selected);
         const node = (picked[0]?.data as CardData | undefined)?.node;
@@ -740,6 +857,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     return scoresFor(measure, ids, leaningOf(links, false));
   }, [edges, measure, nodes]);
 
+  const litHere = useMemo(() => holon.lit.length > 0 && nodes.some((node) => holon.lit.includes((node.data as CardData).node?.id ?? "")), [holon.lit, nodes]);
   const shown = useMemo(
     () =>
       nodes.map((node) => {
@@ -747,9 +865,47 @@ export const App = ({ connection }: { connection: Connection }) => {
         const scored = measure && score !== undefined ? { ...node, data: { ...node.data, score: scoreLabel(measure, score) } } : node;
         const summary = (node.data as CardData).node;
         const marked = summary && grounded.includes(summary.id) ? { ...scored, data: { ...scored.data, grounded: true } } : scored;
-        return followed && summary?.id === followed ? { ...marked, className: "followed" } : marked;
+        // Lit from another panel, such as a gap in the boundary panel. Nothing dims for units shown elsewhere.
+        const lit = litHere ? (summary && holon.lit.includes(summary.id) ? "lit" : "dim") : "";
+        const arriving = summary && fresh.includes(summary.id) ? "arrived" : "";
+        const classes = [followed && summary?.id === followed ? "followed" : "", lit, arriving].filter(Boolean).join(" ");
+        return classes ? { ...marked, className: classes } : marked;
       }),
-    [nodes, followed, grounded, measure, scores],
+    [nodes, followed, grounded, measure, scores, holon.lit, litHere, fresh],
+  );
+
+  // Zooming far into a holon card opens it; zooming far out goes up a level.
+  // A wheel zoom ends without an event, so the person's gesture is noted as it starts and moves.
+  const gesture = useRef<{ x: number; y: number } | null>(null);
+  const onMoveStart = useCallback((event: MouseEvent | TouchEvent | null) => {
+    gesture.current = event && "clientX" in event ? { x: event.clientX, y: event.clientY } : event ? gesture.current ?? { x: NaN, y: NaN } : null;
+  }, []);
+  const onMove = useCallback((event: MouseEvent | TouchEvent | null) => {
+    if (event && "clientX" in event) gesture.current = { x: event.clientX, y: event.clientY };
+  }, []);
+  const onMoveEnd = useCallback(
+    (_event: MouseEvent | TouchEvent | null, viewport: { x: number; y: number; zoom: number }) => {
+      const pointer = gesture.current;
+      gesture.current = null;
+      if (!pointer || holon.prefs.holonGesture !== "semantic") return;
+      if (viewport.zoom >= 1.9) {
+        const box = area.current?.getBoundingClientRect();
+        if (!box) return;
+        // The card under the pointer, or the one in the middle for a pinch or keyboard zoom.
+        const at = Number.isNaN(pointer.x) ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : pointer;
+        const center = flow.screenToFlowPosition(at);
+        const under = flow.getNodes().find((node) => {
+          const width = node.measured?.width ?? 0;
+          const height = node.measured?.height ?? 0;
+          return center.x >= node.position.x && center.x <= node.position.x + width && center.y >= node.position.y && center.y <= node.position.y + height;
+        });
+        const summary = under ? (under.data as CardData).node : undefined;
+        if (summary && isHolon(summary.base)) void holon.openInside({ level: summary.base, id: summary.id });
+      } else if (viewport.zoom <= 0.25 && holon.info && holon.info.path.length > 1) {
+        void holon.openInside(holon.info.path[holon.info.path.length - 2]!.ref);
+      }
+    },
+    [flow, holon],
   );
 
   const pickedNodes = nodes.flatMap((node) => {
@@ -913,6 +1069,17 @@ export const App = ({ connection }: { connection: Connection }) => {
             </button>
           ) : null}
         </div>
+        <HolonBar
+          connection={connection}
+          current={current}
+          info={holon.info}
+          prefs={holon.prefs}
+          lit={litHere ? holon.lit.filter((id) => nodes.some((node) => (node.data as CardData).node?.id === id)) : []}
+          onClearLit={() => holon.setLit([])}
+          onOpen={(ref) => void holon.openInside(ref)}
+          setGesture={holon.setGesture}
+          report={report}
+        />
         {menu ? (
           <div className="popover canvas-menu">
             <ul role="menu" aria-label="Canvases">
@@ -1028,9 +1195,17 @@ export const App = ({ connection }: { connection: Connection }) => {
         <div
           ref={area}
           className={measure ? "area links-quiet" : "area"}
-          onDragOver={(event) => event.preventDefault()}
+          onDragOver={(event) => {
+            event.preventDefault();
+            if ([...event.dataTransfer.types].includes(DRAG_TYPE)) event.dataTransfer.dropEffect = "copy";
+          }}
           onDrop={(event) => {
             event.preventDefault();
+            const units = event.dataTransfer.getData(DRAG_TYPE);
+            if (units) {
+              void placeGroup(JSON.parse(units) as string[], flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+              return;
+            }
             const text = event.dataTransfer.getData("text/plain").trim();
             if (!text) return;
             const point = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -1100,6 +1275,9 @@ export const App = ({ connection }: { connection: Connection }) => {
             zoomOnDoubleClick={false}
             minZoom={0.2}
             maxZoom={2}
+            onMoveStart={onMoveStart}
+            onMove={onMove}
+            onMoveEnd={onMoveEnd}
           >
             <Background gap={24} size={1} />
             <Panel position="bottom-left">
@@ -1142,6 +1320,14 @@ export const App = ({ connection }: { connection: Connection }) => {
             />
           ) : null}
         </div>
+        <Drawer
+          data={drawerData}
+          open={drawerOpen}
+          onToggle={() => setDrawerOpen((open) => !open)}
+          onPlace={(ids) => void placeGroup(ids)}
+          height={drawerHeight}
+          onResize={setDrawerHeight}
+        />
         {edgeTip ? (
           <div className="edge-tip" data-dg="edge-credit" style={{ left: Math.max(0, Math.min(edgeTip.x, (shell.current?.clientWidth ?? edgeTip.x) - TIP_WIDTH)), top: edgeTip.y }}>
             <Mark credit={edgeTip.credit} />

@@ -1,0 +1,1797 @@
+{
+ "@context": {
+  "@version": 1.1,
+  "xsd": "http://www.w3.org/2001/XMLSchema#",
+  "dct": "http://purl.org/dc/terms/",
+  "prov": "http://www.w3.org/ns/prov#",
+  "schema": "https://schema.org/",
+  "dg": "https://discoursegraphs.com/schema/dg_core#",
+  "dgp": "https://discoursegraphs.com/schema/dg_process#",
+  "id": "@id",
+  "type": "@type",
+  "Question": "dg:Question",
+  "Claim": "dg:Claim",
+  "Evidence": "dg:Evidence",
+  "Source": "dg:Source",
+  "Protocol": "dgp:Protocol",
+  "Study": "dgp:Study",
+  "Run": "dgp:Run",
+  "Code": "dgp:Code",
+  "Output": "dgp:Output",
+  "Pin": "dgp:Pin",
+  "title": "dct:title",
+  "attributedTo": {
+   "@id": "prov:wasAttributedTo",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "created": {
+   "@id": "dct:created",
+   "@type": "xsd:dateTime"
+  },
+  "question": {
+   "@id": "dgp:question",
+   "@type": "@id"
+  },
+  "protocols": {
+   "@id": "dgp:protocols",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "implementedBy": {
+   "@id": "dgp:implementedBy",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "conditions": {
+   "@id": "dgp:conditions",
+   "@container": "@set"
+  },
+  "version": "schema:version",
+  "sameAs": {
+   "@id": "schema:sameAs",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "partOf": {
+   "@id": "dgp:partOf",
+   "@type": "@id"
+  },
+  "follows": {
+   "@id": "dgp:follows"
+  },
+  "instrument": {
+   "@id": "dgp:instrument",
+   "@container": "@set"
+  },
+  "used": {
+   "@id": "dgp:used",
+   "@container": "@set"
+  },
+  "target": {
+   "@id": "dgp:target",
+   "@type": "@id"
+  },
+  "cid": "dgp:cid",
+  "status": "dgp:status",
+  "startedAt": {
+   "@id": "prov:startedAtTime",
+   "@type": "xsd:dateTime"
+  },
+  "endedAt": {
+   "@id": "prov:endedAtTime",
+   "@type": "xsd:dateTime"
+  },
+  "agents": {
+   "@id": "prov:wasAssociatedWith",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "fingerprint": "dgp:fingerprint",
+  "parameterValues": {
+   "@id": "dgp:parameterValues",
+   "@type": "@json"
+  },
+  "environment": {
+   "@id": "dgp:environment",
+   "@type": "@json"
+  },
+  "repo": {
+   "@id": "schema:codeRepository",
+   "@type": "@id"
+  },
+  "commit": "dgp:commit",
+  "path": "dgp:path",
+  "sourceCid": "dgp:sourceCid",
+  "language": "schema:programmingLanguage",
+  "swhid": "dgp:swhid",
+  "generatedBy": {
+   "@id": "dgp:generatedBy",
+   "@type": "@id"
+  },
+  "derivedFrom": {
+   "@id": "dgp:derivedFrom",
+   "@container": "@set"
+  },
+  "uri": {
+   "@id": "schema:contentUrl",
+   "@type": "@id"
+  },
+  "mediaType": "schema:encodingFormat",
+  "byteSize": {
+   "@id": "dgp:byteSize",
+   "@type": "xsd:integer"
+  },
+  "outputKind": "dgp:outputKind",
+  "locator": {
+   "@id": "dgp:locator",
+   "@type": "@json"
+  },
+  "caption": "schema:caption",
+  "observationBase": {
+   "@id": "dgp:observationBase",
+   "@container": "@set"
+  },
+  "isGroundedIn": {
+   "@id": "dgp:isGroundedIn",
+   "@type": "@id"
+  },
+  "sourceDocument": {
+   "@id": "dgp:sourceDocument",
+   "@type": "@id"
+  },
+  "describesActivity": {
+   "@id": "dgp:describesActivity",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "anchor": {
+   "@id": "dgp:anchor",
+   "@type": "@json"
+  },
+  "doi": {
+   "@id": "schema:identifier",
+   "@type": "@id"
+  },
+  "provenance": {
+   "@id": "dgp:provenance",
+   "@type": "@json"
+  },
+  "supports": {
+   "@id": "dgp:supports",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "opposes": {
+   "@id": "dgp:opposes",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "addresses": {
+   "@id": "dgp:addresses",
+   "@type": "@id",
+   "@container": "@set"
+  },
+  "informs": {
+   "@id": "dgp:informs",
+   "@type": "@id",
+   "@container": "@set"
+  }
+ },
+ "@graph": [
+  {
+   "id": "at://did:web:records.example/science.mira.question/3merpnmdk2l2b",
+   "type": "Question",
+   "title": "How does a shared issue board shape idea exchange, knowledge production and onboarding in a research lab?",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "provenance": {
+    "method": "authored",
+    "agent": "Paraphrased from the repository README"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.sourceDocument/3merpnmdk2m2b",
+   "type": "Source",
+   "title": "Narrative post describing the MATSUlab discourse graph analysis",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "sameAs": [
+    "https://experiment.com/u/Hd2AYg"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.study/3merpnmdk2n2b",
+   "type": "Study",
+   "title": "quantify issue claiming from MATSUlab",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "question": "at://did:web:records.example/science.mira.question/3merpnmdk2l2b",
+   "protocols": [
+    "at://did:web:records.example/science.mira.protocol/3merpnmdk2t2b",
+    "at://did:web:records.example/science.mira.protocol/3merpnmdk3a2b",
+    "at://did:web:records.example/science.mira.protocol/3merpnmdk3m2b"
+   ],
+   "conditions": [
+    "Discourse graph exports of 11 and 13 February 2026"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.study/3merpnmdk2o2b",
+   "type": "Study",
+   "title": "quantify researcher onboarding from MATSUlab",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "question": "at://did:web:records.example/science.mira.question/3merpnmdk2l2b",
+   "protocols": [
+    "at://did:web:records.example/science.mira.protocol/3merpnmdk3x2b"
+   ],
+   "conditions": [
+    "Discourse graph exports of 11 and 13 February 2026"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2p2b",
+   "type": "Code",
+   "title": "calculate_metrics.py: Metric calculation and data merging",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "repo": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+   "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+   "path": "src/calculate_metrics.py",
+   "sourceCid": "bafkreig3f33fw5hieqxm46bcsrwu4xad34vz7qu6xrv4rypwvktegyhrru",
+   "language": "python"
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
+   "type": "Code",
+   "title": "parse_jsonld.py: JSON-LD export parser",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "repo": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+   "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+   "path": "src/parse_jsonld.py",
+   "sourceCid": "bafkreihd4fi2ahdpjeraydfxgyid52bugtk7l3fan5xdte6ybygcwsdf5u",
+   "language": "python"
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b",
+   "type": "Code",
+   "title": "parse_roam_json.py: Roam JSON streaming parser",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "repo": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+   "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+   "path": "src/parse_roam_json.py",
+   "sourceCid": "bafkreibgtgdom3urmydszkcmsgi3xy6tapfr7plow5fq46ptkcok4ry76e",
+   "language": "python"
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2s2b",
+   "type": "Code",
+   "title": "generate_visualizations.py: Visualization generator",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "repo": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+   "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+   "path": "src/generate_visualizations.py",
+   "sourceCid": "bafkreieu75fxm4al3trcrjo6rr2qtkvextf2qo2eox6xicxy6wtb6jm3ri",
+   "language": "python"
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.protocol/3merpnmdk2t2b",
+   "type": "Protocol",
+   "title": "Discourse graph conversion rate analysis",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "implementedBy": [
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2p2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2s2b"
+   ],
+   "version": "08493f6"
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.study/3merpnmdk2u2b",
+   "type": "Run",
+   "title": "Discourse graph conversion rate analysis, run at 08493f6",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "partOf": "at://did:web:records.example/org.discoursegraphs.study/3merpnmdk2n2b",
+   "follows": {
+    "type": "Pin",
+    "target": "at://did:web:records.example/science.mira.protocol/3merpnmdk2t2b",
+    "cid": "bafkreihck6y2kcxzvcpihb5jfsr3f7pzxuyd4jya22r4onmdcipbj4vzjm"
+   },
+   "instrument": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2p2b",
+     "cid": "bafkreig3f33fw5hieqxm46bcsrwu4xad34vz7qu6xrv4rypwvktegyhrru"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
+     "cid": "bafkreihd4fi2ahdpjeraydfxgyid52bugtk7l3fan5xdte6ybygcwsdf5u"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b",
+     "cid": "bafkreibgtgdom3urmydszkcmsgi3xy6tapfr7plow5fq46ptkcok4ry76e"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2s2b",
+     "cid": "bafkreieu75fxm4al3trcrjo6rr2qtkvextf2qo2eox6xicxy6wtb6jm3ri"
+    }
+   ],
+   "status": "completed",
+   "agents": [
+    "https://orcid.org/0000-0002-0286-5310"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2v2b",
+   "type": "Output",
+   "title": "conversion_data.json",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk2u2b",
+   "cid": "bafkreig3xh6ywjgvteq6kx6eklvb5eybhxztkbfmmk3m7lxmamrjq4hhoa",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd1-conversion-rate/data/conversion_data.json",
+   "mediaType": "application/json",
+   "byteSize": 1004,
+   "outputKind": "dataset",
+   "locator": {
+    "path": "output/evidence_bundles/evd1-conversion-rate/data/conversion_data.json",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2w2b",
+   "type": "Output",
+   "title": "issue_timeline_data.json",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk2u2b",
+   "cid": "bafkreibjpefhb4sgtdf2q6my6soykp67swytcehgcli2mspobob3sw4liu",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd1-conversion-rate/data/issue_timeline_data.json",
+   "mediaType": "application/json",
+   "byteSize": 100314,
+   "outputKind": "dataset",
+   "locator": {
+    "path": "output/evidence_bundles/evd1-conversion-rate/data/issue_timeline_data.json",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2x2b",
+   "type": "Output",
+   "title": "fig1_conversion_rate.png",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk2u2b",
+   "cid": "bafkreif7iji6mabdk5lyk7kypw73pdif4kqoau33k2sjjd7qy6abknu5gy",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd1-conversion-rate/fig1_conversion_rate.png",
+   "mediaType": "image/png",
+   "byteSize": 83006,
+   "outputKind": "figure",
+   "locator": {
+    "path": "output/evidence_bundles/evd1-conversion-rate/fig1_conversion_rate.png",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2y2b",
+   "type": "Output",
+   "title": "figS1_issue_timeline.png",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk2u2b",
+   "cid": "bafkreidtksxpxbk4gtolkki3lxbyzhelxgfziwb3wdtbhvj356wedvlzgm",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd1-conversion-rate/figS1_issue_timeline.png",
+   "mediaType": "image/png",
+   "byteSize": 111626,
+   "outputKind": "figure",
+   "locator": {
+    "path": "output/evidence_bundles/evd1-conversion-rate/figS1_issue_timeline.png",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2z2b",
+   "type": "Output",
+   "title": "figS1_issue_timeline_animated.gif",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk2u2b",
+   "cid": "bafkreignt46orfxv2svebagbjdq6q5wsu4apnioizs5glctiandx3jg77y",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd1-conversion-rate/figS1_issue_timeline_animated.gif",
+   "mediaType": "image/gif",
+   "byteSize": 278912,
+   "outputKind": "figure",
+   "locator": {
+    "path": "output/evidence_bundles/evd1-conversion-rate/figS1_issue_timeline_animated.gif",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.evidence/3merpnmdk322b",
+   "type": "Evidence",
+   "title": "29% of MATSUlab issues (n=445) were claimed as experiments",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "observationBase": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2x2b",
+     "cid": "bafkreif7iji6mabdk5lyk7kypw73pdif4kqoau33k2sjjd7qy6abknu5gy"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2y2b",
+     "cid": "bafkreidtksxpxbk4gtolkki3lxbyzhelxgfziwb3wdtbhvj356wedvlzgm"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2z2b",
+     "cid": "bafkreignt46orfxv2svebagbjdq6q5wsu4apnioizs5glctiandx3jg77y"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2v2b",
+     "cid": "bafkreig3xh6ywjgvteq6kx6eklvb5eybhxztkbfmmk3m7lxmamrjq4hhoa"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk2w2b",
+     "cid": "bafkreibjpefhb4sgtdf2q6my6soykp67swytcehgcli2mspobob3sw4liu"
+    }
+   ],
+   "isGroundedIn": "at://did:web:records.example/science.mira.study/3merpnmdk2u2b",
+   "sourceDocument": "at://did:web:records.example/science.mira.sourceDocument/3merpnmdk2m2b",
+   "provenance": {
+    "method": "aiAssisted",
+    "agent": "Claude (Anthropic), with Matt Akamatsu",
+    "reviewedBy": [
+     "https://orcid.org/0000-0003-3000-4160"
+    ]
+   },
+   "supports": [
+    "at://did:web:records.example/science.mira.claim/3merpnmdk342b"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.claim/3merpnmdk342b",
+   "type": "Claim",
+   "title": "29% of MATSUlab issues (n=445) were claimed as experiments.",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "addresses": [
+    "at://did:web:records.example/science.mira.question/3merpnmdk2l2b"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk372b",
+   "type": "Code",
+   "title": "handoff_visualizations.py: Alluvial flow diagram generator",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "repo": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+   "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+   "path": "src/handoff_visualizations.py",
+   "sourceCid": "bafkreig43yuujojtlm73ot5bqrriocrzov7436g6otpxgfgpfab3ipky74",
+   "language": "python"
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.protocol/3merpnmdk3a2b",
+   "type": "Protocol",
+   "title": "Discourse graph funnel analysis",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "implementedBy": [
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2p2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2s2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk372b"
+   ],
+   "version": "08493f6"
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.study/3merpnmdk3b2b",
+   "type": "Run",
+   "title": "Discourse graph funnel analysis, run at 08493f6",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "partOf": "at://did:web:records.example/org.discoursegraphs.study/3merpnmdk2n2b",
+   "follows": {
+    "type": "Pin",
+    "target": "at://did:web:records.example/science.mira.protocol/3merpnmdk3a2b",
+    "cid": "bafkreig3n3s2sxjl67k2aofwmowyilahbw33ti4d274rnhn4cz47ol6a4i"
+   },
+   "instrument": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2p2b",
+     "cid": "bafkreig3f33fw5hieqxm46bcsrwu4xad34vz7qu6xrv4rypwvktegyhrru"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
+     "cid": "bafkreihd4fi2ahdpjeraydfxgyid52bugtk7l3fan5xdte6ybygcwsdf5u"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b",
+     "cid": "bafkreibgtgdom3urmydszkcmsgi3xy6tapfr7plow5fq46ptkcok4ry76e"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2s2b",
+     "cid": "bafkreieu75fxm4al3trcrjo6rr2qtkvextf2qo2eox6xicxy6wtb6jm3ri"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk372b",
+     "cid": "bafkreig43yuujojtlm73ot5bqrriocrzov7436g6otpxgfgpfab3ipky74"
+    }
+   ],
+   "status": "completed",
+   "agents": [
+    "https://orcid.org/0000-0002-0286-5310"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3c2b",
+   "type": "Output",
+   "title": "experiment_details.csv",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3b2b",
+   "cid": "bafkreibptlvp2nc5fmccniwsqv3u2bqcdtlnu7n5nhzfcfqrp7mwdzuctq",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd5-issue-funnel/data/experiment_details.csv",
+   "mediaType": "text/csv",
+   "byteSize": 17763,
+   "outputKind": "table",
+   "locator": {
+    "path": "output/evidence_bundles/evd5-issue-funnel/data/experiment_details.csv",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3d2b",
+   "type": "Output",
+   "title": "funnel_summary.json",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3b2b",
+   "cid": "bafkreiga6gnni6xeri5wxk56gt6x52nrpn3bnjrds7bbdzdivdmwhz4mpy",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd5-issue-funnel/data/funnel_summary.json",
+   "mediaType": "application/json",
+   "byteSize": 838,
+   "outputKind": "dataset",
+   "locator": {
+    "path": "output/evidence_bundles/evd5-issue-funnel/data/funnel_summary.json",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3e2b",
+   "type": "Output",
+   "title": "fig5_alluvial_flow.png",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3b2b",
+   "cid": "bafkreifew4s74ontgzs2psnbfmzv77dnk4if6imr5egr57x42dw64ysx7u",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd5-issue-funnel/fig5_alluvial_flow.png",
+   "mediaType": "image/png",
+   "byteSize": 814672,
+   "outputKind": "figure",
+   "locator": {
+    "path": "output/evidence_bundles/evd5-issue-funnel/fig5_alluvial_flow.png",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3f2b",
+   "type": "Output",
+   "title": "fig5_funnel_supplemental.png",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3b2b",
+   "cid": "bafkreieoc7fgkugn737i3htetyzyszgkkllyimqtpfchvizqm2xaedtnfu",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd5-issue-funnel/fig5_funnel_supplemental.png",
+   "mediaType": "image/png",
+   "byteSize": 90031,
+   "outputKind": "figure",
+   "locator": {
+    "path": "output/evidence_bundles/evd5-issue-funnel/fig5_funnel_supplemental.png",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.evidence/3merpnmdk3g2b",
+   "type": "Evidence",
+   "title": "Of 130 claimed experiments in the MATSUlab discourse graph, 50 produced formal results (139 RES nodes), with 15% of claiming involving cross-person idea exchange",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "observationBase": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3e2b",
+     "cid": "bafkreifew4s74ontgzs2psnbfmzv77dnk4if6imr5egr57x42dw64ysx7u"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3f2b",
+     "cid": "bafkreieoc7fgkugn737i3htetyzyszgkkllyimqtpfchvizqm2xaedtnfu"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3c2b",
+     "cid": "bafkreibptlvp2nc5fmccniwsqv3u2bqcdtlnu7n5nhzfcfqrp7mwdzuctq"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3d2b",
+     "cid": "bafkreiga6gnni6xeri5wxk56gt6x52nrpn3bnjrds7bbdzdivdmwhz4mpy"
+    }
+   ],
+   "isGroundedIn": "at://did:web:records.example/science.mira.study/3merpnmdk3b2b",
+   "sourceDocument": "at://did:web:records.example/science.mira.sourceDocument/3merpnmdk2m2b",
+   "provenance": {
+    "method": "aiAssisted",
+    "agent": "Claude (Anthropic), with Matt Akamatsu",
+    "reviewedBy": [
+     "https://orcid.org/0000-0003-3000-4160"
+    ]
+   },
+   "supports": [
+    "at://did:web:records.example/science.mira.claim/3merpnmdk3i2b"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.claim/3merpnmdk3i2b",
+   "type": "Claim",
+   "title": "Of 130 claimed experiments in the MATSUlab discourse graph, 50 (38%) produced at least one formal result node, yielding 139 total RES nodes (avg 2.8 per result-producing experiment). 15% of claiming involved cross-person idea exchange, where a different researcher claimed an issue created by someone else.",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "addresses": [
+    "at://did:web:records.example/science.mira.question/3merpnmdk2l2b"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk3l2b",
+   "type": "Code",
+   "title": "experiment_lifecycle_visualizations.py: Swimmer plot visualization (unified page-creation x-axis)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "repo": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+   "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+   "path": "src/experiment_lifecycle_visualizations.py",
+   "sourceCid": "bafkreihmag3frkcwpim6frifl76euwrfnk3tzqzgofh4v7jdhsejxmulzi",
+   "language": "python"
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.protocol/3merpnmdk3m2b",
+   "type": "Protocol",
+   "title": "Time-to-result interval analysis",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "implementedBy": [
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2p2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk3l2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b"
+   ],
+   "version": "08493f6"
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.study/3merpnmdk3n2b",
+   "type": "Run",
+   "title": "Time-to-result interval analysis, run at 08493f6",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "partOf": "at://did:web:records.example/org.discoursegraphs.study/3merpnmdk2n2b",
+   "follows": {
+    "type": "Pin",
+    "target": "at://did:web:records.example/science.mira.protocol/3merpnmdk3m2b",
+    "cid": "bafkreiacbp5x6dddzkh7qd36kwb46x7vbacvdsfp2y7s7luug5sg5hcfvy"
+   },
+   "instrument": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2p2b",
+     "cid": "bafkreig3f33fw5hieqxm46bcsrwu4xad34vz7qu6xrv4rypwvktegyhrru"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk3l2b",
+     "cid": "bafkreihmag3frkcwpim6frifl76euwrfnk3tzqzgofh4v7jdhsejxmulzi"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2q2b",
+     "cid": "bafkreihd4fi2ahdpjeraydfxgyid52bugtk7l3fan5xdte6ybygcwsdf5u"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk2r2b",
+     "cid": "bafkreibgtgdom3urmydszkcmsgi3xy6tapfr7plow5fq46ptkcok4ry76e"
+    }
+   ],
+   "status": "completed",
+   "agents": [
+    "https://orcid.org/0000-0002-0286-5310"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3o2b",
+   "type": "Output",
+   "title": "time_to_result_data.json",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3n2b",
+   "cid": "bafkreidp262kkvbrfvd2i7orfma7widdg3jvwiwmm4cgdr4n3vbnogitri",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd6-time-to-result/data/time_to_result_data.json",
+   "mediaType": "application/json",
+   "byteSize": 9904,
+   "outputKind": "dataset",
+   "locator": {
+    "path": "output/evidence_bundles/evd6-time-to-result/data/time_to_result_data.json",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3p2b",
+   "type": "Output",
+   "title": "fig6c_swimmer_plot.png",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3n2b",
+   "cid": "bafkreihw6a2wxf4mpwtfonpkh5iwm2emx6unxuhmshnibms36ulp47eitq",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd6-time-to-result/fig6c_swimmer_plot.png",
+   "mediaType": "image/png",
+   "byteSize": 80386,
+   "outputKind": "figure",
+   "locator": {
+    "path": "output/evidence_bundles/evd6-time-to-result/fig6c_swimmer_plot.png",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3q2b",
+   "type": "Output",
+   "title": "figS6c_swimmer_plot_log.png",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3n2b",
+   "cid": "bafkreid2fza5bqzjy66b2zoazo3fgigimr4coarzzymstilgy5x2g6lqyq",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd6-time-to-result/figS6c_swimmer_plot_log.png",
+   "mediaType": "image/png",
+   "byteSize": 85443,
+   "outputKind": "figure",
+   "locator": {
+    "path": "output/evidence_bundles/evd6-time-to-result/figS6c_swimmer_plot_log.png",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.evidence/3merpnmdk3r2b",
+   "type": "Evidence",
+   "title": "Among 50 experiments in the MATSUlab that produced formal results, the median time from issue claiming to first result was 12 days, with wide variance (n=50, IQR 0–50 days)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "observationBase": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3p2b",
+     "cid": "bafkreihw6a2wxf4mpwtfonpkh5iwm2emx6unxuhmshnibms36ulp47eitq"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3q2b",
+     "cid": "bafkreid2fza5bqzjy66b2zoazo3fgigimr4coarzzymstilgy5x2g6lqyq"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3o2b",
+     "cid": "bafkreidp262kkvbrfvd2i7orfma7widdg3jvwiwmm4cgdr4n3vbnogitri"
+    }
+   ],
+   "isGroundedIn": "at://did:web:records.example/science.mira.study/3merpnmdk3n2b",
+   "sourceDocument": "at://did:web:records.example/science.mira.sourceDocument/3merpnmdk2m2b",
+   "provenance": {
+    "method": "aiAssisted",
+    "agent": "Claude (Anthropic), with Matt Akamatsu",
+    "reviewedBy": [
+     "https://orcid.org/0000-0003-3000-4160"
+    ]
+   },
+   "supports": [
+    "at://did:web:records.example/science.mira.claim/3merpnmdk3t2b"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.claim/3merpnmdk3t2b",
+   "type": "Claim",
+   "title": "Among 50 experiments in the MATSUlab that produced formal results, the median time from issue claiming to first result was 12 days, with wide variance (n=50, IQR 0–50 days).",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "addresses": [
+    "at://did:web:records.example/science.mira.question/3merpnmdk2l2b"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk3w2b",
+   "type": "Code",
+   "title": "student_timeline_analysis.py: Timeline extraction and visualization",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "repo": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+   "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+   "path": "src/student_timeline_analysis.py",
+   "sourceCid": "bafkreigwbkwgbsj7gifl3eivf3ary5cev23gaa2yretbxxhw7umx7dj6ie",
+   "language": "python"
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.protocol/3merpnmdk3x2b",
+   "type": "Protocol",
+   "title": "Discourse graph milestone tracing",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "implementedBy": [
+    "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk3w2b"
+   ],
+   "version": "08493f6"
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.study/3merpnmdk3y2b",
+   "type": "Run",
+   "title": "Discourse graph milestone tracing, run at 08493f6",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "partOf": "at://did:web:records.example/org.discoursegraphs.study/3merpnmdk2o2b",
+   "follows": {
+    "type": "Pin",
+    "target": "at://did:web:records.example/science.mira.protocol/3merpnmdk3x2b",
+    "cid": "bafkreiepl6pcesxss4y66lsaeynajuqjfsswskpvbd6dr4mfrxvz3xnziu"
+   },
+   "instrument": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk3w2b",
+     "cid": "bafkreigwbkwgbsj7gifl3eivf3ary5cev23gaa2yretbxxhw7umx7dj6ie"
+    }
+   ],
+   "status": "completed",
+   "agents": [
+    "https://orcid.org/0000-0002-0286-5310"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3z2b",
+   "type": "Output",
+   "title": "student_milestones.json",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3y2b",
+   "cid": "bafkreiblbnyqb6iccxrwgbd3ocomx62edmswcn2xwi7tr7icq3lkv564u4",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd7-student-onboarding/data/student_milestones.json",
+   "mediaType": "application/json",
+   "byteSize": 656,
+   "outputKind": "dataset",
+   "locator": {
+    "path": "output/evidence_bundles/evd7-student-onboarding/data/student_milestones.json",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk422b",
+   "type": "Output",
+   "title": "fig7_student_timelines.png",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk3y2b",
+   "cid": "bafkreigeidvkzlkef675xq2i6cueloh2tj62hri5nsittw7l7k3omshrei",
+   "uri": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/08493f6a46db223614cafbde68684fcb0f4b1c8a/output/evidence_bundles/evd7-student-onboarding/fig7_student_timelines.png",
+   "mediaType": "image/png",
+   "byteSize": 111256,
+   "outputKind": "figure",
+   "locator": {
+    "path": "output/evidence_bundles/evd7-student-onboarding/fig7_student_timelines.png",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.evidence/3merpnmdk432b",
+   "type": "Evidence",
+   "title": "Three undergraduate researchers tracked in this analysis each generated an original result within ~4 months of joining the lab, with two creating a result within ~1 month",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "observationBase": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk422b",
+     "cid": "bafkreigeidvkzlkef675xq2i6cueloh2tj62hri5nsittw7l7k3omshrei"
+    },
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk3z2b",
+     "cid": "bafkreiblbnyqb6iccxrwgbd3ocomx62edmswcn2xwi7tr7icq3lkv564u4"
+    }
+   ],
+   "isGroundedIn": "at://did:web:records.example/science.mira.study/3merpnmdk3y2b",
+   "sourceDocument": "at://did:web:records.example/science.mira.sourceDocument/3merpnmdk2m2b",
+   "provenance": {
+    "method": "aiAssisted",
+    "agent": "Claude (Anthropic), with Matt Akamatsu",
+    "reviewedBy": [
+     "https://orcid.org/0000-0003-3000-4160"
+    ]
+   },
+   "supports": [
+    "at://did:web:records.example/science.mira.claim/3merpnmdk452b"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.claim/3merpnmdk452b",
+   "type": "Claim",
+   "title": "Three undergraduate researchers tracked in this analysis each generated an original result within ~4 months of joining the lab, with two creating a result within ~1 month.",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "addresses": [
+    "at://did:web:records.example/science.mira.question/3merpnmdk2l2b"
+   ]
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk4a2b",
+   "type": "Code",
+   "title": "Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "repo": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+   "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+   "path": "notebooks/evd1_evd7_analysis.ipynb",
+   "sourceCid": "bafkreig4d6x5rwpkyojcynqmwx7n6q6535x6zbre4f7mtlf3eu5lrg6i6m",
+   "language": "python",
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "type": "Run",
+   "title": "Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7, run of 08493f6",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "partOf": "at://did:web:records.example/org.discoursegraphs.study/3merpnmdk2n2b",
+   "instrument": [
+    {
+     "type": "Pin",
+     "target": "at://did:web:records.example/org.discoursegraphs.code/3merpnmdk4a2b",
+     "cid": "bafkreig4d6x5rwpkyojcynqmwx7n6q6535x6zbre4f7mtlf3eu5lrg6i6m"
+    }
+   ],
+   "status": "completed",
+   "startedAt": "2026-02-12T08:41:26.905Z",
+   "endedAt": "2026-02-12T08:41:32.232Z",
+   "agents": [
+    "https://orcid.org/0000-0002-0286-5310"
+   ],
+   "fingerprint": "bafkreichztkknszfsocy7ck72owbqmgrzrcu5wnvma5oy35auxrdyr7iuy",
+   "environment": {
+    "kernel": "python3",
+    "language": "python",
+    "languageVersion": "3.12.7"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4c2b",
+   "type": "Output",
+   "title": "Table 1 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 16)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreignpq7g772wzekdx4vadysylnw2w3u6y66ay6w5sgztchxml7sqd4",
+   "mediaType": "text/html",
+   "byteSize": 929,
+   "outputKind": "table",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 15,
+    "outputIndex": 0,
+    "mime": "text/html"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4d2b",
+   "type": "Output",
+   "title": "Figure 1 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 24)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreihuqwr6bohuuyzsjrregxefkpr3lntgbvjhvhjxhwyg44vkcnpqzm",
+   "mediaType": "image/png",
+   "byteSize": 75947,
+   "outputKind": "figure",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 23,
+    "outputIndex": 1,
+    "mime": "image/png"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4e2b",
+   "type": "Output",
+   "title": "Table 2 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 29)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreihkgzdd2bfjll4ajreofdj7t74b6bjgohn64bdaq7ouy7exmgsbye",
+   "mediaType": "text/html",
+   "byteSize": 911,
+   "outputKind": "table",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 28,
+    "outputIndex": 0,
+    "mime": "text/html"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4f2b",
+   "type": "Output",
+   "title": "Figure 2 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 31)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreifrzrurnblcymiorkh27hhocxktseftufezm5zvbsa2q2g5gxrhju",
+   "mediaType": "image/png",
+   "byteSize": 81405,
+   "outputKind": "figure",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 30,
+    "outputIndex": 1,
+    "mime": "image/png"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4g2b",
+   "type": "Output",
+   "title": "Figure 3 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 33)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreibcg7nqr4ujfef2exufazyffviu5ijkjhzpffetjf3fo34rx3d2im",
+   "mediaType": "image/png",
+   "byteSize": 568628,
+   "outputKind": "figure",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 32,
+    "outputIndex": 2,
+    "mime": "image/png"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4h2b",
+   "type": "Output",
+   "title": "Table 3 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 39)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreiflofhnil7rqtm32xmixq4yhwfw44zprrl67tlmw2bi4fbqezh7vi",
+   "mediaType": "text/html",
+   "byteSize": 1058,
+   "outputKind": "table",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 38,
+    "outputIndex": 0,
+    "mime": "text/html"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4i2b",
+   "type": "Output",
+   "title": "Figure 4 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 46)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreigeidvkzlkef675xq2i6cueloh2tj62hri5nsittw7l7k3omshrei",
+   "mediaType": "image/png",
+   "byteSize": 111256,
+   "outputKind": "figure",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 45,
+    "outputIndex": 0,
+    "mime": "image/png"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4j2b",
+   "type": "Output",
+   "title": "Figure 5 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 47)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreiczjnql57pdbrfvnzn72vwibame5slwiaqf37lemqsdz4s557ytdy",
+   "mediaType": "image/png",
+   "byteSize": 63688,
+   "outputKind": "figure",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 46,
+    "outputIndex": 0,
+    "mime": "image/png"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:records.example/org.discoursegraphs.output/3merpnmdk4k2b",
+   "type": "Output",
+   "title": "Table 4 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 51)",
+   "attributedTo": [
+    "did:web:records.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-02-14T00:00:00.000Z",
+   "generatedBy": "at://did:web:records.example/science.mira.study/3merpnmdk4b2b",
+   "cid": "bafkreicilobobg2dcpvuhlifi445q75h2whgyd66y5w426xxjfvnnlwmpy",
+   "mediaType": "text/html",
+   "byteSize": 1821,
+   "outputKind": "table",
+   "locator": {
+    "path": "notebooks/evd1_evd7_analysis.ipynb",
+    "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+    "cellIndex": 50,
+    "outputIndex": 0,
+    "mime": "text/html"
+   },
+   "provenance": {
+    "method": "imported",
+    "agent": "nbformat import"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.protocol/3merpnmdk4l2b",
+   "type": "Protocol",
+   "title": "Enzyme-linked immunosorbent assay (ELISA) for BLyS (R&D Systems) and APRIL (eBioscience/Affymetrix) per manufacturer's protocol",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.protocol/3merpnmdk4n2b",
+   "type": "Protocol",
+   "title": "xMAP multiplex assays (eBioscience/Affymetrix) for 30 immune mediators including cytokines, chemokines, and soluble TNFR superfamily members",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.protocol/3merpnmdk4p2b",
+   "type": "Protocol",
+   "title": "BioPlex 2200 system (Bio-Rad Technologies) for simultaneous detection of autoantibody specificities: dsDNA, chromatin, Ro/SSA, La/SSB, Sm, SmRNP, and RNP",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.protocol/3merpnmdk4r2b",
+   "type": "Protocol",
+   "title": "Mixed linear regression models fitted on normalized FI values of each soluble mediator over time using lme4 package in R (version 2.15.0) with intercepts as random effects and disease status as fixed effect",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.study/3merpnmdk4t2b",
+   "type": "Run",
+   "title": "Longitudinal analysis of serum samples from 84 individuals before SLE classification and 86 matched healthy controls measuring autoantibodies and soluble immune mediators",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "follows": {
+    "type": "Pin",
+    "target": "at://did:web:reader.example/science.mira.protocol/3merpnmdk4l2b",
+    "cid": "bafkreihldw5b3cwhj5vkwpztcvu7n2d3frxi2gu3vgjn4vlwumwhibzbku"
+   },
+   "status": "completed",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.sourceDocument/3merpnmdk4v2b",
+   "type": "Source",
+   "title": "Dysregulation of innate and adaptive serum mediators precedes systemic lupus erythematosus classification and improves prognostic accuracy of autoantibodies",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "describesActivity": [
+    "at://did:web:reader.example/science.mira.study/3merpnmdk4t2b"
+   ],
+   "doi": "https://doi.org/10.1016/j.jaut.2016.06.001",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.question/3merpnmdk4x2b",
+   "type": "Question",
+   "title": "What immune dysregulation beyond autoantibody accumulation contributes to preclinical SLE pathogenesis and transition to clinical disease?",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.question/3merpnmdk4z2b",
+   "type": "Question",
+   "title": "What is the temporal relationship between soluble mediator dysregulation and autoantibody accumulation during preclinical SLE development?",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.claim/3merpnmdk532b",
+   "type": "Claim",
+   "title": "Multiple soluble mediators including IL-5, IL-6, and IFN-γ are significantly elevated in pre-SLE individuals more than 3.5 years before classification, prior to or concurrent with autoantibody positivity.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "addresses": [
+    "at://did:web:reader.example/science.mira.question/3merpnmdk4x2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.claim/3merpnmdk552b",
+   "type": "Claim",
+   "title": "Innate cytokines, IFN-associated chemokines, and soluble TNF superfamily mediators increase longitudinally in pre-SLE cases approaching classification but not in healthy controls.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "addresses": [
+    "at://did:web:reader.example/science.mira.question/3merpnmdk4x2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.claim/3merpnmdk572b",
+   "type": "Claim",
+   "title": "BLyS and APRIL levels are comparable in pre-SLE cases and controls until less than 10 months before classification, then increase significantly in cases.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "addresses": [
+    "at://did:web:reader.example/science.mira.question/3merpnmdk4x2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.claim/3merpnmdk5b2b",
+   "type": "Claim",
+   "title": "Dysregulation of adaptive immune mediators (IL-4, IL-5, IL-6, IFN-γ, MIG) precedes autoantibody accumulation in preclinical SLE.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "addresses": [
+    "at://did:web:reader.example/science.mira.question/3merpnmdk4z2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.claim/3merpnmdk5d2b",
+   "type": "Claim",
+   "title": "Random forest models incorporating ANA and anti-Ro/SSA positivity with IL-5, IL-6, and MIG levels distinguish future SLE patients with 92% accuracy across the entire pre-classification period, compared to 78% accuracy using ANA positivity alone.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "addresses": [
+    "at://did:web:reader.example/science.mira.question/3merpnmdk4x2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.claim/3merpnmdk5f2b",
+   "type": "Claim",
+   "title": "A distinct ANA-negative but IL-5/IFN-γ-high pre-SLE cluster is associated with higher risk of nephritis at classification, while ANA-positive cases are more likely to develop arthritis.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.claim/3merpnmdk5h2b",
+   "type": "Claim",
+   "title": "Early dysregulation of Th-type cytokines IL-5 (Th2) and IL-6 (Th2/Th17) may be an essential early step in SLE pathogenesis, contributing to all stages of disease.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "addresses": [
+    "at://did:web:reader.example/science.mira.question/3merpnmdk4x2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.claim/3merpnmdk5j2b",
+   "type": "Claim",
+   "title": "IFN-γ elevation precedes autoantibodies and drives BLyS/APRIL production, supporting a model where simultaneous dysregulation of T helper, regulatory, IFN-related, and TNF-related pathways erodes immune tolerance.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "addresses": [
+    "at://did:web:reader.example/science.mira.question/3merpnmdk4x2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.request/3merpnmdk5l2b",
+   "type": "Question",
+   "title": "Conduct prospective longitudinal studies of individuals with autoantibody positivity ± immune dysregulation prior to clinical symptoms to determine which autoimmune diseases associate with particular dysregulated immune pathways.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.request/3merpnmdk5n2b",
+   "type": "Question",
+   "title": "Determine the cellular sources of dysregulated soluble mediators in preclinical SLE.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.request/3merpnmdk5p2b",
+   "type": "Question",
+   "title": "Determine if dysregulation of signaling pathways leading to aberrant cellular activation and secretion of inflammatory mediators is due to genetic, epigenetic, and/or environmental triggers such as vitamin D deficiency or latent EBV infection.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   }
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.evidence/3merpnmdk5r2b",
+   "type": "Evidence",
+   "title": "In pre-SLE cases >3.5 years before classification, IL-5 median normalized FI 1.38 (IQR 1.24-1.62) vs controls 0.86 (0.64-1.26), q=3.6×10⁻⁶; IL-6 1.69 (1.40-2.15) vs 1.14 (0.88-1.44), q=8.26×10⁻⁶; IFN-γ 2.56 (2.20-2.98) vs 2.20 (1.74-2.75), q=0.035.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "isGroundedIn": "at://did:web:reader.example/science.mira.study/3merpnmdk4t2b",
+   "sourceDocument": "at://did:web:reader.example/science.mira.sourceDocument/3merpnmdk4v2b",
+   "anchor": {
+    "source": "https://doi.org/10.1016/j.jaut.2016.06.001",
+    "exact": "IL-5 1.38 (1.24 e 1.62) 0.86 (0.64 e 1.26) 4.35E-06"
+   },
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "supports": [
+    "at://did:web:reader.example/science.mira.claim/3merpnmdk532b",
+    "at://did:web:reader.example/science.mira.claim/3merpnmdk5h2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.evidence/3merpnmdk5t2b",
+   "type": "Evidence",
+   "title": "Cases gained an average of 0.5 dysregulated mediators per year (p<0.001) and 0.3 autoantibody specificities per year (p<0.001), while controls gained 0.06 mediators/year and 0 autoantibody specificities/year.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "isGroundedIn": "at://did:web:reader.example/science.mira.study/3merpnmdk4t2b",
+   "sourceDocument": "at://did:web:reader.example/science.mira.sourceDocument/3merpnmdk4v2b",
+   "anchor": {
+    "source": "https://doi.org/10.1016/j.jaut.2016.06.001",
+    "exact": "Cases moving toward SLE classification gained an average of 0.5 dysregulated mediators per year, compared to only 0.06 in controls (p < 0.001; Fig. 2A and Table 2)."
+   },
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "supports": [
+    "at://did:web:reader.example/science.mira.claim/3merpnmdk552b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.evidence/3merpnmdk5v2b",
+   "type": "Evidence",
+   "title": "BLyS increased significantly in cases (slope 93.93 pg/ml/year) vs controls (18.38 pg/ml/year), p=0.008; APRIL increased in cases (slope 1415 pg/ml/year) vs controls (288 pg/ml/year), p=0.013, with significant differences only in the period <0.9 years before classification.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "isGroundedIn": "at://did:web:reader.example/science.mira.study/3merpnmdk4t2b",
+   "sourceDocument": "at://did:web:reader.example/science.mira.sourceDocument/3merpnmdk4v2b",
+   "anchor": {
+    "source": "https://doi.org/10.1016/j.jaut.2016.06.001",
+    "exact": "Mixed linear regression models confirmed that cases had significant longitudinal increases in the levels of these mediators (Table 2), including BLyS (p = 0.008, Fig. 2G) and APRIL (p = 0.013, Fig. 2H), compared to minimal changes in controls during the sa"
+   },
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "supports": [
+    "at://did:web:reader.example/science.mira.claim/3merpnmdk572b",
+    "at://did:web:reader.example/science.mira.claim/3merpnmdk5j2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.evidence/3merpnmdk5x2b",
+   "type": "Evidence",
+   "title": "Hazard ratios for mediator dysregulation vs autoantibody positivity: IL-5 vs anti-dsDNA 5.28 (3.56-7.82), IL-6 vs anti-dsDNA 4.22 (2.85-6.25), IFN-γ vs anti-dsDNA 3.06 (2.11-4.44), MIG vs anti-dsDNA 4.11 (2.80-6.06); all p<10⁻⁸.",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "isGroundedIn": "at://did:web:reader.example/science.mira.study/3merpnmdk4t2b",
+   "sourceDocument": "at://did:web:reader.example/science.mira.sourceDocument/3merpnmdk4v2b",
+   "anchor": {
+    "source": "https://doi.org/10.1016/j.jaut.2016.06.001",
+    "exact": "anti-dsDNA 3.14 (2.13, 4.63) 5.28 (3.56, 7.82) 4.22 (2.85, 6.25) 3.06 (2.11, 4.44) 4.11 (2.80, 6.06)"
+   },
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "supports": [
+    "at://did:web:reader.example/science.mira.claim/3merpnmdk5b2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.evidence/3merpnmdk5z2b",
+   "type": "Evidence",
+   "title": "Random forest model across entire pre-classification period: combined predictors (ANA, anti-Ro/SSA, IL-5, IL-6, MIG) achieved 92% accuracy (±1.78%), sensitivity 0.93, specificity 0.89, PPV 0.96, NPV 0.84; ANA-only model 78% accuracy (±2.42%).",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "isGroundedIn": "at://did:web:reader.example/science.mira.study/3merpnmdk4t2b",
+   "sourceDocument": "at://did:web:reader.example/science.mira.sourceDocument/3merpnmdk4v2b",
+   "anchor": {
+    "source": "https://doi.org/10.1016/j.jaut.2016.06.001",
+    "exact": "Combined IL-6, anti-Ro/SSA, IL-5, ANA, MIG 0.93 (0.87, 0.97) 0.89 (0.77, 0.96) 0.96 (0.90, 0.99) 0.84(0.71, 0.93) 92% ± 1.78%"
+   },
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "supports": [
+    "at://did:web:reader.example/science.mira.claim/3merpnmdk5d2b"
+   ]
+  },
+  {
+   "id": "at://did:web:reader.example/science.mira.evidence/3merpnmdk632b",
+   "type": "Evidence",
+   "title": "ANA-negative, IL-5-high, IFN-γ-high pre-SLE cluster (SLE cluster 1) had significantly higher nephritis risk (p=0.008) at classification compared to ANA-positive cluster, which had higher arthritis risk (p=0.028).",
+   "attributedTo": [
+    "did:web:reader.example",
+    "did:web:lab.records.example"
+   ],
+   "created": "2026-11-06T00:00:00.000Z",
+   "isGroundedIn": "at://did:web:reader.example/science.mira.study/3merpnmdk4t2b",
+   "sourceDocument": "at://did:web:reader.example/science.mira.sourceDocument/3merpnmdk4v2b",
+   "anchor": {
+    "source": "https://doi.org/10.1016/j.jaut.2016.06.001",
+    "exact": "However, ANA negative, IL-5 and IFN-γ high cases (SLE cluster 1) were more likely to develop nephritis (p = 0.008), while cases who were ANA positive were more likely to develop arthritis (p = 0.028) as they transitioned to classified SLE."
+   },
+   "provenance": {
+    "method": "aiGenerated",
+    "agent": "MIRA extraction app (demo replay)"
+   },
+   "supports": [
+    "at://did:web:reader.example/science.mira.claim/3merpnmdk5f2b"
+   ]
+  }
+ ]
+}

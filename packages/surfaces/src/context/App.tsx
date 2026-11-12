@@ -103,8 +103,9 @@ type PanelProps = { view: NodeView; call: Connection["call"]; report: (error: Er
 /** Where a unit came from, and every place it lives now. */
 const Provenance = ({ view, call, report }: PanelProps) => {
   const { provenance } = view;
-  const { paper, lives, created, edited } = provenance;
+  const { paper, pdf, lives, created, edited } = provenance;
   const show = (id: string): void => void call("canvas.show", { id }).catch(report);
+  const read = (): void => void (pdf ? call("pdf.show", { ref: pdf.ref, unit: view.node.id }).catch(report) : undefined);
   return (
     <section className="ctx-group" data-dg="ctx-provenance">
       <h2>Where it came from</h2>
@@ -116,11 +117,19 @@ const Provenance = ({ view, call, report }: PanelProps) => {
         <div className="ctx-source" data-dg="ctx-paper">
           <button type="button" className="ctx-link" data-dg="ctx-paper-open" onClick={() => show(paper.canvas)}>{paper.title}</button>
           {paper.anchor ? <blockquote data-dg="ctx-anchor">{paper.anchor}</blockquote> : null}
+          {pdf ? <button type="button" className="ctx-link" data-dg="ctx-pdf-open" onClick={read}>Open the passage in the PDF</button> : null}
           {paper.description ? <p className="ctx-line">{paper.description}</p> : null}
           <p className="ctx-line">
             Extracted by {paper.extractedBy} on {whenText(paper.at)}, with {paper.model} on {paper.server}, into the {paper.schema} schema
             {paper.doi ? `. DOI ${paper.doi}` : ""}
           </p>
+        </div>
+      ) : null}
+      {pdf && !paper ? (
+        <div className="ctx-source" data-dg="ctx-pdf">
+          <p className="ctx-line">Highlighted in {pdf.name}{pdf.page ? `, page ${pdf.page}` : ""}</p>
+          {pdf.exact ? <blockquote data-dg="ctx-anchor">{pdf.exact}</blockquote> : null}
+          <button type="button" className="ctx-link" data-dg="ctx-pdf-open" onClick={read}>Open the passage in the PDF</button>
         </div>
       ) : null}
       <h2>Where it lives</h2>

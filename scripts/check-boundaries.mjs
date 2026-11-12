@@ -13,6 +13,7 @@ const ALLOWED = {
   "packages/surfaces": ["@dg/contract", "@dg/layout"],
   "plugins/obsidian": ["@dg/contract", "@dg/core", "@dg/native", "@dg/sync"],
   "plugins/roam": ["@dg/contract", "@dg/core", "@dg/native", "@dg/sync"],
+  local: ["@dg/contract", "@dg/core"],
   server: [],
 };
 
@@ -23,6 +24,7 @@ const FORBIDDEN = {
   "packages/layout": ["obsidian", "react", "@xyflow/react"],
   "packages/sync": ["obsidian", "react", "@xyflow/react"],
   "packages/surfaces": ["obsidian"],
+  local: ["obsidian", "react", "@xyflow/react"],
 };
 
 const walk = (folder) =>

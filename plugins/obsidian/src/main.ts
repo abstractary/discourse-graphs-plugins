@@ -1,13 +1,18 @@
 import {
+  App,
   ItemView,
   MarkdownView,
+  TFile,
   Plugin,
+  PluginSettingTab,
+  Setting,
   type Editor,
   type ViewStateResult,
   type WorkspaceLeaf,
 } from "obsidian";
 import type { ExtractionGraph } from "@dg/contract/services.ts";
 import { ok, type Placement, type SurfaceRoute } from "@dg/contract/host.ts";
+import type { SurfacePort } from "@dg/contract/surface.ts";
 import { createCore, type Core } from "@dg/core/index.ts";
 import { createObsidianHost, ROOT, SURFACE_VIEW, type ObsidianHost } from "./host.ts";
 import { testHooks } from "./testing.ts";
@@ -28,6 +33,7 @@ import {
 
 declare const __PANEL_HTML__: string;
 declare const __CANVAS_HTML__: string;
+declare const __PDF_HTML__: string;
 declare const __CANVAS_BUILD__: string;
 declare const __DEMO_GRAPHS__: { filename: string; graph: ExtractionGraph }[];
 declare const __TEST_HOOKS__: boolean;
@@ -58,10 +64,16 @@ export class SurfaceView extends ItemView {
   getDisplayText(): string {
     if (this.route.surface === "context") return "Context";
     if (this.route.surface === "canvases") return "Library";
+    if (this.route.surface === "holon") return "Holons";
+    if (this.route.surface === "boundary") return "Holon boundary";
+    if (this.route.surface === "pdf") return this.route.id?.split("/").pop()?.replace(/\.pdf$/i, "") ?? "PDF";
     return (this.route.id ? this.canvasName(this.route.id) : null) ?? "Canvas";
   }
   getIcon(): string {
     if (this.route.surface === "context") return "panel-right";
+    if (this.route.surface === "holon") return "network";
+    if (this.route.surface === "boundary") return "layers";
+    if (this.route.surface === "pdf") return "file-text";
     return this.route.surface === "canvases" ? "layout-list" : "layout-dashboard";
   }
   getState(): Record<string, unknown> {
@@ -73,27 +85,83 @@ export class SurfaceView extends ItemView {
     if (this.frame && next.surface === this.route.surface && next.id === this.route.id) return;
     this.route = next;
     this.render();
-    (this.leaf as unknown as { updateHeader?: () => void }).updateHeader?.();
+    this.retitle();
   }
   async onOpen(): Promise<void> {
     if (!this.frame) this.render();
+    this.retitle();
+  }
+  /** The tab and the header above the panel both say what it shows. */
+  retitle(): void {
+    (this.leaf as unknown as { updateHeader?: () => void }).updateHeader?.();
+    this.containerEl.querySelector(".view-header-title")?.setText(this.getDisplayText());
   }
   override async onClose(): Promise<void> {
     if (this.route.surface === "canvas" && this.route.id) this.closed(this.route.id);
   }
+  /**
+   * The canvas moved to another canvas inside this tab, such as going into a
+   * holon. The tab takes it as its route, so its title, its saved layout and a
+   * restart all follow, without reloading the frame.
+   */
+  adopt(id: string): void {
+    if ((this.route.surface !== "canvas" && this.route.surface !== "pdf") || this.route.id === id) return;
+    if (this.route.surface === "canvas" && this.route.id) this.closed(this.route.id);
+    this.route = { ...this.route, id };
+    this.retitle();
+    this.app.workspace.requestSaveLayout();
+  }
+
   private render(): void {
     this.contentEl.empty();
     this.contentEl.style.padding = "0";
     const frame = this.contentEl.createEl("iframe", {
       attr: {
         sandbox: "allow-scripts",
-        srcdoc: this.route.surface === "check" ? __PANEL_HTML__ : __CANVAS_HTML__,
+        srcdoc: this.route.surface === "check" ? __PANEL_HTML__ : this.route.surface === "pdf" ? __PDF_HTML__ : __CANVAS_HTML__,
         title: "Discourse Graphs",
       },
     });
     frame.style.cssText = "border:0;width:100%;height:100%;display:block;";
     this.frame = frame;
     this.mount(frame, this.route);
+  }
+}
+
+/** Notices when a frame says it now shows another canvas, or another PDF. */
+const watchRoute = (port: SurfacePort, onShown: (id: string) => void): SurfacePort => ({
+  send: (message) => port.send(message),
+  onMessage: (listener) =>
+    port.onMessage((message) => {
+      const call = message as { method?: string; params?: { canvas?: string; ref?: string; data?: boolean } };
+      if (call.method === "holon.focus.set" && call.params?.canvas) onShown(call.params.canvas);
+      if (call.method === "pdf.open" && call.params?.ref && call.params.data !== false) onShown(call.params.ref);
+      listener(message);
+    }),
+});
+
+/** Per-device choices, kept by the core so every panel sees the same ones. */
+class DiscourseGraphsSettings extends PluginSettingTab {
+  constructor(app: App, private readonly plugin: DiscourseGraphsPlugin) {
+    super(app, plugin);
+  }
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+    const setting = new Setting(containerEl)
+      .setName("Open a card's holon with")
+      .setDesc("Every holon card also has its own open-inside button. Double-click otherwise opens the card's text beside the canvas.");
+    void this.plugin.ensureCore().then(async (core) => {
+      const prefs = await core.prefs();
+      setting.addDropdown((dropdown) =>
+        dropdown
+          .addOption("button", "Open-inside button only")
+          .addOption("doubleClick", "Double-click")
+          .addOption("semantic", "Zooming in (and out to go up)")
+          .setValue(prefs.holonGesture)
+          .onChange((value) => void core.setPrefs({ holonGesture: value as "button" | "doubleClick" | "semantic" })),
+      );
+    });
   }
 }
 
@@ -146,6 +214,10 @@ export default class DiscourseGraphsPlugin extends Plugin {
       this.dialogFrame = document.querySelector<HTMLIFrameElement>('[data-dg="dialog"] iframe');
       return ok(null);
     }
+    if (placement === "main" && route.surface === "pdf") {
+      await this.openPdf(route.id);
+      return ok(null);
+    }
     if (placement === "main") {
       const showing = route.id
         ? workspace.getLeavesOfType(VIEW).find((item) => {
@@ -188,10 +260,8 @@ export default class DiscourseGraphsPlugin extends Plugin {
 
   async onload(): Promise<void> {
     this.adapter = await this.makeAdapter();
-    this.registerView(
-      VIEW,
-      (leaf) =>
-        new SurfaceView(leaf, (frame, route) => {
+    this.registerView(VIEW, (leaf) => {
+      const view: SurfaceView = new SurfaceView(leaf, (frame, route) => {
           connectFrame({
             frame,
             route,
@@ -199,16 +269,19 @@ export default class DiscourseGraphsPlugin extends Plugin {
             connect: async (port) => {
               const core = await this.ensureCore();
               core.connectSurface({
-                port,
+                port: watchRoute(port, (id) => view.adopt(id)),
                 onReport: (report) => {
                   this.panelReport = report;
                   void this.writeReport("report-panel", report);
                 },
               });
+              // A canvas's name is known once the core is.
+              view.retitle();
             },
           });
-        }, (id) => this.core?.canvasTitle({ id }) ?? null, (id) => void this.core?.canvasClosed({ id })),
-    );
+        }, (id) => this.core?.canvasTitle({ id }) ?? null, (id) => void this.core?.canvasClosed({ id }));
+      return view;
+    });
     this.addCommand({
       id: "open-canvas",
       name: "Open canvas",
@@ -287,6 +360,55 @@ export default class DiscourseGraphsPlugin extends Plugin {
       name: "Open context panel",
       callback: () => void this.adapter!.host.openSurface({ route: { surface: "context" }, placement: "side" }),
     });
+    this.addCommand({
+      id: "open-holons",
+      name: "Open holons",
+      callback: () => void this.openHolons(),
+    });
+    this.addCommand({
+      id: "open-canvas-repository",
+      name: "Open the canvas repository",
+      callback: () => void this.openCanvases(),
+    });
+    this.addCommand({
+      id: "open-holon-boundary",
+      name: "Open the holon boundary panel",
+      callback: () => void this.openBoundary(),
+    });
+    this.addCommand({
+      id: "open-note-as-holon",
+      name: "Open this note as a holon",
+      callback: () => void this.openNoteAsHolon(),
+    });
+    this.addCommand({
+      id: "open-pdf",
+      name: "Read a PDF beside the canvas",
+      callback: () => void this.openPdf(),
+    });
+    this.addCommand({
+      id: "read-this-pdf",
+      name: "Read this PDF in Discourse Graphs",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (file?.extension !== "pdf") return false;
+        if (!checking) void this.openPdf(file.path);
+        return true;
+      },
+    });
+    // Obsidian's own viewer stays the default; reading into the graph is one click away.
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (!(file instanceof TFile) || file.extension !== "pdf") return;
+        menu.addItem((item) =>
+          item
+            .setTitle("Read in Discourse Graphs")
+            .setIcon("file-text")
+            .onClick(() => void this.openPdf(file.path)),
+        );
+      }),
+    );
+    this.addSettingTab(new DiscourseGraphsSettings(this.app, this));
+    this.addRibbonIcon("network", "Discourse Graphs holons", () => void this.openHolons());
     this.addRibbonIcon("layout-dashboard", "Open Discourse Graphs canvas", () => void this.openCanvas());
     this.addRibbonIcon("layout-list", "Discourse Graphs canvases", () => void this.openCanvases());
     // A canvas's own note opens as the canvas, so links, search and the file tree all lead to it.
@@ -437,6 +559,64 @@ export default class DiscourseGraphsPlugin extends Plugin {
   async openCanvases(): Promise<void> {
     await this.ensureCore();
     await this.adapter!.host.openSurface({ route: { surface: "canvases" }, placement: "side" });
+  }
+
+  /** The boundary of the holon in focus, in the right sidebar beside the context panel. */
+  async openBoundary(): Promise<void> {
+    await this.ensureCore();
+    await this.adapter!.host.openSurface({ route: { surface: "boundary" }, placement: "side" });
+  }
+
+  /** The note's unit as a holon: its own canvas, made from the graph if it has none. */
+  async openNoteAsHolon(): Promise<void> {
+    const core = await this.ensureCore();
+    const node = core.focusedNode();
+    const ref = node ? await core.locateHolon(node) : null;
+    if (!ref) {
+      await this.openHolons(node ? `unit|${node}` : undefined);
+      return;
+    }
+    const { id } = await core.holonCanvas(ref);
+    await this.adapter!.host.openSurface({ route: { surface: "canvas", id }, placement: "main" });
+    await this.openBoundary();
+  }
+
+  /** The holon explorer in a tab: the top of the holarchy, or a holon without a canvas. */
+  async openHolons(id?: string): Promise<void> {
+    await this.ensureCore();
+    const { workspace } = this.app;
+    const open = workspace.getLeavesOfType(VIEW).find((leaf) => (leaf.view as SurfaceView).route.surface === "holon");
+    const route = { surface: "holon" as const, ...(id ? { id } : {}) };
+    if (open && (open.view as SurfaceView).route.id === route.id) {
+      await workspace.revealLeaf(open);
+      return;
+    }
+    const leaf = open ?? workspace.getLeaf("tab");
+    await leaf.setViewState({ type: VIEW, active: true, state: { route } });
+    await workspace.revealLeaf(leaf);
+  }
+
+  /**
+   * The reader in the main area, split beside the canvas so a highlight lands
+   * where it can be seen. One reader at a time: a second PDF replaces the first.
+   */
+  async openPdf(ref?: string): Promise<void> {
+    await this.ensureCore();
+    const { workspace } = this.app;
+    const route = { surface: "pdf" as const, ...(ref ? { id: ref } : {}) };
+    const surfaces = workspace.getLeavesOfType(VIEW);
+    const open = surfaces.find((leaf) => (leaf.view as SurfaceView).route.surface === "pdf");
+    if (open) {
+      if ((open.view as SurfaceView).route.id !== ref && ref) await open.setViewState({ type: VIEW, active: true, state: { route } });
+      await workspace.revealLeaf(open);
+      return;
+    }
+    const canvas =
+      surfaces.find((leaf) => (leaf.view as SurfaceView).route.surface === "canvas" && leaf.view.containerEl.offsetParent !== null) ??
+      surfaces.find((leaf) => (leaf.view as SurfaceView).route.surface === "canvas");
+    const leaf = canvas ? workspace.createLeafBySplit(canvas, "vertical") : workspace.getLeaf("tab");
+    await leaf.setViewState({ type: VIEW, active: true, state: { route } });
+    await workspace.revealLeaf(leaf);
   }
 
   async newCanvas(): Promise<void> {

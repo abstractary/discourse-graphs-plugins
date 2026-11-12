@@ -82,7 +82,8 @@ Decisions that follow from DG's intent:
 | `renameText` | Rename | Update page | `renameFile` |
 | `pinText` | Make a ref survive renames | Nothing to do, UIDs are stable | Write an ID to frontmatter, as `ensureNodeInstanceId` does today |
 | `listRecords`, `putRecords` | Store records in the base | Per-device block trees, batches in props | Per-device `.jsonl` logs in a visible folder |
-| `readAsset`, `writeAsset` | Figures and images | `file.get`, `file.upload`; block props in offline graphs | `readBinary`, `createBinary` |
+| `readAsset`, `writeAsset` | Figures, images and PDFs. A PDF goes where a person would look for it | `file.get`, `file.upload`, plus a PDF embed on "Discourse Graphs/PDFs"; block props in offline graphs | `readBinary`, `createBinary`; a PDF goes to "Paper files" |
+| `listFiles` | The PDFs a base holds, for the reader | `{{pdf: ...}}` embeds, and PDFs kept in block props | `getFiles`, by extension |
 | `getFocus` | What's open | Open page or focused block | Active file |
 | `reveal` | Open text in the base | Main window, or the sidebar when a panel covers it | `openFile` in a leaf |
 | `insertLink` | Link at the last cursor | Edit the block | Edit at the saved cursor |
@@ -119,7 +120,7 @@ A node's collection follows its type, so its AT URI can change while its id and 
 
 ## Conformance
 
-[conformance.ts](../packages/contract/src/conformance.ts) has 36 checks. It uses no test framework, because a real adapter can only be proven inside its live base. Each adapter supplies a small driver that plays the part of a person or another device: renaming outside the plugin, restarting, or a teammate's write. Run it against a throwaway graph or vault, since it leaves fixtures behind.
+[conformance.ts](../packages/contract/src/conformance.ts) has 37 checks. It uses no test framework, because a real adapter can only be proven inside its live base. Each adapter supplies a small driver that plays the part of a person or another device: renaming outside the plugin, restarting, or a teammate's write. Run it against a throwaway graph or vault, since it leaves fixtures behind.
 
 ```bash
 npm test
@@ -187,6 +188,8 @@ This shows every call has a home. It doesn't show each one is easy. Many of Roam
 | 26 | Reactions and notes | They live on shared canvases only, one reaction per person, and they never notify. Notes stay apart from the unit, and only their author can remove them | From MIRA: reactions must not read as approval, and PIs shouldn't be nudged |
 | 27 | Breadcrumbs | Offered on closing a lab paper, with ask, always or never as a default kept on the device. Nothing is recorded until a person chooses, and the uploader isn't asked | Being seen reading is a choice, and the repository already names the uploader |
 | 28 | Test hooks | Each plugin's hooks are in `testing.ts`, and a release build leaves them out | A shipped plugin shouldn't carry a test surface |
+| 29 | Reading PDFs | DG's own reader panel, beside the canvas, with pdf.js in its own bundle. Obsidian's viewer stays the default for PDFs and gets a "Read in Discourse Graphs" entry. The host contract gained only `listFiles` | Hooking Obsidian's viewer means undocumented internals that break between releases, and Roam and the local app would still need a reader. One panel works and is tested in every base |
+| 30 | A highlight's unit | A highlight becomes a staged unit with `facts.anchor` (the words, the page and the source) and `prov.sourceDocument`. The file is a source unit pinned by its content hash, made the first time anything is read from it, or the paper's own source if it has one | The words are a W3C text quote, found again by their text, so the mark survives re-rendering, and a renamed file is still the same source |
 
 Decision 1 needs the schema owners to update the conceptual schema and `dg_core.ttl` to match.
 

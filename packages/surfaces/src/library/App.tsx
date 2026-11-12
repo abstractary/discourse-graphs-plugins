@@ -3,6 +3,7 @@ import type { CanvasSummary, LabView, PaperSummary } from "@dg/contract/surface.
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, Mark } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
+import { Repository } from "./Repository.tsx";
 
 const DAY = 86_400_000;
 const CHECK_MS = 4000;
@@ -18,80 +19,6 @@ const whenEdited = (at: string): string => {
 const counted = (count: number, word: string): string => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 type Tab = "canvases" | "papers" | "folders" | "lab";
-
-const Canvases = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
-  const { call, on } = connection;
-  const [canvases, setCanvases] = useState<CanvasSummary[] | null>(null);
-  const [query, setQuery] = useState("");
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
-
-  const refresh = useCallback(() => {
-    void call("canvas.summaries", {}).then(setCanvases).catch(report);
-  }, [call, report]);
-  useEffect(refresh, [refresh]);
-  useEffect(() => on("graph-changed", refresh), [on, refresh]);
-
-  const shown = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return (canvases ?? []).filter(({ title }) => !needle || title.toLowerCase().includes(needle));
-  }, [canvases, query]);
-
-  const open = (id: string): void => void call("canvas.show", { id }).catch(report);
-
-  const create = async (): Promise<void> => {
-    const title = name.trim();
-    if (!title) return;
-    setNaming(false);
-    setName("");
-    try {
-      open((await call("canvas.create", { title })).id);
-    } catch (error) {
-      report(error);
-    }
-  };
-
-  return (
-    <>
-      <div className="cvs-bar">
-        <button type="button" data-dg="canvases-new" onClick={() => setNaming((on_) => !on_)}><Icon name="plus" /> New canvas</button>
-      </div>
-      {naming ? (
-        <div className="cvs-new">
-          <input
-            autoFocus
-            data-dg="canvases-name"
-            aria-label="Canvas name"
-            placeholder="Canvas name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") void create();
-              if (event.key === "Escape") setNaming(false);
-            }}
-          />
-          <button type="button" data-dg="canvases-create" onClick={() => void create()}>Create</button>
-        </div>
-      ) : null}
-      {(canvases?.length ?? 0) > 3 ? (
-        <input className="cvs-search" data-dg="canvases-search" aria-label="Find a canvas" placeholder="Find a canvas" value={query} onChange={(event) => setQuery(event.target.value)} />
-      ) : null}
-      {canvases !== null && canvases.length === 0 ? <p className="cvs-none">No canvases yet. A canvas lays out questions, claims and evidence, and how they connect.</p> : null}
-      {canvases !== null && canvases.length > 0 && shown.length === 0 ? <p className="cvs-none">No canvas matches.</p> : null}
-      <ul className="cvs-list">
-        {shown.map((canvas) => (
-          <li key={canvas.id}>
-            <button type="button" data-dg={`canvases-open-${canvas.title}`} onClick={() => open(canvas.id)}>
-              <span className="cvs-title">{canvas.title}</span>
-              <span className="cvs-meta">{counted(canvas.cards, "card")}, {counted(canvas.links, "link")}, edited {whenEdited(canvas.editedAt)}</span>
-            </button>
-            <Mark credit={canvas.credit} />
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-};
 
 const Papers = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
   const { call, on } = connection;
@@ -277,7 +204,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         ))}
       </nav>
       {notice ? <p className="problem" role="alert">{notice}</p> : null}
-      {tab === "canvases" ? <Canvases {...props} /> : null}
+      {tab === "canvases" ? <Repository {...props} /> : null}
       {tab === "papers" ? <Papers {...props} /> : null}
       {tab === "folders" ? <Folders {...props} /> : null}
       {tab === "lab" ? <Lab {...props} /> : null}

@@ -12,7 +12,11 @@
     "build": "DG_RELEASE=1 node scripts/build.mjs",
     "build:test": "node scripts/build.mjs",
     "server": "node scripts/serve.mjs",
-    "coverage": "python3 -I scripts/host_coverage.py"
+    "coverage": "python3 -I scripts/host_coverage.py",
+    "build:local": "node scripts/build-local.mjs",
+    "local": "node local/src/main.ts",
+    "seed:example": "node local/src/seed.ts",
+    "example": "node examples/worked-example/build.ts"
   },
   "devDependencies": {
     "@atproto/crypto": "0.5.7",

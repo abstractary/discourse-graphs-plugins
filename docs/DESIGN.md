@@ -37,6 +37,36 @@ Node type and relation hues are DG's own, in OKLCH, because they carry meaning: 
 | Hover a link on a canvas | Shows who made it |
 | N, T, D, L | Add node, note, draw, tidy again in the same mode |
 | Delete | Removes from the canvas, with Undo |
+| Click a holon card's open-inside button | Opens that holon's own canvas in the same tab, made from the graph if it has none |
+| Click a step in the holon breadcrumb | Goes back up to that holon's canvas |
+| Double-click, or zoom far in or out, by choice | Opens or leaves a holon, per the device's choice in settings or the Holon menu. See [HOLONS.md](HOLONS.md) |
+| Highlight words in a PDF | A popup offers the unit's title, its type and its canvas. A letter picks the type, as with `\`, and Enter saves |
+| Click a lit passage in a PDF | Selects its unit: the context panel follows, and the canvas lights its card |
+| U, or the bar under the canvas | Opens the drawer of units not on this canvas yet |
+| Click a unit in the drawer | Selects it. Place puts the selection on together, laid out with its links |
+| Drag a unit, or the selection, from the drawer | Puts it where it's dropped, with its links |
+
+## Reading PDFs
+
+The reader is DG's own panel, opened beside the canvas, so a highlight lands where it can be seen. Obsidian's PDF viewer stays the default, and every PDF gets "Read in Discourse Graphs" in its menu. Hooking Obsidian's viewer would mean undocumented internals, and Roam and the local app need a reader anyway.
+
+- **Which PDFs.** Every PDF in the vault, papers first, then the rest, newest first. Dropping a PDF on the reader, or adding one, keeps it in "Paper files".
+- **A highlight.** The popup starts with the highlighted words as the unit's title, the last type used (Evidence the first time), and the canvas in front. "New canvas…" and "No canvas, the graph only" are there too. Saving says where it went, with Undo.
+- **What a unit keeps.** The words, the page and the file, as a W3C text quote. The reader finds the words again by their text, so a passage stays lit at any zoom. The file is a source unit, made the first time anything is read from it, or the paper's own source.
+- **Lit passages.** Each unit read from the PDF is lit in its type's hue, extracted ones included. The Units list goes to each one. A passage whose words aren't in the file's text is counted there, not hidden.
+- **On the canvas.** A highlight's card goes into a clear spot in view, and flashes once. If the canvas isn't open, it goes in a column beside what's there.
+- **From the context panel.** A unit read from a PDF has "Open the passage in the PDF".
+
+pdf.js runs in the panel's own thread, because a panel allows no workers. It's a separate bundle, so the other panels don't carry it.
+
+## The drawer under the canvas
+
+The units not on this canvas yet, in a bar under it that rises into a drawer. It answers "what else belongs here?"
+
+- **Groups.** A group for each other canvas that holds them, then each folder, then units on no canvas or folder. A unit in two places is in both groups.
+- **Order.** In each group, the units linked to cards already on this canvas come first, with a count of those links.
+- **List or grid.** The grid shows cards as the canvas draws them, narrower. Search and a type filter sit in the bar.
+- **Placing.** Click selects, and "Place n together" puts the selection on, laid out with Tidy's Logic mode, in a clear spot. Dragging puts a unit, or the selection, where it's dropped. "Place all" puts a whole group on. Their relations come with them, to each other and to the cards already there, and Undo takes them off.
 
 ## Link badges
 

@@ -129,6 +129,9 @@ export const createFrameProbe = (frame: () => HTMLIFrameElement | null) => {
     style: (selector: string, prop: string) => ask("style", selector, prop),
     choose: (selector: string, value: string) => ask("choose", selector, value),
     reveal: (selector: string) => ask("reveal", selector),
+    dragTo: (selector: string, at: { x: number; y: number }) => ask("dragTo", selector, JSON.stringify(at)),
+    dropFile: (selector: string, file: { name: string; type: string; base64: string }) => ask("dropFile", selector, JSON.stringify(file)),
+    selection: () => ask("selection", "html"),
     pick: (selector: string, file: { name: string; type: string; base64: string }) => ask("pick", selector, JSON.stringify(file)),
     locate: async (selector: string) => {
       const box = (await ask("box", selector)) as Box | null;

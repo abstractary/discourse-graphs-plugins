@@ -13,5 +13,5 @@
     "types": ["node"],
     "jsx": "react-jsx"
   },
-  "include": ["packages", "plugins", "test", "harness"]
+  "include": ["packages", "plugins", "test", "harness", "examples", "local"]
 }

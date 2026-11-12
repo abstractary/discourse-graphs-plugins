@@ -65,13 +65,15 @@ The scripts drive Obsidian through its command line tool, which is in `/Applicat
 | `walkthrough-test.mjs` | The guided walkthrough, every step | `node harness/walkthrough-test.mjs obsidian` |
 | `real-test.mjs` | Published MATSUlab data, after seeding with `harness/matsulab.mjs` | `node harness/real-test.mjs obsidian` |
 | `labs-test.mjs` | Two labs, one in each base | `node harness/labs-test.mjs` |
+| `holons-test.mjs` | Holon views and the canvas repository in a tab, after adding the worked example as one more device's log | `node harness/holons-test.mjs` (Obsidian only) |
+| `pdf-test.mjs` | The PDF reader beside the canvas, a real mouse highlight made into a unit, Undo, a dropped PDF, and the units drawer: list, grid, selecting, dragging and placing a group. It takes what it placed back off the example canvas | `node harness/pdf-test.mjs` (Obsidian only) |
 | `papers-test.mjs` | Upload, export, provenance, labs, reactions, breadcrumbs and AI, across both apps | `node harness/papers-test.mjs` |
 
 Replace `obsidian` with `roam` to run a suite in the other base.
 
 Seeding with `harness/matsulab.mjs` also needs the MATSUlab evidence bundles. Set `MATSULAB_BUNDLES` to their folder in a checkout of `MATSUlab-issue-exchange-analysis`.
 
-The conformance suite runs inside each app. It's the same 36 checks in both, written once in `packages/contract/src/conformance.ts`:
+The conformance suite runs inside each app. It's the same 37 checks in both, written once in `packages/contract/src/conformance.ts`:
 
 - In Obsidian, call `app.plugins.plugins["discourse-graphs-demo"].slice.runConformance()`.
 - In Roam, load the extension with `node harness/cdp.mjs file dist/roam/extension.js`, then call `window.dgHarness.runConformance()`.

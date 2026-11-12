@@ -208,6 +208,15 @@ export const createMemoryHost = ({
       store.assets.set(ref, asset);
       return ok({ ref });
     },
+    listFiles: async ({ extensions, limit }) => {
+      const wanted = new Set(extensions.map((extension) => extension.toLowerCase()));
+      const files = [...store.assets.entries()]
+        .filter(([, asset]) => wanted.has(asset.name.split(".").pop()?.toLowerCase() ?? ""))
+        .reverse()
+        .slice(0, limit)
+        .map(([ref, asset]) => ({ ref, name: asset.name, mime: asset.mime, size: Math.floor(((asset.dataUrl.split(",")[1] ?? "").length * 3) / 4) }));
+      return ok(files);
+    },
     getFocus: async () => ok({ ref: store.focus }),
     reveal: async ({ ref }) => {
       if (!readRef(ref)) return notFound(ref);

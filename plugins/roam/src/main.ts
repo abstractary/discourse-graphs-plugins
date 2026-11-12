@@ -21,6 +21,7 @@ import { createRoamHost, type RoamApi, type RoamHost } from "./host.ts";
 
 declare const __PANEL_HTML__: string;
 declare const __CANVAS_HTML__: string;
+declare const __PDF_HTML__: string;
 declare const __CANVAS_BUILD__: string;
 declare const __DEMO_GRAPHS__: { filename: string; graph: ExtractionGraph }[];
 declare const __TEST_HOOKS__: boolean;
@@ -84,7 +85,7 @@ const mountFrame = (surface: SurfaceRoute): HTMLIFrameElement => {
   const frame = document.createElement("iframe");
   frame.setAttribute("sandbox", "allow-scripts");
   frame.setAttribute("title", "Discourse Graphs");
-  frame.srcdoc = surface.surface === "check" ? __PANEL_HTML__ : __CANVAS_HTML__;
+  frame.srcdoc = surface.surface === "check" ? __PANEL_HTML__ : surface.surface === "pdf" ? __PDF_HTML__ : __CANVAS_HTML__;
   frame.style.cssText = "border:0;width:100%;height:100%;display:block;";
   if (surface.surface === "canvas") canvasFrame = frame;
   if (surface.surface === "context") contextFrame = frame;
@@ -169,6 +170,20 @@ const openSurface: Host["openSurface"] = async ({ route: next, placement }) => {
   }
   if (placement === "side") {
     await mountInSidebar(next);
+    return ok(null);
+  }
+  // A PDF reads beside the canvas page, in the sidebar, the way Roam opens anything alongside.
+  if (next.surface === "pdf") {
+    await api.ui.rightSidebar.open();
+    await sleep(300);
+    const sidebar = document.querySelector("#right-sidebar");
+    if (!sidebar) return { ok: false as const, error: { code: "unavailable" as const, message: "No sidebar." } };
+    document.getElementById(sideId("pdf"))?.remove();
+    const holder = document.createElement("div");
+    holder.id = sideId("pdf");
+    holder.style.cssText = "height:min(86vh,1100px);width:100%;flex:none;border-bottom:1px solid rgba(16,22,26,.15);";
+    holder.appendChild(mountFrame(next));
+    sidebar.prepend(holder);
     return ok(null);
   }
   // A canvas lives on its own page. Only with no canvas at all is there nowhere to go.

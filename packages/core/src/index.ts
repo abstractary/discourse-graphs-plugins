@@ -39,7 +39,9 @@ import type {
   CanvasSummary,
   CanvasView,
   Credit,
+  HolonRef,
   IdentityView,
+  Prefs,
   NodeSummary,
   RelationOption,
   SurfaceMessage,
@@ -49,6 +51,8 @@ import type {
 } from "@dg/contract/surface.ts";
 import { withUsageLog, type UsageEvent } from "@dg/contract/usage.ts";
 import { atUriOf, cidOf, toAtRecord, type AtRecord } from "@dg/contract/atproto.ts";
+import { holonFeature } from "./holons.ts";
+import { readingFeature } from "./reading.ts";
 import {
   addCustodian,
   createIdentity,
@@ -98,6 +102,13 @@ export type Core = CoreForAdapter & {
   /** What sync sends to the lab, and where it hands back what arrived. */
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
+  /** A holon's own canvas, made from its laid-out view if it has none. */
+  holonCanvas: (ref: HolonRef) => Promise<{ id: DgId; made: boolean }>;
+  locateHolon: (id: DgId) => Promise<HolonRef | null>;
+  /** The base says which canvas is in front, so the boundary panel can follow it. */
+  focusCanvas: (id: DgId) => Promise<void>;
+  prefs: () => Promise<Prefs>;
+  setPrefs: (changes: Partial<Prefs>) => Promise<Prefs>;
 };
 
 export const createCore = async ({
@@ -152,6 +163,8 @@ export const createCore = async ({
 
   const records: DgRecord[] = [];
   const seen = new Set<string>();
+  // Set once the holon feature exists; a note opened before then just waits.
+  let holonHooks: ReturnType<typeof holonFeature> | undefined;
   const missingText = new Set<HostRef>();
   let { appearance, skin } = info;
   let focused: DgId | null = null;
@@ -362,7 +375,8 @@ export const createCore = async ({
       credit: creditFor(node),
       at: node.at,
       hasText: Boolean(anchor && !missingText.has(anchor.ref)),
-      ...(node.source && !anchor ? { staged: true } : {}),
+      // Read from a paper or a PDF, and not given a note or page yet.
+      ...((node.source || node.facts?.anchor?.exact) && !anchor ? { staged: true } : {}),
       ...(atUriOf(node.id, graph) ? { uri: atUriOf(node.id, graph)! } : {}),
       ...(node.type ? { type: node.type } : {}),
       ...(type
@@ -547,7 +561,10 @@ export const createCore = async ({
       case "focus-changed": {
         const anchored = event.ref ? anchorsByRef.get(event.ref)?.node : undefined;
         // A page without a node keeps the last node in view, rather than blanking it.
-        if (anchored && nodeOf(anchored)) moveFocus(anchored);
+        if (anchored && nodeOf(anchored)) {
+          moveFocus(anchored);
+          void holonHooks?.followNote(anchored);
+        }
         break;
       }
       case "appearance-changed":
@@ -713,6 +730,7 @@ export const createCore = async ({
     localSpace,
     titleFormat,
     graph: () => graph,
+    records: () => records,
     documents,
     put,
     stamp: () => stamp,
@@ -755,7 +773,12 @@ export const createCore = async ({
       (item) => !item.removed && (item.item as { dg?: { node?: DgId } }).dg?.node === node && canvasOf(item.canvas)?.shared !== undefined,
     );
 
+  const holons = holonFeature(context);
+  holonHooks = holons;
+  const reading = readingFeature(context);
   const handlers: Handlers = {
+    ...holons.handlers,
+    ...reading.handlers,
     ...paperHandlers,
     ...unitHandlers,
     ...labHandlers,
@@ -828,7 +851,10 @@ export const createCore = async ({
           person: nameOf(node.by),
           ...(labOf(node) ? { lab: labOf(node)!.name } : {}),
         },
-        provenance: units.provenance(node),
+        provenance: await (async () => {
+          const pdf = await reading.pdfOf(node);
+          return { ...units.provenance(node), ...(pdf ? { pdf } : {}) };
+        })(),
         ...(onSharedCanvas(id) ? { social: units.social(id) } : {}),
       };
     },
@@ -1104,6 +1130,11 @@ export const createCore = async ({
     setName,
     shareable,
     take,
+    holonCanvas: (ref) => holons.holonCanvas(ref),
+    locateHolon: (id) => holons.locate(id),
+    focusCanvas: (id) => holons.focusCanvas(id),
+    prefs: () => holons.prefs(),
+    setPrefs: (changes) => holons.setPrefs(changes),
     canvasClosed,
     answerBreadcrumb,
     personName: () => me.name,

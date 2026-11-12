@@ -32,6 +32,8 @@ export type Context = {
   localSpace: string;
   titleFormat: ((abbreviation: string) => string) | undefined;
   graph: () => FoldedGraph;
+  /** Every record read so far, every version of each: the log, for history and diffs. */
+  records: () => DgRecord[];
   documents: <K extends DgRecord["kind"]>(kind: K) => Extract<DgRecord, { kind: K }>[];
   put: (records: DgRecord[]) => Promise<void>;
   stamp: () => Stamp;

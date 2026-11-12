@@ -10,6 +10,7 @@ import type {
   JsonObject,
   NodeRecord,
   NodeTypeRecord,
+  Pin,
   RelationRecord,
   RelationTypeRecord,
 } from "./records.ts";
@@ -24,6 +25,13 @@ const NODE_COLLECTIONS: Record<BaseNodeType, string> = {
   claim: "science.mira.claim",
   evidence: "science.mira.evidence",
   source: "science.mira.sourceDocument",
+  protocol: "science.mira.protocol",
+  // MIRA's Study is one activity that produces evidence, which is DG's Run.
+  // DG's Study is the design, and MIRA has no class for it yet.
+  study: "org.discoursegraphs.study",
+  run: "science.mira.study",
+  code: "org.discoursegraphs.code",
+  output: "org.discoursegraphs.output",
 };
 const DRAFT = "org.discoursegraphs.draft";
 const RELATION = "science.mira.relation";
@@ -38,6 +46,8 @@ const TOOL_COLLECTIONS: Partial<Record<DgRecord["kind"], string>> = {
   lab: "org.discoursegraphs.lab",
   membership: "org.discoursegraphs.membership",
   snapshot: "org.discoursegraphs.snapshot",
+  evaluation: "science.mira.evaluation",
+  release: "org.discoursegraphs.canvasRelease",
   relation: RELATION,
 };
 
@@ -85,10 +95,142 @@ const predicateOf = (record: RelationRecord, graph: FoldedGraph): string => {
   return type?.base ?? type?.label ?? "relatedTo";
 };
 
+/** A pin, with the DG id swapped for the AT URI once the target is published. */
+const pinned = (pin: Pin, graph: FoldedGraph): JsonObject => ({
+  uri: atUriOf(pin.uri, graph) ?? pin.uri,
+  ...(pin.cid ? { cid: pin.cid } : {}),
+});
+
+const link = (id: DgId | undefined, graph: FoldedGraph): JsonObject | undefined =>
+  id ? reference(id, graph) : undefined;
+
+const compact = (value: Record<string, unknown>): JsonObject =>
+  Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== undefined && !(Array.isArray(item) && item.length === 0)),
+  ) as JsonObject;
+
+/** The run an evidence unit rests on, read from its outputs when it doesn't say. */
+const groundOf = (node: NodeRecord, graph: FoldedGraph): DgId | undefined => {
+  if (node.prov?.isGroundedIn) return node.prov.isGroundedIn;
+  for (const pin of node.prov?.observationBase ?? []) {
+    const output = graph.documents.get(pin.uri);
+    if (output?.kind === "node" && output.prov?.generatedBy) return output.prov.generatedBy;
+  }
+  return undefined;
+};
+
+/**
+ * MIRA's field names where MIRA has the field; DG's own names otherwise. A
+ * provenance link to an unpublished unit keeps its DG id, so the reader can
+ * see that something is behind it without being shown what.
+ */
+const processFields = (node: NodeRecord, graph: FoldedGraph): JsonObject => {
+  const base = typeOf(graph, node.type)?.base;
+  const prov = node.prov ?? {};
+  const facts = node.facts ?? {};
+  const shared = { ...(facts.provenance ? { provenance: facts.provenance as unknown as JsonObject } : {}) };
+  switch (base) {
+    case "evidence": {
+      const ground = groundOf(node, graph);
+      return compact({
+        ...shared,
+        observationBase: prov.observationBase?.map((pin) => pinned(pin, graph)),
+        isGroundedIn: link(ground, graph),
+        observationOriginActivity: link(ground, graph),
+        sourceDocument: link(prov.sourceDocument, graph),
+        anchor: facts.anchor as JsonObject | undefined,
+      });
+    }
+    case "run": {
+      const code = (prov.instrument ?? []).flatMap((pin) => {
+        const record = graph.documents.get(pin.uri);
+        return record?.kind === "node" && record.facts?.repo ? [record.facts.repo] : [];
+      });
+      return compact({
+        ...shared,
+        follows: prov.follows ? [pinned(prov.follows, graph)] : undefined,
+        used: prov.used?.map((pin) => pinned(pin, graph)),
+        wasAssociatedWith: facts.agents,
+        startedAtTime: facts.startedAt,
+        endedAtTime: facts.endedAt,
+        codeRepository: code[0],
+        seeAlso: facts.seeAlso,
+        // DG's own fields, which MIRA's study lexicon doesn't define yet.
+        partOf: link(prov.partOf, graph),
+        instrument: prov.instrument?.map((pin) => pinned(pin, graph)),
+        status: facts.status,
+        parameterValues: facts.parameterValues,
+        environment: facts.environment,
+      });
+    }
+    case "protocol":
+      return compact({
+        ...shared,
+        sameAs: facts.sameAs,
+        version: facts.version,
+        parameters: facts.parameters as unknown as JsonObject[] | undefined,
+        implementedBy: prov.implementedBy?.map((id) => reference(id, graph)),
+      });
+    case "study":
+      return compact({
+        ...shared,
+        question: link(prov.question, graph),
+        protocols: prov.protocols?.map((id) => reference(id, graph)),
+        conditions: facts.conditions,
+      });
+    case "code":
+      return compact({
+        ...shared,
+        repo: facts.repo,
+        commit: facts.commit,
+        path: facts.path,
+        sourceCid: facts.sourceCid,
+        language: facts.language,
+        swhid: facts.swhid,
+        license: facts.license,
+      });
+    case "output":
+      return compact({
+        ...shared,
+        generatedBy: link(prov.generatedBy, graph),
+        derivedFrom: prov.derivedFrom?.map((pin) => pinned(pin, graph)),
+        cid: facts.cid,
+        uri: facts.uri,
+        mediaType: facts.mediaType,
+        size: facts.size,
+        outputKind: facts.outputKind,
+        locator: facts.locator as JsonObject | undefined,
+        caption: facts.caption,
+      });
+    case "source":
+      return compact({
+        ...shared,
+        doi: facts.doi,
+        describesActivity: prov.describesActivity?.map((id) => reference(id, graph)),
+      });
+    default:
+      return compact(shared);
+  }
+};
+
 const valueOf = (record: DgRecord, graph: FoldedGraph): JsonObject | null => {
   switch (record.kind) {
     case "node":
-      return { title: record.title, attributedTo: attributed(record), ...dates(record) };
+      return {
+        title: record.title,
+        attributedTo: attributed(record),
+        ...processFields(record, graph),
+        ...dates(record),
+      };
+    case "evaluation":
+      return compact({
+        destination: { uri: atUriOf(record.target, graph) ?? record.target, ...(record.targetCid ? { cid: record.targetCid } : {}) },
+        method: record.method,
+        term: record.term,
+        note: record.note,
+        attributedTo: attributed(record),
+        ...dates(record),
+      });
     case "relation":
       return {
         predicate: predicateOf(record, graph),
@@ -121,6 +263,15 @@ const valueOf = (record: DgRecord, graph: FoldedGraph): JsonObject | null => {
       };
     case "canvas":
       return { title: record.title, ...dates(record) };
+    case "release":
+      return compact({
+        canvas: atUriOf(record.canvas, graph) ?? record.canvas,
+        name: record.name,
+        note: record.note,
+        parent: record.parent ? (atUriOf(record.parent, graph) ?? record.parent) : undefined,
+        units: record.units.map((pin) => pinned(pin, graph)),
+        ...dates(record),
+      });
     case "canvas-item":
       return {
         canvas: atUriOf(record.canvas, graph) ?? record.canvas,

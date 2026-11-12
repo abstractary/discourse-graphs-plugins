@@ -1,0 +1,162 @@
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct:    <http://purl.org/dc/terms/> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:   <http://www.w3.org/ns/prov#> .
+@prefix schema: <https://schema.org/> .
+@prefix obo:    <http://purl.obolibrary.org/obo/> .
+@prefix mira:   <http://purl.org/mira-science/mira#> .
+@prefix dgb:    <https://discoursegraphs.com/schema/dg_base#> .
+@prefix dg:     <https://discoursegraphs.com/schema/dg_core#> .
+@prefix dgp:    <https://discoursegraphs.com/schema/dg_process#> .
+
+# The process layer of a discourse graph, as dg-contract writes it (11 Nov 2026).
+# Draft. It extends the base schema in DiscourseGraphs/schemas (dg_base, dg_core)
+# and doesn't change it. PROV-O is the backbone; MIRA, schema.org (RO-Crate and
+# Workflow Run RO-Crate), Bioschemas and OBI/IAO are aligned in mappings.sssom.tsv.
+# OBI and IAO IRIs are annotations only, never keys: OBI churns (COB_0000035
+# replaced OBI_0000011 in Dec 2025).
+
+<https://discoursegraphs.com/schema/dg_process>
+    a owl:Ontology ;
+    rdfs:label "Discourse graph process layer"@en ;
+    rdfs:comment "Protocol and Study are the logic of a process; a Run is one execution; Code is the plan in code form; an Output is one data item a run produced. Evidence rests on outputs, so a claim's support can be traced to the runs, protocols and code behind it."@en ;
+    dct:created "2026-11-11"^^xsd:date ;
+    owl:versionInfo "0.1 (draft)" ;
+    rdfs:seeAlso <https://discoursegraphs.com/schema/dg_core> .
+
+# ---------------------------------------------------------------------------
+# Classes. Plans are PROV Entities; runs are Activities. PROV-O makes the two
+# disjoint, which is why a notebook file becomes Code (plan), Run and Outputs.
+
+dgp:Protocol a owl:Class, dgb:NodeSchema ;
+    rdfs:label "Protocol"@en ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:comment "A reusable method: what to do, in what order, with which parameters. MIRA types its Protocol as an Activity; DG treats it as a Plan so a run can follow it."@en ;
+    rdfs:seeAlso obo:OBI_0000272 .
+
+dgp:Study a owl:Class, dgb:NodeSchema ;
+    rdfs:label "Study"@en ;
+    skos:altLabel "Experiment"@en ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:comment "One designed investigation: the question, the design, the conditions and the protocols it uses. This is ISA's sense of Study. MIRA's Study is one run of it, which DG calls a Run."@en ;
+    rdfs:seeAlso obo:OBI_0500000 .
+
+dgp:Run a owl:Class, dgb:NodeSchema ;
+    rdfs:label "Run"@en ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:comment "One execution of a study's design: a day at the bench, one notebook execution, one workflow invocation. Publishes as mira:Study."@en ;
+    rdfs:seeAlso obo:COB_0000035 .
+
+dgp:Code a owl:Class, dgb:NodeSchema ;
+    rdfs:label "Code"@en ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:comment "A notebook, script or workflow at a version, identified by a CID over its sources alone."@en ;
+    rdfs:seeAlso obo:IAO_0000010 .
+
+dgp:Output a owl:Class, dgb:NodeSchema ;
+    rdfs:label "Output"@en ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:comment "One data item a run produced: a dataset, file, figure, table or text, identified by a CID over its own bytes. The bytes are never in the record."@en ;
+    rdfs:seeAlso obo:IAO_0000027 .
+
+dgp:Pin a owl:Class ;
+    rdfs:label "Pinned reference"@en ;
+    rdfs:comment "A reference to one version of something. dgp:target names it; dgp:cid pins the version the author used, so a later edit shows as drift."@en .
+
+[] a owl:AllDisjointClasses ; owl:members ( dgp:Run dgp:Protocol dgp:Study dgp:Code dgp:Output ) .
+
+# The discourse types from dg_core, placed in PROV.
+dg:Evidence rdfs:subClassOf prov:Entity .
+dg:Source   rdfs:subClassOf prov:Entity .
+
+# ---------------------------------------------------------------------------
+# Provenance links. Only the unit's author states these, so they live on the
+# unit; they are not reified like arguments.
+
+dgp:question a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "question"@en ; rdfs:domain dgp:Study ; rdfs:range dg:Question .
+
+dgp:protocols a owl:ObjectProperty ;
+    rdfs:label "protocols"@en ; rdfs:domain dgp:Study ; rdfs:range dgp:Protocol .
+
+dgp:implementedBy a owl:ObjectProperty ;
+    rdfs:label "implemented by"@en ; rdfs:domain dgp:Protocol ; rdfs:range dgp:Code ;
+    rdfs:comment "Code that carries out a computational protocol. A wet-lab protocol may have none."@en .
+
+dgp:partOf a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "part of"@en ; rdfs:subPropertyOf dct:isPartOf ;
+    rdfs:domain dgp:Run ; rdfs:range dgp:Study .
+
+dgp:follows a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "follows"@en ; rdfs:domain dgp:Run ; rdfs:range dgp:Pin ;
+    rdfs:comment "The protocol version a run followed. Shorthand for prov:qualifiedAssociation / prov:hadPlan, which MIRA's mira:follows can't mean while MIRA types Protocol as an Activity."@en .
+
+dgp:instrument a owl:ObjectProperty ;
+    rdfs:label "instrument"@en ; rdfs:domain dgp:Run ; rdfs:range dgp:Pin ;
+    rdfs:comment "Code versions the run executed, pinned by sourceCid. A prov:used with an instrument role; schema:instrument in Workflow Run RO-Crate."@en .
+
+dgp:used a owl:ObjectProperty ;
+    rdfs:label "used"@en ; rdfs:domain dgp:Run ; rdfs:range dgp:Pin .
+
+dgp:generatedBy a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "generated by"@en ; rdfs:subPropertyOf prov:wasGeneratedBy ;
+    rdfs:domain dgp:Output ; rdfs:range dgp:Run .
+
+dgp:derivedFrom a owl:ObjectProperty ;
+    rdfs:label "derived from"@en ; rdfs:domain dgp:Output ; rdfs:range dgp:Pin .
+
+dgp:observationBase a owl:ObjectProperty ;
+    rdfs:label "observation base"@en ; rdfs:domain dg:Evidence ; rdfs:range dgp:Pin ;
+    rdfs:comment "The outputs evidence rests on, pinned by their content hash."@en .
+
+dgp:isGroundedIn a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "is grounded in"@en ; rdfs:domain dg:Evidence ; rdfs:range dgp:Run ;
+    rdfs:comment "The run evidence rests on. Read from its outputs' run when absent. Written as both mira:isGroundedIn and mira:observationOriginActivity on publish."@en .
+
+dgp:sourceDocument a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "source document"@en ; rdfs:domain dg:Evidence ; rdfs:range dg:Source .
+
+dgp:describesActivity a owl:ObjectProperty ;
+    rdfs:label "describes activity"@en ; rdfs:domain dg:Source ; rdfs:range dgp:Run ;
+    rdfs:comment "A run that a paper reports. Created implicitly, one per paper unless split."@en .
+
+dgp:target a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "target"@en ; rdfs:domain dgp:Pin .
+
+# ---------------------------------------------------------------------------
+# Arguments. Other people dispute these, so in the record log each is its own
+# signed, retractable record. The JSON-LD view flattens active ones to triples.
+
+dgp:supports a owl:ObjectProperty ; rdfs:label "supports"@en ; rdfs:range dg:Claim .
+dgp:opposes  a owl:ObjectProperty ; rdfs:label "opposes"@en ;  rdfs:range dg:Claim .
+dgp:addresses a owl:ObjectProperty ; rdfs:label "addresses"@en ; rdfs:domain dg:Claim ; rdfs:range dg:Question .
+dgp:informs  a owl:ObjectProperty ; rdfs:label "informs"@en ;  rdfs:domain dg:Evidence ; rdfs:range dg:Question .
+
+# ---------------------------------------------------------------------------
+# Facts
+
+dgp:cid a owl:DatatypeProperty ;
+    rdfs:label "CID"@en ; rdfs:range xsd:string ;
+    rdfs:comment "On an Output, a CIDv1 (raw codec, SHA-256) over its own bytes. On a Pin, the CID of the version pinned."@en .
+dgp:sourceCid a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "source CID"@en ; rdfs:domain dgp:Code ; rdfs:range xsd:string ;
+    rdfs:comment "A CID over the code's sources alone, outputs stripped."@en .
+dgp:fingerprint a owl:DatatypeProperty ; rdfs:domain dgp:Run ; rdfs:range xsd:string .
+dgp:status a owl:DatatypeProperty, owl:FunctionalProperty ; rdfs:domain dgp:Run ; rdfs:range xsd:string ;
+    rdfs:comment "planned, running, completed or failed. A failed run can still be evidence: a negative result can oppose a claim."@en .
+dgp:commit a owl:DatatypeProperty ; rdfs:domain dgp:Code ; rdfs:range xsd:string .
+dgp:path a owl:DatatypeProperty ; rdfs:range xsd:string .
+dgp:swhid a owl:DatatypeProperty ; rdfs:domain dgp:Code ; rdfs:range xsd:string .
+dgp:outputKind a owl:DatatypeProperty ; rdfs:domain dgp:Output ; rdfs:range xsd:string .
+dgp:byteSize a owl:DatatypeProperty ; rdfs:domain dgp:Output ; rdfs:range xsd:integer .
+dgp:locator a owl:DatatypeProperty ; rdfs:range rdf:JSON ;
+    rdfs:comment "Where an output sits: path, commit, cell id or index, output index, label. Never identity."@en .
+dgp:anchor a owl:DatatypeProperty ; rdfs:domain dg:Evidence ; rdfs:range rdf:JSON .
+dgp:conditions a owl:DatatypeProperty ; rdfs:domain dgp:Study ; rdfs:range xsd:string .
+dgp:parameterValues a owl:DatatypeProperty ; rdfs:domain dgp:Run ; rdfs:range rdf:JSON .
+dgp:environment a owl:DatatypeProperty ; rdfs:domain dgp:Run ; rdfs:range rdf:JSON .
+dgp:provenance a owl:DatatypeProperty ; rdfs:range rdf:JSON ;
+    rdfs:comment "How the unit was made: authored, aiAssisted, aiGenerated or imported (mira defs#provenance)."@en .

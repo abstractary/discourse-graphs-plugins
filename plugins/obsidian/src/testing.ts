@@ -33,6 +33,9 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   const probe = createFrameProbe(() => plugin.surfaceFrame());
   const contextProbe = createFrameProbe(() => plugin.surfaceFrame("context"));
   const canvasesProbe = createFrameProbe(() => plugin.surfaceFrame("canvases"));
+  const holonProbe = createFrameProbe(() => plugin.surfaceFrame("holon"));
+  const boundaryProbe = createFrameProbe(() => plugin.surfaceFrame("boundary"));
+  const pdfProbe = createFrameProbe(() => plugin.surfaceFrame("pdf"));
   const dialogProbe = createFrameProbe(() => plugin.dialogFrame);
   let caller: ReturnType<typeof surfaceCaller> | null = null;
 
@@ -227,6 +230,45 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       scroll: () => probe.scroll(),
       drawn: () => probe.drawn(),
       style: (selector: string, prop: string) => probe.style(selector, prop),
+      openHolons: (id?: string) => plugin.openHolons(id),
+      holonText: (selector: string) => holonProbe.text(selector),
+      holonCount: (selector: string) => holonProbe.count(selector),
+      holonLocate: (selector: string) => holonProbe.locate(selector),
+      holonTheme: () => holonProbe.theme(),
+      openBoundary: () => plugin.openBoundary(),
+      openNoteAsHolon: () => plugin.openNoteAsHolon(),
+      boundaryText: (selector: string) => boundaryProbe.text(selector),
+      boundaryTheme: () => boundaryProbe.theme(),
+      openLibrary: () => plugin.openCanvases(),
+      boundaryCount: (selector: string) => boundaryProbe.count(selector),
+      boundaryLocate: (selector: string) => boundaryProbe.locate(selector),
+      libraryText: (selector: string) => canvasesProbe.text(selector),
+      libraryCount: (selector: string) => canvasesProbe.count(selector),
+      libraryLocate: (selector: string) => canvasesProbe.locate(selector),
+      openPdf: (ref?: string) => plugin.openPdf(ref),
+      pdfText: (selector: string) => pdfProbe.text(selector),
+      pdfCount: (selector: string) => pdfProbe.count(selector),
+      pdfLocate: (selector: string) => pdfProbe.locate(selector),
+      pdfValue: (selector: string) => pdfProbe.value(selector),
+      pdfChoose: (selector: string, value: string) => pdfProbe.choose(selector, value),
+      pdfTheme: () => pdfProbe.theme(),
+      pdfSelection: () => pdfProbe.selection(),
+      // A vault file dropped on the reader as if from the desktop. The bytes stay inside Obsidian.
+      pdfDropVaultFile: async (selector: string, path: string, name: string) => {
+        const view = new Uint8Array(await plugin.app.vault.adapter.readBinary(path));
+        let binary = "";
+        for (let i = 0; i < view.length; i += 0x8000) binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
+        return pdfProbe.dropFile(selector, { name, type: "application/pdf", base64: btoa(binary) });
+      },
+      dragTo: (selector: string, at: { x: number; y: number }) => probe.dragTo(selector, at),
+      canvasReveal: (selector: string) => probe.reveal(selector),
+      // Which tabs show what, and side by side or not, for checking the reader lands beside the canvas.
+      layout: () =>
+        plugin.app.workspace.getLeavesOfType(VIEW).map((leaf) => {
+          const view = leaf.view as SurfaceView;
+          const box = view.containerEl.getBoundingClientRect();
+          return { surface: view.route.surface, id: view.route.id ?? null, title: view.getDisplayText(), header: view.containerEl.querySelector(".view-header-title")?.textContent ?? null, x: Math.round(box.left), width: Math.round(box.width), shown: view.containerEl.offsetParent !== null };
+        }),
       skin: () => plugin.ensureCore().then((core) => core.info.skin),
       frameWidth: (width: number | null) => {
         const frame = (plugin.app.workspace.getLeavesOfType(VIEW).map((leaf) => leaf.view as SurfaceView).find((view) => view.route.surface === "canvas"))?.frame;
@@ -361,7 +403,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   };
 
   const stop = (): void => {
-    for (const each of [probe, contextProbe, canvasesProbe, dialogProbe]) each.stop();
+    for (const each of [probe, contextProbe, canvasesProbe, holonProbe, boundaryProbe, pdfProbe, dialogProbe]) each.stop();
   };
 
   return { ...slice(), runConformance, openPanel, verifyPanel, exportExchange, importExchange, measureRecords, stop };

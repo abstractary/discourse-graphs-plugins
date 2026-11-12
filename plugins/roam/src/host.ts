@@ -29,6 +29,13 @@ export const RECORDS_PAGE = "roam/js/discourse-graph/records";
 const UNIT_PROP = "dg-id";
 const ASSETS_PAGE = "roam/js/discourse-graph/assets";
 const LOCAL_ASSET = "dg-asset:";
+/** A PDF someone added gets an embed here, so it's in the graph like any other. */
+const PDFS_PAGE = "Discourse Graphs/PDFs";
+const PDF_EMBED = /\{\{\s*(?:\[\[)?pdf(?:\]\])?\s*:\s*([^}\s]+)\s*\}\}/gi;
+const fileNameOf = (url: string): string => {
+  const path = decodeURIComponent(url.split("?")[0] ?? url);
+  return path.split("/").pop()?.replace(/^\d+-/, "") || "Document.pdf";
+};
 const POLL_MS = 1000;
 // A batch this size stays well under what a single block's props should hold.
 const BATCH = 200;
@@ -627,7 +634,36 @@ export const createRoamHost = async ({
         file: await dataUrlToFile(asset),
         toast: { hide: true },
       })) as string;
-      return ok({ ref: ref.replace(/^!\[\]\(|\)$/g, "") });
+      const url = ref.replace(/^!\[\]\(|\)$/g, "");
+      if (asset.mime === "application/pdf") {
+        const parent = await ensurePage(PDFS_PAGE);
+        await api.data.block.create({ location: { "parent-uid": parent, order: "last" }, block: { string: `{{[[pdf]]: ${url}}}` } });
+      }
+      return ok({ ref: url });
+    },
+
+    // PDFs are embeds in blocks, or, in an offline graph, assets kept in block props.
+    listFiles: async ({ extensions, limit }) => {
+      const wanted = new Set(extensions.map((extension) => extension.toLowerCase()));
+      const found = new Map<string, { ref: string; name: string; mime: string; modifiedAt: string; at: number }>();
+      if (wanted.has("pdf")) {
+        const rows = q("[:find ?s ?t :where [?b :block/string ?s] [(clojure.string/includes? ?s \"pdf\")] [?b :edit/time ?t]]");
+        for (const [text, time] of rows as [string, number][]) {
+          for (const match of text.matchAll(PDF_EMBED)) {
+            const url = match[1]!;
+            if (!found.has(url)) found.set(url, { ref: url, name: fileNameOf(url), mime: "application/pdf", modifiedAt: new Date(time).toISOString(), at: time });
+          }
+        }
+      }
+      const kept = q("[:find ?u ?p ?t :where [?b :block/props ?p] [?b :block/uid ?u] [?b :edit/time ?t]]") as [string, Record<string, unknown>, number][];
+      for (const [uid, props, time] of kept) {
+        const stored = props?.[":dg-asset"] ?? props?.["dg-asset"];
+        if (typeof stored !== "string") continue;
+        const asset = JSON.parse(stored) as Asset;
+        if (!wanted.has(asset.name.split(".").pop()?.toLowerCase() ?? "")) continue;
+        found.set(`${LOCAL_ASSET}${uid}`, { ref: `${LOCAL_ASSET}${uid}`, name: asset.name, mime: asset.mime, modifiedAt: new Date(time).toISOString(), at: time });
+      }
+      return ok([...found.values()].sort((a, b) => b.at - a.at).slice(0, limit).map(({ at: _at, ...file }) => file));
     },
 
     getFocus: async () =>

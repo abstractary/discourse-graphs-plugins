@@ -20,6 +20,8 @@ const PATHS: Record<string, ReactNode> = {
   ai: <path d="M8 2.5v3M8 10.5v3M2.5 8h3M10.5 8h3M4.5 4.5l1.8 1.8M9.7 9.7l1.8 1.8M11.5 4.5 9.7 6.3M6.3 9.7l-1.8 1.8" />,
   export: <path d="M8 10V2.5M5 5.5l3-3 3 3M3.5 9.5v4h9v-4" />,
   comment: <path d="M3 3.5h10v7H7l-3 2.5v-2.5H3z" />,
+  inside: <path d="M2.5 2.5h11v11h-11zM5.5 5.5h5v5h-5zM5.5 5.5 2.5 2.5M10.5 10.5l3 3" />,
+  marker: <path d="M2.5 13.5h11M4.5 11.5l1-3 5.5-5.5 2 2-5.5 5.5zM9.5 4l2 2" />,
 };
 
 export const Icon = ({ name }: { name: keyof typeof PATHS }) => (

@@ -14,3 +14,6 @@ server/data/
 sandbox/
 proof/
 spike-canvas/
+
+# The worked example's demo vault, made by `npm run seed:example`
+examples/worked-example/vault/

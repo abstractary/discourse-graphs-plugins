@@ -1,0 +1,187 @@
+/* Holon views and the canvas repository. Calm and dense; color means a type, a relation or a state. */
+
+/* Dark defaults for the local app. Inside a base, the adapter's inline skin wins over these. */
+:root[data-theme="dark"] {
+  --dg-ink: oklch(0.9 0.01 250);
+  --dg-muted: oklch(0.7 0.01 250);
+  --dg-page: oklch(0.2 0.01 250);
+  --dg-panel: oklch(0.235 0.01 250);
+  --dg-line: oklch(0.34 0.012 250);
+  --dg-accent: oklch(0.72 0.12 255);
+}
+.hv-flow .react-flow__controls-button { background: var(--dg-panel); color: var(--dg-ink); border-color: var(--dg-line); fill: currentColor; }
+.hv-flow .react-flow__background { background: var(--dg-page); }
+.hv-flow .react-flow__background pattern circle { fill: var(--dg-line); }
+
+.hv-shell { display: flex; flex-direction: column; height: 100%; background: var(--dg-page); }
+.hv-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 12px; border-bottom: 1px solid var(--dg-line); background: var(--dg-panel); }
+.hv-brand { font-weight: 600; letter-spacing: 0.01em; }
+.hv-back { display: inline-flex; padding: 3px; }
+.hv-nav { display: flex; gap: 2px; }
+.hv-nav button[aria-pressed="true"], .hv-seg button[aria-checked="true"] { background: color-mix(in oklch, var(--dg-accent) 14%, transparent); color: color-mix(in oklch, var(--dg-accent) 70%, var(--dg-ink)); }
+.hv-seg { display: flex; margin-left: auto; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); padding: 1px; }
+.hv-seg button { padding: 2px 10px; }
+
+.hv { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); }
+.hv-main { min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.hv-boundary { min-height: 0; overflow: auto; border-left: 1px solid var(--dg-line); background: var(--dg-panel); }
+@media (max-width: 900px) {
+  .hv { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; overflow: auto; }
+  .hv-main { overflow: visible; }
+  .hv-boundary { border-left: 0; border-top: 1px solid var(--dg-line); overflow: visible; }
+}
+
+.hv-pad { padding: 12px; }
+.hv-head { padding: 12px 16px 8px; }
+.hv-path { display: flex; flex-wrap: wrap; gap: 2px; font-size: var(--small); color: var(--dg-muted); }
+.hv-path > span { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; }
+.hv-path .hv-link { max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv-sep { padding: 0 2px; }
+.hv-title-row { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.hv-title { margin: 0; font: 600 calc(var(--dg-size) + 3px)/1.3 var(--dg-text-font); overflow-wrap: anywhere; }
+.hv-within { margin: 6px 0 0; font-size: var(--small); color: var(--dg-muted); }
+.hv-muted { color: var(--dg-muted); }
+.hv-error { margin: 16px; color: var(--opposes); }
+
+button.hv-link { padding: 0 2px; color: color-mix(in oklch, var(--dg-accent) 75%, var(--dg-ink)); text-align: left; }
+button.hv-link:hover { text-decoration: underline; background: none; }
+
+.hv-canvas { margin: 0 16px; border: 1px solid var(--dg-line); border-radius: calc(var(--dg-radius) + 2px); overflow: hidden; display: flex; flex-direction: column; }
+.hv-canvas-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 8px; border-bottom: 1px solid var(--dg-line); background: var(--dg-panel); font-size: var(--small); }
+.hv-actions { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.hv-actions button { display: inline-flex; align-items: center; gap: 4px; border-color: var(--dg-line); }
+.hv-flow { height: clamp(340px, 60vh, 680px); }
+.hv-flow .react-flow__node { width: auto; }
+.hv-card { cursor: pointer; transition: opacity 150ms var(--ease), outline-color 150ms var(--ease); }
+.hv-card[data-focus="true"] { border-width: 2px; border-color: color-mix(in oklch, var(--type) 70%, var(--dg-line)); }
+.hv-card[data-lit="true"] { outline: 2px solid var(--dg-accent); outline-offset: 2px; }
+.hv-card[data-dim="true"] { opacity: 0.35; }
+.hv-holds { margin-left: auto; font-size: var(--tiny); color: var(--dg-muted); }
+.hv-flags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+.hv-flag { padding: 0 5px; border-radius: var(--dg-radius); font: 500 var(--tiny)/17px var(--dg-font); background: color-mix(in oklch, var(--dg-muted) 14%, transparent); color: var(--dg-muted); white-space: nowrap; }
+.hv-flag[data-flag="single run"], .hv-flag[data-flag="unsupported"], .hv-flag[data-flag="ungrounded"], .hv-flag[data-flag="drift"], .hv-flag[data-flag="stale output"], .hv-flag[data-flag="failed run"] { background: color-mix(in oklch, var(--claim) 20%, transparent); color: color-mix(in oklch, var(--claim) 55%, var(--dg-ink)); }
+.hv-flag[data-flag="contested"] { background: color-mix(in oklch, var(--opposes) 16%, transparent); color: color-mix(in oklch, var(--opposes) 60%, var(--dg-ink)); }
+.hv-flag[data-flag="replicated"] { background: color-mix(in oklch, var(--evidence) 18%, transparent); color: color-mix(in oklch, var(--evidence) 55%, var(--dg-ink)); }
+.hv-edge .react-flow__edge-path { stroke-width: 1.5; }
+.hv-field .react-flow__edge-path { stroke-dasharray: 5 4; }
+.hv-pending { opacity: 0.45; }
+.hv-pending .react-flow__edge-path { stroke-dasharray: 2 4; }
+.hv-flow .react-flow__edge-text { font-size: 10px; fill: var(--dg-muted); }
+.hv-flow .react-flow__edge-textbg { fill: var(--dg-page); }
+
+.hv-parts { padding: 12px 16px 24px; }
+.hv-parts h2, .hv-boundary h2, .hv-boundary h3 { margin: 14px 0 6px; font: 600 var(--small)/1.3 var(--dg-font); color: var(--dg-muted); text-transform: none; }
+.hv-parts ul, .hv-list, .hv-gaps, .hv-gaps ul, .hv-history, .hv-releases, .hv-shelf { list-style: none; margin: 0; padding: 0; }
+.hv-part { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; padding: 4px 0; border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 60%, transparent); }
+.hv-part[data-lit="true"] { background: color-mix(in oklch, var(--dg-accent) 8%, transparent); }
+.hv-part-main { display: flex; align-items: baseline; gap: 6px; flex: 1 1 280px; min-width: 0; text-align: left; padding: 3px 4px; }
+.hv-part-title { overflow-wrap: anywhere; }
+.hv-part-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-top: 3px; }
+.hv-open { display: inline-flex; align-items: center; gap: 4px; font-size: var(--small); border-color: var(--dg-line); }
+.hv-privacy-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 1px solid var(--dg-muted); }
+.hv-privacy-dot[data-level="lab"] { background: color-mix(in oklch, var(--question) 60%, transparent); border-color: transparent; }
+.hv-privacy-dot[data-level="published"] { background: var(--evidence); border-color: transparent; }
+
+.hv-tabs { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--dg-line); background: var(--dg-panel); }
+.hv-tabs button[aria-selected="true"] { background: var(--dg-page); box-shadow: inset 0 -2px 0 var(--dg-accent); }
+.hv-tabpanel { padding: 4px 12px 16px; }
+.hv-count { display: inline-block; min-width: 16px; margin-left: 4px; padding: 0 4px; border-radius: 8px; background: color-mix(in oklch, var(--dg-muted) 18%, transparent); font-size: var(--tiny); text-align: center; }
+.hv-gaps > li { padding: 6px 0; border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 60%, transparent); }
+.hv-gap { display: flex; align-items: baseline; gap: 6px; width: 100%; text-align: left; font-weight: 500; }
+.hv-gaps > li[data-severity="violation"] .hv-count { background: color-mix(in oklch, var(--opposes) 25%, transparent); }
+.hv-unit { display: flex; align-items: baseline; gap: 6px; width: 100%; text-align: left; padding: 2px 4px; font-size: var(--small); }
+.hv-unit span:last-child { overflow-wrap: anywhere; }
+.hv-why { display: flex; gap: 6px; padding: 0 4px 6px 4px; font-size: var(--tiny); color: var(--dg-muted); }
+.hv-privacy { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.hv-privacy > div { display: flex; flex-direction: column; padding: 8px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); }
+.hv-privacy strong { font-size: calc(var(--dg-size) + 6px); font-variant-numeric: tabular-nums; }
+.hv-privacy span { font-size: var(--tiny); color: var(--dg-muted); }
+.hv-history li { display: grid; grid-template-columns: 9ch 1fr; gap: 2px 8px; padding: 4px 0; font-size: var(--small); border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 50%, transparent); }
+.hv-history time { color: var(--dg-muted); font-variant-numeric: tabular-nums; }
+.hv-history li > :last-child { grid-column: 2; font-size: var(--tiny); }
+
+.hv-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.hv-filters input[type="search"] { flex: 1 1 220px; width: auto; }
+.hv-filters select, .hv-form select { border: 1px solid var(--dg-line); border-radius: var(--dg-radius); padding: 5px 6px; background: var(--dg-page); color: var(--dg-ink); font: inherit; }
+.hv-check { display: inline-flex; align-items: center; gap: 4px; font-size: var(--small); }
+.hv-check input { width: auto; }
+.hv-shelf { padding: 0 16px 24px; }
+.hv-shelf li { border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 70%, transparent); }
+.hv-shelf li[data-selected="true"] { background: color-mix(in oklch, var(--dg-accent) 7%, transparent); }
+.hv-shelf-main { display: grid; gap: 4px; width: 100%; padding: 10px 6px; text-align: left; }
+.hv-shelf-title { font-weight: 600; overflow-wrap: anywhere; }
+.hv-shelf-meta { font-size: var(--small); overflow-wrap: anywhere; }
+.hv-shelf-tags { display: flex; align-items: center; gap: 6px; font-size: var(--tiny); color: var(--dg-muted); }
+.hv-comp { display: flex; gap: 2px; height: 6px; max-width: 320px; }
+.hv-comp span { border-radius: 2px; background: var(--type, var(--dg-muted)); }
+.hv-comp span[data-base="question"] { --type: var(--question); }
+.hv-comp span[data-base="claim"] { --type: var(--claim); }
+.hv-comp span[data-base="evidence"] { --type: var(--evidence); }
+.hv-comp span[data-base="source"] { --type: var(--source); }
+.hv-comp span[data-base="protocol"] { --type: var(--protocol); }
+.hv-comp span[data-base="study"] { --type: var(--study); }
+.hv-comp span[data-base="run"] { --type: var(--run); }
+.hv-comp span[data-base="code"] { --type: var(--code); }
+.hv-comp span[data-base="output"] { --type: var(--output); }
+.hv-versions input[type="range"] { width: 100%; }
+.hv-preview { width: 100%; max-height: 220px; margin: 6px 0; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); }
+.hv-preview rect { fill: color-mix(in oklch, var(--dg-accent) 10%, var(--dg-page)); stroke: var(--dg-line); stroke-width: 2; }
+.hv-preview line { stroke: var(--dg-muted); stroke-width: 2; }
+.hv-releases li { padding: 6px 0; border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 60%, transparent); }
+.hv-releases p { margin: 2px 0 4px; font-size: var(--small); }
+.hv-releases button, .hv-form button { border-color: var(--dg-line); }
+.hv-form { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.hv-form input { flex: 1 1 200px; width: auto; }
+.hv-diff h4 { margin: 8px 0 2px; font-size: var(--small); }
+.hv-diff ul { margin: 0; padding-left: 16px; font-size: var(--small); }
+.hv-editor { flex: 1; min-height: 0; position: relative; }
+
+/* The explorer's head, now that the boundary sits in the side panel. */
+.hv-explorer { grid-template-columns: minmax(0, 1fr); }
+.hv-path-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hv-roots { margin-left: auto; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); padding: 2px 6px; background: var(--dg-page); color: var(--dg-ink); font: inherit; font-size: var(--small); }
+.hv-flow .card { width: 100%; box-sizing: border-box; }
+
+/* The boundary panel: 300 px in Obsidian's sidebar, up to 680 in Roam's. */
+.bd { box-sizing: border-box; min-height: 100%; background: var(--dg-page); display: flex; flex-direction: column; }
+.bd-empty { padding: 14px 12px; }
+.bd-head { padding: 10px 12px 6px; border-bottom: 1px solid var(--dg-line); }
+.bd-head .hv-path .hv-link { max-width: 18ch; }
+.bd-title { margin: 0; font: 600 calc(var(--dg-size) + 1px)/1.3 var(--dg-text-font); overflow-wrap: anywhere; }
+.bd-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.bd .hv-seg { margin-left: 0; }
+.bd .hv-boundary-body { flex: 1; }
+.bd .hv-tabs { top: 0; }
+.bd-parts { list-style: none; margin: 0; padding: 0; }
+.hv-part[data-compact="true"] .hv-part-main { flex-basis: 100%; }
+.hv-part[data-compact="true"] .hv-part-meta { padding: 0 4px 4px 4px; }
+.bd-foot { margin: 0; padding: 8px 12px 16px; border-top: 1px solid var(--dg-line); }
+.bd-foot .hv-link { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 360px) { .bd .hv-tabs button { padding: 3px 5px; font-size: var(--small); } }
+
+/* The local app's workspace, composed like Obsidian's: Library, main, side panel. */
+.ws { display: flex; flex-direction: column; height: 100%; background: var(--dg-page); }
+.ws-top { display: flex; align-items: center; gap: 10px; padding: 4px 10px; border-bottom: 1px solid var(--dg-line); background: var(--dg-panel); }
+.ws-toggle { display: inline-flex; padding: 4px; }
+.ws-toggle[aria-pressed="true"] { color: var(--dg-accent); }
+.ws-side-tabs { margin-left: auto; }
+.ws-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 420px); }
+.ws-body[data-library="true"] { grid-template-columns: 300px minmax(0, 1fr) clamp(300px, 26vw, 420px); }
+.ws-left, .ws-right { min-height: 0; overflow: auto; background: var(--dg-page); }
+.ws-left { border-right: 1px solid var(--dg-line); }
+.ws-right { border-left: 1px solid var(--dg-line); }
+.ws-main { min-width: 0; min-height: 0; overflow: auto; position: relative; display: flex; flex-direction: column; }
+.ws-main > .shell { flex: 1; }
+.ws-main > .hv { flex: 1; }
+.ws-pane { min-height: 100%; }
+.ws-pane[hidden] { display: none; }
+@media (max-width: 899px) {
+  .ws-body, .ws-body[data-library="true"] { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); overflow: auto; }
+  .ws-left, .ws-right { border: 0; border-top: 1px solid var(--dg-line); max-height: 60vh; }
+}
+/* A PDF beside the canvas, as in Obsidian's split. */
+.ws-main[data-reading="true"] { flex-direction: row; }
+.ws-main[data-reading="true"] > .shell, .ws-main[data-reading="true"] > .hv { flex: 1 1 50%; min-width: 0; }
+.ws-reader { flex: 1 1 50%; min-width: 0; display: flex; border-left: 1px solid var(--dg-line); }
+.ws-reader > .pdf-shell { flex: 1; min-width: 0; }
+.ws-read { margin-left: 6px; font-weight: 600; }

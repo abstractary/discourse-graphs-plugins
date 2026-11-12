@@ -1,0 +1,95 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dct:  <http://purl.org/dc/terms/> .
+@prefix dg:   <https://discoursegraphs.com/schema/dg_core#> .
+@prefix dgp:  <https://discoursegraphs.com/schema/dg_process#> .
+@prefix dgs:  <https://discoursegraphs.com/schema/dg_process/shapes#> .
+
+# Shapes for the process layer (draft, 11 Nov 2026). Violations mean the data
+# is wrong. Warnings are gaps a person should look at, such as evidence with
+# nothing behind it; the views show them, they don't block writing.
+
+dgs:PinShape a sh:NodeShape ;
+    sh:targetClass dgp:Pin ;
+    sh:property [ sh:path dgp:target ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path dgp:cid ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^b[a-z2-7]{20,}$" ] .
+
+dgs:UnitShape a sh:NodeShape ;
+    sh:targetClass dg:Question, dg:Claim, dg:Evidence, dg:Source, dgp:Protocol, dgp:Study, dgp:Run, dgp:Code, dgp:Output ;
+    sh:property [ sh:path dct:title ; sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ] ;
+    sh:property [ sh:path prov:wasAttributedTo ; sh:minCount 1 ; sh:nodeKind sh:IRI ] .
+
+dgs:StudyShape a sh:NodeShape ;
+    sh:targetClass dgp:Study ;
+    sh:property [ sh:path dgp:question ; sh:maxCount 1 ; sh:class dg:Question ] ;
+    sh:property [ sh:path dgp:protocols ; sh:class dgp:Protocol ] ;
+    sh:property [ sh:path dgp:question ; sh:minCount 1 ; sh:severity sh:Warning ;
+                  sh:message "A study with no question: what is it investigating?" ] .
+
+dgs:ProtocolShape a sh:NodeShape ;
+    sh:targetClass dgp:Protocol ;
+    sh:property [ sh:path dgp:implementedBy ; sh:class dgp:Code ] .
+
+dgs:RunShape a sh:NodeShape ;
+    sh:targetClass dgp:Run ;
+    sh:property [ sh:path dgp:partOf ; sh:maxCount 1 ; sh:class dgp:Study ] ;
+    sh:property [ sh:path dgp:follows ; sh:maxCount 1 ; sh:node dgs:PinShape ;
+                  sh:property [ sh:path dgp:target ; sh:class dgp:Protocol ] ] ;
+    sh:property [ sh:path dgp:instrument ; sh:node dgs:PinShape ] ;
+    sh:property [ sh:path dgp:status ; sh:maxCount 1 ; sh:in ( "planned" "running" "completed" "failed" ) ] ;
+    sh:property [ sh:path prov:startedAtTime ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] ;
+    sh:property [ sh:path prov:endedAtTime ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] ;
+    sh:property [ sh:path dgp:partOf ; sh:minCount 1 ; sh:severity sh:Warning ;
+                  sh:message "A run that belongs to no study." ] .
+
+# Pins to code must point at Code, and code pins are by source hash.
+dgs:InstrumentTargetShape a sh:NodeShape ;
+    sh:targetObjectsOf dgp:instrument ;
+    sh:property [ sh:path dgp:target ; sh:class dgp:Code ] ;
+    sh:property [ sh:path dgp:cid ; sh:minCount 1 ; sh:severity sh:Warning ;
+                  sh:message "A run's code isn't pinned to a version, so drift can't be checked." ] .
+
+dgs:CodeShape a sh:NodeShape ;
+    sh:targetClass dgp:Code ;
+    sh:property [ sh:path dgp:sourceCid ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^b[a-z2-7]{20,}$" ] .
+
+# Outputs come from runs, never from plans.
+dgs:OutputShape a sh:NodeShape ;
+    sh:targetClass dgp:Output ;
+    sh:property [ sh:path dgp:cid ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^b[a-z2-7]{20,}$" ] ;
+    sh:property [ sh:path dgp:generatedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class dgp:Run ] ;
+    sh:property [ sh:path dgp:byteSize ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 0 ] .
+
+dgs:ObservationBaseShape a sh:NodeShape ;
+    sh:targetObjectsOf dgp:observationBase ;
+    sh:property [ sh:path dgp:target ; sh:class dgp:Output ] ;
+    sh:property [ sh:path dgp:cid ; sh:minCount 1 ; sh:severity sh:Warning ;
+                  sh:message "Evidence cites an output without pinning its bytes." ] .
+
+dgs:EvidenceShape a sh:NodeShape ;
+    sh:targetClass dg:Evidence ;
+    sh:property [ sh:path dgp:isGroundedIn ; sh:maxCount 1 ; sh:class dgp:Run ] ;
+    sh:property [ sh:path dgp:sourceDocument ; sh:maxCount 1 ; sh:class dg:Source ] ;
+    sh:property [ sh:path dgp:supports ; sh:class dg:Claim ] ;
+    sh:property [ sh:path dgp:opposes ; sh:class dg:Claim ] ;
+    # Ungrounded evidence: no output, no run and no source behind it.
+    sh:or (
+        [ sh:path dgp:observationBase ; sh:minCount 1 ]
+        [ sh:path dgp:isGroundedIn ; sh:minCount 1 ]
+        [ sh:path dgp:sourceDocument ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "Evidence with nothing behind it: no output, run or source." .
+
+dgs:ClaimShape a sh:NodeShape ;
+    sh:targetClass dg:Claim ;
+    sh:property [ sh:path dgp:addresses ; sh:class dg:Question ] ;
+    sh:property [ sh:path [ sh:inversePath dgp:supports ] ; sh:minCount 1 ; sh:severity sh:Warning ;
+                  sh:message "A claim nothing supports yet." ] .
+
+dgs:SourceShape a sh:NodeShape ;
+    sh:targetClass dg:Source ;
+    sh:property [ sh:path dgp:describesActivity ; sh:class dgp:Run ] .

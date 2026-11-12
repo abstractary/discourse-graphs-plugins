@@ -133,7 +133,7 @@ test("MIRA types and relations keep their meaning", async () => {
   const paper = await call("paper.extract", EXTRACT);
   const view = await call("canvas.open", { id: paper.canvas });
   const labels = new Set(Object.values(view.nodes).map(({ typeLabel }) => typeLabel));
-  for (const label of ["Question", "Claim", "Evidence", "Study", "Protocol", "Source", "Request"]) assert.ok(labels.has(label), label);
+  for (const label of ["Question", "Claim", "Evidence", "Run", "Protocol", "Source", "Request"]) assert.ok(labels.has(label), label);
   const kinds = new Set(Object.values(view.relations).map(({ kind }) => kind));
   for (const kind of ["supports", "addresses", "grounds", "follows", "describesActivity", "requestTarget"]) assert.ok(kinds.has(kind), kind);
 });

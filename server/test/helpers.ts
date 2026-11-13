@@ -17,6 +17,7 @@ export type TestServer = {
   dataDir: string;
   post: (path: string, body: unknown, token?: string) => Promise<Response>;
   get: (path: string, token?: string) => Promise<Response>;
+  del: (path: string, token?: string) => Promise<Response>;
 };
 
 export type Line = Record<string, any>;
@@ -52,6 +53,7 @@ export async function startTestServer(t: TestContext, overrides: Partial<Config>
         body: JSON.stringify(body),
       }),
     get: (path, token) => fetch(url + path, { headers: bearer(token) }),
+    del: (path, token) => fetch(url + path, { method: 'DELETE', headers: bearer(token) }),
   };
 }
 

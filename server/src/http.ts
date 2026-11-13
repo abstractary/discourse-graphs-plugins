@@ -200,7 +200,7 @@ function parseUrl(raw: string): { parts: string[]; query: URLSearchParams } {
 
 function setCors(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type');
   res.setHeader('Access-Control-Expose-Headers', 'Accept-Post, Content-Disposition, Link, Location');
   // Chrome asks for this before a public site such as Roam may call localhost.

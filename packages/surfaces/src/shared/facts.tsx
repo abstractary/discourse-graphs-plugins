@@ -41,7 +41,27 @@ export type FactsProps = {
 
 type Row = { id: CardField; label: string; value: ReactNode };
 
+const SHELF_LABEL: Record<NonNullable<CardFacts["shelf"]>["kind"], (name: string) => string> = {
+  lab: () => "Lab shelf",
+  yours: () => "Not on the lab's shelf",
+  person: (name) => `${name}'s copy`,
+  group: () => "Another group",
+};
+const SHELF_HINT: Record<NonNullable<CardFacts["shelf"]>["kind"], (name: string) => string> = {
+  lab: (name) => `On the lab's shelf, ${name}. Everyone in the lab can open it`,
+  yours: (name) => `Only in ${name.toLowerCase()}. Labmates see the reference and can't open the PDF. Add it to the lab's shelf to share it`,
+  person: (name) => `The PDF is in ${name}'s own library, not the lab's. Open the paper by its DOI, or ask ${name} to add it to the lab's shelf`,
+  group: (name) => `${name}. Labmates who aren't in that group can't open it`,
+};
+
 export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier, onLibrary, maker, uri }: FactsProps) => {
+  // In a lab, whose shelf the paper is on says who can open it. Said on a card only when a labmate can't.
+  const held = facts.shelf;
+  const shelf = held && (density !== "card" || held.kind !== "lab") ? (
+    <span className="fact-how" data-how={`shelf-${held.kind}`} data-dg={dg ? `fact-shelf-${dg}` : "fact-shelf"} title={SHELF_HINT[held.kind](held.name)}>
+      {SHELF_LABEL[held.kind](held.name)}
+    </span>
+  ) : null;
   const inLibrary = <LibraryMark library={facts.library} onOpen={onLibrary} dg={dg ? `library-${dg}` : "library-mark"} />;
   const [copied, setCopied] = useState(false);
   const card = density === "card";
@@ -71,6 +91,7 @@ export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier, onLi
               </span>
               {facts.retracted ? <span className="fact-how" data-how="retracted" title="A registry lists this work as retracted">Retracted</span> : null}
               {inLibrary}
+              {shelf}
             </>
           ),
         },

@@ -93,10 +93,89 @@ const Folders = ({ connection, report }: { connection: Connection; report: (erro
   );
 };
 
+type Reach = NonNullable<LabView["settings"]["reach"]>;
+type LabChanges = { [K in keyof LabView["settings"]]?: LabView["settings"][K] | null };
+const REACH: { value: Reach; label: string }[] = [
+  { value: "device", label: "Each member's own computer only" },
+  { value: "lab", label: "The lab's servers, and each member's own computer" },
+  { value: "anywhere", label: "Anywhere a member chooses" },
+];
+
+/** What the PI sets once and every member inherits. Members read it. */
+const LabSettings = ({ connection, lab, onChange, report }: { connection: Connection; lab: LabView; onChange: (view: LabView) => void; report: (error: unknown) => void }) => {
+  const { call } = connection;
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const { settings, custodian } = lab;
+  useEffect(() => {
+    if (custodian) void call("zotero.groups", {}).then(setGroups).catch(() => setGroups([]));
+  }, [call, custodian]);
+  const set = (changes: LabChanges): void => void call("lab.configure", changes).then(onChange).catch(report);
+  const servers = settings.servers ?? [];
+  const reach = settings.reach ?? "anywhere";
+  const shelf = settings.zoteroGroup;
+  // The lab's group stays in the list when this computer's Zotero is closed or isn't in it.
+  const choices = shelf && !groups.some((group) => group.id === shelf.id) ? [shelf, ...groups] : groups;
+
+  if (!custodian) {
+    return (
+      <section data-dg="lab-settings">
+        <h3>Set by the lab</h3>
+        <ul className="cvs-list">
+          <li><span className="cvs-static"><span className="cvs-title">Papers</span><span className="cvs-meta" data-dg="lab-shelf">{shelf ? `The Zotero group ${shelf.name}` : "The lab's paper repository, below"}</span></span></li>
+          <li><span className="cvs-static"><span className="cvs-title">Where papers may be read by a model</span><span className="cvs-meta" data-dg="lab-reach">{REACH.find((item) => item.value === reach)!.label}</span></span></li>
+          {servers.map((server) => (
+            <li key={server.url}><span className="cvs-static"><span className="cvs-title">{server.name}</span><span className="cvs-meta">{server.url}{settings.compute === server.url ? " · the lab's first choice" : ""}</span></span></li>
+          ))}
+        </ul>
+        <p className="note">You also use the lab's grammar. Types you add yourself sit beside it.</p>
+      </section>
+    );
+  }
+  return (
+    <section data-dg="lab-settings">
+      <h3>What the lab sets for everyone</h3>
+      <p className="note">Members get these, and the lab's grammar, when they join and whenever you change them.</p>
+      <label className="field">
+        <span>The lab's shelf of papers</span>
+        <select data-dg="lab-shelf" value={shelf?.id ?? ""} onChange={(event) => set({ zoteroGroup: choices.find((group) => group.id === event.target.value) ?? null })}>
+          <option value="">The lab's paper repository, with no Zotero</option>
+          {choices.map((group) => <option key={group.id} value={group.id}>Zotero group: {group.name}</option>)}
+        </select>
+      </label>
+      {groups.length === 0 && !shelf ? <p className="note">To use a Zotero group, open Zotero on this computer and join or make the group there.</p> : null}
+      <label className="field">
+        <span>Where papers may be read by a model</span>
+        <select data-dg="lab-reach" value={reach} onChange={(event) => set({ reach: event.target.value as Reach })}>
+          {REACH.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select>
+      </label>
+      <h3>Model servers the lab offers</h3>
+      <ul className="cvs-list" data-dg="lab-servers">
+        {servers.map((server) => (
+          <li key={server.url}>
+            <span className="cvs-static"><span className="cvs-title">{server.name}</span><span className="cvs-meta">{server.url}{settings.compute === server.url ? " · first choice" : ""}</span></span>
+            {settings.compute === server.url ? null : <button type="button" onClick={() => set({ compute: server.url })}>Make first choice</button>}
+            <button type="button" data-dg={`lab-server-remove-${server.name}`} onClick={() => set({ servers: servers.filter((item) => item.url !== server.url), ...(settings.compute === server.url ? { compute: null } : {}) })}>Remove</button>
+          </li>
+        ))}
+      </ul>
+      <div className="field-row">
+        <input aria-label="Server name" placeholder="Name, like Mira's workstation" value={name} data-dg="lab-server-name" onChange={(event) => setName(event.target.value)} />
+        <input aria-label="Server address" placeholder="http://10.0.0.5:8787" value={url} data-dg="lab-server-url" onChange={(event) => setUrl(event.target.value)} />
+        <button type="button" data-dg="lab-server-add" disabled={!name.trim() || !/^https?:\/\/\S+$/.test(url.trim())} onClick={() => { set({ servers: [...servers.filter((item) => item.url !== url.trim()), { name: name.trim(), url: url.trim().replace(/\/+$/, "") }] }); setName(""); setUrl(""); }}>Add</button>
+      </div>
+    </section>
+  );
+};
+
 const Lab = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
   const { call, on } = connection;
   const [lab, setLab] = useState<LabView | null>(null);
   const [saved, setSaved] = useState("");
+  const [invite, setInvite] = useState("");
+  const [removing, setRemoving] = useState("");
   const refresh = useCallback(() => {
     void call("lab.view", {}).then(setLab).catch(report);
   }, [call, report]);
@@ -111,7 +190,14 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   }, [call, link]);
 
   if (!lab) return null;
-  if (!link) return <LabJoin connection={connection} onChange={setLab} />;
+  if (!link) {
+    return (
+      <div className="stack">
+        {lab.removedFrom ? <p className="note" role="status" data-dg="lab-removed">You were removed from {lab.removedFrom}. What you already had is still here. Ask its PI for a new invitation if that was a mistake.</p> : null}
+        <LabJoin connection={connection} onChange={setLab} />
+      </div>
+    );
+  }
   if (link.pending) return <p className="cvs-none" data-dg="lab-pending">Your request to join {link.name} is with its PI.</p>;
 
   const decide = (requestId: string, decision: "accept" | "decline", tokenKind?: "personal" | "team"): void =>
@@ -121,8 +207,27 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
     <div className="stack">
       <section>
         <h2>{link.name}</h2>
-        <p className="note">Others join with this identifier:</p>
+        {lab.custodian ? (
+          <>
+            <p className="note">Invite someone with one line they paste into Join a lab. It works once, for a week.</p>
+            <button type="button" data-dg="lab-invite" onClick={() => void call("lab.invite", {}).then((made) => { setInvite(made.invite); refresh(); }).catch(report)}>Make an invitation</button>
+            {invite ? <code className="lab-id" data-dg="lab-invite-line">{invite}</code> : null}
+            {invite ? <p className="note">Send this line to one person. It is shown only now.</p> : null}
+            {lab.invites.length > 0 ? (
+              <ul className="cvs-list" data-dg="lab-invites">
+                {lab.invites.map((open) => (
+                  <li key={open.id}>
+                    <span className="cvs-static"><span className="cvs-title">An open invitation</span><span className="cvs-meta">Until {new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(Date.parse(open.expiresAt))}</span></span>
+                    <button type="button" data-dg="lab-invite-revoke" onClick={() => void call("lab.revokeInvite", { id: open.id }).then(setLab).catch(report)}>Take back</button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </>
+        ) : null}
+        <p className="note">{lab.custodian ? "Or people can ask to join with this identifier:" : "The lab's identifier:"}</p>
         <code className="lab-id" data-dg="lab-id">{link.id}</code>
+        {lab.refused > 0 ? <p className="note" role="status" data-dg="lab-refused">{lab.refused} {lab.refused === 1 ? "record" : "records"} arrived under a labmate's name without their signature, and {lab.refused === 1 ? "was" : "were"} not taken in.</p> : null}
       </section>
 
       {lab.requests.length > 0 ? (
@@ -147,10 +252,17 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
             <li key={member.did}>
               <Mark credit={{ kind: "person", id: member.did, name: member.name }} />
               <span className="cvs-static"><span className="cvs-title">{member.name}</span>{member.role === "admin" ? <span className="cvs-meta">PI</span> : null}</span>
+              {lab.custodian && member.role !== "admin" ? (
+                removing === member.did
+                  ? <button type="button" data-dg={`remove-confirm-${member.name}`} onClick={() => { setRemoving(""); void call("lab.remove", { did: member.did }).then(setLab).catch(report); }}>Remove {member.name}? They keep what they have.</button>
+                  : <button type="button" data-dg={`remove-${member.name}`} onClick={() => setRemoving(member.did)}>Remove</button>
+              ) : null}
             </li>
           ))}
         </ul>
       </section>
+
+      <LabSettings connection={connection} lab={lab} onChange={setLab} report={report} />
 
       <section>
         <h3>Paper repository</h3>

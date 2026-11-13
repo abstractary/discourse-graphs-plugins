@@ -1,8 +1,9 @@
-import type { DgRecord } from "@dg/contract/records.ts";
-import { liveCanvasItems, revise, staysLocal } from "@dg/contract/records.ts";
+import type { DgRecord, LabSettings, NodeRecord } from "@dg/contract/records.ts";
+import { revise, staysLocal } from "@dg/contract/records.ts";
 import type { LabLink } from "@dg/contract/services.ts";
 import type { BreadcrumbDefault, IdentityView, LabView } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
+import { checkSignatures, signerOf } from "./signing.ts";
 
 const BREADCRUMB_KEY = "breadcrumb-default";
 
@@ -12,17 +13,21 @@ export const labFeature = (
     identity,
     createLabRecord,
     joinLab,
+    adoptLabGrammar,
     askBreadcrumb,
   }: {
+    /** Gives way to the lab's types, once they are here. */
+    adoptLabGrammar: () => Promise<void>;
     identity: () => IdentityView;
     createLabRecord: (name: string) => Promise<IdentityView>;
     joinLab: (name?: string) => Promise<IdentityView>;
     /** Shown in the base, because the panel that was open has just closed. */
     askBreadcrumb?: (paper: { id: string; title: string }) => void;
   },
-): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
+): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
+  prepare: () => Promise<void>;
   canvasClosed: (args: { id: string }) => Promise<void>;
   answerBreadcrumb: (args: { paper: string; leave: boolean; remember?: boolean }) => Promise<void>;
 } => {
@@ -35,6 +40,17 @@ export const labFeature = (
   const breadcrumbs = async (): Promise<BreadcrumbDefault> =>
     ((await context.getLocal(BREADCRUMB_KEY)) as BreadcrumbDefault | null) ?? "ask";
 
+  let refused = 0;
+
+  /** This person's own membership ends, on their device. Their work stays. */
+  const leave = async (): Promise<void> => {
+    const mine = context.documents("membership").find((item) => item.member === context.me().id && !item.removed);
+    if (mine) await context.put([revise({ record: mine, changes: { removed: true }, by: context.me() })]);
+  };
+
+  /** An invitation is one line: the server, the lab and the code. */
+  const INVITE = /^(https?:\/\/[^\s#]+)\/join\/([^\s#/]+)#(\S+)$/;
+
   const view = async (): Promise<LabView> => {
     const link = context.services ? await context.services.link() : null;
     const member = Boolean(link?.token);
@@ -45,30 +61,70 @@ export const labFeature = (
         return fallback;
       }
     };
+    const members = member ? await safely(() => services().members(link!), []) : [];
+    // Asking for the members is also how a removed person's device finds out. Read the link again after it.
+    const now = context.services ? await context.services.link() : null;
+    const still = Boolean(now?.token);
+    const lab = context.myLab();
+    const admin = still && now!.role === "admin";
+    const removedFrom = context.services ? await safely(() => services().removedFrom(), null) : null;
+    if (removedFrom && lab) await leave();
     return {
-      link,
+      link: now,
       identity: identity(),
-      members: member ? await safely(() => services().members(link!), []) : [],
-      requests: member && link!.role === "admin" ? await safely(() => services().requests(link!), []) : [],
-      papers: member ? await safely(() => services().labPapers(link!), []) : [],
+      members: still ? members : [],
+      requests: admin ? await safely(() => services().requests(now!), []) : [],
+      papers: still ? await safely(() => services().labPapers(now!), []) : [],
       breadcrumbs: await breadcrumbs(),
+      settings: context.myLab()?.settings ?? {},
+      custodian: Boolean(lab && lab.custodian === context.me().id),
+      invites: admin ? await safely(() => services().invites(now!), []) : [],
+      refused,
+      ...(removedFrom ? { removedFrom } : {}),
     };
   };
 
-  /** Everything on the lab's shared canvases, and what it needs to make sense. */
+  /**
+   * Everything on the lab's shared canvases, and what it needs to make sense.
+   *
+   * What was taken away travels too: a card taken off, a unit its author removed, a canvas its
+   * owner removed, a relation withdrawn. Without those, a labmate keeps seeing what is gone.
+   *
+   * A unit goes while it has a card on a shared canvas. Once its card is taken off, its later
+   * versions stay on this device, with one exception: if its author removes the unit, that
+   * removal goes, so nobody is left holding a unit that no longer exists.
+   */
   const shareable = (): DgRecord[] => {
     const lab = context.myLab();
     if (!lab) return [];
-    const canvases = context.documents("canvas").filter((canvas) => canvas.shared === lab.did && !canvas.removed);
+    const canvases = context.documents("canvas").filter((canvas) => canvas.shared === lab.did);
     if (canvases.length === 0) return [lab, ...context.documents("person"), ...context.documents("membership")];
-    const items = canvases.flatMap(({ id }) => liveCanvasItems({ graph: context.graph(), canvas: id }));
+    const open = new Set(canvases.filter((canvas) => !canvas.removed).map(({ id }) => id));
+    const held = new Set(canvases.map(({ id }) => id));
+    const items = context.documents("canvas-item").filter((item) => held.has(item.canvas));
     const units = new Set<string>();
+    const gone = new Set<string>();
     const relations = new Set<string>();
-    for (const { item } of items) {
-      const dg = (item as { dg?: { node?: string; relation?: string } }).dg;
-      if (dg?.node) units.add(dg.node);
+    for (const record of items) {
+      const dg = (record.item as { dg?: { node?: string; relation?: string } }).dg;
+      const live = !record.removed && open.has(record.canvas);
+      if (dg?.node) (live ? units : gone).add(dg.node);
       if (dg?.relation) relations.add(dg.relation);
     }
+    // Read from the graph itself, because the usual lookup leaves out what was removed.
+    const unitOf = (id: string): NodeRecord | undefined => {
+      const record = context.graph().documents.get(id);
+      return record?.kind === "node" ? record : undefined;
+    };
+    for (const id of gone) if (!units.has(id) && unitOf(id)?.removed) units.add(id);
+    // What a shared unit was read from says what it is evidence of, so its source goes with it.
+    for (const id of [...units]) {
+      const node = unitOf(id);
+      for (const source of [node?.prov?.sourceDocument, node?.facts?.anchor?.source]) {
+        if (source && unitOf(source)) units.add(source);
+      }
+    }
+    const shared = new Set<string>([...units, ...relations]);
     const records: DgRecord[] = [
       lab,
       ...context.documents("person"),
@@ -78,21 +134,40 @@ export const labFeature = (
       ...canvases,
       ...items,
       ...[...units].flatMap((id) => {
-        const node = context.nodeOf(id);
+        const node = unitOf(id);
         return node ? [node] : [];
       }),
       ...[...context.graph().relations.values()].flatMap(({ record }) => (relations.has(record.id) ? [record] : [])),
-      ...context.documents("paper").filter((paper) => canvases.some(({ id }) => id === paper.canvas)),
+      ...context.records().filter((record) => record.kind === "retraction" && shared.has(record.target)),
+      ...context.documents("paper").filter((paper) => open.has(paper.canvas)),
       ...context.documents("reaction").filter((reaction) => units.has(reaction.unit)),
       ...context.documents("unit-note").filter((note) => units.has(note.unit)),
+      // A check is made to be seen: it says who stands behind a unit the lab shares.
+      ...context.documents("evaluation").filter((check) => units.has(check.target)),
     ];
     return records.filter((record) => !staysLocal(record));
   };
 
+  /**
+   * What this person wrote before records were signed is signed now, so labmates will take it.
+   * The signed copy stands in place of the unsigned one.
+   */
+  const prepare = async (): Promise<void> => {
+    const me = context.me().id;
+    const bare = shareable().filter((record) => !record.sig && signerOf(record) === me);
+    if (bare.length > 0) await context.put(bare);
+  };
+
   // Through the same door as local work, so what arrives shows up at once.
   const take = async (records: DgRecord[]): Promise<void> => {
-    await context.put(records);
-    if (context.myLab()) return;
+    // A record that says a labmate wrote it has to carry that labmate's signature.
+    const checked = await checkSignatures(records, context.documents("person"));
+    refused += checked.refused.length;
+    await context.put(checked.kept);
+    if (context.myLab()) {
+      await adoptLabGrammar();
+      return;
+    }
     // A person can be accepted before the lab's own record has reached them.
     const link = await services().link();
     if (link?.token) await joinLab(link.name).catch(() => {});
@@ -111,6 +186,7 @@ export const labFeature = (
   return {
     shareable,
     take,
+    prepare,
     "lab.view": view,
     "lab.find": ({ server, id }) => services().findLab({ server, id }),
     "lab.register": async ({ server, name }) => {
@@ -131,7 +207,8 @@ export const labFeature = (
       await services().saveLink(next);
       if (state === "accepted" && next) {
         await pullOnce(next);
-        await joinLab(next.name);
+        // The PI may have accepted before their own device sent the lab's record. It is joined when that arrives.
+        await joinLab(next.name).catch(() => {});
       }
       return view();
     },
@@ -143,6 +220,52 @@ export const labFeature = (
     },
     "lab.setBreadcrumbs": async ({ value }) => {
       await context.setLocal(BREADCRUMB_KEY, value);
+      return view();
+    },
+    "lab.invite": async ({ uses, days }) => {
+      const link = await services().link();
+      if (!link?.token) throw new Error("Start or join a lab first.");
+      if (link.role !== "admin") throw new Error("Only the lab's PI can invite people.");
+      const made = await services().invite(link, { ...(uses ? { uses } : {}), ...(days ? { days } : {}) });
+      return { invite: `${link.server}/join/${link.id}#${made.code}`, expiresAt: made.expiresAt, usesLeft: made.usesLeft };
+    },
+    "lab.revokeInvite": async ({ id }) => {
+      const link = await services().link();
+      if (link?.token) await services().revokeInvite(link, id);
+      return view();
+    },
+    "lab.acceptInvite": async ({ invite }) => {
+      const parts = INVITE.exec(invite.trim());
+      if (!parts) throw new Error("That doesn't look like an invitation. Paste the whole line the PI sent.");
+      const [, server, id, code] = parts as unknown as [string, string, string, string];
+      const link = await services().acceptInvite({ server, id, code, person: me() });
+      await services().saveLink(link);
+      await pullOnce(link);
+      // The lab's own record may not have been sent yet. It is joined when that arrives.
+      await joinLab(link.name).catch(() => {});
+      return view();
+    },
+    "lab.remove": async ({ did }) => {
+      const link = await services().link();
+      const lab = context.myLab();
+      if (!link?.token || !lab) throw new Error("You're not in a lab.");
+      if (lab.custodian !== context.me().id) throw new Error("Only the lab's PI can remove a member.");
+      await services().removeMember(link, did);
+      // Said in the lab's own records too, so every member's copy agrees on who is in.
+      const membership = context.documents("membership").find((item) => item.member === did && item.lab === lab.did && !item.removed);
+      if (membership) await context.put([revise({ record: membership, changes: { removed: true }, by: context.me() })]);
+      return view();
+    },
+    "lab.configure": async (changes) => {
+      const lab = context.myLab();
+      if (!lab) throw new Error("You're not in a lab.");
+      if (lab.custodian !== context.me().id) throw new Error("Only the lab's PI can change what the lab sets for everyone.");
+      const next: Record<string, unknown> = { ...(lab.settings ?? {}) };
+      for (const [key, value] of Object.entries(changes)) {
+        if (value === null || value === undefined) delete next[key];
+        else next[key] = value;
+      }
+      await context.put([revise({ record: lab, changes: { settings: next as LabSettings }, by: context.me() })]);
       return view();
     },
     "paper.getFile": async ({ id }) => {

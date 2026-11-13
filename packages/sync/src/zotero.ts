@@ -190,6 +190,10 @@ export const createZotero = ({ fetch: send, base = ZOTERO_LOCAL, timeoutMs = 800
     const groups = await get("/users/0/groups").then((response) => response.json() as Promise<{ id?: number }[]>, () => []);
     return ["/users/0", ...(Array.isArray(groups) ? groups.flatMap((group) => (typeof group.id === "number" ? [`/groups/${group.id}`] : [])) : [])];
   };
+  const groups = async (): Promise<{ id: string; name: string }[]> => {
+    const found = await get("/users/0/groups").then((response) => response.json() as Promise<{ id?: number; data?: { name?: string }; name?: string }[]>, () => []);
+    return Array.isArray(found) ? found.flatMap((group) => (typeof group.id === "number" ? [{ id: String(group.id), name: group.data?.name ?? group.name ?? `Group ${group.id}` }] : [])) : [];
+  };
   const PAGE = 100;
 
   return {
@@ -204,6 +208,7 @@ export const createZotero = ({ fetch: send, base = ZOTERO_LOCAL, timeoutMs = 800
         return { ok: false, app: "zotero", problem: error instanceof Error ? error.message : NOT_RUNNING };
       }
     },
+    groups,
     search: async ({ text: asked, limit = 20 }) => {
       const found = await list(`/users/0/items/top?q=${encodeURIComponent(asked)}&qmode=titleCreatorYear&limit=${limit}&sort=dateModified&direction=desc`);
       return found.filter((raw) => raw.data.itemType !== "attachment" && raw.data.itemType !== "note").map((raw) => itemOf(raw));

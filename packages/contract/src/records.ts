@@ -93,9 +93,36 @@ type Envelope<K extends RecordKind> = {
   /** The lab's DID, so the lab is credited and its custodian keeps a say. */
   lab?: string;
   ext?: JsonObject;
+  /**
+   * The signature of whoever wrote this version, over the record without this field. It is what
+   * lets a labmate tell a record from its author apart from one that only says so.
+   */
+  sig?: string;
 };
 
-type DocumentFields = { rev: number; editedAt: string; editedBy: Author };
+type DocumentFields = {
+  rev: number;
+  editedAt: string;
+  editedBy: Author;
+  /**
+   * The version this one replaces, as `versionKey` names it. A version beats every version it
+   * replaces, however their clocks and edit counts compare. Only versions made apart, neither
+   * having seen the other, are left to a tie-break.
+   */
+  prev?: string;
+};
+
+/**
+ * This device's clock, corrected. A lab's server says what time it is with every exchange, and a
+ * device whose clock is off stamps its records with the difference added, so its later edit is
+ * not read as an earlier one.
+ */
+export const clock = { offsetMs: 0 };
+export const nowIso = (): string => new Date(Date.now() + clock.offsetMs).toISOString();
+
+/** Names one version of a document, for the version that replaces it. */
+export const versionKey = (record: { rev: number; editedAt: string; editedBy: Author }): string =>
+  `${record.rev}@${record.editedAt}@${record.editedBy.id}`;
 
 /**
  * `title` is the content alone, with no type prefix, so it reads the same in
@@ -328,6 +355,8 @@ export type NodeTypeRecord = Envelope<"node-type"> &
     lexicon?: string;
     /** Taken out of use. Units that have it keep it, and it is no longer offered. */
     removed?: boolean;
+    /** The lab's type this one gave way to when its author joined the lab. Read in its place. */
+    replacedBy?: DgId;
   };
 
 export type RelationRule = { source: DgId; target: DgId };
@@ -341,6 +370,8 @@ export type RelationTypeRecord = Envelope<"relation-type"> &
     color?: string;
     /** Taken out of use. Relations that have it keep it, and it is no longer offered. */
     removed?: boolean;
+    /** The lab's type this one gave way to when its author joined the lab. Read in its place. */
+    replacedBy?: DgId;
   };
 
 type CanvasBox = {
@@ -553,6 +584,24 @@ export type PersonRecord = Envelope<"person"> &
   };
 
 /** A lab has its own DID. Its custodian, the PI, holds that DID's rotation key. */
+/**
+ * What a lab's PI sets once and every member inherits. It lives on the lab's own record, which only
+ * the PI can change and which every member holds.
+ */
+export type LabSettings = {
+  /** The Zotero group that is the lab's shelf of papers. Its items have the same address for every member. */
+  zoteroGroup?: { id: string; name: string };
+  /** Model servers the lab offers its members, such as the PI's workstation or the lab's own box. */
+  servers?: { name: string; url: string }[];
+  /** Which of those a member's reading and questions go to first, by address. Each member can choose otherwise. */
+  compute?: string;
+  /**
+   * How far a paper's text may travel to be read by a model: no further than the member's own
+   * computer, no further than the lab's servers, or anywhere the member picks.
+   */
+  reach?: "device" | "lab" | "anywhere";
+};
+
 export type LabRecord = Envelope<"lab"> &
   DocumentFields & {
     name: string;
@@ -560,11 +609,12 @@ export type LabRecord = Envelope<"lab"> &
     custodian: string;
     custodianKey: string;
     plc: JsonObject[];
+    settings?: LabSettings;
   };
 
 /** A person's choice to work in a lab, which puts the PI's key on their DID. */
 export type MembershipRecord = Envelope<"membership"> &
-  DocumentFields & { lab: string; member: string };
+  DocumentFields & { lab: string; member: string; /** Ended, by the member or by the lab's custodian. */ removed?: boolean };
 
 export type RelationRecord = Envelope<"relation"> & {
   type: DgId;
@@ -642,7 +692,7 @@ const envelope = <K extends RecordKind>({
   id: unitId(by.id),
   kind,
   space,
-  at: at ?? new Date().toISOString(),
+  at: at ?? nowIso(),
   by,
   ...(lab ? { lab } : {}),
 });
@@ -930,14 +980,20 @@ export const revise = <R extends DocumentRecord>({
   changes: Partial<Omit<R, keyof Envelope<RecordKind> | keyof DocumentFields>>;
   by: Author;
   at?: string;
-}): R =>
-  ({
-    ...record,
+}): R => {
+  // Never stamped earlier than what it replaces, even on a device whose clock ran ahead before.
+  const now = at ?? nowIso();
+  const after = new Date(new Date(record.editedAt).getTime() + 1).toISOString();
+  const { sig: _sig, ...unsigned } = record;
+  return {
+    ...unsigned,
     ...changes,
     rev: record.rev + 1,
-    editedAt: at ?? new Date().toISOString(),
+    editedAt: now > record.editedAt ? now : after,
     editedBy: by,
-  }) as R;
+    prev: versionKey(record),
+  } as R;
+};
 
 export const defaultGrammar = ({
   titleFormat = (abbreviation) => `${abbreviation} - {content}`,
@@ -1065,19 +1121,60 @@ const compareStrings = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0;
 
 /**
- * Positive when `a` beats `b`. The final tie-break is on content, so every
- * replica picks the same winner whatever order the versions arrived in.
+ * Positive when `a` beats `b`, for two versions made apart, neither replacing the other. The later
+ * one stands. The final tie-break is on content, so every replica picks the same winner whatever
+ * order the versions arrived in.
  */
 export const compareVersions = (a: DgRecord, b: DgRecord): number => {
   if (isDocument(a) && isDocument(b)) {
     return (
-      a.rev - b.rev ||
       compareStrings(a.editedAt, b.editedAt) ||
+      a.rev - b.rev ||
       compareStrings(a.editedBy.id, b.editedBy.id) ||
+      Number(Boolean(a.sig)) - Number(Boolean(b.sig)) ||
       compareStrings(canonicalJson(a), canonicalJson(b))
     );
   }
-  return compareStrings(canonicalJson(a), canonicalJson(b));
+  return Number(Boolean(a.sig)) - Number(Boolean(b.sig)) || compareStrings(canonicalJson(a), canonicalJson(b));
+};
+
+/** Kinds only their author changes. A version by anyone else is kept in the log and never read. */
+const AUTHOR_ONLY: readonly string[] = ["lab", "node-type", "relation-type", "person", "evaluation"];
+
+/**
+ * Whether a version may stand, given the versions it follows. An id carries its author's DID, so a
+ * record can't be made under someone else's name.
+ *
+ * A unit's words and its existence are its author's alone. A labmate may add to what is known about
+ * it, such as where its PDF is, and that version stands only if it keeps the title and doesn't
+ * remove the unit, and only if the version it replaces stands too.
+ *
+ * A membership is its member's, and the lab's custodian may end it.
+ */
+const standing = (records: DgRecord[], custodianOf: Map<string, string>): ((record: DgRecord) => boolean) => {
+  const byVersion = new Map<string, DocumentRecord>();
+  for (const record of records) if (isKnownRecord(record) && isDocument(record)) byVersion.set(`${record.id}|${versionKey(record)}`, record);
+  const known = new Map<DgRecord, boolean>();
+  const stands = (record: DgRecord): boolean => {
+    const settled = known.get(record);
+    if (settled !== undefined) return settled;
+    // A version that names itself, or a loop, stands on nothing.
+    known.set(record, false);
+    const split = record.id.lastIndexOf("#");
+    const owner = split > 0 ? record.id.slice(0, split) : "";
+    let ok = !(owner.startsWith("did:") && record.by.id.startsWith("did:") && owner !== record.by.id);
+    if (ok && isDocument(record) && record.editedBy.id !== record.by.id) {
+      if (AUTHOR_ONLY.includes(record.kind)) ok = false;
+      else if (record.kind === "membership") ok = record.editedBy.id === custodianOf.get(record.lab);
+      else if (record.kind === "node") {
+        const before = record.prev ? byVersion.get(`${record.id}|${record.prev}`) : undefined;
+        ok = before?.kind === "node" && stands(before) && before.title === record.title && Boolean(before.removed) === Boolean(record.removed);
+      }
+    }
+    known.set(record, ok);
+    return ok;
+  };
+  return stands;
 };
 
 export type RelationState = "active" | "pending" | "rejected" | "withdrawn";
@@ -1103,10 +1200,23 @@ export const foldRecords = ({
   /** Relations from this person's own lab don't wait for a decision. */
   trustedLab?: string;
 }): FoldedGraph => {
+  // A lab's custodian is fixed when the lab is made, and only the custodian writes the lab's record.
+  const custodianOf = new Map<string, string>();
+  for (const record of records) {
+    if (record.kind === "lab" && record.editedBy.id === record.by.id && record.custodian === record.by.id) custodianOf.set(record.did, record.custodian);
+  }
+  // What each standing version replaces is out of the running. Of what is left, the latest stands.
+  const stands = standing(records, custodianOf);
+  const replaced = new Set<string>();
+  for (const record of records) {
+    if (isKnownRecord(record) && isDocument(record) && record.prev && stands(record)) replaced.add(`${record.id}|${record.prev}`);
+  }
   const winners = new Map<DgId, DgRecord>();
   for (const record of records) {
     // A newer client's kinds are kept in the log but never read as something else.
     if (!isKnownRecord(record)) continue;
+    if (!stands(record)) continue;
+    if (isDocument(record) && replaced.has(`${record.id}|${versionKey(record)}`)) continue;
     const current = winners.get(record.id);
     if (!current || compareVersions(record, current) > 0) {
       winners.set(record.id, record);
@@ -1130,10 +1240,6 @@ export const foldRecords = ({
     }
   }
 
-  const custodianOf = new Map<string, string>();
-  for (const record of documents.values()) {
-    if (record.kind === "lab") custodianOf.set(record.did, record.custodian);
-  }
   // The author can withdraw their own work, and so can their lab's custodian.
   const mayWithdraw = ({ by, target }: RetractionRecord): boolean => {
     const record = winners.get(target);

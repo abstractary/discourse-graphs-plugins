@@ -13,6 +13,7 @@ import {
   createLab,
   createMembership,
   createNode,
+  clock,
   createPerson,
   decide,
   defaultGrammar,
@@ -71,6 +72,7 @@ import {
   type Identity,
   type KeyStore,
 } from "./identity.ts";
+import { checkSignatures, signerOf, signRecord } from "./signing.ts";
 import { planAtImport, planImport, type ExistingGraph, type ImportReport } from "./migrate.ts";
 import type { Context, Handlers } from "./context.ts";
 import { labFeature } from "./labs.ts";
@@ -127,6 +129,9 @@ export type Core = CoreForAdapter & {
   /** What sync sends to the lab, and where it hands back what arrived. */
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
+  /** Signs what this person wrote before signing existed, so it can be shared. */
+  prepare: () => Promise<void>;
+  serverTime: (now: string) => void;
   /** A holon's own canvas, made from its laid-out view if it has none. */
   /** The base says which canvas is in front, so the boundary panel can follow it. */
   focusCanvas: (id: DgId) => Promise<void>;
@@ -246,7 +251,7 @@ export const createCore = async ({
   };
 
   const keyOf = (record: DgRecord): string =>
-    isDocument(record) ? `${record.id}:${canonicalJson(record)}` : record.id;
+    isDocument(record) ? `${record.id}:${canonicalJson(record)}` : `${record.id}:${record.sig ? 1 : 0}`;
 
   const absorb = (incoming: DgRecord[]): boolean => {
     let changed = false;
@@ -294,9 +299,17 @@ export const createCore = async ({
     return pulling;
   };
 
+  // This device's signing key, once its person is known. What this person writes is signed on its way in.
+  let signer: { did: string; pair: CryptoKeyPair } | null = null;
+  const signed = async (fresh: DgRecord[]): Promise<DgRecord[]> => {
+    const by = signer;
+    if (!by) return fresh;
+    return Promise.all(fresh.map((record) => (!record.sig && signerOf(record) === by.did ? signRecord(record, by.pair) : record)));
+  };
   const put = async (fresh: DgRecord[]): Promise<void> => {
-    value(await host.putRecords({ records: fresh }));
-    if (absorb(fresh)) notify();
+    const ready = await signed(fresh);
+    value(await host.putRecords({ records: ready }));
+    if (absorb(ready)) notify();
   };
 
   const documents = <K extends DgRecord["kind"]>(
@@ -332,13 +345,18 @@ export const createCore = async ({
     return fresh;
   };
   let identity = await loadIdentity();
+  {
+    const pair = await keys.get(`signing:${identity.did}`);
+    // A second device has the DID and not the key, which can't be copied. What it writes goes unsigned.
+    signer = pair ? { did: identity.did, pair } : null;
+  }
   me = {
     id: identity.did,
     name: documents("person").find((person) => person.did === identity.did)?.name ?? info.person.name,
   };
 
   const myLab = (): LabRecord | undefined => {
-    const joined = documents("membership").find((item) => item.member === identity.did);
+    const joined = documents("membership").find((item) => item.member === identity.did && !item.removed);
     return joined ? documents("lab").find((lab) => lab.did === joined.lab) : undefined;
   };
   const refreshStamp = (): void => {
@@ -388,8 +406,11 @@ export const createCore = async ({
     if (!lab) throw new Error("There's no lab here to join.");
     if (myLab()) return identityView();
     await savePlc(await addCustodian({ keys, identity, custodianKey: lab.custodianKey }));
-    await put([createMembership({ space: localSpace, by: me, lab: lab.did, member: identity.did })]);
+    const lapsed = documents("membership").find((item) => item.member === identity.did && item.lab === lab.did && item.by.id === me.id);
+    // Coming back after being taken out: the same membership stands again.
+    await put([lapsed ? revise({ record: lapsed, changes: { removed: false }, by: me }) : createMembership({ space: localSpace, by: me, lab: lab.did, member: identity.did })]);
     refreshStamp();
+    await adoptLabGrammar();
     return identityView();
   };
 
@@ -407,13 +428,44 @@ export const createCore = async ({
     const record = graph.documents.get(id);
     return record?.kind === "canvas" && !record.removed ? record : undefined;
   };
+  // A type that gave way to the lab's is read as the lab's, so a member's earlier units follow the lab's grammar.
   const typeOf = (id: DgId | undefined): NodeTypeRecord | undefined => {
-    const record = id ? graph.documents.get(id) : undefined;
+    let record = id ? graph.documents.get(id) : undefined;
+    for (let hops = 0; hops < 4 && record?.kind === "node-type" && record.replacedBy; hops += 1) {
+      const next = graph.documents.get(record.replacedBy);
+      if (next?.kind !== "node-type") break;
+      record = next;
+    }
     return record?.kind === "node-type" ? record : undefined;
   };
   const relationTypeOf = (id: DgId): RelationTypeRecord | undefined => {
-    const record = graph.documents.get(id);
+    let record = graph.documents.get(id);
+    for (let hops = 0; hops < 4 && record?.kind === "relation-type" && record.replacedBy; hops += 1) {
+      const next = graph.documents.get(record.replacedBy);
+      if (next?.kind !== "relation-type") break;
+      record = next;
+    }
     return record?.kind === "relation-type" ? record : undefined;
+  };
+
+  /**
+   * A lab has one grammar, its PI's. When a member joins, each of their own types that the lab also
+   * has gives way to the lab's: it is taken out of use and points at the lab's, and everything that
+   * carries it is read as the lab's from then on. A type only the member has stays theirs.
+   */
+  const adoptLabGrammar = async (): Promise<void> => {
+    const lab = myLab();
+    if (!lab || lab.custodian === me.id) return;
+    const fresh: DgRecord[] = [];
+    for (const kind of ["node-type", "relation-type"] as const) {
+      const all = documents(kind) as (NodeTypeRecord | RelationTypeRecord)[];
+      const labs = all.filter((type) => type.by.id === lab.custodian && !type.removed);
+      for (const mine of all.filter((type) => type.by.id === me.id && !type.removed)) {
+        const twin = labs.find((type) => type.label.toLowerCase() === mine.label.toLowerCase());
+        if (twin) fresh.push(revise({ record: mine, changes: { removed: true, replacedBy: twin.id }, by: me }));
+      }
+    }
+    if (fresh.length > 0) await put(fresh);
   };
 
   const labOf = (record: { lab?: string }): LabRecord | undefined =>
@@ -461,6 +513,7 @@ export const createCore = async ({
       spaceName: info.space.name,
       nameOf,
       labName: (did) => labOf({ lab: did })?.name,
+      ...(myLab() ? { lab: { name: myLab()!.name, ...(myLab()!.settings?.zoteroGroup ? { group: myLab()!.settings!.zoteroGroup! } : {}) } } : {}),
       labelOf: (paper) => paperOf({ source: { paper: paper.id } } as NodeRecord)?.label ?? paper.title,
       paperOfSource,
     });
@@ -900,7 +953,22 @@ export const createCore = async ({
   const canvasView = (id: DgId): CanvasView => {
     const canvas = canvasOf(id);
     if (!canvas) throw new Error(`No canvas ${id}`);
-    const live = liveCanvasItems({ graph, canvas: id });
+    // A card can outlive its unit: one person removes the unit while another moves its card, and the
+    // move wins. The card and its lines are left out, so nobody sees a card for a unit that is gone.
+    const every = liveCanvasItems({ graph, canvas: id });
+    const ghosts = new Set(
+      every
+        .filter(({ item }) => {
+          const unit = (item as { dg?: { node?: DgId } }).dg?.node;
+          const record = unit ? graph.documents.get(unit) : undefined;
+          return record?.kind === "node" && record.removed === true;
+        })
+        .map((record) => record.id),
+    );
+    const live = ghosts.size === 0 ? every : every.filter(({ id: itemId, item }) => {
+      const edge = item as { fromNode?: DgId; toNode?: DgId };
+      return !ghosts.has(itemId) && !(edge.fromNode && ghosts.has(edge.fromNode)) && !(edge.toNode && ghosts.has(edge.toNode));
+    });
     const nodes: CanvasView["nodes"] = {};
     const relations: CanvasView["relations"] = {};
     for (const { item } of live) {
@@ -997,12 +1065,20 @@ export const createCore = async ({
     giveNotes();
   }
   const { provenance: _provenance, social: _social, ...unitHandlers } = units;
-  const { shareable, take, canvasClosed, answerBreadcrumb, ...labHandlers } = labFeature(context, {
+  const { shareable, take, prepare, canvasClosed, answerBreadcrumb, ...labHandlers } = labFeature(context, {
     identity: identityView,
     createLabRecord,
     joinLab,
+    adoptLabGrammar,
     ...(askBreadcrumb ? { askBreadcrumb } : {}),
   });
+  // A device whose clock is off stamps with the lab server's time. Small differences are left alone.
+  let clockOffset = 0;
+  const serverTime = (now: string): void => {
+    const off = new Date(now).getTime() - Date.now();
+    clockOffset = Number.isFinite(off) && Math.abs(off) > 2000 ? off : 0;
+    clock.offsetMs = clockOffset;
+  };
 
   const onSharedCanvas = (node: DgId): boolean =>
     documents("canvas-item").some(
@@ -1101,7 +1177,13 @@ export const createCore = async ({
       if (node.by.id !== me.id) throw new Error(`Only ${nameOf(node.by)} can remove this unit.`);
       const cards = documents("canvas-item").filter((item) => !item.removed && (item.item as { dg?: { node?: DgId } }).dg?.node === id);
       const home = anchorsByNode.get(id);
-      await put([revise({ record: node, changes: { removed: true }, by: me }), ...cards.map((card) => revise({ record: card, changes: { removed: true }, by: me }))]);
+      // The lines drawn to its cards go with them, so no canvas keeps a relation to a unit that is gone.
+      const cardIds = new Set(cards.map((card) => card.id));
+      const lines = documents("canvas-item").filter((item) => {
+        const edge = item.item as { fromNode?: DgId; toNode?: DgId };
+        return !item.removed && Boolean((edge.fromNode && cardIds.has(edge.fromNode)) || (edge.toNode && cardIds.has(edge.toNode)));
+      });
+      await put([revise({ record: node, changes: { removed: true }, by: me }), ...[...cards, ...lines].map((item) => revise({ record: item, changes: { removed: true }, by: me }))]);
       if (home && !missingText.has(home.ref)) await host.removeText({ ref: home.ref });
       return null;
     },
@@ -1198,11 +1280,13 @@ export const createCore = async ({
           (state === "active" || state === "pending"),
       );
       const relation = existing?.record ?? assertRelation({ ...stamp, type, source, target });
-      // Stated away from a canvas, it's drawn on each of the person's canvases that holds both units.
+      // Stated away from a canvas, it's drawn on each canvas the person works on that holds both units.
       const edges: DgRecord[] = [];
       if (draw) {
         for (const canvas of documents("canvas")) {
-          if (canvas.removed || canvas.by.id !== me.id) continue;
+          // The person's own canvases, and the ones their lab shares, which they also work on.
+          const lab = myLab()?.did;
+          if (canvas.removed || (canvas.by.id !== me.id && !(lab && canvas.shared === lab))) continue;
           // A PDF canvas shows it only when both ends are its own paper's units.
           const reading = readingOf(graph, canvas.id);
           if (reading && ![source, target].every((unit) => { const node = nodeOf(unit); return node && ofPaper(graph, node, reading); })) continue;
@@ -1384,7 +1468,12 @@ export const createCore = async ({
       value(await host.closeDialog());
       return null;
     },
-    "server.list": async () => (services ? services.servers() : []),
+    // A member's own servers, then the ones their lab offers everyone.
+    "server.list": async () => {
+      const own = services ? await services.servers() : [];
+      const offered = (myLab()?.settings?.servers ?? []).filter((server) => !own.some((mine) => mine.url === server.url));
+      return [...own, ...offered.map((server) => ({ id: `lab:${server.url}`, name: server.name, url: server.url, kind: "lab" as const }))];
+    },
     "server.add": async (server) => {
       if (!services) throw new Error("No services are set up here.");
       return services.addServer(server);
@@ -1445,6 +1534,7 @@ export const createCore = async ({
       | undefined;
     try {
       if (!handler) throw new Error(`No method ${message.method}`);
+      clock.offsetMs = clockOffset;
       const result = await handler(message.params);
       port.send({ id: message.id, ok: true, result });
       logUsage({
@@ -1545,6 +1635,8 @@ export const createCore = async ({
     setName,
     shareable,
     take,
+    prepare,
+    serverTime,
     focusCanvas: (id) => holons.focusCanvas(id),
     zoteroStatus: async () => (services?.zotero ? services.zotero.status() : { ok: false, app: "zotero", problem: "This base can't reach Zotero." }),
     pdfLibrary: () => handlers["pdf.library"]({}),

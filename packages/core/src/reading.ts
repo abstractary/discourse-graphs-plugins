@@ -1,4 +1,4 @@
-import { isLibraryRef, isSharedLibraryRef, mergeIdentifiers, sameDoi, sameIdentifier, type Identifier, type LibraryAnnotation, type LibraryFile } from "@dg/contract/scholarly.ts";
+import { isLibraryRef, isSharedLibraryRef, mergeIdentifiers, sameDoi, sameIdentifier, type Identifier, type LibraryAnnotation, type LibraryFile, type PaperShelf } from "@dg/contract/scholarly.ts";
 import { citeAs, identifiersOf, selectLinkOf } from "./card.ts";
 import { suggestType } from "./library.ts";
 import { keyOfPaper, sameWork } from "./work.ts";
@@ -164,6 +164,19 @@ export const readingFeature = (context: Context) => {
     });
   };
 
+  /** Whose shelf a file is on. Only said in a lab, where the difference decides who can open it. */
+  const shelfOfFile = (file: FileSummary, held: LibraryFile | undefined, paper: PaperRecord | undefined): PaperShelf | undefined => {
+    const lab = context.myLab();
+    if (!lab) return undefined;
+    const group = lab.settings?.zoteroGroup;
+    if (held?.item.library.kind === "group") {
+      return group && String(held.item.library.id) === group.id ? { kind: "lab", name: group.name } : { kind: "group", name: held.item.library.name ?? "A Zotero group" };
+    }
+    if (held) return { kind: "yours", name: "Your Zotero library" };
+    if (paper?.labPaper) return { kind: "lab", name: `${lab.name}'s papers` };
+    return isLibraryRef(file.ref) ? undefined : { kind: "yours", name: "Your vault" };
+  };
+
   const documentOf = (file: FileSummary): PdfDocument => {
     const paper = paperOf(file);
     const source = sourceOf(file, cids.get(file.ref));
@@ -172,6 +185,7 @@ export const readingFeature = (context: Context) => {
       ref: file.ref,
       name: file.name,
       title: paper?.title ?? source?.title ?? held?.item.title ?? stemOf(file.name),
+      ...(shelfOfFile(file, held, paper) ? { shelf: shelfOfFile(file, held, paper)! } : {}),
       ...(held ? { library: { app: "zotero" as const, open: selectLinkOf(held.item.ref), what: "item" as const, label: citeAs(held.item.authors.map(({ name }) => name), held.item.published, held.item.title), item: held.item.ref } } : {}),
       ...(file.folder ? { folder: file.folder } : {}),
       ...(file.size !== undefined ? { size: file.size } : {}),
@@ -273,7 +287,9 @@ export const readingFeature = (context: Context) => {
       const here = all.filter((doc) => !doc.library && !(doc.paper && works.has(doc.paper.id)) && !(doc.source && works.has(doc.source)));
       // Papers first: they're what people came to read. Each group stays newest first.
       const ordered = (docs: PdfDocument[]): PdfDocument[] => [...docs.filter((doc) => doc.paper), ...docs.filter((doc) => !doc.paper)];
-      return [...ordered(theirs), ...ordered(here)];
+      // The lab's shelf comes first: it is what everyone in the lab can open.
+      const labFirst = (docs: PdfDocument[]): PdfDocument[] => [...docs.filter((doc) => doc.shelf?.kind === "lab"), ...docs.filter((doc) => doc.shelf?.kind !== "lab")];
+      return [...labFirst(ordered(theirs)), ...ordered(here)];
     },
     "pdf.library": async () => {
       const on = await libraryOn();

@@ -1,12 +1,17 @@
 import { randomBytes, randomInt } from 'node:crypto';
 import { hashesMatch, newSecret, openToken, readLab, requireAdmin, requireMember, sealToken, writeLab } from './auth.ts';
-import type { JoinRequest, Lab, TokenKind } from './auth.ts';
+import type { Invite, JoinRequest, Lab, TokenKind } from './auth.ts';
 import { ApiError, requirePerson, requireString } from './http.ts';
 import type { Context, Route } from './http.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
 
 const SUFFIX_LETTERS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_INVITE_USES = 1;
+const MAX_INVITE_USES = 100;
+const DEFAULT_INVITE_DAYS = 7;
+const MAX_INVITE_DAYS = 90;
 
 function slug(name: string): string {
   const words = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-');
@@ -52,6 +57,23 @@ function decline(request: JoinRequest): void {
   request.state = 'declined';
   delete request.tokenHash;
   delete request.sealedToken;
+}
+
+function parseWhole(value: unknown, field: string, fallback: number, max: number): number {
+  if (value === undefined) return fallback;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > max) {
+    throw new ApiError(400, `bad-${field}`, `Send "${field}" as a whole number from 1 to ${max}, or leave it out.`);
+  }
+  return value;
+}
+
+function liveInvites(lab: Lab): Invite[] {
+  const now = Date.now();
+  return (lab.invites ?? []).filter((invite) => invite.usesLeft > 0 && Date.parse(invite.expiresAt) > now);
+}
+
+function badInvite(): ApiError {
+  return new ApiError(403, 'bad-invite', 'This invite does not work. Ask the lab admin for a new invite.');
 }
 
 async function createLab({ readJson }: Context, store: Store): Promise<unknown> {
@@ -129,6 +151,89 @@ async function decide({ req, params, readJson }: Context, store: Store): Promise
   return { id: request.id, state: request.state, tokenKind: request.tokenKind };
 }
 
+async function createInvite({ req, params, readJson }: Context, store: Store): Promise<unknown> {
+  requireAdmin(req, store, params.id);
+  const body = await readJson();
+  const uses = parseWhole(body.uses, 'uses', DEFAULT_INVITE_USES, MAX_INVITE_USES);
+  const days = parseWhole(body.days, 'days', DEFAULT_INVITE_DAYS, MAX_INVITE_DAYS);
+  const tokenKind = parseTokenKind(body.tokenKind);
+  // Read again after the await, so a change made in the meantime is not overwritten.
+  const { lab, token } = requireAdmin(req, store, params.id);
+  const code = newSecret();
+  const now = Date.now();
+  const invite: Invite = {
+    id: randomBytes(9).toString('base64url'),
+    codeHash: hashOf(code),
+    createdAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + days * DAY_MS).toISOString(),
+    usesLeft: uses,
+    by: token.did,
+    tokenKind,
+  };
+  lab.invites = [...liveInvites(lab), invite];
+  writeLab(store, lab);
+  return { invite: { id: invite.id, code, expiresAt: invite.expiresAt, usesLeft: invite.usesLeft } };
+}
+
+function listInvites({ req, params }: Context, store: Store): unknown {
+  const { lab } = requireAdmin(req, store, params.id);
+  const invites = liveInvites(lab).map(({ id, createdAt, expiresAt, usesLeft, by }) => ({ id, createdAt, expiresAt, usesLeft, by }));
+  return { invites };
+}
+
+function deleteInvite({ req, params }: Context, store: Store): unknown {
+  const { lab } = requireAdmin(req, store, params.id);
+  const invites = lab.invites ?? [];
+  if (!invites.some((invite) => invite.id === params.inviteId)) {
+    throw new ApiError(404, 'no-invite', 'There is no such invite. List the invites to see the ones that are left.');
+  }
+  lab.invites = invites.filter((invite) => invite.id !== params.inviteId);
+  writeLab(store, lab);
+  return { id: params.inviteId };
+}
+
+async function acceptInvite({ params, readJson }: Context, store: Store): Promise<unknown> {
+  labOr404(store, params.id);
+  const body = await readJson();
+  const codeHash = hashOf(requireString(body.code, 'code'));
+  const person = requirePerson(body.person);
+  // Read after the await, so two people using the last use at once cannot both get in.
+  const lab = labOr404(store, params.id);
+  const invite = liveInvites(lab).find((candidate) => hashesMatch(candidate.codeHash, codeHash));
+  if (!invite) throw badInvite();
+  const token = newSecret();
+  invite.usesLeft -= 1;
+  lab.invites = liveInvites(lab);
+  lab.tokens.push({ hash: hashOf(token), did: person.did, kind: invite.tokenKind, role: 'member' });
+  const member = lab.members.find((candidate) => candidate.did === person.did);
+  if (member) Object.assign(member, { name: person.name, tokenKind: invite.tokenKind });
+  else lab.members.push({ ...person, role: 'member', tokenKind: invite.tokenKind });
+  writeLab(store, lab);
+  return { lab: { id: lab.id, name: lab.name }, token, tokenKind: invite.tokenKind, role: 'member' };
+}
+
+function removeMember({ req, params }: Context, store: Store): unknown {
+  const { lab, token } = requireAdmin(req, store, params.id);
+  const { did } = params;
+  if (did === token.did) {
+    throw new ApiError(409, 'cannot-remove-self', 'You cannot remove yourself from your own lab. Remove other members only.');
+  }
+  if (!lab.members.some((member) => member.did === did)) {
+    throw new ApiError(404, 'no-member', 'There is no such member in this lab. List the members to check the did.');
+  }
+  const at = new Date().toISOString();
+  const theirs = lab.tokens.filter((entry) => entry.did === did);
+  lab.revoked = [...(lab.revoked ?? []), ...theirs.map(({ hash }) => ({ hash, did, at }))];
+  lab.tokens = lab.tokens.filter((entry) => entry.did !== did);
+  lab.members = lab.members.filter((member) => member.did !== did);
+  lab.removed = [...(lab.removed ?? []), { did, at }];
+  for (const request of lab.requests) {
+    if (request.person.did === did && request.state === 'pending') decline(request);
+  }
+  writeLab(store, lab);
+  return { removed: did };
+}
+
 export function labRoutes(store: Store): Route[] {
   return [
     { method: 'POST', path: '/v1/labs', handler: (context) => createLab(context, store) },
@@ -157,5 +262,10 @@ export function labRoutes(store: Store): Route[] {
       },
     },
     { method: 'POST', path: '/v1/labs/:id/requests/:requestId', handler: (context) => decide(context, store) },
+    { method: 'POST', path: '/v1/labs/:id/invites', handler: (context) => createInvite(context, store) },
+    { method: 'GET', path: '/v1/labs/:id/invites', handler: (context) => listInvites(context, store) },
+    { method: 'POST', path: '/v1/labs/:id/invites/accept', handler: (context) => acceptInvite(context, store) },
+    { method: 'DELETE', path: '/v1/labs/:id/invites/:inviteId', handler: (context) => deleteInvite(context, store) },
+    { method: 'DELETE', path: '/v1/labs/:id/members/:did', handler: (context) => removeMember(context, store) },
   ];
 }

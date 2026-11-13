@@ -112,6 +112,18 @@ The same small **Z** mark says "this is in your Zotero library" everywhere a sou
 
 **Still only against the stand-in:** anything to do with highlights, because the real library has none. That covers bringing highlights in, the **N in Zotero** count, and opening a passage. Group libraries were not run at all, since the real library has no groups. `zotero://` links were built as Zotero's source writes them and were not clicked.
 
+## The lab's group and your own library
+
+Added 13 November 2026. A lab's PI picks one Zotero group as the lab's shelf, on the Lab tab. Every member inherits the choice.
+
+- **The lab's shelf** is that group. Its items have the same address for every member, so a unit read from one carries the mark for everyone in the group, and each opens the PDF from their own Zotero. The PDF never goes through the lab server.
+- **Your own library** stays yours. A unit read from it travels with its reference and DOI. Labmates are told it is your copy and aren't offered the PDF.
+- **The PDF chooser** lists the lab's shelf first, under the group's name, then your own library.
+- **With no Zotero**, the lab's shelf is the lab server's paper repository, and your own shelf is the PDFs in your vault. A member with no Zotero in a lab that uses a group sees every reference and is told the PDF is in Zotero.
+- **Who may add to the group** is Zotero's to say. Nothing is written to Zotero, so moving a paper onto the lab's shelf is done in Zotero.
+
+This has run only against the stand-in, in the four-vault simulation. The real library on this computer has no groups. See [four-vaults.md](four-vaults.md).
+
 ## Where it goes next
 
 In the order that buys the most for the least risk.

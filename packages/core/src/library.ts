@@ -63,8 +63,9 @@ export const libraryFeature = (context: Context) => {
   const typesHere = (): NodeTypeRecord[] => context.nodeTypes().filter((type) => type.base === "question" || type.base === "claim" || type.base === "evidence");
 
   let pending: string | undefined;
-  const handlers: Pick<Handlers, "zotero.status" | "zotero.search" | "zotero.item" | "zotero.import" | "zotero.show" | "zotero.pending"> = {
+  const handlers: Pick<Handlers, "zotero.status" | "zotero.groups" | "zotero.search" | "zotero.item" | "zotero.import" | "zotero.show" | "zotero.pending"> = {
     "zotero.status": async () => services().status(),
+    "zotero.groups": async () => (context.services?.zotero ? context.services.zotero.groups().catch(() => []) : []),
     "zotero.show": async ({ item, canvas }) => {
       pending = item;
       const opened = await context.host.openSurface({ route: { surface: "zotero", ...(canvas ? { id: canvas } : {}) }, placement: "dialog" });

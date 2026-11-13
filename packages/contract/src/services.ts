@@ -7,7 +7,8 @@ import type { Identifier, LibraryAnnotation, LibraryFile, LibraryItem, LibrarySt
  * depends on this shape and never on the network, so it runs the same with a
  * real server, a test double, or none at all.
  */
-export type ServerKind = "local" | "managed" | "custom";
+/** `lab` is a server the lab offers its members, inherited from the lab's settings. */
+export type ServerKind = "local" | "managed" | "custom" | "lab";
 
 export type ComputeServer = { id: string; name: string; url: string; kind: ServerKind };
 
@@ -57,6 +58,9 @@ export type LabLink = {
 export type JoinRequest = { id: string; person: Person; at: string };
 
 export type LabMember = Person & { role: "admin" | "member"; tokenKind?: string };
+
+/** A standing invitation. Whoever holds its code joins at once. The code is shown only when it is made. */
+export type LabInvite = { id: string; createdAt?: string; expiresAt: string; usesLeft: number; code?: string };
 
 export type LabPaper = {
   id: string;
@@ -115,7 +119,15 @@ export type Services = {
   members: (link: LabLink) => Promise<LabMember[]>;
 
   pushRecords: (link: LabLink, records: DgRecord[]) => Promise<void>;
-  pullRecords: (link: LabLink, after?: string) => Promise<{ records: DgRecord[]; next?: string; done: boolean }>;
+  /** `now` is the server's own time, so a device can tell when its clock is off. */
+  pullRecords: (link: LabLink, after?: string) => Promise<{ records: DgRecord[]; next?: string; done: boolean; now?: string }>;
+  invite: (link: LabLink, args: { uses?: number; days?: number }) => Promise<LabInvite>;
+  invites: (link: LabLink) => Promise<LabInvite[]>;
+  revokeInvite: (link: LabLink, id: string) => Promise<void>;
+  acceptInvite: (args: { server: string; id: string; code: string; person: Person }) => Promise<LabLink>;
+  removeMember: (link: LabLink, did: string) => Promise<void>;
+  /** The lab this device was removed from, once, so the person can be told. */
+  removedFrom: () => Promise<string | null>;
 
   uploadPaper: (
     link: LabLink,
@@ -161,6 +173,8 @@ export type Services = {
     files: (args?: { limit?: number }) => Promise<LibraryFile[]>;
     /** One PDF, by its attachment's address: where it is now, and the reference it belongs to. */
     file: (args: { ref: string }) => Promise<LibraryFile>;
+    /** The group libraries this person belongs to, for a PI to pick the lab's shelf from. */
+    groups: () => Promise<{ id: string; name: string }[]>;
   };
   /**
    * A repository draft for a crate, on Zenodo. Only ever called on a person's own click. `open` starts a

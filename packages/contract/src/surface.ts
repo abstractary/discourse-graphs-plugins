@@ -1,6 +1,6 @@
-import type { UnitFacts } from "./records.ts";
+import type { LabSettings, UnitFacts } from "./records.ts";
 import type { AiModel, AiProviderKind, AiRoute, AiSettings, AiSource } from "./llm.ts";
-import type { ComputeServer, ExtractionGraph, JoinRequest, LabLink, LabMember, LabPaper, ServerInfo, ServerOption } from "./services.ts";
+import type { ComputeServer, ExtractionGraph, JoinRequest, LabInvite, LabLink, LabMember, LabPaper, ServerInfo, ServerOption } from "./services.ts";
 import type {
   BaseNodeType,
   BaseRelationType,
@@ -20,7 +20,7 @@ import type {
 } from "./records.ts";
 import type { Appearance, HostError, Placement, Skin } from "./host.ts";
 import type { TextMarks } from "./words.ts";
-import type { CardFacts, CardField, Identifier, LibraryAnnotation, LibraryItem, LibraryStatus, Notification, NotificationSummary, WorkMetadata, WorkStanding, InLibrary } from "./scholarly.ts";
+import type { CardFacts, CardField, Identifier, LibraryAnnotation, LibraryItem, LibraryStatus, Notification, NotificationSummary, WorkMetadata, WorkStanding, InLibrary, PaperShelf } from "./scholarly.ts";
 
 /**
  * Who a unit is credited to, from where this person sits. Inside a lab it's the
@@ -276,6 +276,8 @@ export type PdfDocument = {
   paper?: { id: DgId; title: string; canvas: DgId };
   /** The source unit that stands for this file, once anything was read from it. */
   source?: DgId;
+  /** Whose shelf it is on: the lab's, this person's own library, another Zotero group, or only this vault. */
+  shelf?: PaperShelf;
   /** Set when the file is the reference library's, not the base's. */
   library?: InLibrary & { /** How the reference is cited in a few words. */ label: string; item: string };
   /** Marks the person made on it in the library that aren't units here yet. */
@@ -351,6 +353,16 @@ export type LabView = {
   requests: JoinRequest[];
   papers: LabPaper[];
   breadcrumbs: BreadcrumbDefault;
+  /** What the PI has set for everyone. Empty until they set something. */
+  settings: LabSettings;
+  /** Whether this person is the lab's PI, who alone can change its settings, grammar and members. */
+  custodian: boolean;
+  /** Invitations still open. Only the PI sees them. */
+  invites: LabInvite[];
+  /** Records that arrived claiming a labmate wrote them, without that labmate's signature. They were not taken in. */
+  refused: number;
+  /** Set once, after the PI removed this person from a lab. */
+  removedFrom?: string;
 };
 
 export type BreadcrumbDefault = "ask" | "always" | "never";
@@ -1047,6 +1059,8 @@ export type SurfaceMethods = {
   "link.open": { params: { url: string }; result: null };
   /** Whether the Zotero app on this computer can be read, and what to do when it can't. */
   "zotero.status": { params: Record<string, never>; result: LibraryStatus };
+  /** The Zotero groups this person is in, for a PI choosing which one is the lab's shelf. Empty when Zotero can't be read. */
+  "zotero.groups": { params: Record<string, never>; result: { id: string; name: string }[] };
   /** Opens From Zotero at one reference, to see the highlights made on it since and bring them in. */
   "zotero.show": { params: { item: string; canvas?: DgId }; result: null };
   /** The reference the dialog was asked to open at, once. */
@@ -1152,6 +1166,15 @@ export type SurfaceMethods = {
   "lab.check": { params: Record<string, never>; result: LabView };
   "lab.decide": { params: { requestId: string; decision: "accept" | "decline"; tokenKind?: "personal" | "team" }; result: LabView };
   "lab.setBreadcrumbs": { params: { value: BreadcrumbDefault }; result: LabView };
+  /** Makes an invitation to hand to someone. `invite` is the one line they paste to join. */
+  "lab.invite": { params: { uses?: number; days?: number }; result: { invite: string; expiresAt: string; usesLeft: number } };
+  "lab.revokeInvite": { params: { id: string }; result: LabView };
+  /** Joins a lab with an invitation, at once. */
+  "lab.acceptInvite": { params: { invite: string }; result: LabView };
+  /** The PI takes a member out. They get nothing more from the lab. What they already hold stays with them. */
+  "lab.remove": { params: { did: string }; result: LabView };
+  /** The PI sets what every member inherits. A key set to null is cleared. */
+  "lab.configure": { params: { [K in keyof LabSettings]?: LabSettings[K] | null }; result: LabView };
   "canvas.share": { params: { id: DgId }; result: null };
   /** Who would see a canvas if it moved to the lab's workspace. */
   "canvas.audience": { params: { id: DgId }; result: { workspace: WorkspaceRef; lab?: { name: string; members: string[] } } };

@@ -69,6 +69,13 @@ export const grammarFeature = (context: Context) => {
   const nodeTypes = (): NodeTypeRecord[] => context.nodeTypes();
   const relationTypes = (): RelationTypeRecord[] => context.relationTypes();
 
+  /** A lab has one grammar, its PI's. A member reads it and adds types of their own beside it. */
+  const mustBeMine = (held: { by: { id: string; name: string }; label: string }): void => {
+    if (held.by.id === context.me().id) return;
+    const name = context.documents("person").find((person) => person.did === held.by.id)?.name ?? held.by.name;
+    throw new Error(`${held.label} is part of the grammar your lab shares. Only ${name} can change it.`);
+  };
+
   const uses = (): Record<DgId, number> => {
     const count: Record<DgId, number> = {};
     for (const node of context.documents("node")) if (!node.removed && node.type) count[node.type] = (count[node.type] ?? 0) + 1;
@@ -104,6 +111,7 @@ export const grammarFeature = (context: Context) => {
     }
     const held = context.typeOf(id);
     if (!held) throw new Error("That type isn't here any more.");
+    mustBeMine(held);
     // A cleared field is cleared, so the whole set is written.
     const next = revise({ record: held, changes: { abbreviation: undefined, titleFormat: undefined, color: undefined, template: undefined, tag: undefined, ...fields } as never, by: context.me() });
     const clean = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined)) as NodeTypeRecord;
@@ -114,6 +122,7 @@ export const grammarFeature = (context: Context) => {
   const removeNodeType: Handlers["grammar.removeNodeType"] = async ({ id }) => {
     const held = context.typeOf(id);
     if (!held) return null;
+    mustBeMine(held);
     const count = uses()[id] ?? 0;
     if (count > 0) throw new Error(`${count} ${count === 1 ? "unit has" : "units have"} this type. Give ${count === 1 ? "it" : "them"} another type first.`);
     const left = nodeTypes().filter((type) => type.id !== id && type.base === held.base);
@@ -121,7 +130,7 @@ export const grammarFeature = (context: Context) => {
     // Relation rules that named it no longer mean anything.
     const rules = relationTypes().flatMap((type) => {
       const kept = type.rules.filter((rule) => rule.source !== id && rule.target !== id);
-      return kept.length === type.rules.length ? [] : [revise({ record: type, changes: { rules: kept }, by: context.me() })];
+      return kept.length === type.rules.length || type.by.id !== context.me().id ? [] : [revise({ record: type, changes: { rules: kept }, by: context.me() })];
     });
     await context.put([revise({ record: held, changes: { removed: true }, by: context.me() }), ...rules]);
     return null;
@@ -148,6 +157,7 @@ export const grammarFeature = (context: Context) => {
     }
     const held = context.relationTypeOf(id);
     if (!held) throw new Error("That relation isn't here any more.");
+    mustBeMine(held);
     const next = revise({ record: held, changes: { base: undefined, color: undefined, ...fields } as never, by: context.me() });
     const clean = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined)) as RelationTypeRecord;
     await context.put([clean]);
@@ -157,6 +167,7 @@ export const grammarFeature = (context: Context) => {
   const removeRelationType: Handlers["grammar.removeRelationType"] = async ({ id }) => {
     const held = context.relationTypeOf(id);
     if (!held) return null;
+    mustBeMine(held);
     const count = uses()[id] ?? 0;
     if (count > 0) throw new Error(`${count} ${count === 1 ? "link uses" : "links use"} this relation. Remove ${count === 1 ? "it" : "them"} first.`);
     await context.put([revise({ record: held, changes: { removed: true }, by: context.me() })]);

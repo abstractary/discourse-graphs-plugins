@@ -413,6 +413,23 @@ export const paperFeature = (
     return shared;
   };
 
+  /**
+   * A lab's PI can say how far a paper's text may travel to be read by a model. A member's own
+   * computer is always within reach. The lab's servers are, unless the lab keeps papers on the
+   * member's own device. Anywhere else needs the lab to allow it.
+   */
+  const withinReach = async (server: string | undefined): Promise<void> => {
+    const lab = context.myLab();
+    const reach = lab?.settings?.reach ?? "anywhere";
+    if (!server || !lab || reach === "anywhere") return;
+    const at = server.replace(/\/+$/, "");
+    if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(at)) return;
+    const link = context.services ? await context.services.link().catch(() => null) : null;
+    const labs = [link?.server, ...(lab.settings?.servers ?? []).map(({ url }) => url)].filter(Boolean).map((url) => url!.replace(/\/+$/, ""));
+    if (reach === "lab" && labs.includes(at)) return;
+    throw new Error(reach === "device" ? `${lab.name} keeps papers on your own computer. Read this one with "This computer".` : `${lab.name} keeps papers inside the lab. Read this one on this computer or on one of the lab's servers.`);
+  };
+
   return {
     summary,
     graphOf,
@@ -451,6 +468,7 @@ export const paperFeature = (
         file = { name: asset.value.name, mediaType: asset.value.mime, dataBase64: asset.value.dataUrl.split(",")[1] ?? "" };
       }
       if (!file) throw new Error("Choose a paper first.");
+      await withinReach(server);
       const name = file.name;
       let paper: PaperRecord;
       let graph: ExtractionGraph;

@@ -7,11 +7,19 @@ export type SyncTarget = {
   shareable: () => DgRecord[];
   /** Takes in what teammates shared. Records already held are ignored. */
   take: (records: DgRecord[]) => Promise<void>;
+  /** Run before each exchange, for what has to be ready first, such as signing what will be sent. */
+  prepare?: () => Promise<void>;
+  /** Told the server's time with each exchange, so a device can correct a clock that is off. */
+  serverTime?: (now: string) => void;
 };
 
 const EVERY_MS = 4000;
 
-const keyOf = (record: DgRecord): string => `${record.id}:${"rev" in record ? record.rev : 0}`;
+/** One version of a record. Two people can each make a version with the same count of edits. */
+const keyOf = (record: DgRecord): string => {
+  const version = "rev" in record ? `${record.rev}:${record.editedAt ?? ""}:${record.editedBy?.id ?? ""}` : "0";
+  return `${record.id}:${version}:${record.sig ? 1 : 0}`;
+};
 
 /**
  * Every member keeps a full copy, and the server only passes records along, so
@@ -33,6 +41,7 @@ export const startLabSync = ({
   const round = async (): Promise<void> => {
     const link = await services.link();
     if (!link?.token) return;
+    await target.prepare?.();
     const fresh = target.shareable().filter((record) => !sent.has(keyOf(record)));
     if (fresh.length > 0) {
       await services.pushRecords(link, fresh);
@@ -40,6 +49,7 @@ export const startLabSync = ({
     }
     for (;;) {
       const page = await services.pullRecords(link, cursor);
+      if (page.now) target.serverTime?.(page.now);
       if (page.records.length > 0) await target.take(page.records);
       for (const record of page.records) sent.add(keyOf(record));
       cursor = page.next ?? cursor;

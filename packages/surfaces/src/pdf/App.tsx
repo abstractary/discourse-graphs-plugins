@@ -634,7 +634,9 @@ const Chooser = ({
   const needle = query.trim().toLowerCase();
   const shown = (docs ?? []).filter((d) => !needle || d.title.toLowerCase().includes(needle) || d.name.toLowerCase().includes(needle) || d.folder?.toLowerCase().includes(needle));
   // With Zotero as the library, its PDFs are the list. What is only in this vault follows, under its own heading.
-  const theirs = shown.filter((d) => d.library);
+  // In a lab, what is on the lab's shelf is what everyone can open, so it is listed first and apart.
+  const labs = shown.filter((d) => d.library && d.shelf?.kind === "lab");
+  const theirs = shown.filter((d) => d.library && d.shelf?.kind !== "lab");
   const papers = shown.filter((d) => d.paper && !d.library);
   const rest = shown.filter((d) => !d.paper && !d.library);
   const row = (d: PdfDocument) => (
@@ -662,9 +664,11 @@ const Chooser = ({
       {library?.wanted && library.problem ? <p className="pdf-none" role="status" data-dg="pdf-library-problem">Zotero is your PDF library, but it can't be read right now. {library.problem}</p> : null}
       {docs === null ? <p className="pdf-none">Looking for PDFs…</p> : null}
       {docs !== null && docs.length === 0 ? <p className="pdf-none">No PDFs here yet. Drop one on this panel, or add one, and it's kept with your papers.</p> : null}
-      {theirs.length ? <h2 data-dg="pdf-in-zotero">In Zotero</h2> : null}
+      {labs.length ? <h2 data-dg="pdf-lab-shelf">Lab shelf · {labs[0]!.shelf!.name}</h2> : null}
+      {labs.length ? <ul>{labs.map(row)}</ul> : null}
+      {theirs.length ? <h2 data-dg="pdf-in-zotero">{labs.length ? "Your own Zotero library" : "In Zotero"}</h2> : null}
       {theirs.length ? <ul>{theirs.map(row)}</ul> : null}
-      {library?.on && !theirs.length && docs !== null && !needle && !library.problem ? <p className="pdf-none">Zotero has no PDFs yet. Add a paper to Zotero and it is listed here.</p> : null}
+      {library?.on && !theirs.length && !labs.length && docs !== null && !needle && !library.problem ? <p className="pdf-none">Zotero has no PDFs yet. Add a paper to Zotero and it is listed here.</p> : null}
       {papers.length ? <h2>{library?.on ? "Papers only in this vault" : "Papers"}</h2> : null}
       {papers.length ? <ul>{papers.map(row)}</ul> : null}
       {rest.length ? <h2>{library?.on ? "Other PDFs in this vault" : papers.length ? "Other PDFs" : "PDFs"}</h2> : null}

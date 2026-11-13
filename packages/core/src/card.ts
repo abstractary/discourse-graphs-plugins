@@ -1,5 +1,5 @@
 import type { Author, DgId, FoldedGraph, NodeRecord, PaperRecord } from "@dg/contract/records.ts";
-import { isSharedLibraryRef, mergeIdentifiers, parseIdentifier, type CardFacts, type Identifier, type InLibrary, type ReadHow } from "@dg/contract/scholarly.ts";
+import { isSharedLibraryRef, mergeIdentifiers, parseIdentifier, type CardFacts, type Identifier, type InLibrary, type PaperShelf, type ReadHow } from "@dg/contract/scholarly.ts";
 
 /**
  * The facts a unit's card can show: what it was read from and how, who wrote
@@ -65,7 +65,28 @@ export const inLibraryOf = (identifiers: Identifier[], by: Author, me: string, p
   return passage ? { app: "zotero", open: passage, what: "passage" } : { app: "zotero", open: selectLinkOf(ref), what: "item" };
 };
 
+const baseOfNode = (graph: FoldedGraph, node: NodeRecord): string | undefined => {
+  const type = node.type ? graph.documents.get(node.type) : undefined;
+  return type?.kind === "node-type" ? type.base : undefined;
+};
+
+/**
+ * Whose shelf a paper is on, from the addresses its source carries and who wrote the source down.
+ * A lab's Zotero group has the same address for every member. A personal library's address, or a
+ * file in someone's vault, belongs to whoever read it.
+ */
+export const shelfOf = ({ identifiers, by, me, holder, lab, onLabServer }: { identifiers: Identifier[]; by: Author; me: string; holder: string; lab?: { name: string; group?: { id: string; name: string } }; onLabServer?: boolean }): PaperShelf | undefined => {
+  if (!lab) return undefined;
+  const refs = identifiers.filter(({ scheme }) => scheme === "zotero").map(({ value }) => value);
+  if (lab.group && refs.some((ref) => ref.startsWith(`groups/${lab.group!.id}/`))) return { kind: "lab", name: lab.group.name };
+  if (onLabServer) return { kind: "lab", name: `${lab.name}'s papers` };
+  if (refs.some(isSharedLibraryRef)) return { kind: "group", name: "A Zotero group that isn't the lab's" };
+  return by.id === me ? { kind: "yours", name: refs.length ? "Your Zotero library" : "Your vault" } : { kind: "person", name: holder };
+};
+
 export type CardInput = {
+  /** The reader's lab, and the Zotero group that is its shelf, when they have them. */
+  lab?: { name: string; group?: { id: string; name: string } };
   /** The reader's own id: whose library a personal address belongs to. */
   me: string;
   graph: FoldedGraph;
@@ -80,7 +101,7 @@ export type CardInput = {
   paperOfSource: (source: NodeRecord) => PaperRecord | undefined;
 };
 
-export const cardFacts = ({ graph, node, me, localSpace, spaceName, nameOf, labName, labelOf, paperOfSource }: CardInput): CardFacts => {
+export const cardFacts = ({ graph, node, me, lab: readerLab, localSpace, spaceName, nameOf, labName, labelOf, paperOfSource }: CardInput): CardFacts => {
   const nodeAt = (id: DgId | undefined): NodeRecord | undefined => {
     const record = id ? graph.documents.get(id) : undefined;
     return record?.kind === "node" && !record.removed ? record : undefined;
@@ -126,9 +147,23 @@ export const cardFacts = ({ graph, node, me, localSpace, spaceName, nameOf, labN
     (sourceUnit ? inLibraryOf(identifiersOf(sourceUnit), sourceUnit.by, me) : undefined) ??
     (sourcePaper ? inLibraryOf(paperIdentifiers(sourcePaper), sourcePaper.by, me) : undefined);
 
+  // Whose shelf the paper is on: asked of the source it was read from, or of the unit itself when it is the source.
+  const held = sourceUnit ?? (baseOfNode(graph, node) === "source" ? node : undefined);
+  const shelf = held || sourcePaper
+    ? shelfOf({
+        identifiers: [...(held ? identifiersOf(held) : []), ...(sourcePaper ? paperIdentifiers(sourcePaper) : [])],
+        by: (held ?? sourcePaper)!.by,
+        me,
+        holder: nameOf((held ?? sourcePaper)!.by),
+        ...(readerLab ? { lab: readerLab } : {}),
+        onLabServer: Boolean(sourcePaper?.labPaper),
+      })
+    : undefined;
+
   return {
     ...(source ? { source } : {}),
     ...(library ? { library } : {}),
+    ...(shelf ? { shelf } : {}),
     authors: sourceAuthors.length ? { names: sourceAuthors, role: "paper" } : { names: node.facts?.creators?.length ? node.facts.creators.map(({ name }) => name) : [nameOf(node.by)], role: "maker" },
     origin,
     created: node.at,

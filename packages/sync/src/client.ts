@@ -1,6 +1,7 @@
 import type {
   ComputeServer,
   ExtractionGraph,
+  LabInvite,
   LabLink,
   ServerInfo,
   ServerOption,
@@ -13,6 +14,7 @@ import { createZotero } from "./zotero.ts";
 
 const SERVERS_KEY = "compute-servers";
 const LINK_KEY = "lab-link";
+const REMOVED_KEY = "lab-removed";
 const CHUNK = 32_768;
 
 /** Both run from the repo with one command. A real install would point at DG's own service. */
@@ -82,7 +84,15 @@ export const createServices = ({
       throw new Error(`Couldn't reach ${url}. Check that the server is running.`);
     }
     if (response.ok) return response;
-    const failed = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
+    const failed = (await response.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
+    if (failed?.error?.code === "removed") {
+      // The PI took this person out of the lab. The link is dropped, so nothing more is sent or asked for.
+      const link = (await store.get(LINK_KEY)) as LabLink | null;
+      if (link && trimmed(link.server) === trimmed(url)) {
+        await store.set(REMOVED_KEY, link.name);
+        await store.set(LINK_KEY, null);
+      }
+    }
     throw new Error(failed?.error?.message ?? `The server answered ${response.status}.`);
   };
   const json = async <T>(url: string, path: string, request?: Request): Promise<T> =>
@@ -163,8 +173,23 @@ export const createServices = ({
     pushRecords: async (link, records) => {
       await json(link.server, labPath(link, "/records"), { token: link.token!, body: { records } });
     },
+    invite: async (link, { uses, days }) =>
+      (await json<{ invite: LabInvite }>(link.server, labPath(link, "/invites"), { token: link.token!, body: { ...(uses ? { uses } : {}), ...(days ? { days } : {}) } })).invite,
+    invites: async (link) => (await json<{ invites: LabInvite[] }>(link.server, labPath(link, "/invites"), { token: link.token! })).invites,
+    revokeInvite: async (link, id) => {
+      await json(link.server, labPath(link, `/invites/${encodeURIComponent(id)}`), { token: link.token!, method: "DELETE" });
+    },
+    acceptInvite: async ({ server, id, code, person }) => {
+      const joined = await json<{ lab: { id: string; name: string }; token: string; tokenKind?: "personal" | "team" }>(server, `/v1/labs/${encodeURIComponent(id)}/invites/accept`, { body: { code, person } });
+      await store.set(REMOVED_KEY, null);
+      return { server: trimmed(server), id: joined.lab.id, name: joined.lab.name, token: joined.token, tokenKind: joined.tokenKind ?? "personal", role: "member" };
+    },
+    removeMember: async (link, did) => {
+      await json(link.server, labPath(link, `/members/${encodeURIComponent(did)}`), { token: link.token!, method: "DELETE" });
+    },
+    removedFrom: async () => ((await store.get(REMOVED_KEY)) as string | null) ?? null,
     pullRecords: (link, after) =>
-      json<{ records: DgRecord[]; next?: string; done: boolean }>(
+      json<{ records: DgRecord[]; next?: string; done: boolean; now?: string }>(
         link.server,
         labPath(link, `/records?limit=500${after ? `&after=${encodeURIComponent(after)}` : ""}`),
         { token: link.token! },

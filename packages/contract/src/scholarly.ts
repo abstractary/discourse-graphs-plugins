@@ -320,6 +320,16 @@ export type LibraryFile = {
   item: LibraryItem;
 };
 
+/**
+ * Whose shelf a paper is on, which says who can open it.
+ *
+ * - `lab`: the lab's shelf. Every member can open it: the lab's Zotero group, or the lab server's papers when the lab has no Zotero.
+ * - `yours`: this person's own library or vault, and not the lab's. Labmates see the reference and can't open the file.
+ * - `person`: a labmate's own library or vault. `name` is whose.
+ * - `group`: a Zotero group that isn't the lab's.
+ */
+export type PaperShelf = { kind: "lab" | "yours" | "person" | "group"; name: string };
+
 /** Where a unit or a paper sits in a person's reference library, so a panel can mark it and open it there. */
 export type InLibrary = { app: "zotero"; open: string; what: "item" | "passage" };
 
@@ -372,6 +382,8 @@ export type CardFacts = {
   };
   /** Where this unit, or what it was read from, sits in this person's reference library. */
   library?: InLibrary;
+  /** Whose shelf the paper it was read from is on. Only said for someone in a lab, where it matters. */
+  shelf?: PaperShelf;
   /** The paper's authors when it was read from a paper, otherwise whoever made it. */
   authors: { names: string[]; role: "paper" | "maker" };
   origin: { name: string; kind: "here" | "lab" | "elsewhere" };

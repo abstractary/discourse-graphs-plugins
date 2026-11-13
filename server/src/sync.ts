@@ -42,7 +42,7 @@ async function pushRecords({ req, params, readJson }: Context, store: Store): Pr
     log.items.push({ seq, hash, record });
   }
   if (stored > 0) store.write(`records/${params.id}`, log);
-  return { stored };
+  return { stored, now: new Date().toISOString() };
 }
 
 function pullRecords({ req, params, query }: Context, store: Store): unknown {
@@ -56,6 +56,7 @@ function pullRecords({ req, params, query }: Context, store: Store): unknown {
     records: page.map((item) => item.record),
     next: page.at(-1)?.seq ?? after,
     done: remaining.length <= limit,
+    now: new Date().toISOString(),
   };
 }
 

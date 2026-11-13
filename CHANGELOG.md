@@ -1,5 +1,32 @@
 # Changelog
 
+## Labs: invitations, inherited settings, signed records (13 November 2026)
+
+- **Invitations.** The PI makes a one-line invitation, good once for a week. Whoever pastes it into Join a lab is in at once. Asking with the lab's identifier still works.
+- **What the PI sets, members inherit:** the lab's shelf of papers, the model servers it offers and its first choice, and how far a paper's text may travel to be read by a model. Set on the Lab tab, carried on the lab's own record.
+- **One grammar per lab.** A member's own types that the lab also has give way to the lab's on joining. Only the PI changes the lab's types.
+- **The PI can remove a member.** The server stops serving them, everyone's records say so, and their vault tells them. A new invitation lets them back.
+- **Versions name what they replace.** A version beats what it replaces; of two made apart, the later stands. Edit counts no longer outvote time.
+- **Clocks are corrected** from the lab server's time, and a version is never stamped before the one it replaces.
+- **Records are signed** by whoever wrote them and checked on arrival. A unit's words and its existence are its author's alone.
+- **Shelves.** A paper is on the lab's shelf (its Zotero group, or the lab's repository with no Zotero), in your own library, or in a labmate's. The PDF chooser lists the lab's shelf first, and a unit's facts say whose copy its paper is.
+- **Reach.** Reading a paper on a server outside what the lab allows is refused, with the reason.
+- **Server:** invitations, member removal with revoked tokens, and its own time in every record exchange.
+- **Not done:** a second device can't sign yet, so a person works in a lab from one device. The Lab tab's new controls are built and bundled, and were not driven in real Obsidian.
+- **Tests:** `test/versions.test.ts`, `test/lab-share.test.ts`, and the simulation, which holds 95 of 95.
+
+## Four vaults (13 November 2026)
+
+- **A simulation of four people, each with a vault, around one lab server:** `node harness/four-vaults.ts`. It runs the real core, sync loop and reference server in one process, plays a scripted story and a seeded random walk, and reports what held under convergence, privacy, intent, liveness, membership and integrity. See [docs/four-vaults.md](docs/four-vaults.md).
+- **Removals now reach labmates.** A card taken off a shared canvas, a unit its author removed, a shared canvas its owner removed and a relation taken back were never sent. They are now.
+- **Checks reach the person whose unit was checked,** and everyone else on the canvas.
+- **Evidence travels with its source,** so a labmate sees which paper it came from.
+- **A member's relation is drawn on the lab's shared canvases,** not only on canvases the member made, so it is shared.
+- **A card whose unit was removed is not shown,** and removing a unit removes the lines drawn to it.
+- **A member accepted before the lab's record arrives** is joined when it does.
+- **Still open, by design decision:** edit counts outvote time, slow clocks lose, authorship is taken at its word, a PI can't remove a member, and each vault makes its own grammar.
+- **Tests:** `test/lab-share.test.ts`.
+
 ## Zotero as the PDF library (13 November 2026)
 
 - **A setting makes Zotero the PDF library.** Its PDFs are listed first, named for their references, and read where Zotero keeps them. Nothing is copied into the vault and nothing is written to Zotero.

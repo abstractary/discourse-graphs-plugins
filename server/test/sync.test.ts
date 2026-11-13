@@ -10,10 +10,10 @@ test('records are stored once and handed back unchanged', async (t) => {
 
   const first = await server.post(path, { records: [record, record, { kind: 'edge' }] }, lab.adminToken);
   assert.equal(first.status, 200);
-  assert.deepEqual(await first.json(), { stored: 2 });
+  assert.equal(((await first.json()) as any).stored, 2);
 
   const repeat = await server.post(path, { records: [record] }, lab.adminToken);
-  assert.deepEqual(await repeat.json(), { stored: 0 });
+  assert.equal(((await repeat.json()) as any).stored, 0);
 
   const pulled = (await (await server.get(path, lab.adminToken)).json()) as any;
   assert.deepEqual(pulled.records, [record, { kind: 'edge' }]);
@@ -51,7 +51,7 @@ test('paging walks every record exactly once', async (t) => {
   assert.deepEqual(pages, [false, false, true]);
 
   const caughtUp = (await (await server.get(`${path}?after=${String(after)}`, lab.adminToken)).json()) as any;
-  assert.deepEqual(caughtUp, { records: [], next: after, done: true });
+  assert.deepEqual({ ...caughtUp, now: undefined }, { records: [], next: after, done: true, now: undefined });
 
   await server.post(path, { records: [{ index: 7 }] }, lab.adminToken);
   const fresh = (await (await server.get(`${path}?after=${String(after)}`, lab.adminToken)).json()) as any;
@@ -87,4 +87,21 @@ test('parallel pushes lose nothing', async (t) => {
   assert.ok(results.every((response) => response.status === 200));
   const { records } = (await (await server.get(path, lab.adminToken)).json()) as any;
   assert.equal(records.length, 25);
+});
+
+test('push and pull both tell the server time', async (t) => {
+  const server = await startTestServer(t);
+  const lab = await createLab(server);
+  const path = `/v1/labs/${lab.id}/records`;
+  const before = Date.now();
+  const pushed = (await (await server.post(path, { records: [1] }, lab.adminToken)).json()) as any;
+  const pulled = (await (await server.get(path, lab.adminToken)).json()) as any;
+  const after = Date.now();
+
+  assert.deepEqual(Object.keys(pushed).sort(), ['now', 'stored']);
+  assert.deepEqual(Object.keys(pulled).sort(), ['done', 'next', 'now', 'records']);
+  for (const { now } of [pushed, pulled]) {
+    assert.equal(new Date(now).toISOString(), now, 'an ISO string');
+    assert.ok(Date.parse(now) >= before && Date.parse(now) <= after);
+  }
 });

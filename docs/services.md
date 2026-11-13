@@ -111,8 +111,17 @@ This demo inbox does not check who is sending. Anyone can post, as LDN expects, 
 | GET | `/v1/labs/:id/members` | Member | `{members: [{did, name, role, tokenKind}]}` |
 | GET | `/v1/labs/:id/requests` | Admin | `{requests: [{id, person, at}]}` for pending requests |
 | POST | `/v1/labs/:id/requests/:requestId` | Admin | `{decision: "accept"\|"decline", tokenKind?: "personal"\|"team"}` |
+| POST | `/v1/labs/:id/invites` | Admin | `{uses?, days?, tokenKind?: "personal"\|"team"}` returns `{invite: {id, code, expiresAt, usesLeft}}`. `uses` is 1 to 100 and defaults to 1. `days` is 1 to 90 and defaults to 7. The code is only ever returned here |
+| GET | `/v1/labs/:id/invites` | Admin | `{invites: [{id, createdAt, expiresAt, usesLeft, by}]}` for invites that still work. `by` is the did of the admin who made it. Never the code |
+| DELETE | `/v1/labs/:id/invites/:inviteId` | Admin | `{id}`. 404 `no-invite` when there is none |
+| POST | `/v1/labs/:id/invites/accept` | Anyone | `{code, person: {did, name}}` returns `{lab: {id, name}, token, tokenKind, role: "member"}`. 403 `bad-invite` for a wrong, expired or used-up code |
+| DELETE | `/v1/labs/:id/members/:did` | Admin | `{removed: did}`. The did is percent-encoded. 409 `cannot-remove-self`, 404 `no-member` |
 
 Accepting provisions a token. `personal` is unique to that member, and `team` is the lab's shared AI token. Both are member tokens to this API. Tokens are stored hashed.
+
+An invite skips the request and the wait. Whoever holds the code joins at once and gets a fresh token, also when they are a member already. Each join takes one use. Invite codes are stored hashed.
+
+Removing a member deletes every token of theirs and declines their pending join requests. From then on, any request with one of those tokens gets 403 `removed` with the message "You were removed from this lab. Ask its PI if that was a mistake." Any other unknown token still gets 403 `wrong-token`. What the person shared stays in the lab. A removed person can join again with a new invite, and their old tokens stay revoked.
 
 ## Sync
 
@@ -120,8 +129,10 @@ Records are opaque JSON. The server orders them and hands them back. It never re
 
 | Method | Path | Who | Notes |
 |---|---|---|---|
-| POST | `/v1/labs/:id/records` | Member | `{records: [...]}` returns `{stored}`. An identical record is stored once |
-| GET | `/v1/labs/:id/records?after=&limit=` | Member | `{records, next, done}`. `after` is the `next` from the last call |
+| POST | `/v1/labs/:id/records` | Member | `{records: [...]}` returns `{stored, now}`. An identical record is stored once |
+| GET | `/v1/labs/:id/records?after=&limit=` | Member | `{records, next, done, now}`. `after` is the `next` from the last call |
+
+`now` is the server's time as an ISO string, such as `2026-11-13T09:30:00.000Z`. A client can compare it with its own clock and correct for the difference.
 
 ## Lab paper repository
 

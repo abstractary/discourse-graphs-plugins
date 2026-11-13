@@ -110,11 +110,15 @@ export type SurfaceName =
   | "find"
   | "context"
   | "upload"
+  /** Bringing a source and its highlights in from Zotero. `id` is the canvas to put them on. */
+  | "zotero"
   | "welcome"
   | "node"
   | "view"
   | "grammar"
   | "run"
+  /** A person's profile. `id` is their DID; none is the viewer's own. */
+  | "profile"
   | "check";
 export type SurfaceRoute = {
   surface: SurfaceName;
@@ -217,6 +221,8 @@ export type Host = {
     placement: Placement;
   }) => Promise<Result<null>>;
   closeDialog: () => Promise<Result<null>>;
+  /** Opens a web address in the person's own browser. Only `http` and `https` addresses arrive here. */
+  openLink: (args: { url: string }) => Promise<Result<null>>;
 
   /** Per-device state that is neither shared nor synced: caches, usage log. */
   getLocal: (args: { key: string }) => Promise<Result<Json>>;

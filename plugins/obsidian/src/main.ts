@@ -71,8 +71,9 @@ export class SurfaceView extends ItemView {
   getDisplayText(): string {
     if (this.route.surface === "context") return "Context";
     if (this.route.surface === "canvases") return "Library";
-    if (this.route.surface === "holon") return "Holons";
-    if (this.route.surface === "boundary") return "Holon boundary";
+    if (this.route.surface === "holon") return "Overview";
+    if (this.route.surface === "boundary") return "Boundary";
+    if (this.route.surface === "profile") return "Profile";
     if (this.route.surface === "pdf") return this.route.id?.split("/").pop()?.replace(/\.pdf$/i, "") ?? "PDF";
     if (this.route.surface === "search") return "Search units";
     if (this.route.surface === "run") return (this.route.id ? this.unitName(this.route.id) : null) ?? "Runs and notebooks";
@@ -85,6 +86,7 @@ export class SurfaceView extends ItemView {
     if (this.route.surface === "pdf") return "file-text";
     if (this.route.surface === "search") return "search";
     if (this.route.surface === "run") return "flask-conical";
+    if (this.route.surface === "profile") return "circle-user";
     return this.route.surface === "canvases" ? "layout-list" : "layout-dashboard";
   }
   getState(): Record<string, unknown> {
@@ -429,8 +431,8 @@ export default class DiscourseGraphsPlugin extends Plugin {
       }
       const surfaces = workspace.getLeavesOfType(VIEW);
       const surfaceOf = (item: WorkspaceLeaf) => (item.view as SurfaceView).route.surface;
-      // A run's page replaces the run list or the last run, the way a link does: one tab for runs.
-      const runs = route.surface === "run" ? surfaces.find((item) => surfaceOf(item) === "run") : undefined;
+      // A run's page replaces the run list or the last run, the way a link does: one tab for runs, and one for profiles.
+      const runs = route.surface === "run" || route.surface === "profile" ? surfaces.find((item) => surfaceOf(item) === route.surface) : undefined;
       if (runs) {
         await runs.setViewState({ type: VIEW, active: true, state: { route } });
         await workspace.revealLeaf(runs);
@@ -533,6 +535,12 @@ export default class DiscourseGraphsPlugin extends Plugin {
       callback: () => void this.openDialog("upload"),
     });
     this.addCommand({
+      id: "from-zotero",
+      name: "Bring in from Zotero…",
+      icon: "library-big",
+      callback: () => void this.openDialog("zotero"),
+    });
+    this.addCommand({
       id: "join-or-start-lab",
       name: "Join or start a lab",
       icon: "users",
@@ -615,15 +623,21 @@ export default class DiscourseGraphsPlugin extends Plugin {
     });
     this.addCommand({
       id: "open-holons",
-      name: "Open holons",
+      name: "Open the overview",
       icon: "network",
       callback: () => void this.openHolons(),
     });
     this.addCommand({
       id: "open-holon-boundary",
-      name: "Open holon boundary",
+      name: "Open boundary",
       icon: "layers",
       callback: () => void this.openBoundary(),
+    });
+    this.addCommand({
+      id: "open-profile",
+      name: "Open my profile",
+      icon: "circle-user",
+      callback: () => void this.openProfile(),
     });
     this.addCommand({
       id: "open-runs",
@@ -660,6 +674,17 @@ export default class DiscourseGraphsPlugin extends Plugin {
       },
     });
     this.addCommand({
+      id: "import-crate",
+      name: "Import this research crate (RO-Crate or .eln)",
+      icon: "package-open",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || !(file.extension === "eln" || file.extension === "zip" || /ro-crate-metadata\.json$/i.test(file.name))) return false;
+        if (!checking) void this.importCrate(file.path);
+        return true;
+      },
+    });
+    this.addCommand({
       id: "read-this-pdf",
       name: "Read this PDF",
       icon: "file-text",
@@ -679,6 +704,14 @@ export default class DiscourseGraphsPlugin extends Plugin {
               .setTitle("Read into Discourse Graphs")
               .setIcon("notebook-pen")
               .onClick(() => void this.readNotebook(file.path)),
+          );
+        }
+        if (file instanceof TFile && (file.extension === "eln" || /(\.crate\.zip|ro-crate-metadata\.json)$/i.test(file.name))) {
+          menu.addItem((item) =>
+            item
+              .setTitle("Import this research crate")
+              .setIcon("package-open")
+              .onClick(() => void this.importCrate(file.path)),
           );
         }
         if (!(file instanceof TFile) || file.extension !== "pdf") return;
@@ -769,22 +802,29 @@ export default class DiscourseGraphsPlugin extends Plugin {
     group("Canvases");
     add("Open canvas", "layout-dashboard", () => this.openCanvas(), "canvas");
     add("Library", "library", () => this.openCanvases(), "canvases");
-    add("Holons", "network", () => this.openHolons(), "holon");
+    add("Overview", "network", () => this.openHolons(), "holon");
     add("New canvas…", "square-plus", () => this.newCanvas());
     group("Panels");
     add("Search units", "search", () => this.openSide("search"), "search");
     add("Context", "panel-right", () => this.openSide("context"), "context");
-    add("Holon boundary", "layers", () => this.openBoundary(), "boundary");
+    add("Boundary", "layers", () => this.openBoundary(), "boundary");
+    add("My profile", "circle-user", () => this.openProfile(), "profile");
     group("Find and read");
     add("Find a unit…", "text-search", () => this.findUnit());
     add("Read a PDF…", "file-text", () => this.openPdf());
     add("Upload a paper…", "upload", () => this.openDialog("upload"));
+    add("From Zotero…", "library-big", () => this.openDialog("zotero"));
     add("Runs and notebooks", "flask-conical", () => this.openRuns(), "run");
     if (!here) menu.addSeparator();
     add("Settings", "settings", () => this.openSettings());
   }
 
   labLink = () => this.services.link();
+
+  async openProfile(id?: string): Promise<void> {
+    await this.ensureCore();
+    await this.adapter!.host.openSurface({ route: { surface: "profile", ...(id ? { id } : {}) }, placement: "main" });
+  }
 
   async openRuns(id?: string): Promise<void> {
     await this.ensureCore();
@@ -829,6 +869,19 @@ export default class DiscourseGraphsPlugin extends Plugin {
     }
   }
 
+  /** Reads a crate in the vault: one this app made comes back whole, another tool's becomes units. */
+  async importCrate(path: string): Promise<void> {
+    const core = await this.ensureCore();
+    try {
+      const read = await core.importCrate({ ref: path });
+      const news = read.fresh === 0 ? "nothing new" : `${read.fresh} new ${read.fresh === 1 ? "unit" : "units"}`;
+      new Notice(`Read "${read.name}": ${news}${read.skipped ? `, ${read.skipped} files left out` : ""}.`);
+      if (read.canvas) await core.showCanvas(read.canvas);
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async openSide(surface: "search" | "context"): Promise<void> {
     await this.ensureCore();
     await this.adapter!.host.openSurface({ route: { surface }, placement: "side" });
@@ -840,9 +893,11 @@ export default class DiscourseGraphsPlugin extends Plugin {
     setting?.openTabById(this.manifest.id);
   }
 
-  async openDialog(surface: "upload" | "welcome"): Promise<void> {
+  async openDialog(surface: "upload" | "welcome" | "zotero"): Promise<void> {
     await this.ensureCore();
-    await this.adapter!.host.openSurface({ route: { surface }, placement: "dialog" });
+    // What comes from Zotero lands on the canvas in front, when there is one.
+    const front = surface === "zotero" ? this.app.workspace.getLeavesOfType(VIEW).map((leaf) => leaf.view as SurfaceView).find((view) => view.route.surface === "canvas" && view.route.id && view.containerEl.offsetParent !== null)?.route.id : undefined;
+    await this.adapter!.host.openSurface({ route: { surface, ...(front ? { id: front } : {}) }, placement: "dialog" });
   }
 
   /** First boot: the lab question comes first, then the offer of a walkthrough. */
@@ -965,21 +1020,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
     await this.adapter!.host.openSurface({ route: { surface: "boundary" }, placement: "side" });
   }
 
-  /** The note's unit as a holon: its own canvas, made from the graph if it has none. */
-  async openNoteAsHolon(): Promise<void> {
-    const core = await this.ensureCore();
-    const node = core.focusedNode();
-    const ref = node ? await core.locateHolon(node) : null;
-    if (!ref) {
-      await this.openHolons(node ? `unit|${node}` : undefined);
-      return;
-    }
-    const { id } = await core.holonCanvas(ref);
-    await this.adapter!.host.openSurface({ route: { surface: "canvas", id }, placement: "main" });
-    await this.openBoundary();
-  }
-
-  /** The holon explorer in a tab: the top of the holarchy, or a holon without a canvas. */
+  /** The overview in a tab: a lab, its questions and their claims, laid out from the graph. */
   async openHolons(id?: string): Promise<void> {
     await this.ensureCore();
     const { workspace } = this.app;
@@ -1053,6 +1094,21 @@ export default class DiscourseGraphsPlugin extends Plugin {
 
   private services = createServices({
     fetch: (input, init) => window.fetch(input, init),
+    // Registries and publishers' pages don't all allow a page to read them, and none lets it read
+    // their Link headers. Obsidian's own request has no such limit.
+    outside: async (input, init = {}) => {
+      const asked = requestUrl({
+        url: String(input),
+        method: init.method ?? "GET",
+        ...(init.headers ? { headers: init.headers as Record<string, string> } : {}),
+        ...(typeof init.body === "string" ? { body: init.body } : {}),
+        throw: false,
+      });
+      const stopped = new Promise<never>((_, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("Timed out", "AbortError"))));
+      const reply = await Promise.race([asked, stopped]);
+      const empty = init.method === "HEAD" || reply.status === 204 || reply.status === 304;
+      return new Response(empty ? null : reply.arrayBuffer, { status: reply.status, headers: reply.headers });
+    },
     store: { get: (key) => this.local.get(key), set: (key, value) => this.local.set(key, value) },
   });
   sync?: ReturnType<typeof startLabSync>;

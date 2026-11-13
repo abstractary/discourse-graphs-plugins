@@ -1,3 +1,6 @@
+import { cardFacts } from "./card.ts";
+import type { CardFacts } from "@dg/contract/scholarly.ts";
+import type { CrateExported, CrateImported } from "@dg/contract/surface.ts";
 import {
   assertRelation,
   buildCanvas,
@@ -70,6 +73,11 @@ import { labFeature } from "./labs.ts";
 import { aiFeature } from "./ai.ts";
 import { methodFeature } from "./method.ts";
 import { similarFeature } from "./similar.ts";
+import { worksFeature } from "./works.ts";
+import { crateFeature } from "./crate.ts";
+import { notifyFeature } from "./notify.ts";
+import { profileFeature } from "./profile.ts";
+import { libraryFeature } from "./library.ts";
 import type { AiModel, AiSettings, Llm, SecretStore } from "@dg/contract/llm.ts";
 import { paperFeature, paperLabel } from "./papers.ts";
 import { paperSource } from "./process.ts";
@@ -111,8 +119,6 @@ export type Core = CoreForAdapter & {
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
   /** A holon's own canvas, made from its laid-out view if it has none. */
-  holonCanvas: (ref: HolonRef) => Promise<{ id: DgId; made: boolean }>;
-  locateHolon: (id: DgId) => Promise<HolonRef | null>;
   /** The base says which canvas is in front, so the boundary panel can follow it. */
   focusCanvas: (id: DgId) => Promise<void>;
   prefs: () => Promise<Prefs>;
@@ -129,6 +135,9 @@ export type Core = CoreForAdapter & {
   savedExtraction: (args: SurfaceMethods["paper.saved"]["params"]) => Promise<SurfaceMethods["paper.saved"]["result"]>;
   extractPaper: (args: SurfaceMethods["paper.extract"]["params"]) => Promise<SurfaceMethods["paper.extract"]["result"]>;
   showCanvas: (id: DgId) => Promise<null>;
+  /** Reads a research crate the base holds into the graph. */
+  importCrate: (args: { ref: string }) => Promise<CrateImported>;
+  exportCrate: (args: SurfaceMethods["crate.export"]["params"]) => Promise<CrateExported>;
   /** The model setup, and changing it, for a base's own settings page. */
   ai: {
     settings: () => Promise<AiSettings>;
@@ -416,6 +425,26 @@ export const createCore = async ({
     return { id: paper.id, label: kept.label, title: paper.title };
   };
 
+  /** The paper a source unit stands for: the one it was read from, or one with its DOI or title. */
+  const paperOfSource = (source: NodeRecord): PaperRecord | undefined => {
+    const papers = documents("paper");
+    return (
+      papers.find((paper) => paper.id === source.source?.paper) ??
+      papers.find((paper) => (paper.doi !== undefined && paper.doi === source.facts?.doi) || paper.title === source.title)
+    );
+  };
+  const cardOf = (node: NodeRecord): CardFacts =>
+    cardFacts({
+      graph,
+      node,
+      localSpace,
+      spaceName: info.space.name,
+      nameOf,
+      labName: (did) => labOf({ lab: did })?.name,
+      labelOf: (paper) => paperOf({ source: { paper: paper.id } } as NodeRecord)?.label ?? paper.title,
+      paperOfSource,
+    });
+
   const summarize = (node: NodeRecord): NodeSummary => {
     const type = typeOf(node.type);
     const anchor = anchorsByNode.get(node.id);
@@ -426,6 +455,7 @@ export const createCore = async ({
       credit: creditFor(node),
       at: node.at,
       hasText: Boolean(anchor && !missingText.has(anchor.ref)),
+      card: cardOf(node),
       // Read from a paper or a PDF, and not given a note or page yet.
       ...((node.source || node.facts?.anchor?.exact) && !anchor ? { staged: true } : {}),
       ...(atUriOf(node.id, graph) ? { uri: atUriOf(node.id, graph)! } : {}),
@@ -771,7 +801,7 @@ export const createCore = async ({
     const paper = canvas.paper ? documents("paper").find(({ id: paperId }) => paperId === canvas.paper) : undefined;
     return {
       canvas,
-      items: live.map(({ id: itemId, z, item }) => ({ id: itemId, z, item })),
+      items: live.map((record) => ({ id: record.id, z: record.z, item: record.item, credit: creditFor(record), at: record.at })),
       nodes,
       relations,
       social: canvas.shared ? Object.fromEntries(Object.keys(nodes).map((node) => [node, units.social(node)])) : {},
@@ -842,11 +872,21 @@ export const createCore = async ({
   const search = searchFeature(context);
   searchHooks = search;
   const { restsOn, ...similarHandlers } = similarFeature(context);
+  const works = worksFeature(context);
+  const crates = crateFeature(context);
+  const announcing = notifyFeature(context);
+  const profiles = profileFeature(context, { shareable });
+  const library = libraryFeature(context);
   const handlers: Handlers = {
     ...holons.handlers,
     ...aiHandlers,
     ...methodFeature(context, restsOn),
     ...similarHandlers,
+    ...works.handlers,
+    ...crates.handlers,
+    ...announcing.handlers,
+    ...profiles.handlers,
+    ...library.handlers,
     ...reading.handlers,
     ...search.handlers,
     ...paperHandlers,
@@ -954,7 +994,9 @@ export const createCore = async ({
         },
         provenance: await (async () => {
           const pdf = await reading.pdfOf(node);
-          return { ...units.provenance(node), ...(pdf ? { pdf } : {}) };
+          const work = works.viewOf(node);
+          const inLibrary = library.linkOf(node);
+          return { ...units.provenance(node), ...(pdf ? { pdf } : {}), ...(work ? { work } : {}), ...(inLibrary ? { library: inLibrary } : {}) };
         })(),
         ...(onSharedCanvas(id) ? { social: units.social(id) } : {}),
       };
@@ -1126,6 +1168,13 @@ export const createCore = async ({
       nodeTypes: oldestByLabel(documents("node-type")),
       relationTypes: oldestByLabel(documents("relation-type")),
     }),
+    "link.open": async ({ url }) => {
+      // A panel is sandboxed, so the base opens links for it. Nothing but a web address gets through.
+      // A reference library's own links open its desktop app at an item or a passage.
+      if (!/^(https?:\/\/|zotero:\/\/(select|open-pdf)\/)[^\s]+$/i.test(url)) throw new Error("That isn't a web address.");
+      value(await host.openLink({ url }));
+      return null;
+    },
     "base.reveal": async ({ id, placement }) => {
       const anchor = anchorsByNode.get(id);
       if (!anchor) throw new Error("This node has no text in this space.");
@@ -1244,14 +1293,14 @@ export const createCore = async ({
     setName,
     shareable,
     take,
-    holonCanvas: (ref) => holons.holonCanvas(ref),
-    locateHolon: (id) => holons.locate(id),
     focusCanvas: (id) => holons.focusCanvas(id),
     unitTitle: (id) => nodeOf(id)?.title.replace(/\[\[([^\]]+)\]\]/g, "$1") ?? null,
     importNotebook: (args) => handlers["notebook.import"](args),
     savedExtraction: (args) => handlers["paper.saved"](args),
     extractPaper: (args) => handlers["paper.extract"](args),
     showCanvas: (id) => handlers["canvas.show"]({ id }),
+    importCrate: (args) => handlers["crate.import"](args),
+    exportCrate: (args) => handlers["crate.export"](args),
     ai: {
       settings: () => handlers["ai.settings"]({}),
       configure: (changes) => handlers["ai.configure"](changes),

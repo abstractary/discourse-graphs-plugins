@@ -652,6 +652,10 @@ export const createObsidianHost = async ({
 
     openSurface,
     closeDialog,
+    openLink: async ({ url }) => {
+      window.open(url, "_blank", "noopener");
+      return ok(null);
+    },
 
     getLocal: async ({ key }) => ok(data.local?.[key] ?? null),
     setLocal: async ({ key, value }) =>

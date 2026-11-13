@@ -47,7 +47,6 @@ type CardData = {
   lit: boolean;
   dim: boolean;
   opens: boolean;
-  gesture: Prefs["holonGesture"];
   onInside: () => void;
   onText: () => void;
 };
@@ -59,7 +58,7 @@ const ExplorerCard = ({ data }: NodeProps<Node<CardData>>) => (
     data-focus={data.focus}
     data-lit={data.lit}
     data-dim={data.dim}
-    onDoubleClick={() => (data.gesture === "doubleClick" && data.opens ? data.onInside() : data.onText())}
+    onDoubleClick={() => data.onText()}
   >
     <Handle id="l-t" type="target" position={Position.Left} isConnectable={false} />
     <Handle id="l-s" type="source" position={Position.Left} isConnectable={false} />
@@ -104,14 +103,12 @@ const FitReadable = () => {
 const LaidOut = ({
   view,
   lit,
-  gesture,
   onPick,
   onInside,
   onText,
 }: {
   view: HolonView;
   lit: Set<string>;
-  gesture: Prefs["holonGesture"];
   onPick: (unit: string) => void;
   onInside: (ref: HolonRef) => void;
   onText: (unit: string) => void;
@@ -159,7 +156,6 @@ const LaidOut = ({
         lit: Boolean(card.unit && lit.has(card.unit)),
         dim: lit.size > 0 && !(card.unit && lit.has(card.unit)),
         opens,
-        gesture,
         onInside: () => {
           if (part?.ref) onInside(part.ref);
         },
@@ -214,7 +210,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   const [past, setPast] = useState<HolonRef[]>([]);
   const [roots, setRoots] = useState<{ ref: HolonRef; title: string; holds: number }[] | null>(null);
   const [view, setView] = useState<HolonView | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>({ holonGesture: "button", linkDelete: "ask", captureKey: "\\", notebookText: false });
+  const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"] });
   const [lit, setLit] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
@@ -293,7 +289,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
                 <Icon name="back" />
               </button>
             ) : null}
-            <nav className="hv-path" aria-label="Holarchy">
+            <nav className="hv-path" aria-label="Where this sits">
               {view.path.map((p, i) => (
                 <span key={p.ref.id}>
                   {i > 0 ? <span className="hv-sep" aria-hidden="true">/</span> : null}
@@ -320,7 +316,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
         <section className="hv-canvas" aria-label="Laid out from the graph">
           <div className="hv-canvas-bar">
             <span className="hv-muted">
-              {view.canvas.id ? <>This holon's canvas: <strong>{view.canvas.title}</strong></> : "No canvas yet: laid out from the graph by Logic"}
+              {view.canvas.id ? <>Its canvas: <strong>{view.canvas.title}</strong></> : "No canvas yet: laid out from the graph by Logic"}
             </span>
             <span className="hv-actions">
               {lit.size ? <button type="button" onClick={() => setLit(new Set())}>Clear highlight</button> : null}
@@ -338,7 +334,6 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
             key={`${view.ref.id}:${version}`}
             view={view}
             lit={lit}
-            gesture={prefs.holonGesture}
             onPick={pick}
             onInside={(next) => void openInside(next)}
             onText={(unit) => void call("base.reveal", { id: unit, placement: "main" }).catch(() => undefined)}

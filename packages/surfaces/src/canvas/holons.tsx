@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CanvasHolon, HolonGesture, HolonRef, Prefs } from "@dg/contract/surface.ts";
+import type { CanvasHolon, HolonRef, Prefs } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, plain } from "../shared/ui.tsx";
 
@@ -12,12 +12,6 @@ import { Icon, plain } from "../shared/ui.tsx";
 
 export const HOLON_LEVELS = new Set(["question", "claim", "evidence", "output"]);
 export const isHolon = (base: string | undefined): base is HolonRef["level"] => Boolean(base && HOLON_LEVELS.has(base));
-
-export const GESTURES: { value: HolonGesture; label: string; hint: string }[] = [
-  { value: "button", label: "Open-inside button", hint: "Each holon card has a button that opens it. Double-click opens the card's text, as everywhere else." },
-  { value: "doubleClick", label: "Double-click", hint: "Double-click a holon card to open it. The card's open button still opens its text." },
-  { value: "semantic", label: "Zooming in", hint: "Zoom far into a holon card to open it, and far out to go up a level." },
-];
 
 export const useHolonCanvas = ({
   connection,
@@ -34,7 +28,7 @@ export const useHolonCanvas = ({
 }) => {
   const { call, on, route } = connection;
   const [info, setInfo] = useState<CanvasHolon | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>({ holonGesture: "button", linkDelete: "ask", captureKey: "\\", notebookText: false });
+  const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"] });
   const [lit, setLit] = useState<string[]>([]);
 
   const load = useCallback(async () => {
@@ -77,7 +71,7 @@ export const useHolonCanvas = ({
         // A canvas on its own page moves by going to the other page.
         if (route.pinned) await call("canvas.show", { id });
         else switchTo(id);
-        if (made) notify("Made this holon's canvas from its graph");
+        if (made) notify("Made a canvas from its graph");
       } catch (error) {
         report(error);
       }
@@ -85,31 +79,27 @@ export const useHolonCanvas = ({
     [call, current, route.pinned, switchTo, notify, report],
   );
 
-  return { info, prefs, lit, setLit, openInside, setGesture: (holonGesture: HolonGesture) => void call("prefs.set", { holonGesture }).catch(report) };
+  return { info, prefs, lit, setLit, openInside };
 };
 
 const LEVEL_WORD: Record<string, string> = { lab: "Lab", question: "Question", claim: "Claim", evidence: "Evidence", output: "Output" };
 
-/** The breadcrumb up the holarchy, and the Holon menu. */
+/** Where this canvas sits (its lab, and the question or claim it is about), and its boundary. */
 export const HolonBar = ({
   connection,
   current,
   info,
-  prefs,
   lit,
   onClearLit,
   onOpen,
-  setGesture,
   report,
 }: {
   connection: Connection;
   current: string | undefined;
   info: CanvasHolon | null;
-  prefs: Prefs;
   lit: string[];
   onClearLit: () => void;
   onOpen: (ref: HolonRef) => void;
-  setGesture: (gesture: HolonGesture) => void;
   report: (error: unknown) => void;
 }) => {
   const { call } = connection;
@@ -121,7 +111,7 @@ export const HolonBar = ({
   };
   return (
     <div className="holon-bar" data-dg="holon-bar">
-      <nav className="holon-path" aria-label="Holarchy">
+      <nav className="holon-path" aria-label="Where this canvas sits">
         {info.ref ? (
           info.path.map((step, i) => {
             const last = i === info.path.length - 1;
@@ -146,11 +136,11 @@ export const HolonBar = ({
         {lit.length ? (
           <button type="button" className="holon-link" onClick={onClearLit}>Clear highlight ({lit.length})</button>
         ) : null}
-        <button type="button" className="tool" aria-label="Boundary" title="Show this holon's boundary in the side panel" onClick={() => void call("panel.open", { surface: "boundary" }).catch(report)} data-dg="open-boundary">
+        <button type="button" className="tool" aria-label="Boundary" title="Show what this canvas rests on and leaves open, in the side panel" onClick={() => void call("panel.open", { surface: "boundary" }).catch(report)} data-dg="open-boundary">
           <Icon name="context" />
           <span className="tool-label">Boundary</span>
         </button>
-        <button type="button" className="tool caret" aria-label="Holon options" title="Holon options" aria-haspopup="menu" aria-expanded={menu === "holon"} onClick={() => setMenu(menu === "holon" ? null : "holon")} data-dg="holon-menu">
+        <button type="button" className="tool caret" aria-label="Boundary options" title="Boundary options" aria-haspopup="menu" aria-expanded={menu === "holon"} onClick={() => setMenu(menu === "holon" ? null : "holon")} data-dg="holon-menu">
           <Icon name="chevron" />
         </button>
       </span>
@@ -169,13 +159,13 @@ export const HolonBar = ({
         </div>
       ) : null}
       {menu === "holon" ? (
-        <div className="popover holon-menu" role="menu" aria-label="Holon options">
+        <div className="popover holon-menu" role="menu" aria-label="Boundary options">
           <button type="button" role="menuitem" onClick={() => { setMenu(null); void call("panel.open", { surface: "boundary" }).catch(report); }}>Show the boundary panel</button>
           {info.ref ? null : (
             <button type="button" role="menuitem" onClick={() => setMenu("tie")} data-dg="holon-tie">Make this the canvas of a question or claim…</button>
           )}
           {info.ref ? (
-            <button type="button" role="menuitem" onClick={() => tie(null)} data-dg="holon-untie">Stop being this holon's canvas</button>
+            <button type="button" role="menuitem" onClick={() => tie(null)} data-dg="holon-untie">Stop being the canvas of this question or claim</button>
           ) : null}
         </div>
       ) : null}

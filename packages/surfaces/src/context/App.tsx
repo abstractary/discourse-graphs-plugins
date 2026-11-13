@@ -1,3 +1,7 @@
+import { CARD_FIELD_IDS, identifierUrl } from "@dg/contract/scholarly.ts";
+import { Facts } from "../shared/facts.tsx";
+import { whenOf } from "../shared/people.tsx";
+import { Announcements, Work } from "./Work.tsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Reaction } from "@dg/contract/records.ts";
 import type { ContextEntry, NodeSummary, NodeView, RelationOption, SimilarUnit } from "@dg/contract/surface.ts";
@@ -163,23 +167,13 @@ type PanelProps = { view: NodeView; call: Connection["call"]; report: (error: Er
 /** Where a unit came from, and every place it lives now. */
 const Provenance = ({ view, call, report }: PanelProps) => {
   const { provenance } = view;
-  const { paper, pdf, lives, created, edited } = provenance;
+  const { paper, pdf, lives, edited, library } = provenance;
   const show = (id: string): void => void call("canvas.show", { id }).catch(report);
   const read = (): void => void (pdf ? call("pdf.show", { ref: pdf.ref, unit: view.node.id }).catch(report) : undefined);
   return (
     <section className="ctx-group" data-dg="ctx-provenance">
       <h2>Where it came from</h2>
-      {paper ? (
-        <p className="ctx-line" data-dg="ctx-read-from">
-          Read from a paper{paper.authors?.length ? ` by ${paper.authors.length > 3 ? `${paper.authors[0]} and ${paper.authors.length - 1} others` : paper.authors.join(", ")}` : ""}
-          {edited ? `. Last changed by ${edited.name} on ${whenText(edited.at)}` : ""}
-        </p>
-      ) : (
-        <p className="ctx-line">
-          Made by {created.credit.name} on {whenText(created.at)}
-          {edited ? `, last changed by ${edited.name} on ${whenText(edited.at)}` : ""}
-        </p>
-      )}
+      {edited ? <p className="ctx-line" data-dg="ctx-edited">Last changed by {edited.name} on {whenText(edited.at)}</p> : null}
       {paper ? (
         <div className="ctx-source" data-dg="ctx-paper">
           <button type="button" className="ctx-link" data-dg="ctx-paper-open" onClick={() => show(paper.canvas)}>{paper.title}</button>
@@ -191,7 +185,6 @@ const Provenance = ({ view, call, report }: PanelProps) => {
               ? `Added by ${paper.extractedBy} on ${whenText(paper.at)} from a saved extraction, ${paper.server.replace(/^Saved extraction \((.*)\)$/, "$1")}, that ${paper.model} made`
               : `Extracted by ${paper.extractedBy} on ${whenText(paper.at)}, with ${paper.model} on ${paper.server}`}
             , into the {paper.schema} schema
-            {paper.doi ? `. DOI ${paper.doi}` : ""}
             {paper.license ? `. ${paper.license}` : ""}
           </p>
         </div>
@@ -201,6 +194,15 @@ const Provenance = ({ view, call, report }: PanelProps) => {
           <p className="ctx-line">Highlighted in {pdf.name}{pdf.page ? `, page ${pdf.page}` : ""}</p>
           {pdf.exact ? <blockquote data-dg="ctx-anchor">{pdf.exact}</blockquote> : null}
           <button type="button" className="ctx-link" data-dg="ctx-pdf-open" onClick={read}>Open the passage in the PDF</button>
+        </div>
+      ) : null}
+      {library ? (
+        <div className="ctx-source" data-dg="ctx-library">
+          {library.exact && !pdf && !paper ? <blockquote data-dg="ctx-anchor">{library.exact}</blockquote> : null}
+          {library.comment ? <p className="ctx-line" data-dg="ctx-anchor-comment">The note beside it: {library.comment}</p> : null}
+          <button type="button" className="ctx-link" data-dg="ctx-library-open" onClick={() => void call("link.open", { url: library.open }).catch(report)}>
+            {library.what === "passage" ? "Open the passage in Zotero" : "Show it in Zotero"}
+          </button>
         </div>
       ) : null}
       <h2>Where it lives</h2>
@@ -257,7 +259,7 @@ const Social = ({ view, call, report }: PanelProps) => {
           <li key={note.id}>
             <Mark credit={note.credit} />
             <span>
-              <strong>{note.credit.name}</strong> {note.text}
+              <strong>{note.credit.name}</strong> <time dateTime={note.at} className="ctx-note-when">{whenOf(note.at)}</time> {note.text}
             </span>
             {note.mine ? <button type="button" className="icon-button" aria-label="Remove note" onClick={() => void call("unit.removeNote", { id: note.id }).catch(report)}><Icon name="close" /></button> : null}
           </li>
@@ -381,6 +383,21 @@ export const App = ({ connection }: { connection: Connection }) => {
           </button>
         </div>
         <h1 className="ctx-title" data-dg="ctx-title">{plain(node.title)}</h1>
+        <Facts
+          facts={node.card}
+          fields={CARD_FIELD_IDS}
+          density="panel"
+          // The passage opens in this app's reader when the file is here, and in the reference library's own app when it is there.
+          {...(view.provenance.pdf
+            ? { onSource: () => void call("pdf.show", { ref: view.provenance.pdf!.ref, unit: node.id }).catch(report) }
+            : view.provenance.library
+              ? { onSource: () => void call("link.open", { url: view.provenance.library!.open }).catch(report) }
+              : {})}
+          onIdentifier={(id) => {
+            const url = identifierUrl(id);
+            if (url) void call("link.open", { url }).catch(report);
+          }}
+        />
         <div className="ctx-actions">
           {node.hasText ? (
             <button type="button" data-dg="ctx-open" onClick={() => void call("base.reveal", { id: node.id, placement: "main" }).catch(report)}>
@@ -455,6 +472,8 @@ export const App = ({ connection }: { connection: Connection }) => {
         </section>
       ) : null}
 
+      <Work view={view} call={call} report={report} />
+      <Announcements key={`n${node.id}`} unit={node.id} call={call} />
       <Provenance view={view} call={call} report={report} />
       {view.social ? <Social view={view} call={call} report={report} /> : null}
 

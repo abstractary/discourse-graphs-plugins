@@ -1,0 +1,63 @@
+{
+ "status": "ok",
+ "message": {
+  "DOI": "10.1063/5.0038163",
+  "title": [
+   "Do reservoir computers work best at the edge of chaos?"
+  ],
+  "container-title": [
+   "Chaos: An Interdisciplinary Journal of Nonlinear Science"
+  ],
+  "publisher": "AIP Publishing",
+  "issued": {
+   "date-parts": [
+    [
+     2020,
+     12,
+     1
+    ]
+   ]
+  },
+  "published": {
+   "date-parts": [
+    [
+     2020,
+     12,
+     1
+    ]
+   ]
+  },
+  "volume": "30",
+  "issue": "12",
+  "article-number": "121109",
+  "is-referenced-by-count": 81,
+  "type": "journal-article",
+  "author": [
+   {
+    "given": "T. L.",
+    "family": "Carroll",
+    "ORCID": "https://orcid.org/0000-0002-2371-2049",
+    "affiliation": [
+     {
+      "name": "U.S. Naval Research Lab , Washington, DC 20375, USA"
+     }
+    ]
+   }
+  ],
+  "reference": [
+   {
+    "key": "2024031516341117000_c1"
+   },
+   {
+    "key": "2024031516341117000_c2",
+    "DOI": "10.1016/0167-2789(90)90064-V"
+   },
+   {
+    "key": "2024031516341117000_c3"
+   },
+   {
+    "key": "2024031516341117000_c4"
+   }
+  ]
+ }
+}

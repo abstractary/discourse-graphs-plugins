@@ -1,0 +1,53 @@
+{
+ "id": "https://openalex.org/W3107601746",
+ "doi": "https://doi.org/10.1063/5.0038163",
+ "title": "Do reservoir computers work best at the edge of chaos?",
+ "publication_date": "2020-12-01",
+ "type": "article",
+ "ids": {
+  "openalex": "https://openalex.org/W3107601746",
+  "doi": "https://doi.org/10.1063/5.0038163",
+  "mag": "3107601746",
+  "pmid": "https://pubmed.ncbi.nlm.nih.gov/33380041"
+ },
+ "is_retracted": false,
+ "cited_by_count": 87,
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "green",
+  "oa_url": "https://arxiv.org/pdf/2012.01409"
+ },
+ "authorships": [
+  {
+   "author": {
+    "display_name": "T. L. Carroll",
+    "orcid": "https://orcid.org/0000-0002-2371-2049"
+   },
+   "institutions": [
+    {
+     "display_name": "United States Naval Research Laboratory",
+     "ror": "https://ror.org/04d23a975"
+    }
+   ]
+  }
+ ],
+ "primary_location": {
+  "source": {
+   "display_name": "Chaos An Interdisciplinary Journal of Nonlinear Science"
+  }
+ },
+ "primary_topic": {
+  "display_name": "Neural Networks and Reservoir Computing"
+ },
+ "topics": [
+  {
+   "display_name": "Neural Networks and Reservoir Computing"
+  },
+  {
+   "display_name": "Cellular Automata and Applications"
+  },
+  {
+   "display_name": "Nonlinear Dynamics and Pattern Formation"
+  }
+ ]
+}

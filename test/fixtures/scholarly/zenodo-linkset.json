@@ -1,0 +1,112 @@
+{
+ "linkset": [
+  {
+   "cite-as": [
+    {
+     "href": "https://doi.org/10.5281/zenodo.21752615"
+    }
+   ],
+   "describedby": [
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/dcat+xml"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/json"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/ld+json"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/ld+json",
+     "profile": "https://datapackage.org/profiles/2.0/datapackage.json"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/marcxml+xml"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/vnd.citationstyles.csl+json"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/vnd.datacite.datacite+json"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/vnd.datacite.datacite+xml"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/vnd.geo+json"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/vnd.inveniordm.v1+json"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/vnd.inveniordm.v1.full+csv"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/vnd.inveniordm.v1.simple+csv"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/x-bibtex"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "application/x-dc+xml"
+    },
+    {
+     "href": "https://zenodo.org/api/records/21752615",
+     "type": "text/x-bibliography"
+    }
+   ],
+   "item": [
+    {
+     "href": "https://zenodo.org/records/21752615/files/IJSRAIML25122",
+     "type": "application/octet-stream"
+    }
+   ],
+   "license": [
+    {
+     "href": "https://creativecommons.org/licenses/by/4.0/legalcode"
+    }
+   ],
+   "type": [
+    {
+     "href": "https://schema.org/ScholarlyArticle"
+    },
+    {
+     "href": "https://schema.org/AboutPage"
+    }
+   ],
+   "anchor": "https://zenodo.org/records/21752615"
+  },
+  {
+   "anchor": "https://zenodo.org/records/21752615/files/IJSRAIML25122",
+   "collection": [
+    {
+     "href": "https://zenodo.org/records/21752615",
+     "type": "text/html"
+    }
+   ]
+  },
+  {
+   "anchor": "https://zenodo.org/api/records/21752615",
+   "describes": [
+    {
+     "href": "https://zenodo.org/records/21752615",
+     "type": "text/html"
+    }
+   ]
+  }
+ ]
+}

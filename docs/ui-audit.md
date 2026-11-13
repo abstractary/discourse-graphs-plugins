@@ -44,6 +44,32 @@ Three reservoir computing papers were read in through Extract graph, then used t
 | 27 | **Search marks small words** such as "of" on their own | Yellow noise in every result | **Open** |
 | 28 | **Between two claims the grammar offers only Supports and Opposes** | "Informs" or "explains" is what one paper often does to another | **Open.** It is the grammar's call, so yours |
 
+## Found while adding card facts (13 November)
+
+| # | Finding | What it looked like | State |
+|---|---|---|---|
+| 29 | **A click on a card opened its PDF** | The source link sat where people click to pick a card up | **Fixed.** A card's links act only once it is selected |
+| 30 | **Cards that show more grew over their neighbours** | Two claims overlapped after every fact was switched on. A canvas tidied earlier opened the same way | **Fixed.** The bar says how many cards cover another and offers Tidy. Nothing is moved unasked |
+| 31 | **The card's fact labels were cut off** ("Worksp...") | The label column was too narrow for the longest label | **Fixed** |
+| 32 | **In Obsidian, PubMed and the paper's own page never answered a lookup** | "Couldn't reach PubMed" on every paper | **Fixed.** Those sites don't let a page read them, so lookups use Obsidian's own request |
+| 33 | **The passage link in Context moved below the fold** when the facts were added above it | A test that clicked it missed | **Fixed** by the facts themselves: the source at the head of the panel opens the passage |
+| 34 | **A workspace that isn't yours or your lab's has no name** | It reads "Another workspace" | **Open.** Records carry a space's id and not its name |
+| 35 | **A registry that doesn't list a paper reads as a failure** | PubMed is listed with the registries that didn't answer under an arXiv preprint, which it was never going to hold | **Open.** Not listed and not reachable should read differently |
+| 36 | **The Published work section sits low in the panel**, below Method and Elsewhere | A retraction is flagged on the card and at the head, but its detail needs a scroll | **Open** |
+| 37 | **Radio buttons and tick boxes in the Export dialog were stretched across the row**, pushing their labels to the far side and wrapping them | "The whole paper (36)" broke over two lines beside a floating dot | **Fixed** for every panel: only text fields fill their row |
+
+## Found while adding profiles and Zotero (13 November)
+
+| # | Finding | What it looked like | State |
+|---|---|---|---|
+| 38 | **Notes on a canvas were unsigned** | Nobody could tell whose a sticky note was | **Fixed.** Each shows who wrote it and when |
+| 39 | **Initials did nothing** | A credit mark was a picture, not a way to the person | **Fixed.** Hover for a card, click for the profile |
+| 40 | **The date on a card had no time** | Two units made the same day couldn't be told apart in order | **Fixed** |
+| 41 | **"Holon" was still in menus, tab titles, tooltips and empty states** | "Holons", "Holon boundary", "This canvas isn't a holon's view yet" | **Fixed.** The tab is Overview, the panel is Boundary, and the sentences say question, claim and lab |
+| 42 | **A profile's history can be long and has no filter** | 150 lines, newest first, by day | **Open.** A filter by kind of action, or by canvas, would help |
+| 43 | **In the profile, a relation reads "Said this supports"** with the two units under it | The sentence and its objects are split across lines | **Open** |
+| 44 | **The From Zotero dialog lists a picture as a greyed row** | It can't be brought in | **Open,** until figures have a home |
+
 ## Placement, evaluated
 
 **Search criteria.** In the search panel the query is on top, three selects sit under it (type, credit, sort), and scope chips sit under those. Two problems: sort looks like a third filter, and scope is the farthest control from the query it changes. The better order is query, scope directly beneath, then type and credit, with sort at the right end of the count line. The finder is right to have no filters, because it is for a known item. It should hand its whole query to the panel, and today it hands only the words.

@@ -54,6 +54,8 @@ Three seams hold it together, and each one is a file you can read:
 
 `npm run check-boundaries` fails the build if any module reaches past this table. Core can't import React, the frames can't import a base's API, and only `@dg/sync` calls `fetch`.
 
+`npm run dsm` prints the same table as a design structure matrix, made from the imports in the code. [scholarly.md](scholarly.md#how-the-parts-depend-on-each-other) has it, with a second matrix for the files behind identifiers, lookups, crates and announcements.
+
 ## Why each cut is where it is
 
 **Core runs in the plugin, not the frame.** Capture and link badges need the graph while no panel is open, and several panels share it.
@@ -65,6 +67,10 @@ Three seams hold it together, and each one is a file you can read:
 **The server sees opaque records.** Each lab member keeps a full local copy. The server is an index and an exchange, so losing it costs freshness, not work. Records carry their author and are merged by revision, so no server decides who wins.
 
 **Records, not notes, are the source of truth.** Assertions never change. Documents are revised, and the highest revision wins. Each base stores them where it stores things: a folder of JSONL files in Obsidian, a page of blocks in Roam. A unit becomes a note or page only when someone exports it, so reading a paper doesn't fill a vault with 30 files.
+
+**Each outside standard has one file that knows it.** RO-Crate, DataCite, COAR Notify and the registries' APIs change on their own schedules. Each is read or written by a single file, behind types in `@dg/contract/scholarly.ts` that import nothing. A new version of a standard is a change to one file.
+
+**Two clients, for two kinds of site.** The lab's server is reached with the base's own `fetch`, which can stream. Registries and publishers' pages are other people's sites, and a page can't read their `Link` headers, so `@dg/sync` takes a second client for them. In Obsidian that is Obsidian's own request.
 
 ## Following one paper through
 

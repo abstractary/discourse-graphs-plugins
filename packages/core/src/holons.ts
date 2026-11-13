@@ -1,3 +1,4 @@
+import { CARD_FIELD_IDS, DEFAULT_CARD_FIELDS } from "@dg/contract/scholarly.ts";
 import {
   compareVersions,
   createCanvas,
@@ -783,7 +784,7 @@ export const canvasOfHolon = (input: HolonInput, holon: string): DgId | null =>
     .filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed && r.holon === holon)
     .sort((a, b) => b.editedAt.localeCompare(a.editedAt))[0]?.id ?? null;
 
-export const DEFAULT_PREFS: Prefs = { holonGesture: "button", linkDelete: "ask", captureKey: "\\", notebookText: false };
+export const DEFAULT_PREFS: Prefs = { linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: DEFAULT_CARD_FIELDS };
 const PREFS_KEY = "prefs";
 
 const latest = (records: DgRecord[]): DgRecord[] => {
@@ -823,11 +824,17 @@ export const holonFeature = (context: Context) => {
   };
   const prefs = async (): Promise<Prefs> => {
     const stored = await context.getLocal(PREFS_KEY);
-    return { ...DEFAULT_PREFS, ...(stored && typeof stored === "object" ? (stored as Partial<Prefs>) : {}) };
+    // A choice an earlier version stored and this one no longer offers is left behind.
+    const { holonGesture: _gone, ...known } = (stored && typeof stored === "object" ? stored : {}) as Partial<Prefs> & { holonGesture?: unknown };
+    const kept = { ...DEFAULT_PREFS, ...known };
+    // Only the fields this version knows, in the order cards show them.
+    const fields = Array.isArray(kept.cardFields) ? kept.cardFields : DEFAULT_CARD_FIELDS;
+    return { ...kept, cardFields: CARD_FIELD_IDS.filter((id) => fields.includes(id)) };
   };
   const setPrefs = async (changes: Partial<Prefs>): Promise<Prefs> => {
-    const next = { ...(await prefs()), ...changes };
-    await context.setLocal(PREFS_KEY, next);
+    await context.setLocal(PREFS_KEY, { ...(await prefs()), ...changes });
+    // Read back, so what is announced is what was kept: only known card fields, in card order.
+    const next = await prefs();
     context.send({ event: "prefs-changed", prefs: next });
     return next;
   };

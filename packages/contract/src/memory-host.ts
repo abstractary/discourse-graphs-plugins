@@ -245,6 +245,7 @@ export const createMemoryHost = ({
     },
     openSurface: async () => ok(null),
     closeDialog: async () => ok(null),
+    openLink: async () => ok(null),
     getLocal: async ({ key }) => ok(store.local.get(key) ?? null),
     setLocal: async ({ key, value }) => {
       store.local.set(key, value);

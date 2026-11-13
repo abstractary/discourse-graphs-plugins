@@ -9,6 +9,7 @@
     "test:server": "npm test --workspace @dg/server",
     "check-types": "tsc --noEmit",
     "check-boundaries": "node scripts/check-boundaries.mjs",
+    "dsm": "node scripts/dsm.mjs && node scripts/dsm.mjs scholarly",
     "build": "DG_RELEASE=1 node scripts/build.mjs",
     "build:test": "node scripts/build.mjs",
     "server": "node scripts/serve.mjs",

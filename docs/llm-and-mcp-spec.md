@@ -256,6 +256,8 @@ To add: one `facts.identifiers` map for the identifiers with no field yet (PMID,
 
 ## 5. Zotero
 
+> Superseded by [zotero.md](zotero.md), which corrects four points below and records what was built.
+
 ### 5.1 What it is for
 
 A lab member's papers and highlights are already in Zotero. One action should turn a Zotero annotation into Evidence, with its Source, without retyping.

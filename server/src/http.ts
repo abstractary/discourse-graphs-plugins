@@ -114,6 +114,17 @@ export function decodeBase64(value: unknown, field: string): Buffer {
   return Buffer.from(compact, 'base64');
 }
 
+// Absolute links need the address people reach this server at. Behind a proxy the
+// Host header is the proxy's business, so set DG_PUBLIC_URL there.
+export function publicBase(req: IncomingMessage, publicUrl?: string): string {
+  if (publicUrl) return publicUrl.replace(/\/+$/, '');
+  const host = req.headers.host ?? '';
+  if (!/^[A-Za-z0-9.-]+(:\d+)?$|^\[[0-9A-Fa-f:.]+\](:\d+)?$/.test(host)) {
+    throw new ApiError(400, 'bad-host', 'The Host header is not a valid host name. Send a plain host, or set DG_PUBLIC_URL on the server.');
+  }
+  return `http://${host}`;
+}
+
 function tooBig(limit: number): ApiError {
   const megabytes = Math.floor(limit / (1024 * 1024));
   return new ApiError(413, 'too-big', `This request is over the ${megabytes} MB limit. Send a smaller file.`);
@@ -160,12 +171,19 @@ async function readJsonBody(req: IncomingMessage, limit: number): Promise<Record
   return value;
 }
 
+// A last segment such as `*doi` takes the rest of the path, slashes included,
+// because a DOI has a slash in it.
 function matchRoute(path: string, parts: string[]): Record<string, string> | undefined {
   const pattern = path.split('/');
-  if (pattern.length !== parts.length) return undefined;
+  const rest = pattern.at(-1)?.startsWith('*') ?? false;
+  if (rest ? parts.length < pattern.length : pattern.length !== parts.length) return undefined;
   const params: Record<string, string> = {};
   for (const [index, segment] of pattern.entries()) {
-    if (segment.startsWith(':')) params[segment.slice(1)] = parts[index];
+    if (rest && index === pattern.length - 1) {
+      const value = parts.slice(index).join('/');
+      if (!value) return undefined;
+      params[segment.slice(1)] = value;
+    } else if (segment.startsWith(':')) params[segment.slice(1)] = parts[index];
     else if (segment !== parts[index]) return undefined;
   }
   return params;
@@ -182,9 +200,9 @@ function parseUrl(raw: string): { parts: string[]; query: URLSearchParams } {
 
 function setCors(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type');
+  res.setHeader('Access-Control-Expose-Headers', 'Accept-Post, Content-Disposition, Link, Location');
   // Chrome asks for this before a public site such as Roam may call localhost.
   res.setHeader('Access-Control-Allow-Private-Network', 'true');
   res.setHeader('Access-Control-Max-Age', '600');
@@ -207,8 +225,16 @@ function sendError(req: IncomingMessage, res: ServerResponse, error: unknown): v
 async function dispatch(routes: Route[], limit: number, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const { parts, query } = parseUrl(req.url ?? '/');
   const onPath = routes.filter((route) => matchRoute(route.path, parts));
-  const route = onPath.find((candidate) => candidate.method === req.method);
+  // HEAD runs the GET handler. Node sends the headers and drops the body.
+  const method = req.method === 'HEAD' ? 'GET' : req.method;
+  const route = onPath.find((candidate) => candidate.method === method);
   if (!route) {
+    // A preflight gets a plain yes unless a route wants to answer OPTIONS itself.
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
     if (onPath.length > 0) {
       res.setHeader('Allow', onPath.map((candidate) => candidate.method).join(', '));
       throw new ApiError(405, 'wrong-method', `This path does not take ${req.method}. Use ${onPath[0].method}.`);
@@ -228,11 +254,6 @@ async function dispatch(routes: Route[], limit: number, req: IncomingMessage, re
 export function createHttpServer(routes: Route[], maxBodyBytes: number): Server {
   return createServer((req, res) => {
     setCors(res);
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204);
-      res.end();
-      return;
-    }
     dispatch(routes, maxBodyBytes, req, res).catch((error: unknown) => sendError(req, res, error));
   });
 }

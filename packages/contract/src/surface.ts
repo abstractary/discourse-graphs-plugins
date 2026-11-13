@@ -18,6 +18,7 @@ import type {
 } from "./records.ts";
 import type { Appearance, HostError, Placement, Skin } from "./host.ts";
 import type { TextMarks } from "./words.ts";
+import type { CardFacts, CardField, Identifier, LibraryAnnotation, LibraryItem, LibraryStatus, Notification, NotificationSummary, WorkMetadata, WorkStanding } from "./scholarly.ts";
 
 /**
  * Who a unit is credited to, from where this person sits. Inside a lab it's the
@@ -47,6 +48,8 @@ export type NodeSummary = {
   mine?: true;
   /** Read from this paper. `label` is how it's cited in a few words, such as "Carroll 2020". */
   paper?: { id: DgId; label: string; title: string };
+  /** What its card can show beyond the title. The same facts, in the same order, head the context panel. */
+  card: CardFacts;
 };
 
 export type ContextEntry = {
@@ -69,7 +72,96 @@ export type NodeView = {
 };
 
 /** Where a unit came from, and everywhere it lives now. */
+/** The published work behind a unit, as the graph holds it: its paper, or the source unit itself. */
+export type WorkView = {
+  target: "paper" | "unit";
+  title: string;
+  identifiers: Identifier[];
+  published?: string;
+  venue?: string;
+  /** Absent until someone has looked it up. */
+  standing?: WorkStanding;
+};
+
+/** What a lookup found. `saved` is false when nothing answered, or the unit is a teammate's to change. */
+export type WorkLookup = { work: WorkMetadata; saved: boolean; target: "paper" | "unit"; title: string };
+
+/** A library item as the graph sees it: `held` is the Source unit that already stands for it. */
+export type LibraryHit = { item: LibraryItem; label: string; held?: DgId };
+
+/** An item with its annotations, each with the type it would most likely be and whether it is here already. */
+export type LibraryItemView = LibraryHit & {
+  types: { id: DgId; label: string; abbreviation?: string; base?: BaseNodeType }[];
+  annotations: (LibraryAnnotation & { suggested?: DgId; held?: DgId; /** False for a picture or drawing, which has no words to bring. */ usable: boolean })[];
+};
+
+export type LibraryImported = { source: NodeSummary; made: number; already: number; units: DgId[]; canvas?: DgId; /** The source was in the graph before this. */ wasHere: boolean };
+
+/** Who can see a piece of a person's work: only them, or their lab. Everyone else sees counts alone. */
+export type ProfileAudience = "private" | "lab";
+
+/** One thing a person did. `text` reads after their name, and `unit` or `canvas` is what it was done to. */
+export type ProfileEvent = {
+  id: string;
+  at: string;
+  action: "made" | "changed" | "withdrew" | "related" | "read" | "canvas" | "noted" | "reacted" | "reviewed" | "decided";
+  text: string;
+  audience: ProfileAudience;
+  unit?: { id: DgId; title: string; abbreviation?: string; base?: BaseNodeType; color?: string };
+  /** For a relation: the unit it points to. */
+  other?: { id: DgId; title: string; abbreviation?: string; base?: BaseNodeType; color?: string };
+  canvas?: { id: DgId; title: string };
+};
+
+/** Counts alone. Nothing in here names a unit, a paper or a canvas, so it is safe for anyone to see. */
+export type ProfileStats = {
+  units: number;
+  /** Units the person wrote or highlighted themselves. */
+  written: number;
+  /** Units a model read from a paper at the person's request. */
+  read: number;
+  byType: { label: string; base?: string; count: number }[];
+  relations: number;
+  papers: number;
+  canvases: number;
+  activeDays: number;
+  /** How much was made in each of the last 26 weeks, oldest first. */
+  weeks: number[];
+  since?: string;
+  lastActive?: string;
+};
+
+export type ProfilePerson = { id: string; name: string; me: boolean; orcid?: string; lab?: string };
+
+export type Profile = {
+  person: ProfilePerson;
+  /** What this viewer may see of this person, widest last. */
+  audiences: (ProfileAudience | "public")[];
+  public: ProfileStats;
+  lab?: { stats: ProfileStats; history: ProfileEvent[]; more: number };
+  private?: { stats: ProfileStats; history: ProfileEvent[]; more: number };
+  /** The viewer and their labmates, to move between profiles. */
+  people: ProfilePerson[];
+};
+
+/** A person in a few facts, for the card that shows on hovering their initials. */
+export type ProfileCard = ProfilePerson & { units: number; written: number; read: number; relations: number; papers: number; since?: string; lastActive?: string };
+
+/** An announcement, built and waiting for the person to read it. Nothing has been sent. */
+export type NotifyDraft = { ready: true; inbox: string; paper: string; notification: Notification } | { ready: false; why: string };
+
+/** What a crate export wrote. `added` counts the units pulled in because the chosen ones rest on them. */
+export type CrateExported = { where: string; name: string; units: number; added: number; files: number; pdfs: number; papers: number; version: string };
+
+/** `own`: a crate this app made, restored record for record. `foreign`: another tool's, read into units. */
+export type CrateImported = { name: string; kind: "own" | "foreign"; units: number; fresh: number; canvas?: DgId; skipped: number };
+
 export type Provenance = {
+  /** Where the unit sits in the person's reference library, to open it there. */
+  library?: { app: "zotero"; open: string; what: "item" | "passage"; /** The words marked there, and what the reader wrote beside them. */ exact?: string; comment?: string };
+  /** The published work this unit was read from or stands for, when there is one to look up. */
+  work?: WorkView;
+
   created: { credit: Credit; at: string };
   edited?: { name: string; at: string };
   paper?: {
@@ -318,20 +410,18 @@ export type HolonCanvas = {
 
 export type HolonEvent = { at: string; by: string; what: string; unit?: DgId };
 
-/** How a card's holon opens. Every way also has the card's own "open inside" button. */
-export type HolonGesture = "button" | "doubleClick" | "semantic";
-/** Per-device choices. */
 /** What Delete does to a link between two cards: ask, take it off this canvas, or withdraw the relation. */
 export type LinkDelete = "ask" | "canvas" | "withdraw";
 
+/** Per-device choices. */
 export type Prefs = {
-  /** No longer offered: a unit doesn't open as a graph of its own. Kept so stored choices still read. */
-  holonGesture: HolonGesture;
   linkDelete: LinkDelete;
   /** The key that makes a node from selected text in a note. Empty turns it off; the command stays. */
   captureKey: string;
   /** Whether reading a notebook also keeps printed text and plain results as outputs. */
   notebookText: boolean;
+  /** Which facts every card shows under its title, on this device. */
+  cardFields: CardField[];
 };
 
 /** One rule a unit breaks, from the process shapes. The same rule names as `ontology/dg_process.shacl.ttl`. */
@@ -600,7 +690,8 @@ export type IdentityView = {
   availableLab?: { name: string; custodian: string };
 };
 
-export type CanvasItemView = { id: DgId; z: number; item: CanvasItem };
+/** `credit` and `at` say who put the item there and when: what a note shows under its text. */
+export type CanvasItemView = { id: DgId; z: number; item: CanvasItem; credit: Credit; at: string };
 
 export type CanvasView = {
   canvas: CanvasRecord;
@@ -744,10 +835,45 @@ export type SurfaceMethods = {
     result: { nodeTypes: NodeTypeRecord[]; relationTypes: RelationTypeRecord[] };
   };
   "base.reveal": { params: { id: DgId; placement: Placement }; result: null };
+  /** Opens where an identifier resolves, or any `http` or `https` address, in the person's browser. */
+  "link.open": { params: { url: string }; result: null };
+  /** Whether the Zotero app on this computer can be read, and what to do when it can't. */
+  "zotero.status": { params: Record<string, never>; result: LibraryStatus };
+  "zotero.search": { params: { text: string; limit?: number }; result: LibraryHit[] };
+  "zotero.item": { params: { ref: string }; result: LibraryItemView };
+  /** Brings an item in as a Source, with the annotations chosen as units that quote it. Reads Zotero; never writes to it. */
+  "zotero.import": { params: { ref: string; annotations?: { key: string; type?: DgId }[]; canvas?: DgId }; result: LibraryImported };
+  /** A person's work as this viewer may see it. Without an id, the viewer's own. */
+  "profile.view": { params: { id?: string }; result: Profile };
+  "profile.card": { params: { id: string }; result: ProfileCard };
+  /** Opens a person's profile in the base. */
+  "profile.show": { params: { id?: string }; result: null };
+  /** Builds the COAR Notify announcement that would tell a paper's repository about a unit. Sends nothing. */
+  "notify.draft": { params: { unit: DgId }; result: NotifyDraft };
+  /** Sends the announcement the person just read, under the same `id`, to the paper's own inbox. */
+  "notify.send": { params: { unit: DgId; id: string }; result: { status: number; location?: string; inbox: string } };
+  /** Notifications the lab's server holds about a unit or the paper it was read from. */
+  "notify.about": { params: { unit: DgId }; result: NotificationSummary[] };
+  /**
+   * Packs a canvas, or the units named, as an RO-Crate: metadata, a preview page, the graph as JSON-LD,
+   * its records, the canvas and DataCite metadata. `eln` is the lab-notebook archive form of the same crate.
+   * The papers' PDFs go in only when asked, since their licenses may not allow passing them on.
+   */
+  "crate.export": {
+    params: { canvas?: DgId; nodes?: DgId[]; name?: string; description?: string; license?: string; pdfs?: boolean; format?: "zip" | "eln" };
+    result: CrateExported;
+  };
+  /** Reads a crate the base holds: a `.zip`, an `.eln`, or a bare `ro-crate-metadata.json`. */
+  "crate.import": { params: { ref: string }; result: CrateImported };
+  "crate.licenses": { params: Record<string, never>; result: { url: string; name: string }[] };
+  /** Asks the open registries about the work behind a unit, and keeps what they say. Only identifiers and the title are sent. */
+  "work.lookup": { params: { unit: DgId }; result: WorkLookup };
+  /** Adds or takes away what else names a unit. `add` takes identifiers as people paste them. */
+  "unit.identify": { params: { node: DgId; add?: (string | Identifier)[]; remove?: Identifier[] }; result: NodeSummary };
   /** Opens a panel in the base's side area. */
   "panel.open": { params: { surface: "context" | "canvases" | "boundary" | "search" }; result: null };
   /** Opens a pop-up over the base. `find` is the quick finder. */
-  "dialog.open": { params: { surface: "upload" | "welcome" | "find"; /** For upload: a file the base already holds. */ id?: string }; result: null };
+  "dialog.open": { params: { surface: "upload" | "welcome" | "find" | "zotero"; /** For upload: a file the base already holds. */ id?: string }; result: null };
   "dialog.close": { params: Record<string, never>; result: null };
 
   "server.list": { params: Record<string, never>; result: ComputeServer[] };

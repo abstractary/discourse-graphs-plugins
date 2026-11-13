@@ -31,6 +31,7 @@ npm test
 | `DG_DATA` | `server/data` | Folder for the JSON store and files |
 | `DG_KIND` | `local` | `kind` in `/v1/info`: `local`, `managed` or `custom` |
 | `DG_DEMO_PAPERS` | `demo/papers` | Folder with the demo PDFs and their `.graph.json` files |
+| `DG_PUBLIC_URL` | the request's `Host` header | The address people reach the server at, for links in headers and metadata |
 | `MIRA_URL` | `https://mira-extraction.vercel.app/api/extract` | Where `mira-hosted` sends text |
 | `ANTHROPIC_API_KEY` | none | Turns on AI through the Anthropic Messages API |
 | `OPENROUTER_API_KEY` | none | Turns on AI through OpenRouter, if there is no Anthropic key |

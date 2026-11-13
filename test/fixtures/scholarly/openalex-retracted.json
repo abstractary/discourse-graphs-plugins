@@ -1,0 +1,82 @@
+{
+ "id": "https://openalex.org/W2976826629",
+ "doi": "https://doi.org/10.1177/1758835919874651",
+ "title": "RETRACTED: Downregulation of long noncoding RNA LINC01419 inhibits cell migration, invasion, and tumor growth and promotes autophagy via inactivation of the PI3K/Akt1/mTOR pathway in gastric cancer",
+ "publication_date": "2019-01-01",
+ "type": "article",
+ "ids": {
+  "openalex": "https://openalex.org/W2976826629",
+  "doi": "https://doi.org/10.1177/1758835919874651",
+  "mag": "2976826629",
+  "pmid": "https://pubmed.ncbi.nlm.nih.gov/31579114",
+  "pmcid": "https://www.ncbi.nlm.nih.gov/pmc/articles/6759708"
+ },
+ "is_retracted": true,
+ "cited_by_count": 46,
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "gold",
+  "oa_url": "https://journals.sagepub.com/doi/pdf/10.1177/1758835919874651"
+ },
+ "authorships": [
+  {
+   "author": {
+    "display_name": "Linlin Wang",
+    "orcid": "https://orcid.org/0009-0008-1732-2328"
+   },
+   "institutions": [
+    {
+     "display_name": "Jilin University",
+     "ror": "https://ror.org/00js3aw79"
+    }
+   ]
+  },
+  {
+   "author": {
+    "display_name": "Lei Zhang",
+    "orcid": "https://orcid.org/0000-0002-2414-0505"
+   },
+   "institutions": [
+    {
+     "display_name": "Jilin University",
+     "ror": "https://ror.org/00js3aw79"
+    },
+    {
+     "display_name": "Second Affiliated Hospital of Jilin University",
+     "ror": "https://ror.org/03x6hbh34"
+    }
+   ]
+  },
+  {
+   "author": {
+    "display_name": "Xiaofeng Cui",
+    "orcid": "https://orcid.org/0009-0002-5423-7786"
+   },
+   "institutions": [
+    {
+     "display_name": "Jilin University",
+     "ror": "https://ror.org/00js3aw79"
+    }
+   ]
+  }
+ ],
+ "primary_location": {
+  "source": {
+   "display_name": "Therapeutic Advances in Medical Oncology"
+  }
+ },
+ "primary_topic": {
+  "display_name": "Cancer-related molecular mechanisms research"
+ },
+ "topics": [
+  {
+   "display_name": "Cancer-related molecular mechanisms research"
+  },
+  {
+   "display_name": "Gastric Cancer Management and Outcomes"
+  },
+  {
+   "display_name": "MicroRNA in disease regulation"
+  }
+ ]
+}

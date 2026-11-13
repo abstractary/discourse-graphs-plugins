@@ -1,3 +1,4 @@
+import { CARD_FIELDS, CARD_FIELD_IDS, identifierUrl } from "@dg/contract/scholarly.ts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
@@ -61,7 +62,7 @@ const withoutId = (item: CanvasItem): WithoutId<CanvasItem> => {
   return rest as WithoutId<CanvasItem>;
 };
 
-const toNode = ({ id, z, item }: CanvasItemView, view: CanvasView): FlowNode | null => {
+const toNode = ({ id, z, item, credit, at }: CanvasItemView, view: CanvasView): FlowNode | null => {
   if ("fromNode" in item) return null;
   const base = { id, position: { x: item.x, y: item.y }, zIndex: z };
   const sized = { ...base, width: item.width, height: item.height };
@@ -88,7 +89,7 @@ const toNode = ({ id, z, item }: CanvasItemView, view: CanvasView): FlowNode | n
     return { ...base, width: item.width, type: "nested", data: { canvas: item.dg.canvas, file: item.file, minHeight: Math.min(item.height, 120) } };
   }
   const text = item.type === "text" ? item.text : item.type === "file" ? item.file : item.url;
-  return { ...sized, type: "note", data: { text } };
+  return { ...sized, type: "note", data: { text, credit, at } };
 };
 
 const toEdge = ({ id, item }: CanvasItemView, view: CanvasView, boxes: Map<string, Box>): Edge | null => {
@@ -166,6 +167,10 @@ const ViewBar = () => {
 export const App = ({ connection }: { connection: Connection }) => {
   const { call, on, route } = connection;
   const [tidyAt, setTidyAt] = useState<Anchor | null>(null);
+  const [fieldsAt, setFieldsAt] = useState<Anchor | null>(null);
+  /** How many cards cover another after cards grew to show more. */
+  const [crowded, setCrowded] = useState(0);
+  const fieldsButton = useRef<HTMLButtonElement>(null);
   const [edgeTip, setEdgeTip] = useState<EdgeTip | null>(null);
   const [aiOn, setAiOn] = useState(false);
   const [grounded, setGrounded] = useState<string[]>([]);
@@ -232,7 +237,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   // Units picked for a question belong to the canvas they were picked on.
   useEffect(() => setGrounded([]), [current]);
 
-  // Going into a holon, or up to one, stays in this tab.
+  // Going to another canvas from here stays in this tab.
   const switchTo = useCallback((id: string) => {
     currentRef.current = id;
     setCurrent(id);
@@ -507,18 +512,16 @@ export const App = ({ connection }: { connection: Connection }) => {
         setEditing(null);
         void rename(node, title);
       },
-      openInside: (node, base) => {
-        // A unit is a leaf: it opens as its text and context, never as a graph of its own.
-        void base;
-        void node;
-      },
       openCanvas: (id) => (route.pinned ? void call("canvas.show", { id }).catch(report) : switchTo(id)),
       canvasTitle: (id) => canvasesRef.current.find((canvas) => canvas.id === id)?.title ?? null,
-      gesture: holon.prefs.holonGesture,
-      ...(view?.paper?.id ? { paper: view.paper.id } : {}),
+      fields: holon.prefs.cardFields,
+      openIdentifier: (id) => {
+        const url = identifierUrl(id);
+        if (url) void call("link.open", { url }).catch(report);
+      },
       readPassage: (node) => void call("node.view", { id: node }).then((seen) => (seen.provenance.pdf ? call("pdf.show", { ref: seen.provenance.pdf.ref, unit: node }) : null)).catch(report),
     }),
-    [call, report, updateItem, inFrame, holon.openInside, holon.prefs.holonGesture, route.pinned, switchTo, rename, view?.paper?.id],
+    [call, report, updateItem, inFrame, holon.prefs.cardFields, route.pinned, switchTo, rename],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
@@ -1206,7 +1209,65 @@ export const App = ({ connection }: { connection: Connection }) => {
     setTidyAt((open) => (open ? null : { left: x, top: y }));
   }, [inFrame]);
 
+  const openFieldsMenu = useCallback(() => {
+    const button = fieldsButton.current!.getBoundingClientRect();
+    const { x, y } = inFrame(button.left, button.bottom + 4, 290, 300);
+    setFieldsAt((open) => (open ? null : { left: x, top: y }));
+  }, [inFrame]);
+
+  // Cards grow when they show more. Nothing is moved for the person; they are told, and offered Tidy.
+  const shownFields = holon.prefs.cardFields.join(",");
+  const lastFields = useRef<string | null>(null);
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  const countCovering = useCallback(() => {
+    const boxes = nodesRef.current
+      .filter((node) => node.type === "card" && node.measured?.height)
+      .map((node) => ({ left: node.position.x, top: node.position.y, right: node.position.x + (node.measured?.width ?? CARD_WIDTH), bottom: node.position.y + node.measured!.height! }));
+    let covering = 0;
+    boxes.forEach((a, index) => {
+      if (boxes.some((b, other) => other !== index && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom && (a.top > b.top || (a.top === b.top && index > other)))) covering += 1;
+    });
+    setCrowded(covering);
+  }, []);
+  useEffect(() => {
+    const before = lastFields.current;
+    lastFields.current = shownFields;
+    if (before === null || before === shownFields) return;
+    const timer = window.setTimeout(countCovering, 500);
+    return () => window.clearTimeout(timer);
+  }, [shownFields, countCovering]);
+  // A canvas laid out when its cards showed less can open with cards over each other. Say so once it is drawn.
+  useEffect(() => {
+    setCrowded(0);
+    if (!canvasId || needsLayout) return;
+    const timer = window.setTimeout(countCovering, 1500);
+    return () => window.clearTimeout(timer);
+  }, [canvasId, needsLayout, countCovering]);
+
+  // The list stays open while its switches are used, and closes on a click anywhere else.
+  useEffect(() => {
+    if (!fieldsAt) return;
+    const close = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest('[data-dg="card-fields-menu"], [data-dg="card-fields"]')) return;
+      setFieldsAt(null);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setFieldsAt(null);
+      fieldsButton.current?.focus();
+    };
+    document.addEventListener("pointerdown", close, true);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close, true);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [fieldsAt]);
+
   const closeMenus = useCallback(() => {
+    setFieldsAt(null);
     setMenu(false);
     setMoreOpen(false);
     setNaming(false);
@@ -1364,26 +1425,6 @@ export const App = ({ connection }: { connection: Connection }) => {
     [nodes, followed, grounded, measure, scores, holon.lit, litHere, fresh, editing],
   );
 
-  // Zooming far into a holon card opens it; zooming far out goes up a level.
-  // A wheel zoom ends without an event, so the person's gesture is noted as it starts and moves.
-  const gesture = useRef<{ x: number; y: number } | null>(null);
-  const onMoveStart = useCallback((event: MouseEvent | TouchEvent | null) => {
-    gesture.current = event && "clientX" in event ? { x: event.clientX, y: event.clientY } : event ? gesture.current ?? { x: NaN, y: NaN } : null;
-  }, []);
-  const onMove = useCallback((event: MouseEvent | TouchEvent | null) => {
-    if (event && "clientX" in event) gesture.current = { x: event.clientX, y: event.clientY };
-  }, []);
-  const onMoveEnd = useCallback(
-    (_event: MouseEvent | TouchEvent | null, viewport: { x: number; y: number; zoom: number }) => {
-      const pointer = gesture.current;
-      gesture.current = null;
-      // Zooming only zooms. A card never opens as a graph of its own, so there is nothing to zoom into.
-      void pointer;
-      void viewport;
-    },
-    [flow, holon],
-  );
-
   const pickedNodes = nodes.flatMap((node) => {
     const summary = (node.data as CardData).node;
     return node.selected && summary ? [summary.id] : [];
@@ -1513,9 +1554,31 @@ export const App = ({ connection }: { connection: Connection }) => {
               <Icon name="chevron" />
             </button>
           </div>
+          <div className="tool-group" role="group" aria-label="Cards">
+            <button
+              ref={fieldsButton}
+              type="button"
+              className="tool"
+              data-dg="card-fields"
+              aria-label="What cards show"
+              title="Choose what every card shows"
+              aria-haspopup="menu"
+              aria-expanded={fieldsAt !== null}
+              onClick={openFieldsMenu}
+            >
+              <Icon name="card" />
+              <span className="tool-label">Cards</span>
+              <Icon name="chevron" />
+            </button>
+          </div>
           <div className="status" role="status" data-fit-min="0">
-            <span data-dg="status-text">{notice || done?.label || ""}</span>
-            {!notice && done?.remembered ? (
+            <span data-dg="status-text">{notice || (crowded ? `${crowded} ${crowded === 1 ? "card now covers" : "cards now cover"} another` : "") || done?.label || ""}</span>
+            {!notice && crowded ? (
+              <button type="button" className="status-link" data-dg="tidy-after-fields" title={`Tidy by ${modeLabel} to make room`} onClick={() => { setCrowded(0); tidyUp(mode); }}>
+                Tidy
+              </button>
+            ) : null}
+            {!notice && !crowded && done?.remembered ? (
               <button
                 type="button"
                 className="status-link"
@@ -1615,11 +1678,9 @@ export const App = ({ connection }: { connection: Connection }) => {
           connection={connection}
           current={current}
           info={holon.info}
-          prefs={holon.prefs}
           lit={litHere ? holon.lit.filter((id) => nodes.some((node) => (node.data as CardData).node?.id === id)) : []}
           onClearLit={() => holon.setLit([])}
           onOpen={(ref) => void holon.openInside(ref)}
-          setGesture={holon.setGesture}
           report={report}
         />
         {menu ? (
@@ -1658,6 +1719,9 @@ export const App = ({ connection }: { connection: Connection }) => {
                 <button type="button" className="new" data-dg="upload-paper" onClick={() => { setMenu(false); void call("dialog.open", { surface: "upload" }).catch(report); }}>
                   <Icon name="export" /> Upload a paper
                 </button>
+                <button type="button" className="new" data-dg="from-zotero" onClick={() => { setMenu(false); void call("dialog.open", { surface: "zotero", ...(current ? { id: current } : {}) }).catch(report); }}>
+                  <Icon name="library" /> From Zotero…
+                </button>
                 <button type="button" className="new" data-dg="open-library" onClick={() => { setMenu(false); void call("panel.open", { surface: "canvases" }).catch(report); }}>
                   <Icon name="library" /> Open the Library
                 </button>
@@ -1679,6 +1743,35 @@ export const App = ({ connection }: { connection: Connection }) => {
               setNotice(message);
             }}
           />
+        ) : null}
+        {fieldsAt ? (
+          <div className="popover menu fields-menu" role="menu" aria-label="What every card shows" data-dg="card-fields-menu" style={fieldsAt}>
+            <h3>Show on every card</h3>
+            {CARD_FIELDS.map(({ id, label, hint }) => {
+              const shown = holon.prefs.cardFields.includes(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={shown}
+                  data-dg={`card-field-${id}`}
+                  title={hint}
+                  onClick={() => {
+                    const next = shown ? holon.prefs.cardFields.filter((field) => field !== id) : [...holon.prefs.cardFields, id];
+                    void call("prefs.set", { cardFields: CARD_FIELD_IDS.filter((field) => next.includes(field)) }).catch(report);
+                  }}
+                >
+                  <span className="tick" aria-hidden="true">{shown ? <Icon name="check" /> : null}</span>
+                  <span className="fields-text">
+                    <strong>{label}</strong>
+                    <span>{hint}</span>
+                  </span>
+                </button>
+              );
+            })}
+            <p>The context panel always shows them all.</p>
+          </div>
         ) : null}
         {tidyAt ? (
           <div className="popover tidy-menu" role="menu" aria-label="Tidy modes" style={tidyAt}>
@@ -1839,9 +1932,6 @@ export const App = ({ connection }: { connection: Connection }) => {
             zoomOnDoubleClick={false}
             minZoom={0.2}
             maxZoom={2}
-            onMoveStart={onMoveStart}
-            onMove={onMove}
-            onMoveEnd={onMoveEnd}
           >
             <Background gap={24} size={1} />
             <Panel position="bottom-left">

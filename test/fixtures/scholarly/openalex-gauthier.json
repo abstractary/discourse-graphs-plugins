@@ -1,0 +1,90 @@
+{
+ "id": "https://openalex.org/W3170977978",
+ "doi": "https://doi.org/10.1038/s41467-021-25801-2",
+ "title": "Next generation reservoir computing",
+ "publication_date": "2021-09-21",
+ "type": "article",
+ "ids": {
+  "openalex": "https://openalex.org/W3170977978",
+  "doi": "https://doi.org/10.1038/s41467-021-25801-2",
+  "mag": "3170977978",
+  "pmid": "https://pubmed.ncbi.nlm.nih.gov/34548491",
+  "pmcid": "https://www.ncbi.nlm.nih.gov/pmc/articles/8455577"
+ },
+ "is_retracted": false,
+ "cited_by_count": 702,
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "gold",
+  "oa_url": "https://www.nature.com/articles/s41467-021-25801-2.pdf"
+ },
+ "authorships": [
+  {
+   "author": {
+    "display_name": "Daniel J. Gauthier",
+    "orcid": "https://orcid.org/0000-0002-4473-217X"
+   },
+   "institutions": [
+    {
+     "display_name": "The Ohio State University",
+     "ror": "https://ror.org/00rs6vg23"
+    }
+   ]
+  },
+  {
+   "author": {
+    "display_name": "Erik Bollt",
+    "orcid": null
+   },
+   "institutions": [
+    {
+     "display_name": "Clarkson University",
+     "ror": "https://ror.org/03rwgpn18"
+    }
+   ]
+  },
+  {
+   "author": {
+    "display_name": "Aaron Griffith",
+    "orcid": "https://orcid.org/0000-0002-5495-1595"
+   },
+   "institutions": [
+    {
+     "display_name": "The Ohio State University",
+     "ror": "https://ror.org/00rs6vg23"
+    }
+   ]
+  },
+  {
+   "author": {
+    "display_name": "Wendson A. S. Barbosa",
+    "orcid": "https://orcid.org/0000-0002-6711-1640"
+   },
+   "institutions": [
+    {
+     "display_name": "The Ohio State University",
+     "ror": "https://ror.org/00rs6vg23"
+    }
+   ]
+  }
+ ],
+ "primary_location": {
+  "source": {
+   "display_name": "Nature Communications"
+  }
+ },
+ "primary_topic": {
+  "display_name": "Neural Networks and Reservoir Computing"
+ },
+ "topics": [
+  {
+   "display_name": "Neural Networks and Reservoir Computing"
+  },
+  {
+   "display_name": "Neural Networks and Applications"
+  },
+  {
+   "display_name": "Advanced Memory and Neural Computing"
+  }
+ ]
+}

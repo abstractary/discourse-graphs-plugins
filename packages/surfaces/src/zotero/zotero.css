@@ -1,0 +1,23 @@
+/* From Zotero: a search, then one item and its highlights to choose from. */
+.zotero { gap: 10px; max-height: 100vh; overflow: hidden; }
+.zotero-quiet { color: var(--dg-muted); font-size: var(--small); }
+.zotero-off { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; max-width: 56ch; }
+.zotero-hits, .zotero-marks { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; flex: 1; }
+.zotero-hits button { display: flex; flex-direction: column; gap: 1px; width: 100%; padding: 6px 8px; text-align: left; overflow-wrap: anywhere; }
+.zotero-hits button:hover, .zotero-hits button:focus-visible { background: color-mix(in oklch, var(--dg-accent) 9%, transparent); }
+.zotero-hits strong { font-weight: 500; }
+.zotero-hits button > span { color: var(--dg-muted); font-size: var(--small); }
+.zotero-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.zotero-tags [data-here="true"] { border-color: color-mix(in oklch, var(--evidence) 55%, transparent); color: color-mix(in oklch, var(--evidence) 70%, var(--dg-ink)); }
+.zotero-back { align-self: flex-start; display: flex; align-items: center; gap: 3px; margin-left: -6px; padding: 2px 6px; color: var(--dg-muted); font-size: var(--small); }
+.zotero-item { display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--dg-line); overflow-wrap: anywhere; }
+.zotero-item strong { font-weight: 600; }
+.zotero-item > span { color: var(--dg-muted); font-size: var(--small); }
+.zotero-ids { display: flex; flex-wrap: wrap; gap: 2px 10px; --fact-size: var(--small); }
+.zotero-count { display: flex; justify-content: space-between; color: var(--dg-muted); font-size: var(--small); }
+.zotero-marks li { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: start; padding: 7px 0; border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 55%, transparent); }
+.zotero-marks li[data-fixed="true"] { opacity: 0.6; }
+.zotero-marks input { margin-top: 3px; }
+.zotero-mark blockquote { margin: 0; padding: 1px 0 1px 8px; border-left: 3px solid var(--dg-line); font: var(--dg-size)/1.45 var(--dg-text-font); overflow-wrap: anywhere; }
+.zotero-mark p { margin: 3px 0 0; font-size: var(--small); overflow-wrap: anywhere; }
+.zotero-marks select { max-width: 130px; padding: 3px 5px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; font-size: var(--small); }

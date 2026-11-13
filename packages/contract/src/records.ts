@@ -1,3 +1,4 @@
+import { isIdentifier, type Identifier, type WorkAuthor, type WorkStanding } from "./scholarly.ts";
 import { isUnitId, unitId } from "./ids.ts";
 
 export const FORMAT_VERSION = 2;
@@ -250,10 +251,18 @@ export type UnitFacts = {
   locator?: OutputLocator;
   caption?: string;
   /** Evidence: the passage in its source. */
-  anchor?: { source?: string; exact?: string; page?: string; figure?: string };
+  anchor?: { source?: string; exact?: string; page?: string; figure?: string; /** What the reader wrote beside the passage. */ comment?: string };
   /** Source. */
   doi?: string;
+  /** Source: who wrote it, when and where, for a source that has no paper record behind it. */
+  authors?: string[];
+  published?: string;
+  venue?: string;
   openalex?: string;
+  /** Any unit: what else names it, such as a PMID, an arXiv id, an RRID or an accession link. */
+  identifiers?: Identifier[];
+  /** Source: what the registries said when last asked, such as a retraction. */
+  standing?: WorkStanding;
   /** How the unit was made, so a reader can weigh it. */
   provenance?: HowMade;
 };
@@ -461,6 +470,15 @@ export type PaperRecord = Envelope<"paper"> &
     doi?: string;
     url?: string;
     license?: string;
+    /** Everything else that names the work: PMID, PMCID, arXiv id, OpenAlex id. The DOI stays in `doi`. */
+    identifiers?: Identifier[];
+    /** As precise as the publisher gave it: `2020`, `2020-12` or `2020-12-01`. */
+    published?: string;
+    venue?: string;
+    /** The authors with their ORCID iDs and affiliations, once a registry has been asked. `authors` keeps the names. */
+    people?: WorkAuthor[];
+    /** What the registries said when last asked: retraction, open access, who registered the DOI. */
+    standing?: WorkStanding;
     /** What made the extraction, so a reader can weigh it. */
     model: string;
     schema: string;
@@ -1383,6 +1401,9 @@ const validateFacts = (value: unknown): string[] => {
     )
   ) {
     problems.push("facts.variables must be a list of {name, role}");
+  }
+  if (facts.identifiers !== undefined && !(Array.isArray(facts.identifiers) && (facts.identifiers as unknown[]).every(isIdentifier))) {
+    problems.push("facts.identifiers must be a list of {scheme, value}");
   }
   const provenance = facts.provenance as HowMade | undefined;
   if (provenance !== undefined && !(PROVENANCE_METHODS as readonly string[]).includes(provenance?.method)) {

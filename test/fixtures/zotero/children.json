@@ -1,0 +1,4 @@
+[
+  { "key": "PDFA0001", "library": { "type": "user", "id": 123456 }, "data": { "key": "PDFA0001", "itemType": "attachment", "parentItem": "ABCD2345", "title": "Full Text PDF", "contentType": "application/pdf", "filename": "Carroll 2020.pdf", "linkMode": "imported_url" } },
+  { "key": "NOTE0002", "library": { "type": "user", "id": 123456 }, "data": { "key": "NOTE0002", "itemType": "note", "parentItem": "ABCD2345", "note": "<p>child note</p>" } }
+]

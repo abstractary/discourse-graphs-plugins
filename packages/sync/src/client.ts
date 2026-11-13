@@ -7,6 +7,8 @@ import type {
   Services,
 } from "@dg/contract/services.ts";
 import type { DgRecord } from "@dg/contract/records.ts";
+import { createScholarly } from "./scholarly.ts";
+import { createZotero } from "./zotero.ts";
 
 const SERVERS_KEY = "compute-servers";
 const LINK_KEY = "lab-link";
@@ -56,10 +58,16 @@ const readLines = async (response: Response, onLine: (line: Record<string, unkno
 export const createServices = ({
   fetch: send,
   store,
+  outside,
 }: {
   /** Passed in, so each base can use whichever client gets past its own limits. */
   fetch: typeof fetch;
   store: Store;
+  /**
+   * For the registries and landing pages, which are other people's sites: a client that can read
+   * their answers and their `Link` headers, where the base's own `fetch` is held back by CORS.
+   */
+  outside?: typeof fetch;
 }): Services => {
   const open = async (url: string, path: string, request: Request = {}): Promise<Response> => {
     let response: Response;
@@ -196,5 +204,8 @@ export const createServices = ({
       if (!answer) throw new Error("The server stopped before answering. Try again.");
       return answer;
     },
+
+    ...createScholarly({ fetch: outside ?? send }),
+    zotero: createZotero({ fetch: outside ?? send }),
   };
 };

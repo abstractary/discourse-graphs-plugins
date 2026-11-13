@@ -1,22 +1,23 @@
 import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
 import { Handle, NodeResizer, Position, type Node, type NodeProps } from "@xyflow/react";
 import type { Reaction } from "@dg/contract/records.ts";
-import type { NodeSummary, UnitSocial } from "@dg/contract/surface.ts";
+import type { Credit, NodeSummary, UnitSocial } from "@dg/contract/surface.ts";
+import { whenOf } from "../shared/people.tsx";
+import type { CardField, Identifier } from "@dg/contract/scholarly.ts";
+import { Facts } from "../shared/facts.tsx";
 import { Icon, Mark, plain, typeStyle } from "../shared/ui.tsx";
 
 export type Box = { x: number; y: number; width: number; height: number };
 
 export type Actions = {
   reveal: (node: string) => void;
-  /** Opens a holon card's own canvas, in the same tab. */
-  openInside?: (node: string, base: string | undefined) => void;
-  /** How this device opens a card's holon. */
-  gesture?: "button" | "doubleClick" | "semantic";
   /** Goes into a canvas held inside this one. */
   openCanvas?: (id: string) => void;
   canvasTitle?: (id: string) => string | null;
-  /** The paper this canvas was read from, so its own cards don't each repeat it. */
-  paper?: string;
+  /** Which facts every card shows under its title. */
+  fields?: readonly CardField[];
+  /** Opens an identifier where it resolves. */
+  openIdentifier?: (id: Identifier) => void;
   /** Opens the passage a unit was read from, in the reader. */
   readPassage?: (node: string) => void;
   chooseType: (node: string, anchor: DOMRect) => void;
@@ -30,10 +31,6 @@ export type Actions = {
 };
 
 export const ActionsContext = createContext<Actions | null>(null);
-
-/** Cards that are themselves holons: they open into their own canvas. */
-/** No unit opens as a graph of its own: a unit is a leaf. Only a canvas card opens inside. */
-const HOLON_BASES = new Set<string>();
 
 const useActions = (): Actions => useContext(ActionsContext)!;
 
@@ -155,10 +152,9 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
       data-base={node?.base ?? "none"}
       data-dg={`card-${title}`}
       style={{ ...typeStyle(node), minHeight }}
+      // A unit is a leaf: a double click opens its text and context, never a graph of its own.
       onDoubleClick={() => {
-        if (!node) return;
-        if (actions.gesture === "doubleClick" && HOLON_BASES.has(node.base ?? "") && actions.openInside) actions.openInside(node.id, node.base);
-        else actions.reveal(node.id);
+        if (node) actions.reveal(node.id);
       }}
     >
       <NodeResizer isVisible={selected} minWidth={160} minHeight={48} onResizeEnd={(_, box) => actions.saveBox(id, box)} />
@@ -178,33 +174,8 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
         >
           {node?.abbreviation ?? "Type"}
         </button>
-        {node?.paper && node.paper.id !== actions.paper ? (
-          <button
-            type="button"
-            className="from-paper nodrag"
-            data-dg={`paper-${title}`}
-            title={`Read from ${node.paper.title}. Click to open its passage.`}
-            onClick={() => actions.readPassage?.(node.id)}
-            onDoubleClick={(event) => event.stopPropagation()}
-          >
-            {node.paper.label}
-          </button>
-        ) : null}
         {score ? <span className="score" data-dg={`score-${title}`}>{score}</span> : null}
         <span className="card-end">
-          {node && HOLON_BASES.has(node.base ?? "") && actions.openInside ? (
-            <button
-              type="button"
-              className="open inside nodrag"
-              data-dg={`inside-${title}`}
-              aria-label="Open inside"
-              title="Open inside: this holon's own canvas"
-              onClick={() => actions.openInside!(node.id, node.base)}
-              onDoubleClick={(event) => event.stopPropagation()}
-            >
-              <Icon name="inside" />
-            </button>
-          ) : null}
           {node?.hasText ? (
             <button
               type="button"
@@ -238,6 +209,17 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
         </div>
       )}
       {node && !node.hasText && !node.staged ? <div className="card-note">No text in this base</div> : null}
+      {node && actions.fields?.length ? (
+        <Facts
+          facts={node.card}
+          fields={actions.fields}
+          density="card"
+          dg={title}
+          // A click on a card picks it up. Its links only act once it is selected, so reaching for a card never opens something.
+          {...(selected && actions.readPassage ? { onSource: () => actions.readPassage!(node.id) } : {})}
+          {...(selected && actions.openIdentifier ? { onIdentifier: actions.openIdentifier } : {})}
+        />
+      ) : null}
       {node && social ? <Reactions node={node.id} title={title} social={social} /> : null}
     </div>
   );
@@ -266,7 +248,7 @@ export const NestedNode = memo(({ data }: NodeProps<Node<NestedData>>) => {
   );
 });
 
-export type NoteData = { text: string; editOnMount?: boolean };
+export type NoteData = { text: string; editOnMount?: boolean; credit?: Credit; at?: string };
 
 export const NoteNode = memo(({ id, data, selected }: NodeProps<Node<NoteData>>) => {
   const actions = useActions();
@@ -300,8 +282,14 @@ export const NoteNode = memo(({ id, data, selected }: NodeProps<Node<NoteData>>)
           }}
         />
       ) : (
-        data.text
+        <div className="note-text">{data.text}</div>
       )}
+      {data.credit ? (
+        <div className="note-by" data-dg="note-by">
+          <Mark credit={data.credit} />
+          <span title={data.at ? new Date(data.at).toLocaleString() : undefined}>{data.credit.name}{data.at ? `, ${whenOf(data.at)}` : ""}</span>
+        </div>
+      ) : null}
     </div>
   );
 });

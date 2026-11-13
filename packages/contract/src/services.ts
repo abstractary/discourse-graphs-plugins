@@ -1,5 +1,6 @@
 import type { AiCall } from "./llm.ts";
 import type { DgRecord } from "./records.ts";
+import type { Identifier, LibraryAnnotation, LibraryItem, LibraryStatus, Notification, NotificationSummary, Signposts, WorkMetadata } from "./scholarly.ts";
 
 /**
  * What the plugins can ask of a server, as listed in docs/services.md. Core
@@ -133,4 +134,30 @@ export type Services = {
     provider?: AiCall;
     onDelta: (text: string) => void;
   }) => Promise<AiAnswer>;
+
+  /**
+   * Reads one published work from the open registries: Crossref or DataCite
+   * (whichever registered its DOI), OpenAlex and PubMed, plus the landing
+   * page's own Signposting links. Only identifiers and a title are sent.
+   * Never throws for a service that is down: `services` says how each went.
+   */
+  lookupWork: (args: { identifiers: Identifier[]; title?: string }) => Promise<WorkMetadata>;
+  /** What a landing page says about itself in its `Link` headers and linkset. */
+  signposts: (url: string) => Promise<Signposts>;
+  /** Posts one COAR Notify notification to an LDN inbox. Only ever called on a person's own click. */
+  sendNotification: (args: { inbox: string; notification: Notification }) => Promise<{ status: number; location?: string }>;
+  /**
+   * The person's Zotero library, read from the Zotero app on this computer. Reads only: nothing
+   * here changes the library. Every call is made because the person asked for it.
+   */
+  zotero: {
+    status: () => Promise<LibraryStatus>;
+    /** Top-level items whose title, creators or year match. */
+    search: (args: { text: string; limit?: number }) => Promise<LibraryItem[]>;
+    item: (args: { ref: string }) => Promise<LibraryItem>;
+    /** Every annotation on every file of one item, in reading order. */
+    annotations: (args: { ref: string }) => Promise<LibraryAnnotation[]>;
+  };
+  /** The notifications a server's inbox holds, newest first. `about` narrows to one work or unit by its IRI. */
+  notifications: (args: { server: string; about?: string }) => Promise<NotificationSummary[]>;
 };

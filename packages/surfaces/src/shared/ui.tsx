@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from "react";
-import type { Credit, NodeSummary } from "@dg/contract/surface.ts";
+import type { NodeSummary } from "@dg/contract/surface.ts";
 import { marksOf, wordsOf, type TextMarks } from "@dg/contract/words.ts";
 
 const PATHS: Record<string, ReactNode> = {
@@ -28,6 +28,7 @@ const PATHS: Record<string, ReactNode> = {
   redo: <path d="M10.5 3.5l3 3-3 3M13 6.5H6.5a3.5 3.5 0 0 0 0 7H9" />,
   more: <path d="M3.5 8h.01M8 8h.01M12.5 8h.01" />,
   pdf: <path d="M4 2.5h5l3 3v8H4zM9 2.5v3h3M6 8.5h4M6 10.5h4" />,
+  card: <path d="M2.5 3.5h11v9h-11zM5 6.5h6M5 9h3.5M10.5 9h.5" />,
   library: <path d="M3 2.5v11M6 2.5v11M9 3l3.2 10.3" />,
 };
 
@@ -45,28 +46,7 @@ export const Chip = ({ node }: { node?: NodeSummary | undefined }) => (
   </span>
 );
 
-const initialsOf = (name: string): string => {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const letters = words.length > 1 ? [words[0]!, words[words.length - 1]!] : words;
-  return letters.map((word) => word[0]!.toUpperCase()).join("").slice(0, 2) || "?";
-};
-
-/**
- * Who a unit is credited to. A circle is a person and a square is a lab, so the
- * mark reads without color, and nothing depends on an image being set.
- */
-export const Mark = ({ credit, dg }: { credit: Credit; dg?: string }) => (
-  <span
-    className="mark"
-    data-kind={credit.kind}
-    data-dg={dg}
-    role="img"
-    aria-label={credit.kind === "lab" ? `From ${credit.name}` : `By ${credit.name}`}
-    title={credit.kind === "lab" ? `From ${credit.name}` : `By ${credit.name}`}
-  >
-    {initialsOf(credit.name)}
-  </span>
-);
+export { Mark } from "./people.tsx";
 
 /** Titles can hold links, and a card reads better without the brackets. */
 export const plain = (title: string): string => title.replace(/\[\[([^\]]+)\]\]/g, "$1");

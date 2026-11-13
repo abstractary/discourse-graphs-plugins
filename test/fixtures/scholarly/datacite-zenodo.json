@@ -1,0 +1,89 @@
+{
+ "data": {
+  "id": "10.5281/zenodo.21752615",
+  "type": "dois",
+  "attributes": {
+   "doi": "10.5281/zenodo.21752615",
+   "titles": [
+    {
+     "title": "Development of an Intelligent Mobile Robot System for Object and Obstacle Detection"
+    }
+   ],
+   "creators": [
+    {
+     "nameType": "Personal",
+     "affiliation": [
+      "Department of Computer Science, Chukwuemeka Odumegwu Ojukwu University, Uli, Anambra State Nigeria"
+     ],
+     "familyName": "Osita Miracle Nwakeze",
+     "name": "Osita Miracle Nwakeze",
+     "nameIdentifiers": []
+    },
+    {
+     "nameType": "Personal",
+     "affiliation": [
+      "Department of Computer Science, Chukwuemeka Odumegwu Ojukwu University, Uli, Anambra State Nigeria"
+     ],
+     "familyName": "Ogochukwu Okeke",
+     "name": "Ogochukwu Okeke",
+     "nameIdentifiers": []
+    },
+    {
+     "nameType": "Personal",
+     "affiliation": [
+      "Department of Computer Science, Chukwuemeka Odumegwu Ojukwu University, Uli, Anambra State Nigeria"
+     ],
+     "familyName": "Ike Mgbeafulike",
+     "name": "Ike Mgbeafulike",
+     "nameIdentifiers": []
+    }
+   ],
+   "publisher": "Technoscience Academy",
+   "publicationYear": 2025,
+   "types": {
+    "schemaOrg": "ScholarlyArticle",
+    "resourceTypeGeneral": "JournalArticle",
+    "citeproc": "article-journal",
+    "bibtex": "article",
+    "ris": "JOUR",
+    "resourceType": ""
+   },
+   "rightsList": [
+    {
+     "rightsIdentifierScheme": "SPDX",
+     "rightsUri": "https://creativecommons.org/licenses/by/4.0/legalcode",
+     "schemeUri": "https://spdx.org/licenses/",
+     "rights": "Creative Commons Attribution 4.0 International",
+     "rightsIdentifier": "cc-by-4.0"
+    }
+   ],
+   "relatedIdentifiers": [
+    {
+     "relationType": "IsVersionOf",
+     "resourceTypeGeneral": "JournalArticle",
+     "relatedIdentifier": "https://ijsraiml.com/home/article/view/IJSRAIML25122",
+     "relatedIdentifierType": "URL"
+    },
+    {
+     "relationType": "IsVersionOf",
+     "relatedIdentifier": "10.5281/zenodo.21752614",
+     "relatedIdentifierType": "DOI"
+    }
+   ],
+   "citationCount": 0,
+   "container": {},
+   "url": "https://zenodo.org/doi/10.5281/zenodo.21752615",
+   "dates": [
+    {
+     "date": "2025-10-31",
+     "dateType": "Issued"
+    }
+   ],
+   "subjects": [
+    {
+     "subject": "Autonomous Mobile Robot; Faster R-CNN; Double Deep Q-Learning Network (DDQN); Object Detection; Path Planning; Reinforcement Learning"
+    }
+   ]
+  }
+ }
+}

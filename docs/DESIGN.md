@@ -48,9 +48,9 @@ Node type and relation hues are DG's own, in OKLCH, because they carry meaning: 
 | Hover a link on a canvas | Shows who made it |
 | N, T, D, L | Add node, note, draw, tidy again in the same mode |
 | Delete | Removes from the canvas, with Undo. On a link, it asks first |
-| Click a holon card's open-inside button | Opens that holon's own canvas in the same tab, made from the graph if it has none |
-| Click a step in the holon breadcrumb | Goes back up to that holon's canvas |
-| Double-click, or zoom far in or out, by choice | Opens or leaves a holon, per the device's choice in settings or the Holon menu. See [HOLONS.md](HOLONS.md) |
+| Double-click a card | Opens its text and context. A unit is a leaf, and never opens as a graph of its own |
+| Click a step in the line under the bar | Goes to the canvas of that lab, question or claim |
+| Click someone's initials | Opens their profile. Hovering shows a small card about them first |
 | Highlight words in a PDF | A popup offers the unit's title, its type and its canvas. A letter picks the type, as with `\`, and Enter saves |
 | Click a lit passage in a PDF | Selects its unit: the context panel follows, and the canvas lights its card |
 | U, or the bar under the canvas | Opens the drawer of units not on this canvas yet |
@@ -118,9 +118,9 @@ Two ways in, one search underneath.
 ## Finding the panels in Obsidian
 
 - **One ribbon icon**, as Obsidian asks of plugins. It opens a menu of everything, under three headings:
-  - Canvases: Open canvas, Library, Holons, New canvas.
-  - Panels: Search units, Context, Holon boundary.
-  - Find and read: Find a unit, Read a PDF, Upload a paper.
+  - Canvases: Open canvas, Library, Overview, New canvas.
+  - Panels: Search units, Context, Boundary, My profile.
+  - Find and read: Find a unit, Read a PDF, Upload a paper, From Zotero.
   - Settings closes the menu.
 - **Every panel's ⋯ menu** lists the same entries under "Discourse Graphs", without the panel already open.
 - **Commands** cover every entry, each with an icon, and none has a default key.

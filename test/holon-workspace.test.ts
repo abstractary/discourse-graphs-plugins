@@ -86,12 +86,14 @@ test("a loose canvas can be tied to a holon, and untied", async () => {
   assert.equal((await call("holon.ofCanvas", { id })).ref, null);
 });
 
-test("a highlight from one panel reaches the others; the gesture is kept per device", async () => {
+test("a highlight from one panel reaches the others; a choice is kept per device", async () => {
   const { call, events, core } = await setup();
   await call("canvas.highlight", { units: ["a", "b"] });
   assert.ok(events.some((e) => e.event === "highlight" && e.units.length === 2));
-  assert.equal((await call("prefs.get", {})).holonGesture, "button");
-  await call("prefs.set", { holonGesture: "semantic" });
-  assert.equal((await core.prefs()).holonGesture, "semantic");
-  assert.ok(events.some((e) => e.event === "prefs-changed" && e.prefs.holonGesture === "semantic"));
+  assert.equal((await call("prefs.get", {})).linkDelete, "ask");
+  await call("prefs.set", { linkDelete: "canvas" });
+  assert.equal((await core.prefs()).linkDelete, "canvas");
+  assert.ok(events.some((e) => e.event === "prefs-changed" && e.prefs.linkDelete === "canvas"));
+  // A choice an earlier version stored and this one no longer offers isn't handed back.
+  assert.equal("holonGesture" in (await core.prefs()), false);
 });

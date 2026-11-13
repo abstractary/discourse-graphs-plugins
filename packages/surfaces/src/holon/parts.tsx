@@ -20,7 +20,7 @@ export const KIND_WORD: Record<string, string> = {
 };
 export const STANCES: { value: Stance; label: string; hint: string }[] = [
   { value: "mine", label: "Mine", hint: "Only arguments I made count" },
-  { value: "lab", label: "Lab", hint: "Arguments by this holon's lab count" },
+  { value: "lab", label: "Lab", hint: "Arguments by people in this lab count" },
   { value: "everyone", label: "Everyone", hint: "Every argument that isn't withdrawn or rejected counts" },
 ];
 export const when = (at: string): string =>

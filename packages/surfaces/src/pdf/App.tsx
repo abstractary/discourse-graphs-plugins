@@ -232,8 +232,25 @@ export const App = ({ connection }: { connection: Connection }) => {
     const el = pageEls.current.get(page);
     if (el && scroller.current) scroller.current.scrollTo({ top: el.offsetTop + (boxes[0]?.y ?? 0) * scale - 80, behavior: "smooth" });
     setActive(reveal);
+    justRevealed.current = { unit: reveal, at: Date.now() };
     setReveal(null);
   }, [reveal, loaded, placed, scale]);
+
+  // The pane often changes width just after a passage is asked for, as a canvas opens beside it. The pages
+  // rescale, and the spot scrolled to is no longer the passage. So for a few seconds it is found again.
+  const justRevealed = useRef<{ unit: string; at: number } | null>(null);
+  useEffect(() => {
+    const asked = justRevealed.current;
+    if (!asked || !loaded || Date.now() - asked.at > 5000) return;
+    const hit = placed.shown.find((entry) => entry.mark.unit.id === asked.unit);
+    if (!hit) return;
+    const frame = requestAnimationFrame(() => {
+      const [page, boxes] = [...hit.boxes.entries()][0]!;
+      const el = pageEls.current.get(page);
+      if (el && scroller.current) scroller.current.scrollTo({ top: el.offsetTop + (boxes[0]?.y ?? 0) * scale - 80 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [scale, placed, loaded]);
 
   const onScroll = () => {
     const el = scroller.current;

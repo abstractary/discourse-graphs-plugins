@@ -106,12 +106,12 @@ if (wants("read")) {
   await s(`s.open(${q(await canvasOf("carroll"))})`);
   await until(async () => ((await cards()) ?? 0) >= PAPERS.carroll.units);
   check("read.no-holarchy-prompt", !/holarchy/i.test((await at("canvas", "text", '[data-dg="holon-bar"]')) ?? ""), await at("canvas", "text", '[data-dg="holon-bar"]'));
-  check("read.own-canvas-cards-carry-no-paper-tag", (await at("canvas", "count", ".card .from-paper")) === 0);
+  check("read.every-card-names-its-source", (await at("canvas", "count", '.card .fact[data-field="source"]')) === (await at("canvas", "count", ".card:not(.nested)")));
   await s(`s.openSide("context")`);
   await pick(EVIDENCE);
   await until(async () => (await at("context", "text", '[data-dg="ctx-title"]')) === EVIDENCE);
-  const from = await until(() => at("context", "text", '[data-dg="ctx-read-from"]'));
-  check("read.says-whose-claim-it-is", /Read from a paper by T\. L\. Carroll/.test(from ?? ""), from);
+  const from = await until(() => at("context", "text", '.ctx-head .fact[data-field="authors"]'));
+  check("read.says-whose-claim-it-is", /Author\s*T\. L\. Carroll/.test(from ?? ""), from);
   const how = await at("context", "text", '[data-dg="ctx-paper"]');
   check("read.says-how-it-got-here", /from a saved extraction, Carroll-2020-edge-of-chaos\.graph\.json/.test(how ?? ""), (how ?? "").slice(-200));
   const chain = await until(() => at("context", "text", '[data-dg="method-chain"]'));
@@ -119,10 +119,16 @@ if (wants("read")) {
   const method = await at("context", "text", '[data-dg="method"]');
   check("method.no-false-gap", !/nothing behind it/.test(method ?? "") && !/2026-11-/.test(chain ?? ""), (method ?? "").slice(-160));
   await shot("11-context-evidence");
-  await click("context", '[data-dg="ctx-pdf-open"]');
+  // The source at the head of the panel opens the passage, as it does on a selected card.
+  await s(`s.ctx.reveal('.ctx-head button[data-dg="fact-source"]')`);
+  await click("context", '.ctx-head button[data-dg="fact-source"]');
   await until(() => has("pdf", '[data-dg="pdf-units"]'));
-  const page = await until(async () => ((await at("pdf", "value", '[data-dg="pdf-page"] input')) === "7" ? "7" : null), 12000);
-  check("read.passage-opens-at-its-page", page === "7", `page ${await at("pdf", "value", '[data-dg="pdf-page"] input')}`);
+  // The page number shown depends on the reader's width and zoom, so what is checked is the passage itself: marked, and in view.
+  const inView = await until(async () => {
+    const mark = await at("pdf", "locate", ".pdf-mark[data-active]").catch(() => null);
+    return mark && mark.y > 80 && mark.y < 1000 ? mark : null;
+  }, 12000);
+  check("read.passage-opens-in-view", Boolean(inView), `page ${await at("pdf", "value", '[data-dg="pdf-page"] input')}, mark at ${inView ? Math.round(inView.y) : "none"}`);
   check("read.canvas-stays-beside-the-reader", (await has("canvas", cardSel(EVIDENCE))) && (await has("pdf", ".pdf-mark")));
   await sleep(1500);
   await shot("12-passage-in-pdf");
@@ -225,7 +231,7 @@ if (wants("argue")) {
   if (tagged !== null) check("search.hits-name-their-paper", /Carroll 2020|Dambre et al\. 2012|Gauthier et al\. 2021/.test(tagged ?? ""), tagged);
   await sleep(1200);
   check("argue.nothing-lands-on-another-card", (await overlaps()) === 0, `${await overlaps()} overlaps`);
-  const tags = await at("canvas", "count", ".card .from-paper");
+  const tags = await at("canvas", "count", '.card .fact[data-field="source"]');
   check("argue.cards-name-their-paper", tags === 8, `${tags} tagged of 10`);
   await shot("17-units-from-three-papers");
 
@@ -303,7 +309,10 @@ if (wants("argue")) {
   // A paper tag opens its passage.
   await click("canvas", '[data-dg="fit"]');
   await sleep(900);
-  await click("canvas", `[data-dg="paper-${POOR}"]`);
+  // The first click picks the card up; its source link acts once it is selected.
+  await click("canvas", `[data-dg="title-${POOR}"]`);
+  await sleep(400);
+  await click("canvas", `button[data-dg="fact-source-${POOR}"]`);
   check("tag.opens-the-passage", await until(() => has("pdf", ".pdf-mark"), 15000));
 }
 

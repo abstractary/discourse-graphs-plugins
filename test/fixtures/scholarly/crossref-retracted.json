@@ -1,0 +1,105 @@
+{
+ "status": "ok",
+ "message": {
+  "DOI": "10.1177/1758835919874651",
+  "title": [
+   "RETRACTED: Downregulation of long noncoding RNA LINC01419 inhibits cell migration, invasion, and tumor growth and promotes autophagy\n                    <i>via</i>\n                    inactivation of the PI3K/Akt1/mTOR pathway in gastric cancer"
+  ],
+  "container-title": [
+   "Therapeutic Advances in Medical Oncology"
+  ],
+  "publisher": "SAGE Publications",
+  "issued": {
+   "date-parts": [
+    [
+     2019,
+     1
+    ]
+   ]
+  },
+  "published": {
+   "date-parts": [
+    [
+     2019,
+     1
+    ]
+   ]
+  },
+  "volume": "11",
+  "article-number": "1758835919874651",
+  "is-referenced-by-count": 38,
+  "type": "journal-article",
+  "updated-by": [
+   {
+    "DOI": "10.1177/17588359211061903",
+    "type": "retraction",
+    "label": "Retraction",
+    "source": "retraction-watch",
+    "updated": {
+     "date-parts": [
+      [
+       2021,
+       12,
+       15
+      ]
+     ],
+     "date-time": "2021-12-15T00:00:00Z",
+     "timestamp": 1639526400000
+    },
+    "record-id": "34999"
+   },
+   {
+    "DOI": "10.1177/17588359211061903",
+    "type": "retraction",
+    "label": "Retraction",
+    "source": "publisher",
+    "updated": {
+     "date-parts": [
+      [
+       2021,
+       12,
+       15
+      ]
+     ],
+     "date-time": "2021-12-15T00:00:00Z",
+     "timestamp": 1639526400000
+    }
+   }
+  ],
+  "author": [
+   {
+    "given": "Lin-Lin",
+    "family": "Wang",
+    "affiliation": [
+     {
+      "name": "Department of Ultrasound, China-Japan Union Hospital of Jilin University, Changchun, China"
+     }
+    ]
+   },
+   {
+    "given": "Lei",
+    "family": "Zhang",
+    "affiliation": [
+     {
+      "name": "Department of Neurology, the Second Hospital of Jilin University, Changchun, China"
+     }
+    ]
+   },
+   {
+    "given": "Xiao-Feng",
+    "family": "Cui",
+    "affiliation": [
+     {
+      "name": "Department of Colorectal and Anal Surgery, China-Japan Union Hospital of Jilin University, No. 126, Xiantai Street, Changchun, Jilin Province 130033, China"
+     }
+    ]
+   }
+  ],
+  "license": [
+   {
+    "URL": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "content-version": "unspecified"
+   }
+  ]
+ }
+}

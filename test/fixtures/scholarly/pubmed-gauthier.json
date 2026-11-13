@@ -1,0 +1,68 @@
+{
+ "result": {
+  "uids": [
+   "34548491"
+  ],
+  "34548491": {
+   "uid": "34548491",
+   "pubdate": "2021 Sep 21",
+   "epubdate": "2021 Sep 21",
+   "source": "Nat Commun",
+   "fulljournalname": "Nature communications",
+   "title": "Next generation reservoir computing.",
+   "volume": "12",
+   "issue": "1",
+   "pages": "5564",
+   "pubtype": [
+    "Journal Article",
+    "Research Support, U.S. Gov't, Non-P.H.S."
+   ],
+   "articleids": [
+    {
+     "idtype": "pubmed",
+     "idtypen": 1,
+     "value": "34548491"
+    },
+    {
+     "idtype": "pmc",
+     "idtypen": 8,
+     "value": "PMC8455577"
+    },
+    {
+     "idtype": "pmcid",
+     "idtypen": 5,
+     "value": "pmc-id: PMC8455577;"
+    },
+    {
+     "idtype": "doi",
+     "idtypen": 3,
+     "value": "10.1038/s41467-021-25801-2"
+    },
+    {
+     "idtype": "pii",
+     "idtypen": 4,
+     "value": "10.1038/s41467-021-25801-2"
+    }
+   ],
+   "references": [],
+   "authors": [
+    {
+     "name": "Gauthier DJ",
+     "authtype": "Author"
+    },
+    {
+     "name": "Bollt E",
+     "authtype": "Author"
+    },
+    {
+     "name": "Griffith A",
+     "authtype": "Author"
+    },
+    {
+     "name": "Barbosa WAS",
+     "authtype": "Author"
+    }
+   ]
+  }
+ }
+}

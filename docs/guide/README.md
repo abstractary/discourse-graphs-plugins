@@ -1,16 +1,19 @@
 # Discourse Graphs: a guide for new users
 
-This guide explains how the schema works, then walks through the software area by area, with pictures from the Obsidian plugin. The pictures were taken on 12 November 2026 from a test vault holding a real example: the MATSUlab issue-exchange analysis and one paper on lupus.
+This guide explains how the schema works, then walks through the software area by area, with pictures from the Obsidian plugin. The pictures were taken on 12 and 13 November 2026 from a test vault holding a real example: the MATSUlab issue-exchange analysis and one paper on lupus.
 
 - New to the idea? Read [The schema in five minutes](#the-schema-in-five-minutes), then [A first session](#a-first-session).
 - Want every field and rule? See [schema.md](schema.md).
 - Setting up a model for Ask AI? See [Ask AI](#ask-ai).
+- Papers in Zotero? See [From Zotero](#from-zotero).
 
 ## What it is
 
 A discourse graph breaks research into small units (a question, a claim, a piece of evidence) and records how they relate: this evidence supports that claim, this claim addresses that question. It also records how each result was produced, so a claim can be traced back to the run, the protocol and the code behind it.
 
 The plugin adds this to your notes. Your notes stay ordinary Markdown files. The graph lives beside them in your vault.
+
+It also meets the tools around it. References and highlights come in from Zotero. A paper's identifiers and retractions come from the open registries. A canvas goes out as a research crate that repositories and lab notebooks read. Each of these happens only when you ask.
 
 ## The schema in five minutes
 
@@ -134,6 +137,7 @@ A canvas is where you build an argument. Cards are units. Lines are relations, d
 | | Note (T) | A plain sticky note, not part of the graph |
 | | Draw (D) | Freehand strokes |
 | | Tidy (L) | Arranges the cards. The menu beside it picks how |
+| | Cards | Chooses what every card shows under its title |
 | History | Undo, Redo | Each step is a new edit your teammates see, not a rewind |
 | Panels | Ask AI | Asks a model about this canvas |
 | | Search | Opens unit search |
@@ -147,6 +151,21 @@ Labels drop away as the pane narrows, and the icons stay.
 **The line under the bar** says where the canvas sits (its lab, and the question it is about) and opens the Boundary panel.
 
 **Units to place**, at the bottom (U), is a drawer of the units not on this canvas, grouped by where they are. Drag one on, or select several and place them together.
+
+**What a card shows.** The **Cards** list switches five facts on or off for every card at once: the source it was read from, its authors, the workspace it was written in, the date it was made, and its identifiers. The list stays open while you switch things, and your choice is remembered on this device.
+
+![The Cards list, and cards showing every fact](media/card-facts.png)
+
+- **Source** names the paper or PDF in a few words, then says how the unit was read: **Auto** when a model read it, **By hand** when a person highlighted or wrote it, **Imported** when it arrived in a file. A source that a registry lists as retracted says **Retracted**.
+- **Authors** are the paper's. A unit that wasn't read from a paper says **Made by** and names whoever made it.
+- **Date made** shows the day and the time.
+- **IDs** shows up to two identifiers, and how many more there are.
+
+A click on a card selects it and nothing else. Once a card is selected, its source opens the passage in the reader, and an identifier opens where it resolves. Cards grow when they show more. If some then cover others, the bar says how many and offers **Tidy**.
+
+**Initials** in a card's corner say who made it. Hover them for a small card about that person. Click them for their profile.
+
+**A note** (the plain sticky kind) shows who wrote it and when, under its text.
 
 **On a card:** Enter opens its text. F2 renames it, if it is yours. Delete on a link asks whether to take the link off this canvas or withdraw the relation.
 
@@ -176,7 +195,9 @@ On **Canvases**:
 
 ![The Context panel showing the method behind a piece of evidence](media/context-method.png)
 
-Select a card, or open a unit's note, and **Context** shows that unit: its relations (with Accept and Reject on proposals), its text, where it came from, and who made it. A unit read from a paper says whose paper it is, and how the extraction got here.
+Select a card, or open a unit's note, and **Context** shows that unit: its relations (with Accept and Reject on proposals), its text, where it came from, and who made it.
+
+Under the title are the same five facts a card can show, in the same order and the same type, and here all five always show. The source opens the passage. An identifier opens where it resolves. A unit read from a paper names the paper's authors, and "Where it came from" further down says how the extraction got here.
 
 **Method** shows how it was produced, in the order the work happened:
 
@@ -188,6 +209,81 @@ Select a card, or open a unit's note, and **Context** shows that unit: its relat
 A step marked **edited since the run** is drift. A step in grey is something a pin names that this graph doesn't hold. Click a step to walk to it, or a run to open its page.
 
 In the picture, the relation at the top is still **Proposed**, because a teammate asserted it. The method chain below shows anyway, because those links are the author's own.
+
+### Published work, and identifiers
+
+![The Published work section after a lookup](media/published-work.png)
+
+A unit read from a paper has a **Published work** section in Context. **Look it up** asks the open registries about the paper: Crossref or DataCite (whichever registered its DOI), OpenAlex, PubMed, and the paper's own page. Only the paper's identifiers and title are sent. Nothing is asked until you click.
+
+What comes back is kept with the paper and shows on every unit read from it:
+
+- its other identifiers, such as a PMID, an arXiv id and an OpenAlex id
+- where and when it was published
+- whether it is open access, and how often it has been cited
+- **whether it has been retracted or corrected**, which also shows on the card
+- another version of the same work, such as the journal article behind a preprint
+
+The line under them says which registries answered, and when. A registry that didn't answer is listed with the reason.
+
+**Add an identifier** takes whatever you paste for a unit of your own: a DOI, a PubMed link, an arXiv id, an ORCID iD, an RRID for an antibody or a cell line, or any link.
+
+When a paper's page says it takes announcements, **Announce this unit to the paper's repository** shows you exactly what would be sent and where. It is sent only if you press **Send**. It needs a lab, because replies come back to your lab's server.
+
+### Research crates
+
+A research crate ([RO-Crate](https://www.researchobject.org/ro-crate/)) is one archive that describes itself: what is in it, who made it, what it was read from, and how each run was carried out. Repositories such as Zenodo and WorkflowHub read it, and so do lab notebooks.
+
+**To make one:** open the canvas's name, choose **Export**, and under Where pick **A research crate (RO-Crate)**.
+
+![Exporting a canvas as a research crate](media/export-crate.png)
+
+| Choice | What it means |
+|---|---|
+| License | How others may reuse the crate. Left unchosen, the crate says that none was chosen |
+| File | `.crate.zip` for repositories and RO-Crate tools. `.eln` for eLabFTW, RSpace and other lab notebooks |
+| Include the papers' PDFs | Off unless you tick it. Only include a paper you may pass on |
+
+The archive is saved in your vault under Paper files. It holds the description, a page to read it by, the graph, this canvas, and metadata for a repository that will give it a DOI. Units that the chosen ones rest on come along, so the crate explains itself.
+
+**To read one:** put the `.crate.zip`, `.eln` or `ro-crate-metadata.json` in your vault, right-click it and choose **Import this research crate**. A crate made here comes back exactly as it was. Someone else's becomes sources, code, runs and outputs on a new canvas, each marked Imported, with each run keeping what it used and what it made.
+
+### Profiles
+
+![A profile, with its three audiences](media/profile.png)
+
+Everyone who has made something in your graph has a profile. Open your own from the ribbon menu or **Open my profile**. Open anyone's by clicking their initials, wherever they show.
+
+A profile has up to three tabs, and each says who can see it:
+
+| Tab | Who sees it | What it shows |
+|---|---|---|
+| **Only you** | You | Everything you did that isn't on a shared canvas: a history by day, and counts |
+| **Your lab** | Everyone in your lab | What you did on what the lab shares: the same history and counts, for that work alone |
+| **Everyone** | Anyone | Counts alone: units written, units read from papers, relations, papers, canvases, days active, and a chart of the last 26 weeks. No titles and no text |
+
+On someone else's profile you see only the tabs you are allowed: a labmate's lab work and counts, a stranger's counts.
+
+The history is read from the record of what was done, so nothing extra is tracked to make it. A paper read with Extract graph is one line ("Read a paper into 36 units"), not thirty-six. Units you wrote are counted apart from units a model read for you. Click a line to open the unit it is about.
+
+Nothing is published. The Everyone tab shows what a public profile would hold, and today it stays on your device.
+
+### From Zotero
+
+![Choosing highlights to bring in from Zotero](media/zotero.png)
+
+If your papers are in Zotero, you don't retype them. Open a canvas's name and choose **From Zotero…**, or run **Bring in from Zotero…**.
+
+1. Search your library by title, author or year.
+2. Pick a reference. It becomes a **Source**, with its DOI and other identifiers. If the paper is in your graph already, it joins that source and adds nothing twice.
+3. Its highlights are listed in reading order. Tick the ones to bring. Each becomes a unit that quotes its passage and knows its page. A highlight is Evidence unless you say otherwise, and one you tagged `dg/claim` or `question` in Zotero keeps that type.
+4. **Bring in** puts them on the canvas.
+
+In Context, a highlight has **Open the passage in Zotero**, and a source has **Show it in Zotero**. A comment you wrote beside a highlight comes along.
+
+Zotero has to be open, with "Allow other applications on this computer to communicate with Zotero" ticked under its Settings, Advanced. Your library is only read, never changed, and only when you ask here. Pictures and drawings aren't brought in yet.
+
+This was built from Zotero's documentation and tested against a stand-in, not a real Zotero. [zotero.md](../zotero.md) says what to check first.
 
 ### Reading a PDF
 
@@ -315,11 +411,14 @@ Each has no default key. Give any of them a hotkey in Obsidian's Hotkeys setting
 |---|---|
 | Open canvas, New canvas | Opens the last canvas, or makes one |
 | Open the Library | The canvas list, papers, folders and lab |
-| Open holons, Open holon boundary | The lab-level explorer, and the Boundary panel |
+| Open the overview, Open boundary | A lab, its questions and their claims laid out from the graph, and the Boundary panel |
+| Open my profile | Your profile: your history, what your lab sees of it, and the counts anyone could see |
+| Bring in from Zotero… | Finds a reference in your Zotero library and brings it in with the highlights you choose |
 | Search units, Find a unit | The search panel, and the quick finder |
 | Open context panel | The selected unit's context |
 | Read a PDF…, Read this PDF | The reader's list, or the file in front |
 | Extract graph from this PDF | Reads the whole PDF in front into a graph, from a saved extraction beside it or a server you pick |
+| Import this research crate (RO-Crate or .eln) | Reads the crate in front into the graph. A crate made here is restored; another tool's becomes units |
 | Upload a paper | The same, for a file that isn't in the vault yet |
 | Open runs and notebooks, Read this notebook into the graph | Runs, and reading the notebook in front |
 | Create node from selection, Turn this note into a node | Capture from a note |
@@ -338,7 +437,13 @@ Nothing, until you choose it.
 | Ask AI with your lab's model | The same | Your lab's server |
 | Extract graph, when no saved extraction sits beside the paper | The paper | The server you pick in the upload dialog |
 | Extract graph, with a saved extraction | Nothing | Nowhere |
+| Search or bring in from Zotero | Your search words, to the Zotero app on this computer | Nowhere else |
+| Open a profile | Nothing | — |
 | Read a PDF or a notebook | Nothing | — |
+| Look a paper up | Its identifiers and title | doi.org, Crossref or DataCite, OpenAlex, PubMed, and the paper's own page |
+| Open an identifier | Nothing from the app. Your browser opens the link | Wherever it resolves |
+| Export or import a research crate | Nothing. The archive stays in your vault | — |
+| Announce a unit, after reading what will be sent | Your name and id, the unit's address and the paper's DOI | The inbox the paper's page names |
 
 There is no telemetry. The usage log stays on your device and holds action names only.
 

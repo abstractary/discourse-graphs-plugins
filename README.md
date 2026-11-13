@@ -2,7 +2,7 @@
 
 <p align="center">
   One core, one canvas and one set of panels, running inside Roam and Obsidian.<br>
-  Your data stays in your notes. Sync and AI are there when you want them.
+  Your data stays in your notes. Sync, AI, your Zotero library and the scholarly record are there when you ask for them.
 </p>
 
 <p align="center">
@@ -28,7 +28,13 @@
 
 **Nothing fills your vault until you ask.** Units stay on the paper's canvas until you export them, whole or a few at a time, to your workspace, your lab's canvas, or a folder.
 
-**Every unit knows where it came from.** Open one to see its paper, DOI, extraction model, the passage it came from, and everywhere it lives now.
+**Every unit knows where it came from.** Open one to see its paper, DOI, extraction model, the passage it came from, and everywhere it lives now. A card can show the same on its face: its source and whether a person or a model read it, its authors, workspace, date and identifiers.
+
+**It works with your Zotero library.** Find a reference, tick the highlights that matter, and they arrive as a source and units that quote their passages, each with a link back to the page in Zotero. Zotero is only read, and only when you ask. [docs/zotero.md](docs/zotero.md) has the design and what is next.
+
+**People have profiles.** Hover someone's initials for a card, click for their profile. You see your whole history, your lab sees what you did on shared canvases, and anyone else sees counts alone.
+
+**It joins the scholarly record.** Look a paper up in Crossref, DataCite, OpenAlex and PubMed to find its other identifiers and whether it was retracted. Export a canvas as an RO-Crate for Zenodo, WorkflowHub or a lab notebook, and read other tools' crates in. The server signposts each stored graph and takes COAR Notify notifications.
 
 **Labs work together.** Join with an identifier. Once accepted, you get AI and the lab's shared canvases. Shared papers show who uploaded and extracted them, and people can choose to leave a breadcrumb when they've read one.
 
@@ -130,31 +136,33 @@ flowchart LR
 ```text
 packages/
   contract/   Records, the three seams, and the conformance suite
-  core/       The graph, identity, papers, units and labs
+  core/       The graph, identity, papers, units, labs, profiles, crates and the Zotero mapping
   layout/     Tidy modes and centrality, as pure functions
-  sync/       The only module that touches the network
+  sync/       The only module that touches the network: servers, registries and Zotero
   native/     What's drawn in the base: capture, badges, dialogs, walkthrough
-  surfaces/   The panels: canvas, context, Library, upload, welcome
+  surfaces/   The panels: canvas, context, Library, reader, runs, profile, upload, From Zotero
 plugins/
   obsidian/   The Obsidian adapter
   roam/       The Roam adapter
-server/       Reference server: compute, graph store, labs, exchange, AI
+server/       Reference server: compute, graph store, labs, exchange, AI, landing pages, inbox
 harness/      Tests that drive the real apps
 lexicons/     AT Protocol schemas
 demo/papers/  Two papers and their extractions
 ```
 
-The boundaries are checked: `npm run check-boundaries` fails if core imports React or anything but sync calls the network. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains each cut.
+The boundaries are checked: `npm run check-boundaries` fails if core imports React or anything but sync calls the network, and `npm run dsm` prints the dependency matrix from the real imports and fails on a cycle. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains each cut.
 
 ## How it's tested
 
 | Level | Checks | Covers |
 |---|---:|---|
-| Unit | 153 | Records, core, papers, labs, layout, sync |
-| Server | 82 | Every route, with fake model servers |
+| Unit | 330 | Records, core, papers, labs, layout, sync, cards, lookups, crates, profiles, Zotero |
+| Server | 104 | Every route, with fake model servers |
 | Conformance | 36 in each app | One host contract, run inside real Obsidian and real Roam |
 | Real-app suites | 183 in Obsidian, 184 in Roam | Canvas, capture, badges, Tidy, walkthrough, real data |
 | Across both apps | 124 | Upload, export, provenance, labs, sync, reactions, breadcrumbs, AI |
+
+The unit and server counts are from 13 November 2026. That day eight suites also ran in real Obsidian, 219 checks in all: reading three papers, the PDF reader, search, cards and lookups, crates, profiles and Zotero. All passed except one search check, linking a found unit at the cursor, which fails on some runs and passes on others. The other rows are from the first version, and Roam has not been run since.
 
 The real-app suites use real mouse and keyboard input inside real Obsidian and Roam. [docs/testing.md](docs/testing.md) explains how to run them.
 
@@ -173,6 +181,9 @@ Because both plugins share one core, a skill written once works in both. [docs/a
 - It covers about 40% of what today's plugins do. Queries, for example, aren't here. [docs/COMPARISON.md](docs/COMPARISON.md) has the full picture, row by row.
 - The server is a reference for the API, not something to host. It has no TLS, rate limits or way to revoke a token.
 - MIRA and real AI models were only tested against fake servers.
+- Zotero was only tested against a stand-in built from its documentation. No real Zotero library has been read.
+- No real repository inbox, Zenodo deposit or lab notebook has been tried with the crates and announcements.
+- A public profile isn't published anywhere. The counts stay on your device.
 - Tests ran on macOS, in Obsidian 1.15 and an offline graph in Roam Desktop.
 - The Roam plugin has only run in an offline graph.
 
@@ -182,7 +193,9 @@ Because both plugins share one core, a skill written once works in both. [docs/a
 |---|---|
 | [User guide](docs/guide/README.md) | How the schema works and how to use every panel, with pictures |
 | [Schema reference](docs/guide/schema.md) | Every type, field, link and rule |
-| [LLM and MCP spec](docs/llm-and-mcp-spec.md) | Own-key AI as built, and the design for the MCP server, Zotero and Jupyter |
+| [Cards, identifiers and the scholarly record](docs/scholarly.md) | Card facts, registry lookups, RO-Crate, DataCite, Signposting and COAR Notify, with the dependency matrix |
+| [Zotero](docs/zotero.md) | What the existing Zotero plugins teach, the design for a long-lived integration, what is built and what to check first |
+| [LLM and MCP spec](docs/llm-and-mcp-spec.md) | Own-key AI as built, and the design for the MCP server and Jupyter |
 | [Interface audit](docs/ui-audit.md) | What was found in the Obsidian interface, what was fixed and what is open |
 | [Architecture](docs/ARCHITECTURE.md) | Modules, boundaries and why they're where they are |
 | [Contract](docs/CONTRACT.md) | Records, identity, the host contract, and settled decisions |

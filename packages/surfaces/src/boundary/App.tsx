@@ -54,8 +54,8 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
       <main className="bd bd-empty">
         <p className="hv-muted">
           {focus?.canvas
-            ? "This canvas isn't a holon's view yet. Use the holon bar above the canvas to make it one."
-            : "Open a canvas that is a holon's view, or a note of a question, claim or evidence, and its boundary shows here."}
+            ? "This canvas isn't tied to a question or claim yet. Use the Boundary menu above the canvas to tie it to one."
+            : "Open a canvas that is about a question or claim, or a note of a question, claim or evidence, and its boundary shows here."}
         </p>
       </main>
     );
@@ -110,7 +110,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
       {focus.canvas ? null : (
         <p className="bd-foot">
           <button type="button" className="hv-link" onClick={() => void open(view.ref)} data-dg="boundary-open-canvas">
-            <Icon name="canvas" /> Open this holon's canvas
+            <Icon name="canvas" /> Open its canvas
           </button>
         </p>
       )}

@@ -732,6 +732,10 @@ export const createRoamHost = async ({
 
     openSurface,
     closeDialog,
+    openLink: async ({ url }) => {
+      window.open(url, "_blank", "noopener");
+      return ok(null);
+    },
 
     getLocal: async ({ key }) => {
       const value = storage.getItem(keyOf(`local:${key}`));

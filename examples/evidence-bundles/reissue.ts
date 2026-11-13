@@ -75,6 +75,9 @@ const reissue = async (bundle: string) => {
   });
   const archive = saved.get(made.name)!;
   writeFileSync(join(OUT, made.name), archive);
+  // The same crate in the lab-notebook form: the run and its protocol as entries a notebook imports.
+  const eln = await call("crate.export", { canvas: read.canvas!, name: String(root.name), license: "https://creativecommons.org/licenses/by/4.0/", format: "eln" });
+  writeFileSync(join(OUT, eln.name), saved.get(eln.name)!);
   const folder = join(OUT, bundle);
   rmSync(folder, { recursive: true, force: true });
   for (const entry of await unzip(archive)) {

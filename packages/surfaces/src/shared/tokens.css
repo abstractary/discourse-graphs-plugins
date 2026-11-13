@@ -151,6 +151,11 @@ button.mark:hover, button.mark:focus-visible { border-color: var(--dg-accent); c
 .person-card-name span, .person-card-when, .person-card-hint { color: var(--dg-muted); }
 .person-card-when, .person-card-hint { font-size: var(--tiny); }
 /* Who put a note on the canvas, and when, under its text. */
+/* In the reader's reference library. One mark, the same everywhere a source is shown. */
+.library-mark { display: inline-flex; align-items: center; gap: 3px; height: 1.25em; padding: 0 3px; margin: 0 0 0 4px; border: 1px solid color-mix(in oklch, var(--dg-library, oklch(0.56 0.19 25)) 45%, transparent); border-radius: 3px; background: color-mix(in oklch, var(--dg-library, oklch(0.56 0.19 25)) 10%, transparent); color: color-mix(in oklch, var(--dg-library, oklch(0.56 0.19 25)) 78%, var(--dg-ink)); font: inherit; font-size: var(--tiny); line-height: 1; vertical-align: middle; white-space: nowrap; }
+.library-mark .icon { width: 11px; height: 11px; stroke-width: 2; }
+button.library-mark { cursor: pointer; min-height: 0; width: auto; }
+button.library-mark:hover, button.library-mark:focus-visible { background: color-mix(in oklch, var(--dg-library, oklch(0.56 0.19 25)) 20%, transparent); }
 .note { display: flex; flex-direction: column; }
 .note-text { flex: 1; min-height: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note-by { flex: none; display: flex; align-items: center; gap: 5px; margin-top: 6px; color: var(--dg-muted); font-size: var(--tiny); line-height: 1.3; white-space: nowrap; overflow: hidden; }

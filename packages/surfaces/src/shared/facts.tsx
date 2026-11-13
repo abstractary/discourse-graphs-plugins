@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { whenOf } from "./people.tsx";
+import { LibraryMark } from "./ui.tsx";
 import { CARD_FIELDS, READ_HOW_LABEL, authorLine, identifierLabel, identifierUrl, type CardFacts, type CardField, type Identifier } from "@dg/contract/scholarly.ts";
 
 /**
@@ -30,6 +31,8 @@ export type FactsProps = {
   onSource?: () => void;
   /** Opens an identifier where it resolves. Without it identifiers are plain text. */
   onIdentifier?: (id: Identifier) => void;
+  /** Opens the unit, or what it was read from, in the reader's reference library. Without it the mark only says it is there. */
+  onLibrary?: (url: string) => void;
   /** The panel only: who made the unit, drawn beside when it was made. */
   maker?: ReactNode;
   /** The panel only: the unit's own identifier, which a click copies. */
@@ -38,7 +41,8 @@ export type FactsProps = {
 
 type Row = { id: CardField; label: string; value: ReactNode };
 
-export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier, maker, uri }: FactsProps) => {
+export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier, onLibrary, maker, uri }: FactsProps) => {
+  const inLibrary = <LibraryMark library={facts.library} onOpen={onLibrary} dg={dg ? `library-${dg}` : "library-mark"} />;
   const [copied, setCopied] = useState(false);
   const card = density === "card";
   const rows = CARD_FIELDS.filter(({ id }) => fields.includes(id)).flatMap(({ id }): Row[] => {
@@ -46,7 +50,8 @@ export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier, make
     if (id === "source") {
       const { source } = facts;
       // A card has no room to say what isn't there. The panel says it, so the row never goes missing.
-      if (!source) return card ? [] : [{ id, label, value: <span className="fact-none">Not read from a source</span> }];
+      // A source's own card, or a highlight with no source on record, still says it is in the library.
+      if (!source) return facts.library ? [{ id, label: "Library", value: <><span>Zotero</span>{inLibrary}</> }] : card ? [] : [{ id, label, value: <span className="fact-none">Not read from a source</span> }];
       const name = onSource ? (
         <button type="button" className="fact-link nodrag" data-dg={dg ? `fact-source-${dg}` : "fact-source"} title={`${source.title}. Open the passage.`} onClick={onSource} onDoubleClick={(event) => event.stopPropagation()}>
           {source.name}
@@ -65,6 +70,7 @@ export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier, make
                 {READ_HOW_LABEL[source.how]}{source.reworded ? ", reworded" : ""}
               </span>
               {facts.retracted ? <span className="fact-how" data-how="retracted" title="A registry lists this work as retracted">Retracted</span> : null}
+              {inLibrary}
             </>
           ),
         },

@@ -30,7 +30,7 @@ import { toDataCite, type DataCiteInput } from "./datacite.ts";
 import { iriOf, toProcessJsonLd } from "./jsonld.ts";
 import { isMiraDocument, mergeEntities, miraEntities, miraType, miraValue } from "./mira.ts";
 import { baseOf, cidOfBytes, ensureProcessTypes, protocolCids, provenanceOf } from "./process.ts";
-import { CRATE_VERSIONS, LICENSE_CHOICES, cratePreview, crateReadme, toRoCrate, type CrateFile } from "./rocrate.ts";
+import { CRATE_VERSIONS, LICENSE_CHOICES, cratePreview, crateReadme, toRoCrate, type CrateCheck, type CrateEntry, type CrateFile } from "./rocrate.ts";
 import { ZENODO, toZenodo } from "./zenodo.ts";
 import { unzip, zip } from "./zip.ts";
 
@@ -122,6 +122,8 @@ export const recordsFor = (graph: FoldedGraph, nodes: DgId[], canvas?: DgId): Dg
     keep(canvas);
     for (const item of liveCanvasItems({ graph, canvas })) kept.set(item.id, item);
   }
+  // Who checked these units goes with them.
+  for (const record of graph.documents.values()) if (record.kind === "evaluation" && !record.removed && chosen.has(record.target)) kept.set(record.id, record);
   return [...kept.values()];
 };
 
@@ -225,21 +227,45 @@ export const planCrateImport = ({
   const parts = new Set(idsOf(root.hasPart));
   // MIRA keeps what was observed as a statement of its own. It becomes the evidence's title, never a unit.
   const statements = new Set(entities.flatMap((entity) => idsOf(miraValue(entity, "observationStatement"))));
-  const typed = (entity: Entity): BaseNodeType | undefined => (statements.has(entity["@id"]) ? undefined : BASE_OF_TYPE.find(([type]) => typesOf(entity).includes(type))?.[1]);
+  // An action that made the crate itself, and the program that did it, say how the file was written, not what was done at the bench.
+  const packing = new Set(entities.filter((entity) => typesOf(entity).includes("CreateAction") && [...idsOf(entity.result), ...idsOf(entity.object)].includes(root["@id"])).map((entity) => entity["@id"]));
+  const packers = new Set(entities.filter((entity) => packing.has(entity["@id"])).flatMap((entity) => [...idsOf(entity.instrument), ...idsOf(entity.agent)]));
+  for (const entity of entities) if (!packing.has(entity["@id"])) for (const id of [...idsOf(entity.instrument), ...idsOf(entity.object)]) packers.delete(id);
+  const typed = (entity: Entity): BaseNodeType | undefined => (statements.has(entity["@id"]) || packing.has(entity["@id"]) || packers.has(entity["@id"]) ? undefined : BASE_OF_TYPE.find(([type]) => typesOf(entity).includes(type))?.[1]);
   const arguing = entities.some((entity) => typed(entity) === "evidence");
   // The files something rests on, or a run made.
   const rested = new Set(entities.flatMap((entity) => [...idsOf(miraValue(entity, "observationBase")), ...idsOf(entity.result), ...idsOf(entity.image), ...(idsOf(entity.wasGeneratedBy).length ? [entity["@id"]] : [])]));
+  // A lab notebook's file lists its entries as folders at the root. An experiment is a run and a protocol or template
+  // is a protocol. A resource, sample or instrument has no kind of unit here yet, so it is left out and counted.
+  const entryBase = (entity: Entity): BaseNodeType | "none" | undefined => {
+    // A data file is sometimes typed as a dataset too. An entry is a folder: a dataset that isn't a file.
+    if (!typesOf(entity).includes("Dataset") || typesOf(entity).includes("File") || !parts.has(entity["@id"]) || entity === root) return undefined;
+    const genre = (stringOf(entity.genre) ?? "").toLowerCase();
+    if (/protocol|procedure|template|method/.test(genre)) return "protocol";
+    if (/resource|sample|instrument|material|compound|reagent/.test(genre)) return "none";
+    // A folder that only holds other entries is a grouping, not something that was done.
+    const held = idsOf(entity.hasPart).map((id) => byId.get(id)).filter(Boolean) as Entity[];
+    if (!stringOf(entity.text) && !stringOf(entity.description) && held.length > 0 && held.every((item) => typesOf(item).includes("Dataset"))) return "none";
+    return "run";
+  };
+  const notebook = entities.some((entity) => entryBase(entity) !== undefined);
+  const entryOf = new Map<string, string>();
+  if (notebook) for (const entity of entities) if (entryBase(entity) === "run") for (const id of idsOf(entity.hasPart)) if (!entryOf.has(id)) entryOf.set(id, entity["@id"]);
   // What a run took in. A named input that is no file here, such as raw data held back, is still cited as a dataset.
   const takenIn = new Set(entities.filter((entity) => typed(entity) === "run").flatMap((run) => idsOf(run.object)));
   const baseFor = (entity: Entity): BaseNodeType | undefined => {
     if (statements.has(entity["@id"])) return undefined;
     const named = typed(entity);
     if (named) return named;
+    const entry = entryBase(entity);
+    if (entry) return entry === "none" ? undefined : entry;
+    // In a notebook's file, a folder inside an entry is part of that entry, not a result of its own.
+    if (notebook && typesOf(entity).includes("Dataset")) return undefined;
     if (cited.has(entity["@id"])) return "source";
     if (takenIn.has(entity["@id"]) && stringOf(entity.name) && !typesOf(entity).some((type) => type === "PropertyValue" || type === "Person" || type === "Organization")) return "output";
     const kinds = typesOf(entity);
     const isFile = kinds.some((type) => FILE_TYPES.has(type)) && entity["@id"] !== "./";
-    const listed = parts.has(entity["@id"]) || /^https?:\/\//.test(entity["@id"]);
+    const listed = parts.has(entity["@id"]) || entryOf.has(entity["@id"]) || /^https?:\/\//.test(entity["@id"]);
     // In a crate that argues, the notes and metadata files that nothing rests on are packaging, not results.
     const packaging = arguing && !rested.has(entity["@id"]) && (/\.(md|jsonld|txt)$/i.test(entity["@id"]) || /markdown|ld\+json/.test(stringOf(entity.encodingFormat) ?? ""));
     if (isFile && !packaging && (listed || rested.has(entity["@id"]))) return "output";
@@ -272,7 +298,9 @@ export const planCrateImport = ({
     // Whoever first made it, by name and ORCID iD, so bringing it in doesn't make it the importer's.
     const creators = [...idsOf(entity.creator), ...idsOf(entity.author)].flatMap((id) => {
       const orcid = parseIdentifier(id, "orcid");
-      const name = stringOf(byId.get(id)?.name) ?? (orcid?.scheme === "orcid" ? undefined : /^[a-z][a-z0-9+.-]*:|^#/i.test(id) ? undefined : id);
+      const person = byId.get(id);
+      const given = [stringOf(person?.givenName), stringOf(person?.familyName)].filter(Boolean).join(" ");
+      const name = stringOf(person?.name) ?? (given || undefined) ?? (orcid?.scheme === "orcid" ? undefined : /^[a-z][a-z0-9+.-]*:|^#/i.test(id) ? undefined : id);
       return name || orcid?.scheme === "orcid" ? [{ name: name ?? `ORCID ${orcid!.value}`, ...(orcid?.scheme === "orcid" ? { orcid: orcid.value } : {}) }] : [];
     });
     const first = base === "source" || base === "code" ? [] : creators.filter((person, index) => creators.findIndex((other) => other.name === person.name && other.orcid === person.orcid) === index);
@@ -341,7 +369,10 @@ export const planCrateImport = ({
 
   const titleOf = (entity: Entity, base: BaseNodeType): string => {
     const statement = base === "evidence" ? stringOf(byId.get(idsOf(miraValue(entity, "observationStatement"))[0] ?? "")?.name) : undefined;
-    return statement ?? stringOf(entity.name) ?? stringOf(entity.headline) ?? (base === "run" ? `Run ${entity["@id"].replace(/^#/, "")}` : decodeURIComponent(entity["@id"].split("/").pop() ?? entity["@id"]));
+    // A notebook entry with no name is known by its folder, or by its first words.
+    const folder = decodeURIComponent(entity["@id"].replace(/^\.\//, "").replace(/\/+$/, "").split("/").pop() ?? "");
+    const firstWords = stringOf(entity.text)?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+    return statement ?? stringOf(entity.name) ?? stringOf(entity.headline) ?? (entryBase(entity) ? firstWords || folder || "Entry" : base === "run" ? `Run ${entity["@id"].replace(/^#/, "")}` : folder || entity["@id"]);
   };
 
   const unitFor = (entity: Entity): NodeRecord => {
@@ -382,7 +413,7 @@ export const planCrateImport = ({
     }
     if (base === "output") {
       const run = taken.find((other) => baseFor(other) === "run" && idsOf(other.result).includes(id));
-      const by = run ? made.get(run["@id"])!.id : madeAs(idsOf(entity.wasGeneratedBy)[0], "run");
+      const by = run ? made.get(run["@id"])!.id : (madeAs(idsOf(entity.wasGeneratedBy)[0], "run") ?? madeAs(entryOf.get(id), "run"));
       if (by) prov = { generatedBy: by };
     }
     if (base === "evidence") {
@@ -403,7 +434,11 @@ export const planCrateImport = ({
   for (const [id, node] of made) {
     const entity = byId.get(id)!;
     const base = baseFor(entity);
-    const said = stringOf(entity.description);
+    // A notebook keeps an entry's body as `text`, often as HTML. It is kept as plain words.
+    const html = /html/.test(stringOf(entity.encodingFormat) ?? "") || /<\/?[a-z][^>]*>/i.test(stringOf(entity.text) ?? "");
+    const words = stringOf(entity.text);
+    const plain = words && html ? words.replace(/<\s*(br|\/p|\/div|\/h[1-6]|\/li|\/tr)\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\n{3,}/g, "\n\n").trim() : words;
+    const said = entryBase(entity) ? [plain, stringOf(entity.description)].filter(Boolean).join("\n\n") || undefined : stringOf(entity.description);
     if (said && !existing.includes(node) && base !== "output" && base !== "code" && base !== "source") records.push(createSnapshot({ ...stamp, node: node.id, body: said }));
   }
 
@@ -423,7 +458,9 @@ export const planCrateImport = ({
       }
     }
   }
-  return { records, units: withLinks, fresh, name, skipped: ordered.length - taken.length, relations };
+  // Entries with no kind of unit to become, such as a notebook's resources and samples, are counted as left out.
+  const unplaced = entities.filter((entity) => entryBase(entity) === "none" && (stringOf(entity.genre) ?? "") !== "").length;
+  return { records, units: withLinks, fresh, name, skipped: ordered.length - taken.length + unplaced, relations };
 };
 
 // The feature
@@ -439,7 +476,7 @@ const nameOf = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
 const extensionOf = (path: string): string => (nameOf(path).includes(".") ? nameOf(path).split(".").pop()!.toLowerCase() : "");
 const joined = (...parts: (string | undefined)[]): string => parts.filter(Boolean).join("/");
 
-export const crateFeature = (context: Context, { secrets }: { secrets?: SecretStore } = {}) => {
+export const crateFeature = (context: Context, { secrets, checksOf = () => [] }: { secrets?: SecretStore; checksOf?: (unit: DgId) => CrateCheck[] } = {}) => {
   const baseIn = (node: NodeRecord | undefined) => baseOf(context.graph(), node);
   const unitsOnCanvas = (canvas: DgId): DgId[] =>
     liveCanvasItems({ graph: context.graph(), canvas }).flatMap(({ item }) => {
@@ -449,6 +486,9 @@ export const crateFeature = (context: Context, { secrets }: { secrets?: SecretSt
 
   /** A file in the base by where it sits, or nothing. Hosts list files by extension, so that is how it is found. */
   const fileAt = async (path: string): Promise<Uint8Array | undefined> => {
+    // Where a base names a file by where it sits, that is its ref, and it is read straight off.
+    const direct = await context.host.readAsset({ ref: path });
+    if (direct.ok) return fromBase64(direct.value.dataUrl.split(",")[1] ?? "");
     const extension = extensionOf(path);
     if (!extension) return undefined;
     const listing = await context.host.listFiles({ extensions: [extension], limit: 5000 });
@@ -588,6 +628,87 @@ export const crateFeature = (context: Context, { secrets }: { secrets?: SecretSt
     }
 
     const version = format === "eln" ? "1.2" : "1.3";
+    const checks = new Map(nodes.flatMap((id) => (checksOf(id).length ? [[id, checksOf(id)] as const] : [])));
+
+    // For a lab notebook, the crate is a set of entries: one per run, one per protocol, and one for the graph itself.
+    // Each is a folder with its own files, because a notebook imports what the root lists and nothing else.
+    const said = new Map<DgId, string>();
+    const saidAt = new Map<DgId, string>();
+    for (const record of graph.documents.values()) {
+      if (record.kind !== "snapshot" || !record.body.trim() || (saidAt.get(record.node) ?? "") > record.at) continue;
+      saidAt.set(record.node, record.at);
+      said.set(record.node, record.body);
+    }
+    const titleOf = (id: DgId | undefined): string | undefined => (id ? context.nodeOf(id)?.title : undefined);
+    const markOf = (mark: CrateCheck): string => `${mark.verdict === "needsWork" ? "Needs work" : mark.own ? "Signed by its author" : "Checked"}, ${people.find((person) => person.did === mark.by.id)?.name ?? mark.by.name}, ${mark.at.slice(0, 10)} (${mark.way.toLowerCase()})${mark.note ? `: ${mark.note}` : ""}${mark.current ? "" : ". Made on an earlier version, which has changed since"}`;
+    const entries: CrateEntry[] = [];
+    const entryOfUnit = new Map<DgId, string>();
+    if (format === "eln") {
+      const taken = new Set<string>();
+      const folderFor = (title: string): string => {
+        let path = `${slugOf(title)}/`;
+        for (let n = 2; taken.has(path) || path === "discourse-graph/"; n += 1) path = `${slugOf(title)}-${n}/`;
+        taken.add(path);
+        return path;
+      };
+      for (const run of records.filter((node) => baseIn(node) === "run")) {
+        const prov = provenanceOf(graph, run.id);
+        const facts = run.facts ?? {};
+        const observed = records.filter((node) => baseIn(node) === "evidence" && provenanceOf(graph, node.id).isGroundedIn === run.id);
+        const made = records.filter((node) => baseIn(node) === "output" && provenanceOf(graph, node.id).generatedBy === run.id);
+        // Each heading line is a list item, so a notebook that reads Markdown shows them one under another.
+        const lines = [
+          titleOf(prov.partOf) ? `- **Study:** ${titleOf(prov.partOf)}` : "",
+          prov.follows && titleOf(prov.follows.uri) ? `- **Protocol followed:** ${titleOf(prov.follows.uri)}${context.nodeOf(prov.follows.uri)?.facts?.version ? `, version ${context.nodeOf(prov.follows.uri)!.facts!.version}` : ""}` : "",
+          facts.status ? `- **Status:** ${facts.status}${facts.startedAt ? `, ${facts.startedAt.slice(0, 10)}` : ""}${facts.endedAt ? ` to ${facts.endedAt.slice(0, 10)}` : ""}` : "",
+          ...(facts.deviations?.length ? ["", "## Departures from the protocol", "", ...facts.deviations.map((item) => `- ${item}`)] : []),
+          ...(observed.length ? ["", "## What was observed", "", ...observed.flatMap((item) => [`- ${item.title}`, ...(checks.get(item.id) ?? []).map((mark) => `  - ${markOf(mark)}`)])] : []),
+          ...(made.length ? ["", "## Outputs", "", ...made.map((item) => `- ${item.title}${item.facts?.caption ? `: ${item.facts.caption}` : ""}`)] : []),
+          ...(said.get(run.id) ? ["", "## Notes", "", said.get(run.id)!] : []),
+        ].filter((line, index, all) => line !== "" || (index > 0 && all[index - 1] !== ""));
+        const path = folderFor(run.title);
+        entryOfUnit.set(run.id, path);
+        for (const output of made) entryOfUnit.set(output.id, path);
+        entries.push({
+          path,
+          name: run.title,
+          genre: "experiment",
+          text: lines.join("\n"),
+          keywords: ["discourse graph", ...(titleOf(prov.partOf) ? [titleOf(prov.partOf)!] : []), ...(facts.status ? [facts.status] : [])],
+          created: run.at,
+          modified: run.editedAt,
+          by: run.by,
+          values: Object.fromEntries(Object.entries(facts.parameterValues ?? {}).map(([key, value]) => [key, typeof value === "string" ? value : JSON.stringify(value)])),
+          files: [],
+          comments: (checks.get(run.id) ?? []).map((mark) => ({ by: mark.by, at: mark.at, text: markOf(mark) })),
+          unit: run.id,
+        });
+      }
+      for (const protocol of records.filter((node) => baseIn(node) === "protocol")) {
+        const facts = protocol.facts ?? {};
+        const lines = [
+          ...(facts.materials?.length ? ["## Materials", "", ...facts.materials.map((item) => `- ${item}`), ""] : []),
+          ...(facts.steps?.length ? ["## Steps", "", ...facts.steps.map((item, index) => `${index + 1}. ${item}`), ""] : []),
+          ...(said.get(protocol.id) ? [said.get(protocol.id)!] : []),
+        ];
+        const path = folderFor(protocol.title);
+        entryOfUnit.set(protocol.id, path);
+        entries.push({ path, name: protocol.title, genre: "protocol", text: lines.join("\n").trim(), keywords: ["discourse graph", "protocol", ...(facts.version ? [`version ${facts.version}`] : [])], created: protocol.at, modified: protocol.editedAt, by: protocol.by, values: {}, files: [], comments: (checks.get(protocol.id) ?? []).map((mark) => ({ by: mark.by, at: mark.at, text: markOf(mark) })), unit: protocol.id });
+      }
+      // The graph itself, with everything that isn't one run's or one protocol's own.
+      entries.push({ path: "discourse-graph/", name, genre: "resource", text: description, keywords: ["discourse graph"], created: published, modified: published, by: me, values: {}, files: [], comments: [] });
+      // Each file moves into its entry's folder: an output goes with the run that made it, the rest with the graph.
+      const graphEntry = entries[entries.length - 1]!;
+      const used = new Set<string>();
+      for (const file of files) {
+        const entry = (file.unit && entries.find((item) => item.path === entryOfUnit.get(file.unit!))) || graphEntry;
+        let inside = `${entry.path}${nameOf(file.path)}`;
+        for (let n = 2; used.has(inside); n += 1) inside = `${entry.path}${n}-${nameOf(file.path)}`;
+        used.add(inside);
+        file.path = inside;
+        entry.files.push(inside);
+      }
+    }
     const describe = (list: CrateFile[]) =>
       toRoCrate({
         graph,
@@ -604,20 +725,28 @@ export const crateFeature = (context: Context, { secrets }: { secrets?: SecretSt
         versions,
         nameOf: (author) => people.find((person) => person.did === author.id)?.name ?? author.name,
         orcidOf: (author) => orcidOf(author.id),
+        checks,
+        ...(entries.length ? { entries } : {}),
       });
     // The README is written from the metadata, then described in it like any other file.
+    const readmePath = entries.length ? "discourse-graph/README.md" : "README.md";
+    if (entries.length) entries[entries.length - 1]!.files.push(readmePath);
     files.push({
-      path: "README.md",
+      path: readmePath,
       name: "Read me first",
       description: "The crate told as findings: what was observed, what each finding rests on, and how it was produced.",
       mediaType: "text/markdown",
-      bytes: text(crateReadme(await describe(files))),
+      bytes: text(crateReadme(await describe(files.filter((file) => file.path !== readmePath)))),
     });
+    // In a notebook the graph's entry reads as the README does: the findings, told in order.
+    if (entries.length) entries[entries.length - 1]!.text = decoder.decode(files[files.length - 1]!.bytes);
     const metadata = await describe(files);
     if (format === "eln") {
       // The ELN format asks who made the archive.
       const descriptor = (metadata["@graph"] as JsonObject[]).find((entity) => entity["@id"] === "ro-crate-metadata.json")!;
       descriptor.sdPublisher = { "@id": "https://discoursegraphs.com" };
+      descriptor.dateCreated = published;
+      descriptor.version = "1.0";
       (metadata["@graph"] as JsonObject[]).push({ "@id": "https://discoursegraphs.com", "@type": "Organization", name: "Discourse Graphs", url: "https://discoursegraphs.com" });
     }
     const slug = slugOf(name);
@@ -625,6 +754,8 @@ export const crateFeature = (context: Context, { secrets }: { secrets?: SecretSt
     const archive = zip([
       { path: `${folder}ro-crate-metadata.json`, bytes: text(JSON.stringify(metadata, null, 2)) },
       { path: `${folder}ro-crate-preview.html`, bytes: text(cratePreview(metadata)) },
+      // An entry with no files of its own still has its folder, since the metadata names it.
+      ...entries.filter((entry) => entry.files.length === 0).map((entry) => ({ path: `${folder}${entry.path}`, bytes: new Uint8Array() })),
       ...files.map(({ path, bytes }) => ({ path: `${folder}${path}`, bytes })),
     ]);
     const fileName = format === "eln" ? `${slug}.eln` : `${slug}.crate.zip`;
@@ -720,7 +851,8 @@ export const crateFeature = (context: Context, { secrets }: { secrets?: SecretSt
       const { root, graph: described } = readCrate(isMira ? { "@graph": miraEntities(metadata) } : metadata);
       const name = typeof root.name === "string" && root.name ? root.name : asset.value.name;
       const folder = isJson ? "" : metadataFile.path.replace(/ro-crate-metadata\.json$/, "");
-      const own = entries.find(({ path }) => path === `${folder}dg-records.jsonl`);
+      // Beside the metadata in a crate, or in the graph's own entry folder in an .eln file.
+      const own = entries.find(({ path }) => path === `${folder}dg-records.jsonl`) ?? entries.find(({ path }) => path === `${folder}discourse-graph/dg-records.jsonl`);
       const graph = context.graph();
 
       if (own) {
@@ -774,8 +906,9 @@ export const crateFeature = (context: Context, { secrets }: { secrets?: SecretSt
         }
       }
       if (!isJson) {
-        const wanted = new Set([...described, ...extra.filter(isMiraDocument).flatMap(miraEntities)].map((entity) => `${folder}${decodeURIComponent(entity["@id"])}`));
-        for (const entry of await unzip(bytes, (path) => wanted.has(path) && !/ro-crate-metadata\.json$/.test(path))) await hash(encodeURI(entry.path.slice(folder.length)), entry.bytes);
+        // A file's id is its path in the archive, with or without a leading `./`.
+        const wanted = new Map([...described, ...extra.filter(isMiraDocument).flatMap(miraEntities)].map((entity) => [`${folder}${decodeURIComponent(entity["@id"].replace(/^\.\//, ""))}`, entity["@id"]]));
+        for (const entry of await unzip(bytes, (path) => wanted.has(path) && !/ro-crate-metadata\.json$/.test(path))) await hash(wanted.get(entry.path)!, entry.bytes);
       }
 
       const stamp = context.stamp();

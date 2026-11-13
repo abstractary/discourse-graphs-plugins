@@ -20,7 +20,7 @@ import type {
 } from "./records.ts";
 import type { Appearance, HostError, Placement, Skin } from "./host.ts";
 import type { TextMarks } from "./words.ts";
-import type { CardFacts, CardField, Identifier, LibraryAnnotation, LibraryItem, LibraryStatus, Notification, NotificationSummary, WorkMetadata, WorkStanding } from "./scholarly.ts";
+import type { CardFacts, CardField, Identifier, LibraryAnnotation, LibraryItem, LibraryStatus, Notification, NotificationSummary, WorkMetadata, WorkStanding, InLibrary } from "./scholarly.ts";
 
 /**
  * Who a unit is credited to, from where this person sits. Inside a lab it's the
@@ -48,8 +48,12 @@ export type NodeSummary = {
   staged?: boolean;
   /** Written by this person, so they may rename it. Teammates' units are theirs to rename. */
   mine?: true;
+  /** An output whose file is a picture the base holds, so its card can show it. */
+  image?: true;
+  /** Set when someone has checked this unit. */
+  checked?: CheckState;
   /** Read from this paper. `label` is how it's cited in a few words, such as "Carroll 2020". */
-  paper?: { id: DgId; label: string; title: string };
+  paper?: { id: DgId; label: string; title: string; /** Set when the paper is in this person's reference library. */ library?: InLibrary };
   /** What its card can show beyond the title. The same facts, in the same order, head the context panel. */
   card: CardFacts;
 };
@@ -71,7 +75,25 @@ export type NodeView = {
   attribution: { person: string; lab?: string };
   provenance: Provenance;
   social?: UnitSocial;
+  /** Who has checked this unit, newest first. One standing mark per person. */
+  checks?: UnitCheck[];
 };
+
+export const CHECK_WAYS = [
+  { method: "expertJudgment", label: "Read it and agree" },
+  { method: "sourceRead", label: "Read the source" },
+  { method: "quoteChecked", label: "Checked the quote against the source" },
+  { method: "dataReanalyzed", label: "Reanalysed the data" },
+  { method: "replicated", label: "Repeated it" },
+] as const;
+export type CheckWay = (typeof CHECK_WAYS)[number]["method"];
+/**
+ * One person's mark on one version of a unit. `current` is false once the unit has changed since,
+ * so a mark never carries over to words its maker didn't see. `own` is the unit's author signing it.
+ */
+export type UnitCheck = { id: DgId; verdict: "checked" | "needsWork"; way: CheckWay; note?: string; credit: Credit; at: string; mine: boolean; own: boolean; current: boolean };
+/** How a unit stands, for its card: checked and unchanged, checked but changed since, or sent back. */
+export type CheckState = "checked" | "changed" | "needsWork";
 
 /** Where a unit came from, and everywhere it lives now. */
 /** The published work behind a unit, as the graph holds it: its paper, or the source unit itself. */
@@ -233,6 +255,8 @@ export type PaperSummary = {
   at: string;
   credit: Credit;
   stored: boolean;
+  /** Set when the paper is in this person's reference library. */
+  library?: InLibrary;
   /** Set once it's in the lab's repository. */
   labPaper?: string;
 };
@@ -252,17 +276,25 @@ export type PdfDocument = {
   paper?: { id: DgId; title: string; canvas: DgId };
   /** The source unit that stands for this file, once anything was read from it. */
   source?: DgId;
+  /** Set when the file is the reference library's, not the base's. */
+  library?: InLibrary & { /** How the reference is cited in a few words. */ label: string; item: string };
+  /** Marks the person made on it in the library that aren't units here yet. */
+  libraryMarks?: number;
   /** Units read from it, by highlight or by extraction. */
   units: number;
 };
 
 /** The passage a unit was read from, as a W3C text quote: matched by its words, not by position. */
 export type PdfMark = { unit: NodeSummary; exact: string; page?: number };
+/** A highlight made in the reference library, shown in the reader so it can be brought in. */
+export type PdfLibraryMark = { key: string; exact: string; page?: number; comment?: string; color?: string; /** The type it would become. */ suggested?: DgId; open: string };
 
 export type PdfOpened = {
   document: PdfDocument;
   dataBase64: string;
   marks: PdfMark[];
+  /** The library's own highlights on this file that aren't units here yet. */
+  libraryMarks?: PdfLibraryMark[];
   /** A unit to scroll to, asked for before this reader opened. */
   reveal?: DgId;
 };
@@ -352,6 +384,8 @@ export type PaperMapPaper = {
   title: string;
   /** The paper in a few words: "Carroll 2020". */
   label: string;
+  /** Set when the paper is in this person's reference library. */
+  library?: InLibrary;
   /** Its PDF canvas. */
   canvas: DgId;
   units: number;
@@ -497,6 +531,11 @@ export type Prefs = {
   cardFields: CardField[];
   /** Whether the canvas sidebar stays open beside the canvas, or floats over it and goes. */
   sidePinned: boolean;
+  /**
+   * Whether Zotero is this person's PDF library. When on, the papers to read are Zotero's, opened where
+   * Zotero keeps them, and a copy in the base of a paper Zotero holds is not listed beside it.
+   */
+  zoteroLibrary: boolean;
 };
 
 /** One rule a unit breaks, from the process shapes. The same rule names as `ontology/dg_process.shacl.ttl`. */
@@ -777,6 +816,13 @@ export type IdentityView = {
 /** `credit` and `at` say who put the item there and when: what a note shows under its text. */
 export type CanvasItemView = { id: DgId; z: number; item: CanvasItem; credit: Credit; at: string };
 
+/** One end of a unit's relation, as its card lists it. */
+export type RelatedUnit = { relation: DgId; label: string; state: RelationState; unit: NodeSummary; here: boolean };
+/** A tagged line that could become a unit. */
+export type Candidate = { ref: string; note: string; line: number; text: string; type: DgId; typeLabel: string; tag: string };
+export const CANVAS_COMMANDS = ["add-unit", "tidy", "fit", "export", "ask-ai", "undo", "redo", "cards", "types"] as const;
+export type CanvasCommand = (typeof CANVAS_COMMANDS)[number];
+
 export type CanvasView = {
   canvas: CanvasRecord;
   items: CanvasItemView[];
@@ -813,6 +859,28 @@ export type SurfaceMethods = {
   "node.setType": { params: { id: DgId; type: DgId | null }; result: NodeSummary };
   /** Renames a unit and its note or page. Only its author can. */
   "node.rename": { params: { id: DgId; title: string }; result: NodeSummary };
+  /**
+   * Marks a unit as checked, or as needing work, by the person asking. The mark is pinned to the unit
+   * as it stands now. A person has one standing mark per unit: a new one replaces their last.
+   */
+  "unit.check": { params: { unit: DgId; verdict: "checked" | "needsWork"; way?: CheckWay; note?: string }; result: UnitCheck[] };
+  /** Takes back a mark its maker made. */
+  "unit.uncheck": { params: { id: DgId }; result: UnitCheck[] };
+  /**
+   * Keeps a picture in the base and makes it an Output unit, pinned by a hash of its bytes. The same
+   * picture twice is the same unit. With a canvas, its card is put there.
+   */
+  "image.add": { params: { canvas?: DgId; file: { name: string; mediaType: string; dataBase64: string }; x?: number; y?: number }; result: { unit: NodeSummary; fresh: boolean } };
+  /** An output's picture, read from the base. `stale` when the file no longer matches the hash on record. */
+  "unit.image": { params: { id: DgId }; result: { dataUrl: string; stale: boolean } | null };
+  /** Says what an output shows: a new Evidence unit that rests on it, pinned to its bytes, and on the run that made it. */
+  "output.observe": { params: { output: DgId; title: string; canvas?: DgId; x?: number; y?: number }; result: NodeSummary };
+  /** Everything a unit is related to, in its own words for each link. `here` when the other unit is on `canvas`. */
+  "unit.related": { params: { id: DgId; canvas?: DgId }; result: RelatedUnit[] };
+  /** Lines tagged as candidates for a type, across the base. `supported` is false where the base has no tags. */
+  "candidate.list": { params: Record<string, never>; result: { supported: boolean; tags: { type: DgId; label: string; tag: string }[]; candidates: Candidate[] } };
+  /** Makes a tagged line a unit of its type, with a note, and swaps the line for a link to it. */
+  "candidate.promote": { params: { ref: string; line: number; type: DgId; text: string }; result: NodeSummary };
   /**
    * Takes back a unit its author made. It leaves every canvas, its links stop counting, and its note
    * goes to the base's trash. The record stays, so nothing that named it loses its history.
@@ -914,6 +982,11 @@ export type SurfaceMethods = {
   "units.available": { params: { canvas: DgId }; result: UnitsAvailable };
   /** PDFs the base holds: papers first, then the rest, newest first. */
   "pdf.list": { params: Record<string, never>; result: PdfDocument[] };
+  /**
+   * Whether the reference library is this person's PDF library, and whether it can be reached now.
+   * `wanted` is the setting; `on` is the setting with a library to read from.
+   */
+  "pdf.library": { params: Record<string, never>; result: { on: boolean; wanted: boolean; reachable: boolean; files: number; problem?: string } };
   /** With `data: false`, only what the graph knows changes: the marks, for a re-read after an edit. */
   "pdf.open": { params: { ref: string; data?: boolean }; result: PdfOpened };
   /** Keeps a dropped or chosen PDF in the base, where a person would look for it. */
@@ -945,7 +1018,7 @@ export type SurfaceMethods = {
    * the base is what other tools understand, and the label is the lab's own word for it.
    */
   "grammar.saveNodeType": {
-    params: { id?: DgId; label: string; base: BaseNodeType; abbreviation?: string; titleFormat?: string; color?: string; template?: string };
+    params: { id?: DgId; label: string; base: BaseNodeType; abbreviation?: string; titleFormat?: string; color?: string; template?: string; /** Without the `#`. A line tagged with it is a candidate for this type. */ tag?: string };
     result: NodeTypeRecord;
   };
   /** Takes a type out of use. Refused while units still have it, so nothing is left untyped by accident. */
@@ -974,6 +1047,10 @@ export type SurfaceMethods = {
   "link.open": { params: { url: string }; result: null };
   /** Whether the Zotero app on this computer can be read, and what to do when it can't. */
   "zotero.status": { params: Record<string, never>; result: LibraryStatus };
+  /** Opens From Zotero at one reference, to see the highlights made on it since and bring them in. */
+  "zotero.show": { params: { item: string; canvas?: DgId }; result: null };
+  /** The reference the dialog was asked to open at, once. */
+  "zotero.pending": { params: Record<string, never>; result: { item?: string } };
   "zotero.search": { params: { text: string; limit?: number }; result: LibraryHit[] };
   "zotero.item": { params: { ref: string }; result: LibraryItemView };
   /** Brings an item in as a Source, with the annotations chosen as units that quote it. Reads Zotero; never writes to it. */
@@ -1151,6 +1228,8 @@ export type SurfaceEvent =
   | { event: "focus-changed"; node: DgId | null }
   | { event: "appearance-changed"; appearance: Appearance; skin: Skin }
   | { event: "place-node"; node: DgId }
+  /** Something the base's own command palette or a hotkey asked the canvas in front to do. */
+  | { event: "command"; canvas: DgId; name: CanvasCommand }
   /** Units just put on a canvas from another panel, so that canvas can bring them into view. */
   | { event: "units-placed"; canvas: DgId; units: DgId[] }
   | { event: "reveal-unit"; canvas: DgId; unit: DgId }

@@ -1,5 +1,5 @@
 import type { Services } from "@dg/contract/services.ts";
-import { mergeIdentifiers, parseIdentifier, type Identifier, type LibraryAnnotation, type LibraryItem, type LibraryStatus, type WorkAuthor } from "@dg/contract/scholarly.ts";
+import { LIBRARY_REF, mergeIdentifiers, parseIdentifier, type Identifier, type LibraryAnnotation, type LibraryFile, type LibraryItem, type LibraryStatus, type WorkAuthor } from "@dg/contract/scholarly.ts";
 
 /**
  * Zotero, read through the local API the desktop app serves at
@@ -17,7 +17,7 @@ import { mergeIdentifiers, parseIdentifier, type Identifier, type LibraryAnnotat
 export const ZOTERO_LOCAL = "http://localhost:23119/api";
 
 type Json = Record<string, unknown>;
-type Raw = { key: string; version?: number; library?: { type?: string; id?: number; name?: string }; data: Json };
+type Raw = { key: string; version?: number; library?: { type?: string; id?: number; name?: string }; links?: Record<string, { href?: string; type?: string; length?: number }>; data: Json };
 
 const text = (value: unknown): string | undefined => (typeof value === "string" && value.trim() ? value.trim() : undefined);
 
@@ -48,7 +48,8 @@ export const identifiersOfItem = (raw: Raw): Identifier[] => {
   add("arxiv", arxiv ? `arXiv:${arxiv}` : undefined);
   for (const isbn of (text(data.ISBN) ?? "").split(/[\s,;]+/).filter(Boolean).slice(0, 1)) add("isbn", `ISBN ${isbn}`);
   add("citekey", text(data.citationKey) ?? fromExtra(extra, /^citation key$/i));
-  if (raw.library?.id) found.push({ scheme: "zotero", value: refOf(raw) });
+  // A personal library read on its own computer is user 0, and it is still a library.
+  if (raw.library) found.push({ scheme: "zotero", value: refOf(raw) });
   // A link is kept only when nothing better names the work.
   const url = text(data.url);
   if (url && !found.some(({ scheme }) => scheme === "doi" || scheme === "pmid" || scheme === "arxiv")) add("url", url);
@@ -129,6 +130,31 @@ export const annotationOf = (raw: Raw): LibraryAnnotation | null => {
   };
 };
 
+const isPdf = (raw: Raw): boolean => raw.data.itemType === "attachment" && (raw.data.contentType === "application/pdf" || /\.pdf$/i.test(text(raw.data.filename) ?? ""));
+
+/** A PDF attachment as a file of the library. Zotero says where the file is with a `file:` link. */
+export const fileOfAttachment = (raw: Raw, parent: Raw | undefined, siblings: Raw[] = []): LibraryFile => {
+  const link = raw.links?.enclosure;
+  let path: string | undefined;
+  try {
+    if (link?.href?.startsWith("file:")) path = decodeURIComponent(new URL(link.href).pathname);
+  } catch {
+    // An address this can't read leaves the file listed, and it says so when opened.
+  }
+  const filename = text(raw.data.filename) ?? (path ? path.split("/").pop()! : `${text(raw.data.title) ?? raw.key}.pdf`);
+  const stamp = text(raw.data.dateModified);
+  return {
+    ref: `${LIBRARY_REF}${refOf(raw)}`,
+    filename,
+    ...(typeof link?.length === "number" ? { size: link.length } : {}),
+    ...(stamp ? { modifiedAt: stamp } : {}),
+    ...(path ? { path } : {}),
+    ...(text(raw.data.md5) ? { md5: text(raw.data.md5)! } : {}),
+    // A PDF filed with no reference is its own item, named for the file.
+    item: parent ? itemOf(parent, siblings) : { ...itemOf(raw), title: filename.replace(/\.pdf$/i, "") },
+  };
+};
+
 const NOT_RUNNING = "Zotero isn't answering. Open Zotero on this computer and try again.";
 const SWITCHED_OFF = 'Zotero is running but won\'t talk to other apps. In Zotero, open Settings, then Advanced, and tick "Allow other applications on this computer to communicate with Zotero".';
 
@@ -154,18 +180,26 @@ export const createZotero = ({ fetch: send, base = ZOTERO_LOCAL, timeoutMs = 800
     return Array.isArray(value) ? (value as Raw[]).filter((raw) => raw && typeof raw.key === "string" && raw.data) : [];
   };
   /** `users/<id>/items/<key>` as the API path it is. The local API also answers to user 0. */
-  const pathOf = (ref: string): string => {
+  const pathOf = (given: string): string => {
+    const ref = given.startsWith(LIBRARY_REF) ? given.slice(LIBRARY_REF.length) : given;
     if (!/^(users|groups)\/\d+\/items\/[A-Z0-9]{8}$/.test(ref)) throw new Error("That isn't a Zotero item.");
     return `/${ref}`;
   };
+  /** This person's own library, then each group library they belong to. */
+  const libraries = async (): Promise<string[]> => {
+    const groups = await get("/users/0/groups").then((response) => response.json() as Promise<{ id?: number }[]>, () => []);
+    return ["/users/0", ...(Array.isArray(groups) ? groups.flatMap((group) => (typeof group.id === "number" ? [`/groups/${group.id}`] : [])) : [])];
+  };
+  const PAGE = 100;
 
   return {
     status: async (): Promise<LibraryStatus> => {
       try {
         const response = await get("/users/0/items?limit=1&format=keys");
         const serverId = response.headers.get("Zotero-Server-ID") ?? undefined;
+        const version = response.headers.get("X-Zotero-Version") ?? undefined;
         // Zotero 10 names itself with a server id, and is the first that can take writes.
-        return { ok: true, app: "zotero", canWrite: Boolean(serverId), ...(serverId ? { serverId } : {}) };
+        return { ok: true, app: "zotero", canWrite: Boolean(serverId), ...(serverId ? { serverId } : {}), ...(version ? { version } : {}) };
       } catch (error) {
         return { ok: false, app: "zotero", problem: error instanceof Error ? error.message : NOT_RUNNING };
       }
@@ -178,6 +212,36 @@ export const createZotero = ({ fetch: send, base = ZOTERO_LOCAL, timeoutMs = 800
       const path = pathOf(ref);
       const raw = (await (await get(path)).json()) as Raw;
       return itemOf(raw, await list(`${path}/children`));
+    },
+    files: async ({ limit = 500 } = {}) => {
+      const found: LibraryFile[] = [];
+      for (const library of await libraries()) {
+        // Attachments, newest first, a page at a time, until the library runs out or enough are found.
+        const attachments: Raw[] = [];
+        for (let start = 0; attachments.length < limit; start += PAGE) {
+          const page = await list(`${library}/items?itemType=attachment&sort=dateModified&direction=desc&limit=${PAGE}&start=${start}`);
+          attachments.push(...page.filter(isPdf));
+          if (page.length < PAGE) break;
+        }
+        // Each one's reference, asked for in batches.
+        const keys = [...new Set(attachments.flatMap((raw) => (text(raw.data.parentItem) ? [text(raw.data.parentItem)!] : [])))];
+        const parents = new Map<string, Raw>();
+        for (let at = 0; at < keys.length; at += 50) for (const raw of await list(`${library}/items?itemKey=${keys.slice(at, at + 50).join(",")}&limit=${PAGE}`)) parents.set(raw.key, raw);
+        for (const raw of attachments.slice(0, limit - found.length)) {
+          const parent = parents.get(text(raw.data.parentItem) ?? "");
+          found.push(fileOfAttachment(raw, parent, parent ? attachments.filter((other) => text(other.data.parentItem) === parent.key) : []));
+        }
+      }
+      return found.sort((a, b) => (b.modifiedAt ?? "").localeCompare(a.modifiedAt ?? ""));
+    },
+    file: async ({ ref }) => {
+      const path = pathOf(ref);
+      const raw = (await (await get(path)).json()) as Raw;
+      if (!isPdf(raw)) throw new Error("That Zotero item isn't a PDF.");
+      const parentKey = text(raw.data.parentItem);
+      const parentPath = parentKey ? path.replace(/[A-Z0-9]{8}$/, parentKey) : undefined;
+      const parent = parentPath ? ((await (await get(parentPath)).json()) as Raw) : undefined;
+      return fileOfAttachment(raw, parent, parentPath ? await list(`${parentPath}/children`) : []);
     },
     annotations: async ({ ref }) => {
       const path = pathOf(ref);

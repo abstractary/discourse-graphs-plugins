@@ -1,4 +1,7 @@
-import { sameDoi } from "@dg/contract/scholarly.ts";
+import { isLibraryRef, isSharedLibraryRef, mergeIdentifiers, sameDoi, sameIdentifier, type Identifier, type LibraryAnnotation, type LibraryFile } from "@dg/contract/scholarly.ts";
+import { citeAs, identifiersOf, selectLinkOf } from "./card.ts";
+import { suggestType } from "./library.ts";
+import { keyOfPaper, sameWork } from "./work.ts";
 import {
   createCanvasItem,
   createNode,
@@ -14,7 +17,7 @@ import {
   type PaperRecord,
 } from "@dg/contract/records.ts";
 import type { FileSummary } from "@dg/contract/host.ts";
-import type { HolonLevel, PdfDocument, PdfMark, Provenance, UnitsAvailable, UnitsSegment } from "@dg/contract/surface.ts";
+import type { HolonLevel, PdfDocument, PdfMark, Provenance, UnitsAvailable, UnitsSegment, PdfLibraryMark } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { cidOfBytes } from "./process.ts";
 import { mustBeOfPaper, readingOf, refusal } from "./locks.ts";
@@ -54,10 +57,37 @@ export const readingFeature = (context: Context) => {
   const cids = new Map<string, string>();
   let pendingReveal: { ref: string; unit: DgId } | null = null;
 
+  /**
+   * The reference library's PDFs, by ref, when the person has made it their PDF library. With it on, the
+   * library is where papers are: its files are listed first and read where it keeps them.
+   */
+  const inLibrary = new Map<string, LibraryFile>();
+  let libraryProblem = "";
+  const IDENTITY: Identifier["scheme"][] = ["doi", "pmid", "pmcid", "arxiv", "isbn"];
+  const libraryOn = async (): Promise<boolean> => Boolean((await context.prefs()).zoteroLibrary && context.services?.zotero);
+  const libraryFiles = async (): Promise<FileSummary[]> => {
+    if (!(await libraryOn())) {
+      inLibrary.clear();
+      libraryProblem = "";
+      return [];
+    }
+    try {
+      const found = await context.services!.zotero.files();
+      inLibrary.clear();
+      for (const file of found) inLibrary.set(file.ref, file);
+      libraryProblem = "";
+      return found.map((file) => ({ ref: file.ref, name: file.filename, mime: "application/pdf", folder: "Zotero", ...(file.size !== undefined ? { size: file.size } : {}), ...(file.modifiedAt ? { modifiedAt: file.modifiedAt } : {}) }));
+    } catch (error) {
+      // Zotero closed, or its setting off. What was listed last stays, and the list says why it may be stale.
+      libraryProblem = error instanceof Error ? error.message : String(error);
+      return [...inLibrary.values()].map((file) => ({ ref: file.ref, name: file.filename, mime: "application/pdf", folder: "Zotero" }));
+    }
+  };
+
   const files = async (fresh = false): Promise<FileSummary[]> => {
     if (!fresh && listed && Date.now() - listed.at < LIST_TTL_MS) return listed.files;
-    const result = await context.host.listFiles({ extensions: ["pdf"], limit: 500 });
-    listed = { at: Date.now(), files: result.ok ? result.value : [] };
+    const [library, result] = await Promise.all([libraryFiles(), context.host.listFiles({ extensions: ["pdf"], limit: 500 })]);
+    listed = { at: Date.now(), files: [...library, ...(result.ok ? result.value : [])] };
     return listed.files;
   };
 
@@ -70,7 +100,10 @@ export const readingFeature = (context: Context) => {
   const paperOf = (file: FileSummary): PaperRecord | undefined => {
     const cid = cids.get(file.ref);
     const all = [...papers()].sort((a, b) => b.at.localeCompare(a.at));
-    return (cid ? all.find((paper) => paper.fileCid === cid) : undefined) ?? all.find((paper) => paper.filename === file.name);
+    // A library's file is first of all the work its reference names: the same DOI is the same paper, whatever the file is called.
+    const item = inLibrary.get(file.ref)?.item;
+    const named = item ? all.find((paper) => sameWork(keyOfPaper(paper), { identifiers: item.identifiers }) === "identifier") : undefined;
+    return named ?? (cid ? all.find((paper) => paper.fileCid === cid) : undefined) ?? all.find((paper) => paper.filename === file.name);
   };
   /** The unit that stands for this file: the paper's own source, or one made from a highlight. */
   const sourceOf = (file: FileSummary, cid?: string): NodeRecord | undefined => {
@@ -85,7 +118,36 @@ export const readingFeature = (context: Context) => {
         sources.find((node) => !node.source && standsFor(node, paper));
       if (own) return own;
     }
+    // The source a library item already has: the same work by identifier, or this person's own unit for that item.
+    const item = inLibrary.get(file.ref)?.item;
+    if (item) {
+      const me = context.me().id;
+      const sources = nodes().filter((node) => baseOf(node) === "source");
+      const shares = (schemes: Identifier["scheme"][], mineOnly: boolean) => (node: NodeRecord) =>
+        identifiersOf(node).some((held) => schemes.includes(held.scheme) && (!mineOnly || node.by.id === me || isSharedLibraryRef(held.value)) && item.identifiers.some((other) => sameIdentifier(held, other)));
+      const known = sources.find(shares(IDENTITY, false)) ?? sources.find(shares(["zotero"], true));
+      if (known) return known;
+    }
     return nodes().find((node) => baseOf(node) === "source" && (node.facts?.uri === file.ref || (cid !== undefined && node.facts?.cid === cid)));
+  };
+
+  /** The library's own highlights on a file that aren't units here yet. */
+  const libraryMarksOf = async (file: FileSummary): Promise<PdfLibraryMark[]> => {
+    const held = inLibrary.get(file.ref);
+    if (!held || !context.services?.zotero) return [];
+    let marks: LibraryAnnotation[];
+    try {
+      marks = await context.services.zotero.annotations({ ref: held.item.ref });
+    } catch {
+      return [];
+    }
+    const me = context.me().id;
+    const attachment = file.ref.split("/").pop();
+    const types = context.nodeTypes().filter((type) => type.base === "question" || type.base === "claim" || type.base === "evidence");
+    const brought = new Set(nodes().filter((node) => node.by.id === me).flatMap((node) => (node.facts?.identifiers ?? []).filter(({ scheme }) => scheme === "zotero").map(({ value }) => value)));
+    return marks
+      .filter((mark) => mark.attachment === attachment && mark.text && !brought.has(mark.ref))
+      .map((mark) => ({ key: mark.key, exact: mark.text!, ...(mark.pageIndex !== undefined ? { page: mark.pageIndex + 1 } : {}), ...(mark.comment ? { comment: mark.comment } : {}), ...(mark.color ? { color: mark.color } : {}), ...(suggestType(mark, types) ? { suggested: suggestType(mark, types)!.id } : {}), open: mark.open }));
   };
 
   const marksOf = (file: FileSummary, source: NodeRecord | undefined): PdfMark[] => {
@@ -105,10 +167,12 @@ export const readingFeature = (context: Context) => {
   const documentOf = (file: FileSummary): PdfDocument => {
     const paper = paperOf(file);
     const source = sourceOf(file, cids.get(file.ref));
+    const held = inLibrary.get(file.ref);
     return {
       ref: file.ref,
       name: file.name,
-      title: paper?.title ?? source?.title ?? stemOf(file.name),
+      title: paper?.title ?? source?.title ?? held?.item.title ?? stemOf(file.name),
+      ...(held ? { library: { app: "zotero" as const, open: selectLinkOf(held.item.ref), what: "item" as const, label: citeAs(held.item.authors.map(({ name }) => name), held.item.published, held.item.title), item: held.item.ref } } : {}),
       ...(file.folder ? { folder: file.folder } : {}),
       ...(file.size !== undefined ? { size: file.size } : {}),
       ...(file.modifiedAt ? { modifiedAt: file.modifiedAt } : {}),
@@ -121,15 +185,21 @@ export const readingFeature = (context: Context) => {
   const fileOf = async (ref: string): Promise<FileSummary> => {
     const found = (await files()).find((file) => file.ref === ref) ?? (await files(true)).find((file) => file.ref === ref);
     if (found) return found;
+    // A library's file opened while the library isn't the PDF library: it is still read from the library.
+    if (isLibraryRef(ref) && context.services?.zotero) {
+      const file = await context.services.zotero.file({ ref });
+      inLibrary.set(file.ref, file);
+      return { ref: file.ref, name: file.filename, mime: "application/pdf", folder: "Zotero", ...(file.size !== undefined ? { size: file.size } : {}) };
+    }
     // A ref a base can read but doesn't list, such as a link from elsewhere.
-    const asset = value(await context.host.readAsset({ ref }));
+    const asset = value(await context.readFile(ref));
     return { ref, name: asset.name, mime: asset.mime };
   };
 
   const cidOf = async (ref: string): Promise<string> => {
     const known = cids.get(ref);
     if (known) return known;
-    const asset = value(await context.host.readAsset({ ref }));
+    const asset = value(await context.readFile(ref));
     const cid = await cidOfBytes(fromBase64(asset.dataUrl.split(",")[1] ?? ""));
     cids.set(ref, cid);
     return cid;
@@ -192,31 +262,47 @@ export const readingFeature = (context: Context) => {
 
   const handlers: Pick<
     Handlers,
-    "pdf.list" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "pdf.follow" | "canvas.pdf" | "units.available" | "canvas.placeUnits" | "units.put"
+    "pdf.list" | "pdf.library" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "pdf.follow" | "canvas.pdf" | "units.available" | "canvas.placeUnits" | "units.put"
   > = {
     "pdf.list": async () => {
       const all = (await files(true)).map(documentOf);
+      // With the library as the PDF library, a paper it holds is listed once, as the library's. A copy of
+      // the same paper in the base is the same work, so it isn't listed beside it.
+      const theirs = all.filter((doc) => doc.library);
+      const works = new Set(theirs.flatMap((doc) => [doc.paper?.id, doc.source].filter(Boolean) as string[]));
+      const here = all.filter((doc) => !doc.library && !(doc.paper && works.has(doc.paper.id)) && !(doc.source && works.has(doc.source)));
       // Papers first: they're what people came to read. Each group stays newest first.
-      return [...all.filter((doc) => doc.paper), ...all.filter((doc) => !doc.paper)];
+      const ordered = (docs: PdfDocument[]): PdfDocument[] => [...docs.filter((doc) => doc.paper), ...docs.filter((doc) => !doc.paper)];
+      return [...ordered(theirs), ...ordered(here)];
+    },
+    "pdf.library": async () => {
+      const on = await libraryOn();
+      const prefs = await context.prefs();
+      if (!context.services?.zotero) return { on: false, wanted: prefs.zoteroLibrary, reachable: false, files: 0, problem: "This base can't reach Zotero." };
+      if (!on) return { on: false, wanted: false, reachable: true, files: 0 };
+      await files(true);
+      return { on: true, wanted: true, reachable: !libraryProblem, files: inLibrary.size, ...(libraryProblem ? { problem: libraryProblem } : {}), ...(context.host.readLocalFile ? {} : { problem: "Zotero's files can only be opened in the desktop app." }) };
     },
 
     "pdf.open": async ({ ref, data = true }) => {
       const file = await fileOf(ref);
       let dataBase64 = "";
       if (data || !cids.has(ref)) {
-        const asset = value(await context.host.readAsset({ ref }));
+        const asset = value(await context.readFile(ref));
         const bytes = asset.dataUrl.split(",")[1] ?? "";
         if (!cids.has(ref)) cids.set(ref, await cidOfBytes(fromBase64(bytes)));
         if (data) dataBase64 = bytes;
       }
       const source = sourceOf(file, cids.get(ref));
       // A file renamed or moved since: its source follows it.
-      if (source && baseOf(source) === "source" && !source.source && source.facts?.uri !== ref) {
+      // A library's address is one computer's, so it is never written into a record as where the file is.
+      if (source && baseOf(source) === "source" && !source.source && source.facts?.uri !== ref && !isLibraryRef(ref)) {
         await context.put([revise({ record: source, changes: { facts: { ...source.facts, uri: ref } }, by: context.me() })]);
       }
       const reveal = data && pendingReveal?.ref === ref ? pendingReveal.unit : undefined;
       if (reveal) pendingReveal = null;
-      return { document: documentOf(file), dataBase64, marks: marksOf(file, source), ...(reveal ? { reveal } : {}) };
+      const theirs = data ? await libraryMarksOf(file) : [];
+      return { document: { ...documentOf(file), ...(theirs.length ? { libraryMarks: theirs.length } : {}) }, dataBase64, marks: marksOf(file, source), ...(theirs.length ? { libraryMarks: theirs } : {}), ...(reveal ? { reveal } : {}) };
     },
 
     "pdf.add": async ({ name, dataBase64 }) => {
@@ -239,11 +325,26 @@ export const readingFeature = (context: Context) => {
       const stamp = context.stamp();
       let source = sourceOf(file, cid);
       if (!source) {
+        // A file from the library is the reference it belongs to: its title, authors and identifiers come with it.
+        const item = inLibrary.get(ref)?.item;
+        const doi = item?.identifiers.find(({ scheme }) => scheme === "doi")?.value;
+        const rest = item?.identifiers.filter(({ scheme }) => scheme !== "doi") ?? [];
         source = createNode({
           ...stamp,
-          title: documentTitle?.trim() || stemOf(file.name),
+          title: item?.title ?? (documentTitle?.trim() || stemOf(file.name)),
           type: sourceType(fresh).id,
-          facts: { uri: ref, mediaType: "application/pdf", cid, ...(file.size !== undefined ? { size: file.size } : {}) },
+          facts: {
+            ...(item ? {} : { uri: ref }),
+            mediaType: "application/pdf",
+            cid,
+            ...(file.size !== undefined ? { size: file.size } : {}),
+            ...(doi ? { doi } : {}),
+            ...(rest.length ? { identifiers: mergeIdentifiers(rest) } : {}),
+            ...(item?.authors.length ? { authors: item.authors.map(({ name }) => name) } : {}),
+            ...(item?.published ? { published: item.published } : {}),
+            ...(item?.venue ? { venue: item.venue } : {}),
+            ...(item ? { provenance: { method: "imported" as const, agent: "Zotero" } } : {}),
+          },
         });
         fresh.push(source);
       }

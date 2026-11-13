@@ -13,10 +13,11 @@ import {
   type ViewStateResult,
   type WorkspaceLeaf,
   type WorkspaceSplit,
+  Modal,
 } from "obsidian";
 import type { ExtractionGraph } from "@dg/contract/services.ts";
 import { ok, type Placement, type SurfaceRoute } from "@dg/contract/host.ts";
-import type { SurfacePort } from "@dg/contract/surface.ts";
+import type { CanvasCommand, SurfacePort } from "@dg/contract/surface.ts";
 import { createCore, type Core } from "@dg/core/index.ts";
 import { createObsidianHost, ROOT, SURFACE_VIEW, type ObsidianHost } from "./host.ts";
 import { testHooks } from "./testing.ts";
@@ -49,6 +50,45 @@ const OFFER_DELAY_MS = 3000;
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => window.setTimeout(resolve, ms));
+
+/** A dialog's size, by what it holds. */
+const DIALOG_SIZE: Partial<Record<SurfaceRoute["surface"], { width: number; height: number }>> = { grammar: { width: 780, height: 660 } };
+
+/**
+ * A panel shown as one of Obsidian's own modals, so it closes, stacks, dims and takes the keyboard the
+ * way every other dialog in the app does. The panel inside is the same sandboxed frame as anywhere else.
+ */
+class PanelModal extends Modal {
+  frame: HTMLIFrameElement | null = null;
+  constructor(
+    app: App,
+    private readonly route: SurfaceRoute,
+    private readonly html: string,
+    private readonly mount: (frame: HTMLIFrameElement) => void,
+    private readonly closed: () => void,
+  ) {
+    super(app);
+  }
+  onOpen(): void {
+    const { width, height } = DIALOG_SIZE[this.route.surface] ?? { width: 480, height: 640 };
+    this.modalEl.dataset.dg = "dialog";
+    this.modalEl.dataset.surface = this.route.surface;
+    this.modalEl.style.cssText = `width:min(${width}px,calc(100vw - 32px));height:min(${height}px,calc(100vh - 48px));max-width:none;max-height:none;padding:0;overflow:hidden;`;
+    this.contentEl.style.cssText = "height:100%;margin:0;padding:0;";
+    const frame = this.contentEl.createEl("iframe");
+    frame.setAttribute("sandbox", "allow-scripts");
+    frame.setAttribute("title", "Discourse Graphs");
+    frame.style.cssText = "display:block;width:100%;height:100%;border:0;";
+    frame.srcdoc = this.html;
+    this.mount(frame);
+    this.frame = frame;
+  }
+  onClose(): void {
+    this.contentEl.empty();
+    this.frame = null;
+    this.closed();
+  }
+}
 
 export class SurfaceView extends ItemView {
   route: SurfaceRoute = { surface: "canvas" };
@@ -239,6 +279,9 @@ class DiscourseGraphsSettings extends PluginSettingTab {
     new Setting(containerEl)
       .setName("PDFs")
       .setDesc("Obsidian's own viewer stays the default. “Read this PDF” on a file, or “Read a PDF…”, opens it beside the canvas, where a highlight becomes a unit. A PDF you drop into the reader is kept in the “Paper files” folder.");
+    const zotero = new Setting(containerEl)
+      .setName("Use Zotero as your PDF library")
+      .setDesc("Checking…");
     const notebookText = new Setting(containerEl)
       .setName("Keep printed text from notebooks")
       .setDesc("Reading a Jupyter notebook always keeps its figures and tables as outputs. Turn this on to keep printed text and plain results too.");
@@ -370,6 +413,17 @@ class DiscourseGraphsSettings extends PluginSettingTab {
       );
       notebookText.addToggle((toggle) => toggle.setValue(prefs.notebookText).onChange((on) => void core.setPrefs({ notebookText: on })));
 
+      // Zotero as the PDF library: one switch, and a line that says whether Zotero can be reached right now.
+      const ZOTERO_ABOUT = "The papers to read come from Zotero and are opened where Zotero keeps them, with nothing copied into this vault. A paper Zotero holds is listed once, as Zotero's. Nothing is written to Zotero.";
+      const drawZotero = async (): Promise<void> => {
+        const state = await plugin.zoteroState().catch(() => null);
+        zotero.setDesc(`${ZOTERO_ABOUT} ${!state ? "" : state.ok ? `Zotero ${state.version ?? ""} is answering${state.on ? `, with ${state.files} ${state.files === 1 ? "PDF" : "PDFs"}` : ""}.` : (state.problem ?? "Zotero isn't answering.")}`.trim());
+      };
+      zotero.addToggle((toggle) =>
+        toggle.setValue(prefs.zoteroLibrary).onChange((on) => void core.setPrefs({ zoteroLibrary: on }).then(drawZotero)),
+      );
+      void drawZotero();
+
       const drawUsage = (): void => {
         const count = core.usageCount();
         usage.setDesc(`A list of which actions you used, kept on this device to show what gets used. It holds no titles or text, and nothing sends it anywhere. ${count} ${count === 1 ? "entry" : "entries"} now.`);
@@ -410,8 +464,40 @@ export default class DiscourseGraphsPlugin extends Plugin {
     placement: Placement;
   }) => {
     const { workspace } = this.app;
+    // The quick finder sits high and closes on a click outside it, like Obsidian's own switcher. Every
+    // other dialog is one of Obsidian's modals.
+    if (placement === "dialog" && route.surface !== "find") {
+      const core = await this.ensureCore();
+      this.dialogModal?.close();
+      closeDialogFrame();
+      const modal = new PanelModal(
+        this.app,
+        route,
+        __CANVAS_HTML__,
+        (frame) =>
+          connectFrame({
+            frame,
+            route,
+            test: this.testMode,
+            connect: async (port) => {
+              core.connectSurface({ port });
+            },
+          }),
+        () => {
+          if (this.dialogModal === modal) {
+            this.dialogModal = null;
+            this.dialogFrame = null;
+          }
+        },
+      );
+      this.dialogModal = modal;
+      modal.open();
+      this.dialogFrame = modal.frame;
+      return ok(null);
+    }
     if (placement === "dialog") {
       const core = await this.ensureCore();
+      this.dialogModal?.close();
       openDialogFrame({
         html: __CANVAS_HTML__,
         route,
@@ -482,6 +568,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
   };
 
   dialogFrame: HTMLIFrameElement | null = null;
+  private dialogModal: PanelModal | null = null;
   /** The key that makes a node from selected text. Read from the device's choices; empty means off. */
   captureKey = "\\";
 
@@ -497,6 +584,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
       plugin: this,
       openSurface: this.openSurface,
       closeDialog: async () => {
+        this.dialogModal?.close();
         closeDialogFrame();
         this.dialogFrame = null;
         return ok(null);
@@ -553,6 +641,31 @@ export default class DiscourseGraphsPlugin extends Plugin {
       icon: "upload",
       callback: () => void this.openDialog("upload"),
     });
+    // What a canvas's own buttons do, as commands: found in the palette, and bound to any key a person likes.
+    // Each is offered only while a canvas is in front.
+    const onCanvas: [id: string, name: string, icon: string, command: CanvasCommand][] = [
+      ["canvas-add-unit", "Canvas: add a unit", "plus", "add-unit"],
+      ["canvas-tidy", "Canvas: tidy", "layout-grid", "tidy"],
+      ["canvas-fit", "Canvas: fit to view", "maximize", "fit"],
+      ["canvas-cards", "Canvas: choose what cards show", "list", "cards"],
+      ["canvas-ask-ai", "Canvas: ask AI", "sparkles", "ask-ai"],
+      ["canvas-export", "Canvas: export…", "upload", "export"],
+      ["canvas-undo", "Canvas: undo", "undo-2", "undo"],
+      ["canvas-redo", "Canvas: redo", "redo-2", "redo"],
+    ];
+    for (const [id, name, icon, command] of onCanvas) {
+      this.addCommand({
+        id,
+        name,
+        icon,
+        checkCallback: (checking) => {
+          const front = this.frontCanvas();
+          if (!front) return false;
+          if (!checking) void this.ensureCore().then((core) => core.command(front, command));
+          return true;
+        },
+      });
+    }
     this.addCommand({
       id: "types-and-relations",
       name: "Types and relations…",
@@ -929,6 +1042,20 @@ export default class DiscourseGraphsPlugin extends Plugin {
     const setting = (this.app as unknown as { setting?: { open: () => void; openTabById: (id: string) => void } }).setting;
     setting?.open();
     setting?.openTabById(this.manifest.id);
+  }
+
+  /** Whether Zotero is answering, and what the PDF library holds when it is the library. */
+  async zoteroState(): Promise<{ ok: boolean; version?: string; problem?: string; on: boolean; files: number }> {
+    const core = await this.ensureCore();
+    const [status, library] = await Promise.all([core.zoteroStatus(), core.pdfLibrary()]);
+    return { ok: status.ok, ...(status.version ? { version: status.version } : {}), ...(status.problem ?? library.problem ? { problem: (status.problem ?? library.problem)! } : {}), on: library.on, files: library.files };
+  }
+
+  /** The canvas a person is looking at, if one is. */
+  frontCanvas(): string | undefined {
+    return loadedSurfaces(this.app.workspace)
+      .map((leaf) => leaf.view as SurfaceView)
+      .find((view) => view.route.surface === "canvas" && view.route.id && view.containerEl.offsetParent !== null)?.route.id;
   }
 
   async openDialog(surface: "upload" | "welcome" | "zotero" | "grammar"): Promise<void> {

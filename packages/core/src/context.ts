@@ -11,9 +11,9 @@ import type {
   NodeTypeRecord,
   RelationTypeRecord,
 } from "@dg/contract/records.ts";
-import type { Host, HostInfo } from "@dg/contract/host.ts";
+import type { Asset, Host, HostInfo, Result } from "@dg/contract/host.ts";
 import type { Services } from "@dg/contract/services.ts";
-import type { Credit, NodeSummary, SurfaceEvent, SurfaceMethod, SurfaceMethods } from "@dg/contract/surface.ts";
+import type { Credit, NodeSummary, SurfaceEvent, SurfaceMethod, SurfaceMethods, Prefs } from "@dg/contract/surface.ts";
 
 export type Handlers = {
   [M in SurfaceMethod]: (params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
@@ -53,6 +53,13 @@ export type Context = {
   hasLiveText: (ref: HostRef) => boolean;
   makeCanvas: (title: string, fields?: Parameters<typeof import("@dg/contract/records.ts").createCanvas>[0]["fields"]) => Promise<CanvasRecord>;
   send: (event: SurfaceEvent) => void;
+  /** This device's preferences. */
+  prefs: () => Promise<Prefs>;
+  /**
+   * A file by its ref, wherever it lives: in the base, or in the reference library when the ref says so.
+   * A library's file is read where the library keeps it and never copied.
+   */
+  readFile: (ref: string) => Promise<Result<Asset>>;
   getLocal: (key: string) => Promise<unknown>;
   setLocal: (key: string, value: unknown) => Promise<void>;
 };

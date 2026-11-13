@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BaseEdge, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useNodesInitialized, useReactFlow, type Edge, type EdgeProps, type Node, type NodeProps } from "@xyflow/react";
 import type { PaperMap, PaperMapLink, PaperMapPaper, PaperMapTie, PaperScope, PaperScopeChoice } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { plain } from "../shared/ui.tsx";
+import { LibraryMark, plain } from "../shared/ui.tsx";
 
 /**
  * Papers placed by how far they have been worked into each other. Distance is
@@ -35,7 +35,7 @@ const PaperCard = ({ data, selected }: NodeProps) => {
     <div className="pm-card" data-dg="pm-paper" data-paper={paper.id} data-apart={paper.apart ? "" : undefined} data-selected={selected ? "" : undefined}>
       <Handle type="source" position={Position.Top} className="pm-pin" isConnectable={false} />
       <Handle type="target" position={Position.Top} className="pm-pin" isConnectable={false} />
-      <strong>{paper.label}</strong>
+      <strong>{paper.label}<LibraryMark library={paper.library} /></strong>
       <span className="pm-title">{plain(paper.title)}</span>
       <span className="pm-meta">
         {count(paper.units, "unit", "units")}

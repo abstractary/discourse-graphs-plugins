@@ -1,5 +1,5 @@
 import type { Author, DgId, FoldedGraph, NodeRecord, PaperRecord } from "@dg/contract/records.ts";
-import { mergeIdentifiers, parseIdentifier, type CardFacts, type Identifier, type ReadHow } from "@dg/contract/scholarly.ts";
+import { isSharedLibraryRef, mergeIdentifiers, parseIdentifier, type CardFacts, type Identifier, type InLibrary, type ReadHow } from "@dg/contract/scholarly.ts";
 
 /**
  * The facts a unit's card can show: what it was read from and how, who wrote
@@ -48,7 +48,26 @@ export const identifiersOf = (node: NodeRecord): Identifier[] => {
 /** Everything that names a paper, its DOI first. */
 export const paperIdentifiers = (paper: PaperRecord): Identifier[] => mergeIdentifiers(read(paper.doi, "doi"), paper.identifiers);
 
+/** Opens a library item in the library's own app. */
+export const selectLinkOf = (ref: string): string => {
+  const [kind, id, , key] = ref.split("/");
+  return kind === "groups" ? `zotero://select/groups/${id}/items/${key}` : `zotero://select/library/items/${key}`;
+};
+
+/**
+ * Where something sits in the reader's own library, from the identifiers it carries. A personal
+ * library's address only means something to the person whose record holds it, so a teammate's unit
+ * is marked only when its address is a group library's.
+ */
+export const inLibraryOf = (identifiers: Identifier[], by: Author, me: string, passage?: string): InLibrary | undefined => {
+  const ref = identifiers.find(({ scheme }) => scheme === "zotero")?.value;
+  if (!ref || !(by.id === me || isSharedLibraryRef(ref))) return undefined;
+  return passage ? { app: "zotero", open: passage, what: "passage" } : { app: "zotero", open: selectLinkOf(ref), what: "item" };
+};
+
 export type CardInput = {
+  /** The reader's own id: whose library a personal address belongs to. */
+  me: string;
   graph: FoldedGraph;
   node: NodeRecord;
   localSpace: string;
@@ -61,7 +80,7 @@ export type CardInput = {
   paperOfSource: (source: NodeRecord) => PaperRecord | undefined;
 };
 
-export const cardFacts = ({ graph, node, localSpace, spaceName, nameOf, labName, labelOf, paperOfSource }: CardInput): CardFacts => {
+export const cardFacts = ({ graph, node, me, localSpace, spaceName, nameOf, labName, labelOf, paperOfSource }: CardInput): CardFacts => {
   const nodeAt = (id: DgId | undefined): NodeRecord | undefined => {
     const record = id ? graph.documents.get(id) : undefined;
     return record?.kind === "node" && !record.removed ? record : undefined;
@@ -100,8 +119,16 @@ export const cardFacts = ({ graph, node, localSpace, spaceName, nameOf, labName,
         ? { name: lab, kind: "lab" }
         : { name: "Someone else's workspace", kind: "elsewhere" };
 
+  // The unit's own place in the library (a highlight's passage, a source's item), else that of what it was read from.
+  const passage = node.facts?.sameAs?.find((link) => link.startsWith("zotero://open-pdf/"));
+  const library =
+    inLibraryOf(identifiersOf(node), node.by, me, passage) ??
+    (sourceUnit ? inLibraryOf(identifiersOf(sourceUnit), sourceUnit.by, me) : undefined) ??
+    (sourcePaper ? inLibraryOf(paperIdentifiers(sourcePaper), sourcePaper.by, me) : undefined);
+
   return {
     ...(source ? { source } : {}),
+    ...(library ? { library } : {}),
     authors: sourceAuthors.length ? { names: sourceAuthors, role: "paper" } : { names: node.facts?.creators?.length ? node.facts.creators.map(({ name }) => name) : [nameOf(node.by)], role: "maker" },
     origin,
     created: node.at,

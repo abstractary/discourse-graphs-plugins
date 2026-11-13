@@ -19,6 +19,7 @@ const clickIn = async (selector) => {
   await t.clickAt(box.x + box.width / 2, box.y + box.height / 2);
 };
 
+const canvasesBefore = new Set((await call("canvas.list")).map((item) => item.id));
 // ---------------------------------------------------------------- The dialog
 await call("dialog.open", { surface: "grammar" });
 check("dialog.opens", await until(() => dialog("count", '[data-dg="grammar-types"]'), 8000));
@@ -96,6 +97,8 @@ if (made) {
   await call("grammar.removeNodeType", { id: made.id }).catch((error) => note(`couldn't remove the test type: ${error}`));
   check("type.is-no-longer-offered", !(await call("grammar.get")).nodeTypes.some((item) => item.id === made.id));
 }
+// Giving the test unit a note made a personal canvas if there wasn't one. It goes too.
+for (const canvas of await call("canvas.list")) if (!canvasesBefore.has(canvas.id)) await call("canvas.remove", { id: canvas.id }).catch(() => undefined);
 rmSync(schema, { force: true });
 rmSync(`${VAULT}/HYP - Load sets the rate.md`, { force: true });
 

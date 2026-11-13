@@ -20,7 +20,7 @@ import {
 import { getStroke } from "perfect-freehand";
 import type { CanvasItem, CanvasRecord, NodeTypeRecord, TidyMode, WithoutId } from "@dg/contract/records.ts";
 import { PDF_CANVAS_FIXED } from "@dg/contract/surface.ts";
-import type { CanvasItemView, CanvasView, Credit, LinkDelete, NodeSummary, RelationOption, RepositoryCanvas, SearchHit } from "@dg/contract/surface.ts";
+import type { CanvasCommand, CanvasItemView, CanvasView, Credit, LinkDelete, NodeSummary, RelatedUnit, RelationOption, RepositoryCanvas, SearchHit } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Chip, Icon, Mark, plain, type IconName } from "../shared/ui.tsx";
 import { scoreLabel, scoresFor } from "@dg/layout/centrality.ts";
@@ -208,6 +208,8 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [active, setActive] = useState(0);
   const [relationMenu, setRelationMenu] = useState<RelationMenu | null>(null);
   const [typeMenu, setTypeMenu] = useState<TypeMenu | null>(null);
+  /** A card's relations, open beside it. `list` is null while it is being read. */
+  const [relatedMenu, setRelatedMenu] = useState<{ node: string; item: string; x: number; y: number; list: RelatedUnit[] | null } | null>(null);
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [linkAsk, setLinkAsk] = useState<LinkAsk | null>(null);
@@ -548,8 +550,25 @@ export const App = ({ connection }: { connection: Connection }) => {
         if (url) void call("link.open", { url }).catch(report);
       },
       readPassage: (node) => void call("node.view", { id: node }).then((seen) => (seen.provenance.pdf ? call("pdf.show", { ref: seen.provenance.pdf.ref, unit: node }) : null)).catch(report),
+      openLibrary: (url) => void call("link.open", { url }).catch(report),
+      image: (node) => call("unit.image", { id: node }).catch(() => null),
+      observe: (output, item, title) => {
+        if (!current) return;
+        // The evidence lands to the left of its picture, the way an argument reads toward its claim.
+        const card = flow.getNode(item);
+        const size = { width: CARD_WIDTH, height: cardHeight(title) };
+        const spot = freeSpot({ x: (card?.position.x ?? 0) - CARD_WIDTH - 80, y: card?.position.y ?? 0 }, size);
+        void call("output.observe", { output, title, canvas: current, ...spot }).catch(report);
+      },
+      related: (node, item, anchor) => {
+        const { x, y } = inFrame(anchor.left, anchor.bottom + 4, 320, 320);
+        setRelatedMenu({ node, item, x, y, list: null });
+        void call("unit.related", { id: node, ...(current ? { canvas: current } : {}) })
+          .then((list) => setRelatedMenu((open) => (open && open.node === node ? { ...open, list } : open)))
+          .catch(report);
+      },
     }),
-    [call, report, updateItem, inFrame, holon.prefs.cardFields, route.pinned, switchTo, rename],
+    [call, report, updateItem, inFrame, holon.prefs.cardFields, route.pinned, switchTo, rename, current, flow, freeSpot],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
@@ -746,6 +765,51 @@ export const App = ({ connection }: { connection: Connection }) => {
   };
 
   /** Text pasted or dropped becomes a note where it landed. */
+  /** Pictures dropped or pasted in: each is kept in the base and becomes an output, with its card where it landed. */
+  const addPictures = async (files: File[], at: { x: number; y: number } | null): Promise<void> => {
+    if (!current) return;
+    const start = at ?? freeSpot(startingPoint({ width: 280, height: 250 }), { width: 280, height: 250 });
+    let added = 0;
+    try {
+      for (const file of files) {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(new Error(`${file.name} couldn't be read.`));
+          reader.readAsDataURL(file);
+        });
+        await call("image.add", { canvas: current, file: { name: file.name || "Pasted picture.png", mediaType: file.type, dataBase64: dataUrl.split(",")[1] ?? "" }, x: Math.round(start.x + added * 40), y: Math.round(start.y + added * 40) });
+        added += 1;
+      }
+      setNotice(added === 1 ? "Added 1 picture. Say what it shows to make it evidence." : `Added ${added} pictures`);
+    } catch (error) {
+      report(error);
+    }
+  };
+  const picturesRef = useRef(addPictures);
+  picturesRef.current = addPictures;
+
+  /** Brings units a card is related to onto the canvas, beside it. Their links are drawn with them. */
+  const placeRelated = async (units: NodeSummary[]): Promise<void> => {
+    if (!current || !relatedMenu || units.length === 0) return;
+    const card = flow.getNode(relatedMenu.item);
+    let y = card?.position.y ?? 0;
+    const x = (card?.position.x ?? 0) + (card?.measured?.width ?? CARD_WIDTH) + 100;
+    const places = units.map((unit) => {
+      const size = { width: CARD_WIDTH, height: cardHeight(unit.title) };
+      const spot = freeSpot({ x, y }, size);
+      y = spot.y + size.height + 30;
+      return { node: unit.id, ...spot, ...size };
+    });
+    setRelatedMenu(null);
+    try {
+      const { ids } = await call("canvas.placeUnits", { canvas: current, places });
+      record({ label: units.length === 1 ? "Placed 1 related unit" : `Placed ${units.length} related units`, undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) });
+    } catch (error) {
+      report(error);
+    }
+  };
+
   const addText = async (text: string, at: { x: number; y: number } | null): Promise<void> => {
     const spot = at ? { x: Math.round(at.x), y: Math.round(at.y) } : freeSpot(startingPoint(NOTE), NOTE);
     try {
@@ -989,6 +1053,12 @@ export const App = ({ connection }: { connection: Connection }) => {
       if (clip) {
         event.preventDefault();
         void clipboard.current.pasteClip(clip, at);
+        return;
+      }
+      const pasted = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
+      if (pasted.length) {
+        event.preventDefault();
+        void picturesRef.current(pasted, at);
         return;
       }
       const text = event.clipboardData?.getData("text/plain").trim();
@@ -1310,6 +1380,23 @@ export const App = ({ connection }: { connection: Connection }) => {
     };
   }, [fieldsAt]);
 
+  // What the base's command palette or a hotkey asks of this canvas. Each does what its button does.
+  const commandRef = useRef<(name: CanvasCommand) => void>(() => {});
+  commandRef.current = (name) => {
+    if (name === "add-unit") openAdd();
+    else if (name === "tidy") tidyUp(mode);
+    else if (name === "fit") void flow.fitView({ maxZoom: 1, padding: 0.12, duration: 180 });
+    else if (name === "export") setExportOpen(true);
+    else if (name === "ask-ai") setAiOn((on_) => !on_);
+    else if (name === "undo") void undo();
+    else if (name === "redo") void redo();
+    else if (name === "cards") openFieldsMenu();
+    else if (name === "types") void call("dialog.open", { surface: "grammar" }).catch(report);
+  };
+  useEffect(() => on("command", ({ canvas, name }) => {
+    if (canvas === currentRef.current) commandRef.current(name);
+  }), [on]);
+
   const closeMenus = useCallback(() => {
     setFieldsAt(null);
     setMenu(false);
@@ -1317,6 +1404,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     setNaming(false);
     setRelationMenu(null);
     setTypeMenu(null);
+    setRelatedMenu(null);
     setTidyAt(null);
     closeAdd();
   }, [closeAdd]);
@@ -1800,7 +1888,7 @@ export const App = ({ connection }: { connection: Connection }) => {
                   <Icon name="export" /> Upload a paper
                 </button>
                 <button type="button" className="new" data-dg="from-zotero" onClick={() => { setMenu(false); void call("dialog.open", { surface: "zotero", ...(current ? { id: current } : {}) }).catch(report); }}>
-                  <Icon name="library" /> From Zotero…
+                  <Icon name="zotero" /> From Zotero…
                 </button>
                 <button type="button" className="new" data-dg="open-library" onClick={() => { setMenu(false); void call("panel.open", { surface: "canvases" }).catch(report); }}>
                   <Icon name="library" /> Open the Library
@@ -1967,6 +2055,11 @@ export const App = ({ connection }: { connection: Connection }) => {
           }}
           onDrop={(event) => {
             event.preventDefault();
+            const dropped = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith("image/"));
+            if (dropped.length) {
+              void addPictures(dropped, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+              return;
+            }
             const units = event.dataTransfer.getData(DRAG_TYPE);
             if (units) {
               void placeGroup(JSON.parse(units) as string[], flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
@@ -2138,6 +2231,36 @@ export const App = ({ connection }: { connection: Connection }) => {
               ))
             )}
             <button type="button" role="menuitem" className="quiet" onClick={() => setRelationMenu(null)}>Cancel</button>
+          </div>
+        ) : null}
+        {relatedMenu ? (
+          <div className="popover related-menu" role="dialog" aria-label="What this is related to" data-dg="related-menu" style={{ left: relatedMenu.x, top: relatedMenu.y }}>
+            {relatedMenu.list === null ? (
+              <p className="note">Looking…</p>
+            ) : relatedMenu.list.length === 0 ? (
+              <p className="note">Nothing is related to this yet. Drag from its edge to another card to say how they relate.</p>
+            ) : (
+              <>
+                <ul>
+                  {relatedMenu.list.map((related) => (
+                    <li key={related.relation} data-here={related.here}>
+                      <span className="related-how">{related.label}{related.state === "pending" ? ", proposed" : ""}</span>
+                      <span className="related-what">{plain(related.unit.title)}</span>
+                      {related.here ? (
+                        <span className="related-here">On this canvas</span>
+                      ) : (
+                        <button type="button" data-dg={`related-add-${related.unit.title}`} onClick={() => void placeRelated([related.unit])}>Add</button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {relatedMenu.list.filter((related) => !related.here).length > 1 ? (
+                  <button type="button" className="related-all" data-dg="related-add-all" onClick={() => void placeRelated(relatedMenu.list!.filter((related) => !related.here).map((related) => related.unit))}>
+                    Add all {relatedMenu.list.filter((related) => !related.here).length} that aren't here
+                  </button>
+                ) : null}
+              </>
+            )}
           </div>
         ) : null}
         {typeMenu ? (

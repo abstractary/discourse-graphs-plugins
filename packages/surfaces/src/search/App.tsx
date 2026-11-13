@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { NodeView, SearchCarry, SearchField, SearchHit, SearchSort } from "@dg/contract/surface.ts";
+import type { Candidate, NodeView, SearchCarry, SearchField, SearchHit, SearchSort } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Highlighted, Icon, plain } from "../shared/ui.tsx";
 import { DRAG_TYPE, HitBody, MOD, useOpenCanvas, useSearch } from "./parts.tsx";
@@ -32,6 +32,55 @@ const excerpt = (body: string | null): string => {
     .replace(/\s+/g, " ")
     .trim();
   return text.length > 320 ? `${text.slice(0, 320).replace(/\s+\S*$/, "")}…` : text;
+};
+
+/**
+ * Lines a person tagged while writing, such as `#clm-candidate`. Each can become a unit of its type,
+ * and the line is then swapped for a link to it. Shown only when there are some.
+ */
+const Candidates = ({ call, on, say }: { call: Connection["call"]; on: Connection["on"]; say: (message: string) => void }) => {
+  const [list, setList] = useState<Candidate[]>([]);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState("");
+  const load = useCallback(() => void call("candidate.list", {}).then((found) => setList(found.candidates)).catch(() => setList([])), [call]);
+  useEffect(load, [load]);
+  useEffect(() => on("graph-changed", load), [on, load]);
+  if (list.length === 0) return null;
+  return (
+    <section className="srch-candidates" data-dg="candidates">
+      <button type="button" className="srch-candidates-head" aria-expanded={open} data-dg="candidates-toggle" onClick={() => (setOpen(!open), load())}>
+        {list.length} {list.length === 1 ? "line is" : "lines are"} tagged as {list.length === 1 ? "a candidate" : "candidates"}
+        <Icon name="chevron" />
+      </button>
+      {open ? (
+        <ul>
+          {list.map((item) => {
+            const key = `${item.ref}:${item.line}`;
+            return (
+              <li key={key}>
+                <span className="srch-candidate-text">{item.text}</span>
+                <span className="srch-candidate-from">In {item.note}</span>
+                <button
+                  type="button"
+                  data-dg={`candidate-make-${item.text}`}
+                  disabled={busy === key}
+                  onClick={() => {
+                    setBusy(key);
+                    void call("candidate.promote", { ref: item.ref, line: item.line, type: item.type, text: item.text })
+                      .then((unit) => say(`Made ${item.typeLabel}: ${unit.title}`))
+                      .catch((error: Error) => say(error.message))
+                      .finally(() => (setBusy(""), load()));
+                  }}
+                >
+                  Make it a {item.typeLabel}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </section>
+  );
 };
 
 export const App = ({ connection }: { connection: Connection }) => {
@@ -209,6 +258,8 @@ export const App = ({ connection }: { connection: Connection }) => {
           <button type="button" aria-label="Dismiss" onClick={() => setNotice("")}><Icon name="close" /></button>
         </p>
       ) : null}
+
+      <Candidates call={call} on={on} say={setNotice} />
 
       {picked.length > 1 ? (
         <div className="srch-bulk" data-dg="search-bulk">

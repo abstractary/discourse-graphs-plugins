@@ -31,6 +31,7 @@ const PATHS: Record<string, ReactNode> = {
   pdf: <path d="M4 2.5h5l3 3v8H4zM9 2.5v3h3M6 8.5h4M6 10.5h4" />,
   card: <path d="M2.5 3.5h11v9h-11zM5 6.5h6M5 9h3.5M10.5 9h.5" />,
   library: <path d="M3 2.5v11M6 2.5v11M9 3l3.2 10.3" />,
+  zotero: <path d="M4.5 4.5h7l-7 7h7" />,
 };
 
 export type IconName = keyof typeof PATHS;
@@ -40,6 +41,42 @@ export const Icon = ({ name }: { name: IconName }) => (
     {PATHS[name]}
   </svg>
 );
+
+/**
+ * Says a thing is in the reader's own reference library, and opens it there when it can. The same
+ * mark wherever a source is shown: on a card, in a list, in the reader, in the panel.
+ */
+export const LibraryMark = ({ library, onOpen, dg, label }: { library: { app: "zotero"; open: string; what: "item" | "passage" } | undefined; onOpen?: ((url: string) => void) | undefined; dg?: string | undefined; label?: string | undefined }) => {
+  if (!library) return null;
+  const says = library.what === "passage" ? "This passage is in your Zotero library" : "In your Zotero library";
+  const inside = (
+    <>
+      <Icon name="zotero" />
+      {label ? <span>{label}</span> : null}
+    </>
+  );
+  return onOpen ? (
+    <button
+      type="button"
+      className="library-mark nodrag"
+      data-app={library.app}
+      data-dg={dg ?? "library-mark"}
+      title={`${says}. ${library.what === "passage" ? "Open the passage there." : "Show it there."}`}
+      aria-label={`${says}. ${library.what === "passage" ? "Open the passage in Zotero" : "Show it in Zotero"}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen(library.open);
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+    >
+      {inside}
+    </button>
+  ) : (
+    <span className="library-mark" data-app={library.app} data-dg={dg ?? "library-mark"} title={says} aria-label={says} role="img">
+      {inside}
+    </span>
+  );
+};
 
 export const Chip = ({ node }: { node?: NodeSummary | undefined }) => (
   <span className="chip" data-base={node?.base ?? "none"} style={typeStyle(node)}>

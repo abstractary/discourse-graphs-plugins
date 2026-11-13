@@ -284,6 +284,20 @@ The history is read from the record of what was done, so nothing extra is tracke
 
 Nothing is published. The Everyone tab shows what a public profile would hold, and today it stays on your device.
 
+### Zotero as your PDF library
+
+In Settings, under Papers and notebooks, **Use Zotero as your PDF library** makes Zotero the place your papers are.
+
+- **Read a PDF…** lists Zotero's PDFs first, under **In Zotero**, each named for its reference: "Seoane 2019". What is only in this vault follows under its own heading.
+- A paper opens from where Zotero keeps it. Nothing is copied into the vault, and nothing is written to Zotero.
+- A highlight you make, or a whole paper you extract, belongs to that reference. Its source carries the DOI and other identifiers Zotero holds.
+- If the vault holds its own copy of a paper Zotero has, the paper is listed once, as Zotero's, and what you read from the copy is found there.
+- When Zotero is closed, the list says so and shows what the vault holds. The settings line says whether Zotero is answering and how many PDFs it has.
+- The small **Z** mark beside a source anywhere in the app means it is in your Zotero library. On a selected card, in the Context panel and in the reader, pressing it shows the item in Zotero.
+- In the reader, **N in Zotero** means you have highlights on this PDF in Zotero that aren't units yet. It opens From Zotero at that reference with them ticked.
+
+A PDF you add here while Zotero is your library is kept in the vault only. Add it to Zotero to keep it in your library.
+
 ### From Zotero
 
 ![Choosing highlights to bring in from Zotero](media/zotero.png)
@@ -403,6 +417,41 @@ A figure is shown only while the notebook on your device still holds the same by
 **A run that a paper reports** has no date, code or outputs of its own. Its page says which paper reports it, links to that paper's canvas, and lists every method the paper says it followed. It isn't flagged for having no experiment, because that was never yours to file.
 
 **Make evidence from this**, on an output, asks nothing and makes evidence pinned to those bytes. Rename it to say what the output shows. That sentence is yours to write.
+
+### Sign-off
+
+At the foot of the Context panel, **Checked** shows who has checked a unit. **Sign this unit** on your own unit, or **Mark as checked** on someone else's, asks how you checked it and takes an optional note. **Needs work…** sends a teammate's unit back with a reason.
+
+- A checked unit shows a check mark on its card. If the unit is changed afterwards, the mark greys and the panel says it was made on an earlier version. Check it again to mark the new one.
+- A mark is yours to take back, with the × beside it.
+- A table of a type has a **Checked** column, so a PI can list what is checked, changed or sent back.
+- An exported crate names who checked each finding, and a `.eln` file carries a run's sign-offs as comments.
+
+### Pictures as evidence
+
+Drop a picture on a canvas, or paste one. It is kept in the folder `Discourse pictures` under its own name, and becomes an Output with its card on the canvas.
+
+- **Say what it shows**, on the card, takes a sentence and makes Evidence that rests on the picture. The evidence lands beside it.
+- **The picture is pinned by a hash of its bytes.** The same picture added twice is one unit. If the file is changed later, its card says so and doesn't show the new file as the result.
+- A crate exported from the canvas packs the picture, checked the same way.
+
+PNG, JPEG, GIF, WebP, SVG and TIFF, up to 20 MB each.
+
+### What a card is related to
+
+Select a card and press the link button at its top. It lists everything the unit is related to, in its own words ("Supported by", "Addresses"), with what isn't on this canvas first. **Add** brings one in beside the card with its link drawn. **Add all** brings in every one that isn't there.
+
+### Candidates
+
+Give a type a **candidate tag** in Types and relations, such as `clm-candidate` for Claim. Then tag a line while you write, in a daily note or anywhere:
+
+`- Load sets the assembly rate #clm-candidate`
+
+Search shows how many lines are tagged. Open that list and press **Make it a Claim**: the line becomes a unit with a note from the type's template, and the line is replaced by a link to it. Nothing becomes a unit until you press.
+
+### Commands and keys
+
+Every canvas action is an Obsidian command, so it is in the command palette and can be bound to any key in Obsidian's Hotkeys: add a unit, tidy, fit to view, choose what cards show, ask AI, export, undo and redo. They are offered while a canvas is in front. Dialogs are Obsidian's own, so Escape closes them from anywhere inside.
 
 ### Types and relations
 

@@ -282,6 +282,10 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
         for (let i = 0; i < view.length; i += 0x8000) binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
         return pdfProbe.dropFile(selector, { name, type: "application/pdf", base64: btoa(binary) });
       },
+      // A file dropped on the canvas as if from the desktop.
+      canvasDropFile: (selector: string, file: { name: string; type: string; base64: string }) => probe.dropFile(selector, file),
+      runCommand: (id: string) => (plugin.app as unknown as { commands: { executeCommandById: (id: string) => boolean } }).commands.executeCommandById(`${plugin.manifest.id}:${id}`),
+      dialogIsModal: () => Boolean(document.querySelector('.modal[data-dg="dialog"]')),
       dragTo: (selector: string, at: { x: number; y: number }) => probe.dragTo(selector, at),
       canvasReveal: (selector: string) => probe.reveal(selector),
       // Which tabs show what, and side by side or not, for checking the reader lands beside the canvas.

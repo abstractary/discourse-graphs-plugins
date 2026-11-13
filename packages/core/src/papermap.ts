@@ -1,3 +1,4 @@
+import { inLibraryOf, paperIdentifiers } from "./card.ts";
 import { isCanvasEdge, type CanvasItem, type CanvasRecord, type DgId, type FoldedGraph, type NodeRecord, type PaperRecord } from "@dg/contract/records.ts";
 import type { PaperMap, PaperMapLink, PaperMapPaper, PaperMapTie, PaperScope, PaperScopeChoice } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
@@ -148,7 +149,7 @@ export const layOut = (ids: DgId[], given: { a: DgId; b: DgId; strength: number 
 };
 
 export const paperMap = (input: PaperMapInput): PaperMap => {
-  const { graph, scope } = input;
+  const { graph, scope, me } = input;
   const docs = [...graph.documents.values()];
   const papers = docs.filter((record): record is PaperRecord => record.kind === "paper" && !("removed" in record && record.removed));
   const stands = oneEach(papers);
@@ -286,6 +287,7 @@ export const paperMap = (input: PaperMapInput): PaperMap => {
         id: paper.id,
         title: paper.title,
         label: paperLabel(paper, ownSource(paper)),
+        ...(inLibraryOf(paperIdentifiers(paper), paper.by, me) ? { library: inLibraryOf(paperIdentifiers(paper), paper.by, me)! } : {}),
         canvas: paper.canvas,
         units: unitCount.get(paper.id) ?? 0,
         reaching: reaching.get(paper.id)?.size ?? 0,

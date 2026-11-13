@@ -84,7 +84,7 @@ export const grammarFeature = (context: Context) => {
     return given;
   };
 
-  const saveNodeType: Handlers["grammar.saveNodeType"] = async ({ id, label, base, abbreviation, titleFormat, color, template }) => {
+  const saveNodeType: Handlers["grammar.saveNodeType"] = async ({ id, label, base, abbreviation, titleFormat, color, template, tag }) => {
     const name = label.trim();
     if (!name) throw new Error("A type needs a name.");
     if (!(BASE_NODE_TYPES as readonly string[]).includes(base)) throw new Error("A type sits on one of the nine kinds of unit.");
@@ -92,7 +92,11 @@ export const grammarFeature = (context: Context) => {
     if (short && !/^[A-Z0-9]{1,6}$/.test(short)) throw new Error("An abbreviation is up to six letters or digits.");
     const clash = nodeTypes().find((type) => type.id !== id && same(type.label, name));
     if (clash) throw new Error(`There is already a type called ${clash.label}.`);
-    const fields = { label: name, base, ...(short ? { abbreviation: short } : {}), ...(checkedFormat(titleFormat, short) ? { titleFormat: checkedFormat(titleFormat, short)! } : {}), ...(tidy(color) ? { color: tidy(color)! } : {}), ...(template?.trim() ? { template } : {}) };
+    const mark = tidy(tag)?.replace(/^#+/, "").toLowerCase();
+    if (mark && !/^[\p{L}\p{N}_/-]+$/u.test(mark)) throw new Error("A tag is one word: letters, digits, dashes and underscores.");
+    const taken = mark ? nodeTypes().find((type) => type.id !== id && type.tag?.toLowerCase() === mark) : undefined;
+    if (taken) throw new Error(`${taken.label} already uses that tag.`);
+    const fields = { label: name, base, ...(short ? { abbreviation: short } : {}), ...(checkedFormat(titleFormat, short) ? { titleFormat: checkedFormat(titleFormat, short)! } : {}), ...(tidy(color) ? { color: tidy(color)! } : {}), ...(template?.trim() ? { template } : {}), ...(mark ? { tag: mark } : {}) };
     if (!id) {
       const made = createNodeType({ ...context.stamp(), fields });
       await context.put([made]);
@@ -101,7 +105,7 @@ export const grammarFeature = (context: Context) => {
     const held = context.typeOf(id);
     if (!held) throw new Error("That type isn't here any more.");
     // A cleared field is cleared, so the whole set is written.
-    const next = revise({ record: held, changes: { abbreviation: undefined, titleFormat: undefined, color: undefined, template: undefined, ...fields } as never, by: context.me() });
+    const next = revise({ record: held, changes: { abbreviation: undefined, titleFormat: undefined, color: undefined, template: undefined, tag: undefined, ...fields } as never, by: context.me() });
     const clean = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined)) as NodeTypeRecord;
     await context.put([clean]);
     return clean;
@@ -308,10 +312,13 @@ export const grammarFeature = (context: Context) => {
 };
 
 /** The facts written into a unit's note, so a base's own tables can sort and filter by them. */
-export const FACT_KEYS = { type: "dg-type", made: "dg-made", by: "dg-by", status: "dg-status", source: "dg-source" } as const;
+export const FACT_KEYS = { type: "dg-type", made: "dg-made", by: "dg-by", status: "dg-status", source: "dg-source", checked: "dg-checked" } as const;
+/** How a unit's sign-off reads in a table. */
+export const CHECK_WORDS = { checked: "Checked", changed: "Changed since it was checked", needsWork: "Needs work" } as const;
 const TABLE_COLUMNS: { property: string; label: string; only?: BaseNodeType }[] = [
   { property: FACT_KEYS.made, label: "Made" },
   { property: FACT_KEYS.by, label: "By" },
   { property: FACT_KEYS.status, label: "Status", only: "run" },
+  { property: FACT_KEYS.checked, label: "Checked" },
   { property: FACT_KEYS.source, label: "Source" },
 ];

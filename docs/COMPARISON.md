@@ -2,7 +2,7 @@
 
 Scored on 13 Nov 2026 from our code. Their side is still `discourse-graph` at `0042842e` of 5 Nov (Roam 0.24.0, Obsidian source) and the published Obsidian 1.8.0, which is 21 commits behind their main. So this is where we stand against their code of a week ago.
 
-**The new plugins cover 56% of today's capabilities, up from 42% on 6 Nov.** They cover 76% of what is on by default in both official plugins. They aren't a replacement yet: queries, export formats and public sharing are the large gaps. They also do a good deal today's plugins don't, like paper extraction, a PDF reader, process records and research crates.
+**The new plugins cover 59% of today's capabilities, up from 42% on 6 Nov.** They cover 83% of what is on by default in both official plugins. They aren't a replacement yet: queries, export formats and public sharing are the large gaps. They also do a good deal today's plugins don't, like paper extraction, a PDF reader, process records and research crates.
 
 ## Feature completeness
 
@@ -10,32 +10,31 @@ Each row of [capabilities.csv](../reports/comparison/capabilities.csv) is scored
 
 | Area | Capabilities | Roam on | Obsidian on | Ours full | Ours part | Coverage | On 6 Nov |
 |---|---:|---:|---:|---:|---:|---:|---:|
+| Node creation | 13 | 11 | 11 | 10 | 2 | 85% | 54% |
 | Relations | 9 | 8 | 7 | 7 | 1 | 83% | 78% |
 | Context and browsing | 9 | 6 | 5 | 6 | 1 | 72% | 50% |
-| Node creation | 13 | 11 | 11 | 8 | 2 | 69% | 54% |
+| Canvas | 24 | 22 | 21 | 13 | 5 | 65% | 48% |
 | Recognition and inline UI | 5 | 3 | 5 | 2 | 2 | 60% | 50% |
-| Canvas | 24 | 22 | 21 | 13 | 3 | 60% | 48% |
-| Grammar and settings | 11 | 8 | 8 | 6 | 0 | 55% | 18% |
+| Grammar and settings | 11 | 8 | 8 | 6 | 1 | 59% | 18% |
 | Collaboration and identity | 4 | 2 | 0 | 0 | 3 | 38% | 38% |
 | Import, export and sharing | 7 | 3 | 0 | 0 | 5 | 36% | 29% |
 | Telemetry, help and AI | 5 | 4 | 2 | 0 | 3 | 30% | 30% |
 | Queries and views | 8 | 7 | 1 | 1 | 0 | 12% | 0% |
-| **All** | **95** | **74** | **60** | **43** | **20** | **56%** | **42%** |
+| **All** | **95** | **74** | **60** | **45** | **23** | **59%** | **42%** |
 
 | Scope | Capabilities | Coverage | On 6 Nov |
 |---|---:|---:|---:|
-| On by default in both plugins | 50 | 76% | 60% |
-| On by default in either plugin | 84 | 57% | 43% |
+| On by default in both plugins | 50 | 83% | 60% |
+| On by default in either plugin | 84 | 61% | 43% |
 | Only in Obsidian | 7 | 64% | 36% |
 | Behind a flag everywhere it exists | 11 | 45% | 32% |
 | Only in Roam | 28 | 16% | 5% |
 
-**What changed the score.** Search (12 Nov). Renaming on a card, deleting a link, copy and paste, and full undo (12 Nov). Types, relations, templates, schema files and a table per type (13 Nov).
+**What changed the score.** Search (12 Nov). Renaming on a card, deleting a link, copy and paste, and full undo (12 Nov). Types, relations, templates, schema files and a table per type (13 Nov). Pictures as outputs and evidence, candidate tags, and canvas actions as commands (13 Nov).
 
 ### The gaps that matter most
 
-- **Capture in the flow of writing.** There are no candidate tags and no live recognition of hand-written titles.
-- **Images.** Nothing turns an image into a unit, and a card has no key image.
+- **Recognition in the editor.** A candidate tag isn't styled where it is written, and hand-written titles aren't recognised live.
 - **Roam's query layer is missing.** Query builder, saved queries, chart and Kanban views. A table per type now exists in Obsidian, through its own Bases. Roam spends about 10,100 lines here, and Obsidian has almost none of it.
 - **Export formats.** JSON-LD and research crates only. No Markdown, CSV or picture of a canvas.
 - **The canvas is a focused subset.** It has no shapes, media or key images, and no relation type made from the canvas itself.

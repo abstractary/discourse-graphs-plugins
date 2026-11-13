@@ -206,6 +206,11 @@ export type Host = {
   readAsset: (args: { ref: AssetRef }) => Promise<Result<Asset>>;
   /** Keeps an asset where the base can read it back. A document goes where a person would look for it. */
   writeAsset: (args: { asset: Asset }) => Promise<Result<{ ref: AssetRef }>>;
+  /**
+   * A PDF that lives outside the base, where a reference library keeps it. Read in place, never copied.
+   * Absent where a base can't reach the computer's files, such as a browser. Only PDFs are read.
+   */
+  readLocalFile?: (args: { path: string }) => Promise<Result<Asset>>;
   /** Files of these kinds, by extension without the dot, such as `pdf`. Newest first. */
   listFiles: (args: { extensions: string[]; limit: number }) => Promise<Result<FileSummary[]>>;
 
@@ -242,6 +247,13 @@ export type Host = {
    * Absent where the base has none. Making it again opens the one already there.
    */
   openTable?: (args: { name: string; property: string; value: string; columns: { property: string; label: string }[] }) => Promise<Result<{ where: string }>>;
+  /**
+   * Lines a person tagged as something to come back to, such as `#clm-candidate`, across the base's
+   * texts. Absent where the base has no tags. `text` is the line without the tag or its list mark.
+   */
+  listTagged?: (args: { tags: string[]; limit: number }) => Promise<Result<{ ref: HostRef; title: string; line: number; text: string; tag: string }[]>>;
+  /** Swaps a tagged line for a link to `target`, once it has become a unit. Refused if the line no longer carries the tag. */
+  replaceTagged?: (args: { ref: HostRef; line: number; tag: string; target: HostRef }) => Promise<Result<null>>;
   /** What's selected in the base's editor, or null when nothing is. */
   readSelection: () => Promise<Result<{ text: string } | null>>;
   /** Swaps the selection for a link to this text, in the base's own link form. */

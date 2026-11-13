@@ -1,5 +1,35 @@
 # Changelog
 
+## Zotero as the PDF library (13 November 2026)
+
+- **A setting makes Zotero the PDF library.** Its PDFs are listed first, named for their references, and read where Zotero keeps them. Nothing is copied into the vault and nothing is written to Zotero.
+- **One work, one listing.** A vault copy of a paper Zotero holds is found by its identifiers and is not listed beside Zotero's.
+- **What is read from Zotero's file is that reference.** A highlight's source, or an extracted paper, carries the DOI, PMID and other identifiers Zotero has.
+- **One Zotero mark throughout:** on cards, in the Context panel, in Search, the PDF chooser, the reader's bar, the Library panel, the Paper map and the canvas menu.
+- **Checking again.** The reader counts highlights made in Zotero that aren't units yet and opens From Zotero at that reference.
+- **Run against the real Zotero for the first time** (10.0.9): 17 checks pass in real Obsidian. It found two faults the stand-in had hidden: a personal library's id is 0, which was read as "no library"; and a personal address was being used to recognise a source across people.
+- **A personal library's address now belongs to its owner.** It marks, matches and opens an item only for the person whose unit carries it. A group library's address works for every member.
+- **Tests:** `test/zotero-library.test.ts`, shaped like the real app's answers, and `harness/zotero-real-test.mjs`.
+
+## Sign-off, and a notebook file a notebook can import (13 November 2026)
+
+- **Sign-off.** A unit can be marked as checked, or as needing work, with how it was checked. The mark is pinned to a hash of the unit, so it reads as made on an earlier version once the unit changes. Cards show it, tables can filter by it, and crates carry it.
+- **The `.eln` file is rebuilt around entries.** Each run is an experiment, each protocol a protocol and the graph a resource, each a folder with its own files. Before, the file listed loose files and a notebook would have imported no experiments.
+- **Checked against the ELN Consortium's own checker,** which now passes all five checks on the four re-issued files, and against eLabFTW's importer as its source reads. It has not been opened in a running notebook.
+- **A notebook's file is read here.** Exports from eLabFTW, RSpace, Kadi4Mat and PASTA come in as runs with their files hashed.
+- **Fixed on the way:** prefixed keys are spelled out in a crate's context, a packed file is read straight by its reference, and an entry's people are named from given and family names.
+- **Tests:** `test/checks.test.ts`, `test/eln.test.ts` with two real notebook exports as fixtures, and `harness/check-test.mjs` in real Obsidian.
+
+## Pictures, a card's relations, candidates and native commands (13 November 2026)
+
+- **Pictures as evidence.** A picture dropped or pasted on a canvas is kept in the base and becomes an Output, pinned by a hash of its bytes. **Say what it shows** makes Evidence that rests on it. A changed file is shown as changed.
+- **What a card is related to.** A selected card lists its unit's relations and brings in the ones not on the canvas, with their links.
+- **Candidates.** A type can have a candidate tag. Tagged lines are listed in Search and become units there, and the line becomes a link.
+- **Commands.** Canvas actions are Obsidian commands, so they can be found and bound to keys.
+- **Dialogs are Obsidian modals**, and Escape closes them from inside.
+- **The comparison page** now stands at 59%, and 83% of what is on by default in both official plugins.
+- **Tests:** `test/gather.test.ts`, and `harness/gather-test.mjs` in real Obsidian.
+
 ## Types, templates, tables and removing things (13 November 2026)
 
 - **Types and relations** is a new dialog. A lab adds and changes its own types on the nine kinds of unit, sets each type's abbreviation, note title and template, and says which types a relation may join. A type or relation in use can't be removed.

@@ -317,7 +317,9 @@ test("a canvas exports as an RO-Crate that says everything a crate reader expect
   assert.deepEqual(claim["@type"], ["Claim", "mira:Claim"]);
   assert.ok(claim && (claim.isBasedOn as JsonObject)["@id"] === article["@id"]);
   const extra = context[1] as Record<string, string>;
-  for (const [term, iri] of Object.entries(extra)) assert.equal((byId.get(iri) as JsonObject | undefined)?.name !== undefined, true, `${term} is defined`);
+  // A key written with a prefix belongs to its own schema (MIRA, RDFS), which the crate names. Our own terms are each defined here.
+  for (const [term, iri] of Object.entries(extra)) if (!term.includes(":")) assert.equal((byId.get(iri) as JsonObject | undefined)?.name !== undefined, true, `${term} is defined`);
+  assert.ok(Object.keys(extra).some((term) => term.startsWith("mira:")), "prefixed keys are spelled out in the context");
   // The run profile is named as a profile, and nothing is a list of one.
   for (const entity of graph) for (const [key, value] of Object.entries(entity)) assert.ok(key === "@type" || !Array.isArray(value) || value.length !== 1, `${entity["@id"]} ${key}`);
   assert.ok(root.publisher, "someone published it");

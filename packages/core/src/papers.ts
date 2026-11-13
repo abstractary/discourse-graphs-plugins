@@ -1,3 +1,5 @@
+import { inLibraryOf, paperIdentifiers } from "./card.ts";
+import { isLibraryRef, mergeIdentifiers } from "@dg/contract/scholarly.ts";
 import { cidOfBytes } from "./process.ts";
 import { normalDoi } from "@dg/contract/scholarly.ts";
 import {
@@ -303,6 +305,7 @@ export const paperFeature = (
     at: paper.at,
     credit: context.creditFor(paper),
     stored: paper.stored === true,
+    ...(inLibraryOf(paperIdentifiers(paper), paper.by, context.me().id) ? { library: inLibraryOf(paperIdentifiers(paper), paper.by, context.me().id)! } : {}),
     ...(paper.doi ? { doi: paper.doi } : {}),
     ...(paper.labPaper ? { labPaper: paper.labPaper } : {}),
   });
@@ -443,7 +446,7 @@ export const paperFeature = (
       const status = (message: string): void => context.send({ event: "job-status", message });
       let file = picked;
       if (!file && ref) {
-        const asset = await context.host.readAsset({ ref });
+        const asset = await context.readFile(ref);
         if (!asset.ok) throw new Error(asset.error.message);
         file = { name: asset.value.name, mediaType: asset.value.mime, dataBase64: asset.value.dataUrl.split(",")[1] ?? "" };
       }
@@ -482,6 +485,16 @@ export const paperFeature = (
         if (picked) await keepFile(picked);
         paper = await importGraph(graph, { filename: name, model: graph.models?.[0] ?? model, server: serverName, schema, fileCid: await hashOf(file) });
         paper = await keepGraph(paper, graph);
+      }
+      // Read from the reference library's own file: the paper is that reference, so it carries its identifiers.
+      if (ref && isLibraryRef(ref) && context.services?.zotero) {
+        const item = await context.services.zotero.file({ ref }).then((held) => held.item, () => undefined);
+        const doi = item?.identifiers.find(({ scheme }) => scheme === "doi")?.value;
+        const rest = item?.identifiers.filter(({ scheme }) => scheme !== "doi") ?? [];
+        if (item && (rest.length || (doi && !paper.doi))) {
+          paper = revise({ record: paper, changes: { identifiers: mergeIdentifiers(paper.identifiers, rest), ...(doi && !paper.doi ? { doi } : {}) }, by: context.me() });
+          await context.put([paper]);
+        }
       }
       if (share) {
         status("Adding it to the lab's repository");

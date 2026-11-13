@@ -62,6 +62,44 @@ export type CrateFile = {
 
 export type CratePerson = { id: string; name: string; orcid?: string };
 
+/** One person's mark on a unit, as a crate tells it. */
+export type CrateCheck = { by: Author; at: string; verdict: "checked" | "needsWork"; own: boolean; way: string; note?: string; current: boolean; cid?: string };
+
+/** The ELN file format's own version, which a notebook reads to know what it is opening. */
+export const ELN_SPEC = "https://purl.org/elnconsortium/eln-spec/1.2+20260923";
+/**
+ * The same version under the address the ELN Consortium's own checker looks for. Its specification and
+ * eLabFTW's exports use the first address and its tests the second, so a file names both.
+ */
+export const ELN_SPEC_ALSO = "https://purl.archive.org/purl/elnconsortium/eln-spec/1.2+20260923";
+const PREFIXES: Record<string, string> = { mira: "http://purl.org/mira-science/mira#", rdfs: "http://www.w3.org/2000/01/rdf-schema#" };
+
+/**
+ * One thing a lab notebook imports from an `.eln` file: an experiment, a protocol or a resource.
+ * A notebook reads only what the crate's root lists, so these are the root's parts, each a folder
+ * holding its own files.
+ */
+export type CrateEntry = {
+  /** Its folder inside the crate, ending in `/`. */
+  path: string;
+  name: string;
+  /** `experiment`, `protocol` or `resource`: the notebook's own word for what it becomes. */
+  genre: "experiment" | "protocol" | "resource";
+  /** Its body, as Markdown. */
+  text: string;
+  keywords: string[];
+  created: string;
+  modified: string;
+  by: Author;
+  /** Named values, such as a run's parameters. */
+  values: Record<string, string>;
+  /** Paths of the crate's files that belong to it. */
+  files: string[];
+  comments: { by: Author; at: string; text: string }[];
+  /** The unit it is the notebook's view of. */
+  unit?: DgId;
+};
+
 export type CrateInput = {
   graph: FoldedGraph;
   /** The units in the crate. Their papers, people and the arguments between them come along. */
@@ -83,6 +121,10 @@ export type CrateInput = {
   nameOf: (author: Author) => string;
   /** A person's ORCID iD, when the graph knows it. */
   orcidOf?: (author: Author) => string | undefined;
+  /** Who has checked each unit. */
+  checks?: Map<DgId, CrateCheck[]>;
+  /** For an `.eln` file: what a notebook imports. With these, the root lists them and nothing else. */
+  entries?: CrateEntry[];
 };
 
 type Entity = JsonObject & { "@id": string; "@type": string | string[] };
@@ -387,7 +429,8 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
               : ["Dataset", "MediaObject"].includes(OUTPUT_TYPE[facts.outputKind ?? "file"]!)
                 ? "CreativeWork"
                 : OUTPUT_TYPE[facts.outputKind ?? "file"]!,
-          additionalType: OUTPUT_TYPE[facts.outputKind ?? "file"] === "Dataset" ? "Dataset" : undefined,
+          // A more exact type is given by its address, which is how the ELN file format asks for it.
+          additionalType: OUTPUT_TYPE[facts.outputKind ?? "file"] === "Dataset" ? ref("https://schema.org/Dataset") : undefined,
           encodingFormat: facts.mediaType,
           contentSize: facts.size !== undefined ? String(facts.size) : undefined,
           caption: facts.caption,
@@ -462,6 +505,32 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     if (!held.some((item) => item["@id"] === target)) from[kind] = [...held, ref(target)];
   }
 
+  // Sign-off: each mark is a review of the unit it was made on.
+  let reviews = 0;
+  for (const [unit, marks] of input.checks ?? []) {
+    const about = entities.get(unitId(unit));
+    if (!about || !chosen.has(unit)) continue;
+    const made = marks.map((mark) => {
+      reviews += 1;
+      return add(
+        clean({
+          "@id": `#review-${reviews}`,
+          "@type": "Review",
+          name: mark.verdict === "needsWork" ? "Needs work" : mark.own ? "Signed by its author" : "Checked",
+          itemReviewed: ref(unitId(unit)),
+          author: ref(authorOf(mark.by)),
+          dateCreated: mark.at,
+          reviewAspect: mark.way,
+          reviewBody: mark.note,
+          // A mark holds for the version it was made on, and says so when the unit has moved on.
+          description: mark.current ? undefined : "Made on an earlier version of this unit, which has changed since.",
+          identifier: mark.cid,
+        }) as Entity,
+      );
+    });
+    about.review = refs(made);
+  }
+
   // The same units in MIRA's words, in this one graph.
   addMiraLayer(entities as Map<string, JsonObject & { "@id": string }>, bases);
 
@@ -486,6 +555,50 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     parts.push(id);
   }
   for (const id of outputFiles) if (!parts.includes(id)) parts.push(id);
+
+  // What a lab notebook imports: each entry is a folder the root lists, with its text, values, files and comments.
+  const entryIds: string[] = [];
+  let comments = 0;
+  let values = 0;
+  for (const entry of input.entries ?? []) {
+    const id = `./${crateFileId(entry.path.replace(/\/+$/, ""))}/`;
+    const said = entry.comments.map((comment) => {
+      comments += 1;
+      return add({ "@id": `#comment-${comments}`, "@type": "Comment", author: ref(authorOf(comment.by)), dateCreated: comment.at, text: comment.text });
+    });
+    const measured = Object.entries(entry.values).map(([name, value]) => {
+      values += 1;
+      return add({ "@id": `#value-${values}`, "@type": "PropertyValue", propertyID: name, name, value });
+    });
+    add(
+      clean({
+        "@id": id,
+        "@type": "Dataset",
+        name: entry.name,
+        genre: entry.genre,
+        author: ref(authorOf(entry.by)),
+        dateCreated: entry.created,
+        dateModified: entry.modified,
+        encodingFormat: "text/markdown",
+        text: entry.text,
+        // The format asks for one comma-separated string.
+        keywords: entry.keywords.map((word) => word.replace(/,/g, " ")).join(","),
+        variableMeasured: refs(measured),
+        hasPart: refs(entry.files.map(crateFileId)),
+        comment: refs(said),
+        identifier: entry.unit ?? entry.path.replace(/\/+$/, ""),
+        mainEntity: entry.unit && chosen.has(entry.unit) ? ref(unitId(entry.unit)) : undefined,
+      }) as Entity,
+    );
+    entryIds.push(id);
+  }
+  // Every file the crate holds or links belongs to some entry. What no entry claimed goes with the graph itself.
+  if (entryIds.length) {
+    const claimed = new Set((input.entries ?? []).flatMap((entry) => entry.files.map(crateFileId)));
+    const loose = parts.filter((id) => !claimed.has(id));
+    const home = entities.get(`./${crateFileId((input.entries!.find((entry) => entry.genre === "resource") ?? input.entries![0]!).path.replace(/\/+$/, ""))}/`)!;
+    if (loose.length) home.hasPart = [...((home.hasPart as JsonObject[] | undefined) ?? []), ...refs(loose)];
+  }
 
   const licenseId = input.license ? add(licenseEntity(input.license)) : undefined;
   const used = new Set<string>();
@@ -522,8 +635,12 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     // With no lab, the person who made the crate is who published it.
     publisher: ref(publisherId ?? me),
     identifier: input.identifier,
-    conformsTo: profile ? [ref(profile)] : undefined,
-    hasPart: refs(parts),
+    conformsTo: [
+      ...(entryIds.length ? [ELN_SPEC, ELN_SPEC_ALSO].map((address) => ref(add({ "@id": address, "@type": ["CreativeWork", "Profile"], name: "ELN file format", version: "1.2+20260923" }))) : []),
+      ...(profile ? [ref(profile)] : []),
+    ],
+    // A notebook imports what the root lists. In an .eln file that is the entries, and their files hang from them.
+    hasPart: entryIds.length ? refs(entryIds) : refs(parts),
     mentions: refs([...actions, ...units, ...(bases.size ? [MIRA.namespace] : [])]),
     about: refs(questions),
     citation: refs(citations),
@@ -537,8 +654,32 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
   if (environment) add({ "@id": RUN_ENVIRONMENT, "@type": "rdf:Property", name: "environment", description: "The settings a run was carried out under, such as its language and package versions.", "rdfs:label": "environment" });
   context.push({ ...Object.fromEntries(TERMS.filter(({ term }) => used.has(term)).map(({ term }) => [term, `${DG_NAMESPACE}${term}`])), ...(environment ? { environment: RUN_ENVIRONMENT } : {}), ...(bases.size ? { mira: MIRA.namespace } : {}) });
   // RO-Crate asks for a single value where there is only one, not a list of one.
+  // A lab notebook's reader is stricter than a crate's: one identifier, as text, and parts and comments always as lists.
+  const forNotebook = entryIds.length > 0;
+  const listed = new Set(forNotebook ? ["@type", "hasPart", "comment"] : ["@type"]);
+  if (forNotebook) {
+    for (const entity of entities.values()) {
+      if (typeof entity.additionalType === "string") delete entity.additionalType;
+      if (entity.identifier === undefined || typeof entity.identifier === "string") continue;
+      const held = [entity.identifier].flat() as (string | JsonObject)[];
+      const words = held.map((item) => (typeof item === "string" ? item : String(entities.get(String(item["@id"]))?.value ?? "")));
+      const links = held.flatMap((item) => (typeof item === "string" ? [] : [String(entities.get(String(item["@id"]))?.url ?? "")])).filter((link) => /^https?:/.test(link));
+      entity.identifier = words.find(Boolean) ?? "";
+      if (!entity.identifier) delete entity.identifier;
+      const same = [...new Set([...([entity.sameAs ?? []].flat() as string[]), ...links])];
+      if (same.length) entity.sameAs = same;
+    }
+  }
   const single = (entity: Entity): Entity =>
-    Object.fromEntries(Object.entries(entity).map(([key, value]) => [key, Array.isArray(value) && value.length === 1 && key !== "@type" ? value[0] : value])) as Entity;
+    Object.fromEntries(Object.entries(entity).map(([key, value]) => [key, Array.isArray(value) && value.length === 1 && !listed.has(key) ? value[0] : value])) as Entity;
+  // A key written with a prefix, such as `mira:follows`, is spelled out too: RO-Crate 1.2 readers want every key in the context.
+  const spelled = context[1] as Record<string, string>;
+  for (const entity of [root, ...entities.values()]) {
+    for (const key of Object.keys(entity)) {
+      const [prefix, name] = key.split(":");
+      if (name && !key.startsWith("@") && PREFIXES[prefix!]) spelled[key] = `${PREFIXES[prefix!]}${name}`;
+    }
+  }
   if (Object.keys(context[1] as JsonObject).length === 0) context.pop();
   return { "@context": context.length === 1 ? context[0]! : (context as never), "@graph": [descriptor, root, ...entities.values()].map(single) as never };
 };
@@ -623,6 +764,10 @@ export const crateReadme = (metadata: JsonObject): string => {
         const hash = typeof file?.sha256 === "string" ? `, SHA-256 \`${file.sha256.slice(0, 16)}…\`` : typeof file?.contentIdentifier === "string" ? `, content id \`${file.contentIdentifier}\`` : "";
         lines.push(`  - ${linked(id)}${isFile(id) ? "" : " (cited, not in this crate)"}${hash}`);
       }
+    }
+    for (const review of ids(item.review)) {
+      const mark = byId.get(review);
+      if (mark) lines.push(`- **${mark.name}:** ${ids(mark.author).map(nameOf).join(", ")}, ${day(mark.dateCreated)} (${String(mark.reviewAspect ?? "").toLowerCase()})${mark.reviewBody ? `. ${mark.reviewBody}` : ""}${mark.description ? ` ${mark.description}` : ""}`);
     }
     for (const run of ids(item.isGroundedIn)) {
       const action = byId.get(run);

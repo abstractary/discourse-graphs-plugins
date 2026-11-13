@@ -30,6 +30,13 @@ import { PeopleContext, type People } from "./shared/people.tsx";
 import { connect } from "./shared/rpc.ts";
 
 void connect().then((connection) => {
+  // A dialog's frame has the keyboard, so the base never hears Escape. The panel passes it on, unless
+  // something inside (a menu, a field being edited) already used the key.
+  if (["upload", "welcome", "zotero", "grammar"].includes(connection.route.surface)) {
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !event.defaultPrevented) void connection.call("dialog.close", {}).catch(() => undefined);
+    });
+  }
   // Initials anywhere, in any panel, lead to the same card and the same profile.
   const people: People = {
     card: (id) => connection.call("profile.card", { id }),

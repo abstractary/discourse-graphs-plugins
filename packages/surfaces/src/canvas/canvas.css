@@ -313,6 +313,23 @@ button.holon-link { padding: 1px 3px; color: color-mix(in oklch, var(--dg-accent
 .fields-menu p { font-size: var(--tiny); }
 .tool .icon + .tool-label + .icon { width: 12px; height: 12px; margin-left: -3px; }
 .bar[data-fit="icons"] [data-dg="card-fields"] .icon:last-child, .bar[data-fit="more"] [data-dg="card-fields"] .icon:last-child, .bar[data-fit="compact"] [data-dg="card-fields"] .icon:last-child { display: none; }
+.card-check { display: inline-flex; align-items: center; color: color-mix(in oklch, var(--evidence) 75%, var(--dg-ink)); }
+.card-check[data-state="changed"] { color: var(--dg-muted); opacity: 0.7; }
+.card-check[data-state="needsWork"] { color: color-mix(in oklch, var(--opposes, #c2410c) 80%, var(--dg-ink)); }
+.card-picture { margin: 6px 0 2px; }
+.card-picture img { display: block; width: 100%; max-height: 180px; object-fit: contain; border-radius: calc(var(--dg-radius) - 1px); background: color-mix(in oklch, var(--dg-ink) 6%, transparent); }
+.card-picture figcaption { margin-top: 3px; color: color-mix(in oklch, var(--opposes, #c2410c) 80%, var(--dg-ink)); font-size: var(--tiny); }
+.card-say { align-self: flex-start; margin-top: 4px; padding: 0; border: 0; background: none; color: var(--dg-accent); font: inherit; font-size: var(--small); cursor: pointer; }
+.card-say-input { box-sizing: border-box; width: 100%; margin-top: 4px; padding: 3px 5px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; font-size: var(--small); }
+.related-menu { width: 320px; max-height: 320px; overflow-y: auto; padding: 8px; }
+.related-menu ul { list-style: none; margin: 0; padding: 0; }
+.related-menu li { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 55%, transparent); }
+.related-menu li:last-child { border-bottom: 0; }
+.related-how { grid-column: 1 / -1; color: var(--dg-muted); font-size: var(--tiny); }
+.related-what { overflow-wrap: anywhere; }
+.related-here { color: var(--dg-muted); font-size: var(--tiny); white-space: nowrap; }
+.related-all { margin-top: 6px; width: 100%; }
+.related-menu .note { margin: 0; }
 .remove-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; font-size: var(--small); }
 .remove-ask span { flex-basis: 100%; }
 .crate-options { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }

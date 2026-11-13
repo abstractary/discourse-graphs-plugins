@@ -20,6 +20,8 @@ export type Actions = {
   openIdentifier?: (id: Identifier) => void;
   /** Opens the passage a unit was read from, in the reader. */
   readPassage?: (node: string) => void;
+  /** Opens a unit or its source in the reader's reference library. */
+  openLibrary?: (url: string) => void;
   chooseType: (node: string, anchor: DOMRect) => void;
   saveBox: (item: string, box: Box) => void;
   saveText: (item: string, text: string) => void;
@@ -28,6 +30,77 @@ export type Actions = {
   editTitle?: (item: string) => void;
   stopEditing?: () => void;
   rename?: (node: string, title: string) => void;
+  /** An output's picture, read from the base. */
+  image?: (node: string) => Promise<{ dataUrl: string; stale: boolean } | null>;
+  /** Makes evidence that says what an output shows, beside its card. */
+  observe?: (output: string, item: string, title: string) => void;
+  /** Lists what a unit is related to, so the units not here yet can be brought in. */
+  related?: (node: string, item: string, anchor: DOMRect) => void;
+};
+
+/** One read per picture for as long as the canvas is open, however often its card is drawn. */
+const pictures = new Map<string, Promise<{ dataUrl: string; stale: boolean } | null>>();
+
+const Picture = ({ id, title, load }: { id: string; title: string; load: NonNullable<Actions["image"]> }) => {
+  const [shown, setShown] = useState<{ dataUrl: string; stale: boolean } | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    if (!pictures.has(id)) pictures.set(id, load(id));
+    void pictures.get(id)!.then((value) => live && setShown(value));
+    return () => {
+      live = false;
+    };
+  }, [id, load]);
+  if (shown === undefined) return null;
+  if (shown === null) return <div className="card-note">Its picture isn't in this base</div>;
+  return (
+    <figure className="card-picture" data-dg={`picture-${title}`} data-stale={shown.stale}>
+      <img src={shown.dataUrl} alt={plain(title)} draggable={false} />
+      {shown.stale ? <figcaption>This file has changed since it was recorded</figcaption> : null}
+    </figure>
+  );
+};
+
+/** What an output shows, said in a sentence. It becomes evidence that rests on the output. */
+const Observe = ({ title, onSay }: { title: string; onSay: (text: string) => void }) => {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const field = useRef<HTMLInputElement>(null);
+  // Picking up a card gives the card the keyboard a moment after the click. The field takes it back.
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => field.current?.focus(), 60);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+  if (!open) {
+    return (
+      <button type="button" className="card-say nodrag" data-dg={`say-${title}`} onClick={() => setOpen(true)} onDoubleClick={(event) => event.stopPropagation()}>
+        Say what it shows
+      </button>
+    );
+  }
+  return (
+    <input
+      ref={field}
+      className="card-say-input nodrag nowheel"
+      data-dg="say-input"
+      autoFocus
+      value={text}
+      placeholder="What this shows, in a sentence"
+      aria-label="What this shows"
+      onChange={(event) => setText(event.target.value)}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === "Escape") setOpen(false);
+        if (event.key === "Enter" && text.trim()) {
+          onSay(text);
+          setText("");
+          setOpen(false);
+        }
+      }}
+    />
+  );
 };
 
 export const ActionsContext = createContext<Actions | null>(null);
@@ -176,6 +249,19 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
         </button>
         {score ? <span className="score" data-dg={`score-${title}`}>{score}</span> : null}
         <span className="card-end">
+          {node && selected && actions.related ? (
+            <button
+              type="button"
+              className="open nodrag"
+              data-dg={`related-${title}`}
+              aria-label="What this is related to"
+              title="What this is related to"
+              onClick={(event) => actions.related!(node.id, id, event.currentTarget.getBoundingClientRect())}
+              onDoubleClick={(event) => event.stopPropagation()}
+            >
+              <Icon name="link" />
+            </button>
+          ) : null}
           {node?.hasText ? (
             <button
               type="button"
@@ -188,6 +274,17 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
             >
               <Icon name="open" />
             </button>
+          ) : null}
+          {node?.checked ? (
+            <span
+              className="card-check"
+              data-state={node.checked}
+              data-dg={`check-${title}`}
+              title={node.checked === "checked" ? "Checked" : node.checked === "needsWork" ? "Sent back: needs work" : "Changed since it was checked"}
+              aria-label={node.checked === "checked" ? "Checked" : node.checked === "needsWork" ? "Needs work" : "Changed since it was checked"}
+            >
+              <Icon name={node.checked === "needsWork" ? "pen" : "check"} />
+            </span>
           ) : null}
           {node ? <Mark credit={node.credit} dg={`credit-${title}`} /> : null}
         </span>
@@ -208,7 +305,9 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
           {plain(title)}
         </div>
       )}
-      {node && !node.hasText && !node.staged ? <div className="card-note">No text in this base</div> : null}
+      {node?.image && actions.image ? <Picture id={node.id} title={title} load={actions.image} /> : null}
+      {node?.base === "output" && actions.observe ? <Observe title={title} onSay={(said) => actions.observe!(node.id, id, said)} /> : null}
+      {node && !node.hasText && !node.staged && !node.image ? <div className="card-note">No text in this base</div> : null}
       {node && actions.fields?.length ? (
         <Facts
           facts={node.card}
@@ -218,6 +317,7 @@ export const CardNode = memo(({ id, data, selected }: NodeProps<Node<CardData>>)
           // A click on a card picks it up. Its links only act once it is selected, so reaching for a card never opens something.
           {...(selected && actions.readPassage ? { onSource: () => actions.readPassage!(node.id) } : {})}
           {...(selected && actions.openIdentifier ? { onIdentifier: actions.openIdentifier } : {})}
+          {...(selected && actions.openLibrary ? { onLibrary: actions.openLibrary } : {})}
         />
       ) : null}
       {node && social ? <Reactions node={node.id} title={title} social={social} /> : null}

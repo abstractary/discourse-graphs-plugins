@@ -1,7 +1,7 @@
-import { sameDoi } from "@dg/contract/scholarly.ts";
-import { cardFacts } from "./card.ts";
+import { isLibraryRef, sameDoi, type LibraryFile, type LibraryStatus } from "@dg/contract/scholarly.ts";
+import { cardFacts, inLibraryOf, paperIdentifiers } from "./card.ts";
 import type { CardFacts } from "@dg/contract/scholarly.ts";
-import type { CrateExported, CrateImported } from "@dg/contract/surface.ts";
+import type { CrateExported, CrateImported, CanvasCommand } from "@dg/contract/surface.ts";
 import {
   assertRelation,
   buildCanvas,
@@ -38,7 +38,7 @@ import {
   type NodeTypeRecord,
   type RelationTypeRecord,
 } from "@dg/contract/records.ts";
-import { fail, ok, type Host, type HostInfo, type Result } from "@dg/contract/host.ts";
+import { fail, ok, type Asset, type Host, type HostInfo, type Result } from "@dg/contract/host.ts";
 import type { Captured, CaptureRequest, CoreForAdapter, Examples } from "@dg/contract/core.ts";
 import type { ExtractionGraph, Services } from "@dg/contract/services.ts";
 import type {
@@ -58,7 +58,7 @@ import type {
 } from "@dg/contract/surface.ts";
 import { withUsageLog, type UsageEvent } from "@dg/contract/usage.ts";
 import { atUriOf, cidOf, toAtRecord, type AtRecord } from "@dg/contract/atproto.ts";
-import { holonFeature } from "./holons.ts";
+import { DEFAULT_PREFS, holonFeature } from "./holons.ts";
 import { paperOfWork } from "./work.ts";
 import { mayJoin, ofPaper, readingOf, refusal, sameThing } from "./locks.ts";
 import { readingFeature } from "./reading.ts";
@@ -79,7 +79,10 @@ import { methodFeature } from "./method.ts";
 import { similarFeature } from "./similar.ts";
 import { worksFeature } from "./works.ts";
 import { crateFeature } from "./crate.ts";
-import { FACT_KEYS, fillTemplate, grammarFeature } from "./grammar.ts";
+import { CHECK_WAYS } from "@dg/contract/surface.ts";
+import { checkFeature } from "./checks.ts";
+import { gatherFeature } from "./gather.ts";
+import { CHECK_WORDS, FACT_KEYS, fillTemplate, grammarFeature } from "./grammar.ts";
 import { notifyFeature } from "./notify.ts";
 import { profileFeature } from "./profile.ts";
 import { paperMapFeature } from "./papermap.ts";
@@ -127,6 +130,12 @@ export type Core = CoreForAdapter & {
   /** A holon's own canvas, made from its laid-out view if it has none. */
   /** The base says which canvas is in front, so the boundary panel can follow it. */
   focusCanvas: (id: DgId) => Promise<void>;
+  /** Whether the reference library can be reached, for the base's own settings screen. */
+  zoteroStatus: () => Promise<LibraryStatus>;
+  /** Whether the reference library is the PDF library, and how many PDFs it holds. */
+  pdfLibrary: () => Promise<{ on: boolean; wanted: boolean; reachable: boolean; files: number; problem?: string }>;
+  /** Passes on something the base's command palette or a hotkey asked of one canvas. */
+  command: (canvas: DgId, name: CanvasCommand) => void;
   prefs: () => Promise<Prefs>;
   setPrefs: (changes: Partial<Prefs>) => Promise<Prefs>;
   badgesOn: () => boolean;
@@ -214,6 +223,7 @@ export const createCore = async ({
   // Set once the holon feature exists; a note opened before then just waits.
   let holonHooks: ReturnType<typeof holonFeature> | undefined;
   let searchHooks: ReturnType<typeof searchFeature> | undefined;
+  let checkHooks: ReturnType<typeof checkFeature> | null = null;
   const missingText = new Set<HostRef>();
   let { appearance, skin } = info;
   let focused: DgId | null = null;
@@ -433,7 +443,8 @@ export const createCore = async ({
       kept = { version, label: paperLabel(paper, own ? (nodeOf(own)?.title ?? "") : "") };
       paperLabels.set(paper.id, kept);
     }
-    return { id: paper.id, label: kept.label, title: paper.title };
+    const library = inLibraryOf(paperIdentifiers(paper), paper.by, me.id);
+    return { id: paper.id, label: kept.label, title: paper.title, ...(library ? { library } : {}) };
   };
 
   /** The paper a source unit stands for: the one it was read from, or one with its DOI or title. */
@@ -445,6 +456,7 @@ export const createCore = async ({
     cardFacts({
       graph,
       node,
+      me: me.id,
       localSpace,
       spaceName: info.space.name,
       nameOf,
@@ -468,6 +480,8 @@ export const createCore = async ({
       ...((node.source || node.facts?.anchor?.exact) && !anchor ? { staged: true } : {}),
       ...(atUriOf(node.id, graph) ? { uri: atUriOf(node.id, graph)! } : {}),
       ...(node.by.id === me.id ? { mine: true as const } : {}),
+      ...(checkHooks?.stateOf(node.id) ? { checked: checkHooks.stateOf(node.id)! } : {}),
+      ...(node.facts?.mediaType?.startsWith("image/") && node.facts.locator?.path && node.facts.locator.cellIndex === undefined ? { image: true as const } : {}),
       ...(paper ? { paper } : {}),
       ...(node.type ? { type: node.type } : {}),
       ...(type
@@ -553,6 +567,7 @@ export const createCore = async ({
         [FACT_KEYS.made]: node.at.slice(0, 10),
         [FACT_KEYS.by]: nameOf(node.by),
         ...(node.facts?.status ? { [FACT_KEYS.status]: node.facts.status } : {}),
+        ...(checkHooks?.stateOf(node.id) ? { [FACT_KEYS.checked]: CHECK_WORDS[checkHooks.stateOf(node.id)!] } : {}),
         ...(paper?.kind === "paper" ? { [FACT_KEYS.source]: paper.title } : {}),
       });
     }
@@ -606,6 +621,22 @@ export const createCore = async ({
     });
   };
   mirrorLinks();
+
+  /** A file in the base, or in the reference library when its ref says so. The library's file is read in place. */
+  const readFile = async (ref: string): Promise<Result<Asset>> => {
+    if (!isLibraryRef(ref)) return host.readAsset({ ref });
+    if (!services?.zotero) return fail("unavailable", "This base can't reach Zotero.");
+    if (!host.readLocalFile) return fail("unavailable", "Zotero's files can only be opened in the desktop app.");
+    let file: LibraryFile;
+    try {
+      file = await services.zotero.file({ ref });
+    } catch (error) {
+      return fail("unavailable", error instanceof Error ? error.message : String(error));
+    }
+    if (!file.path) return fail("not-found", `Zotero lists ${file.filename} but doesn't have the file on this computer. Open it in Zotero once so it downloads.`);
+    const read = await host.readLocalFile({ path: file.path });
+    return read.ok ? ok({ ...read.value, name: file.filename }) : read;
+  };
 
   const capture = async ({
     text,
@@ -939,6 +970,8 @@ export const createCore = async ({
     send: (event) => {
       for (const port of ports) port.send(event);
     },
+    prefs: async () => (holonHooks ? holonHooks.prefs() : DEFAULT_PREFS),
+    readFile,
     getLocal: async (key) => {
       const stored = await baseHost.getLocal({ key });
       return stored.ok ? stored.value : null;
@@ -985,13 +1018,29 @@ export const createCore = async ({
   searchHooks = search;
   const { restsOn, ...similarHandlers } = similarFeature(context);
   const works = worksFeature(context);
-  const crates = crateFeature(context, secrets ? { secrets } : {});
+  const crates = crateFeature(context, {
+    ...(secrets ? { secrets } : {}),
+    // Who checked a unit, as a crate tells it. The marks come from the sign-off feature, which is set up below.
+    checksOf: (unit) => {
+      const marks = checkHooks?.checksOf(unit) ?? [];
+      const held = checkHooks?.standing(unit) ?? [];
+      return marks.flatMap((mark) => {
+        const record = held.find((item) => item.id === mark.id);
+        return record ? [{ by: record.by, at: mark.at, verdict: mark.verdict, own: mark.own, way: CHECK_WAYS.find((entry) => entry.method === mark.way)?.label ?? mark.way, ...(mark.note ? { note: mark.note } : {}), current: mark.current, ...(record.targetCid ? { cid: record.targetCid } : {}) }] : [];
+      });
+    },
+  });
   const announcing = notifyFeature(context);
   const profiles = profileFeature(context, { shareable });
   const library = libraryFeature(context);
   const grammar = grammarFeature(context);
+  const checks = checkFeature(context);
+  checkHooks = checks;
+  const gather = gatherFeature(context, { place: (args) => reading.handlers["canvas.placeUnits"](args) });
   const handlers: Handlers = {
     ...grammar.handlers,
+    ...gather.handlers,
+    ...checks.handlers,
     ...holons.handlers,
     ...aiHandlers,
     ...methodFeature(context, restsOn),
@@ -1094,6 +1143,7 @@ export const createCore = async ({
       const related = new Set<string>([...graph.relations.values()].flatMap(({ record }) => (record.source === id ? [record.target] : record.target === id ? [record.source] : [])));
       return {
         node: summarize(node),
+        checks: checks.checksOf(id),
         body: text?.ok ? text.value.body : null,
         context: [...graph.relations.values()]
           .filter(({ record }) => record.source === id || record.target === id)
@@ -1126,7 +1176,9 @@ export const createCore = async ({
         provenance: await (async () => {
           const pdf = await reading.pdfOf(node);
           const work = works.viewOf(node);
-          const inLibrary = library.linkOf(node);
+          // The unit's own place in the library, or else that of the source it was read from.
+          const readFrom = nodeOf(node.facts?.anchor?.source ?? node.prov?.sourceDocument ?? "");
+          const inLibrary = library.linkOf(node) ?? (readFrom ? library.linkOf(readFrom) : undefined);
           return { ...units.provenance(node), ...(pdf ? { pdf } : {}), ...(work ? { work } : {}), ...(inLibrary ? { library: inLibrary } : {}) };
         })(),
         ...(onSharedCanvas(id) ? { social: units.social(id) } : {}),
@@ -1494,6 +1546,11 @@ export const createCore = async ({
     shareable,
     take,
     focusCanvas: (id) => holons.focusCanvas(id),
+    zoteroStatus: async () => (services?.zotero ? services.zotero.status() : { ok: false, app: "zotero", problem: "This base can't reach Zotero." }),
+    pdfLibrary: () => handlers["pdf.library"]({}),
+    command: (canvas, name) => {
+      for (const port of ports) port.send({ event: "command", canvas, name });
+    },
     unitTitle: (id) => nodeOf(id)?.title.replace(/\[\[([^\]]+)\]\]/g, "$1") ?? null,
     importNotebook: (args) => handlers["notebook.import"](args),
     savedExtraction: (args) => handlers["paper.saved"](args),

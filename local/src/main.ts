@@ -179,6 +179,12 @@ const host: Host = {
     const mime = MIME[extname(path).slice(1).toLowerCase()] ?? "application/octet-stream";
     return { ok: true, value: { name: path.split(sep).pop()!, mime, dataUrl: `data:${mime};base64,${readFileSync(path).toString("base64")}` } };
   },
+  // A reference library's PDF, read where the library keeps it.
+  readLocalFile: async ({ path }) => {
+    if (!/\.pdf$/i.test(path)) return { ok: false, error: { code: "unavailable", message: "Only PDFs are read from outside the vault." } };
+    if (!existsSync(path)) return { ok: false, error: { code: "not-found", message: `${path.split(sep).pop()} isn't where Zotero says it is. Open it in Zotero once so it downloads.` } };
+    return { ok: true, value: { name: path.split(sep).pop()!, mime: "application/pdf", dataUrl: `data:application/pdf;base64,${readFileSync(path).toString("base64")}` } };
+  },
   writeAsset: async ({ asset }) => {
     if (asset.mime !== "application/pdf") return memory.writeAsset({ asset });
     mkdirSync(join(VAULT, PAPER_FILES), { recursive: true });

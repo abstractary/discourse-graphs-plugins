@@ -11,7 +11,7 @@ import type { Connection } from "../shared/rpc.ts";
  */
 
 type Grammar = { nodeTypes: NodeTypeRecord[]; relationTypes: RelationTypeRecord[]; uses: Record<DgId, number>; tables: boolean };
-type TypeDraft = { id?: DgId; label: string; base: BaseNodeType; abbreviation: string; titleFormat: string; template: string };
+type TypeDraft = { id?: DgId; label: string; base: BaseNodeType; abbreviation: string; titleFormat: string; template: string; tag: string };
 type RelationDraft = { id?: DgId; label: string; complement: string; rules: RelationRule[] };
 type Picked = { kind: "type"; draft: TypeDraft } | { kind: "relation"; draft: RelationDraft } | null;
 
@@ -22,6 +22,7 @@ const draftOfType = (type?: NodeTypeRecord): TypeDraft => ({
   abbreviation: type?.abbreviation ?? "",
   titleFormat: type?.titleFormat ?? "",
   template: type?.template ?? "",
+  tag: type?.tag ?? "",
 });
 const draftOfRelation = (type?: RelationTypeRecord): RelationDraft => ({ ...(type ? { id: type.id } : {}), label: type?.label ?? "", complement: type?.complement ?? "", rules: type?.rules ?? [] });
 
@@ -64,6 +65,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         ...(draft.abbreviation.trim() ? { abbreviation: draft.abbreviation } : {}),
         ...(draft.titleFormat.trim() ? { titleFormat: draft.titleFormat } : {}),
         ...(draft.template.trim() ? { template: draft.template } : {}),
+        ...(draft.tag.trim() ? { tag: draft.tag } : {}),
       });
       await load();
       setPicked({ kind: "type", draft: draftOfType(saved) });
@@ -212,6 +214,8 @@ const TypeForm = ({ draft: start, used, tables, busy, onSave, onRemove, onTable 
         <code>{"{title}"}</code>, <code>{"{date}"}</code>, <code>{"{author}"}</code> and <code>{"{type}"}</code> are filled in.{" "}
         {starter && draft.template.trim() !== starter.trim() ? <button type="button" className="ctx-link" data-dg="grammar-type-starter" onClick={() => set({ template: starter })}>{draft.template.trim() ? "Replace with the starter" : "Start from the usual headings"}</button> : null}
       </p>
+      <label className="field"><span>Candidate tag</span><input data-dg="grammar-type-tag" value={draft.tag} placeholder={`Such as ${(draft.abbreviation.trim() || draft.label.trim().slice(0, 3) || "clm").toLowerCase()}-candidate`} onChange={(event) => set({ tag: event.target.value })} /></label>
+      <p className="grammar-quiet grammar-under">A line you tag with this while writing is listed in Search, ready to become a {draft.label.trim() || "unit"} when you choose.</p>
       <div className="row end">
         {draft.id && tables ? <button type="button" data-dg="grammar-type-table" disabled={busy} onClick={() => onTable(draft.id!)}>Open its table</button> : null}
         {draft.id ? (

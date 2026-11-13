@@ -301,7 +301,37 @@ export type LibraryAnnotation = {
 };
 
 /** Whether the library can be reached, and why not when it can't, in words a person can act on. */
-export type LibraryStatus = { ok: boolean; app: "zotero"; problem?: string; canWrite?: boolean; serverId?: string };
+export type LibraryStatus = { ok: boolean; app: "zotero"; problem?: string; canWrite?: boolean; serverId?: string; /** The app's version, as it reports it. */ version?: string };
+
+/**
+ * One PDF the library holds, with the item it belongs to. `ref` is the attachment's own address in
+ * the library. The bytes stay where the library keeps them: `path` says where that is on this computer.
+ */
+export type LibraryFile = {
+  ref: string;
+  filename: string;
+  size?: number;
+  modifiedAt?: string;
+  /** Where the file sits on this computer, when the library keeps it here. */
+  path?: string;
+  /** The library's own checksum of the file, when it gives one. */
+  md5?: string;
+  /** The reference it is attached to. A PDF filed with no reference stands for itself. */
+  item: LibraryItem;
+};
+
+/** Where a unit or a paper sits in a person's reference library, so a panel can mark it and open it there. */
+export type InLibrary = { app: "zotero"; open: string; what: "item" | "passage" };
+
+/** A ref for a file that lives in the library, not in the base. */
+export const LIBRARY_REF = "zotero:";
+export const isLibraryRef = (ref: string): boolean => ref.startsWith(LIBRARY_REF);
+/**
+ * A personal library's address (`users/…`) only means something on its owner's computer. A group
+ * library's (`groups/…`) is the same for every member. So a personal address is used to find or open
+ * an item only by the person whose unit carries it.
+ */
+export const isSharedLibraryRef = (ref: string): boolean => ref.startsWith("groups/");
 
 // The facts a card shows
 
@@ -340,6 +370,8 @@ export type CardFacts = {
     /** The paper record's id. */
     paper?: string;
   };
+  /** Where this unit, or what it was read from, sits in this person's reference library. */
+  library?: InLibrary;
   /** The paper's authors when it was read from a paper, otherwise whoever made it. */
   authors: { names: string[]; role: "paper" | "maker" };
   origin: { name: string; kind: "here" | "lab" | "elsewhere" };

@@ -39,6 +39,13 @@ export const App = ({ connection }: { connection: Connection }) => {
   useEffect(() => {
     if (status?.ok) input.current?.focus();
   }, [status?.ok]);
+  // Opened from a source or from the reader: it starts at that reference, with what has been highlighted since.
+  const startedAt = useRef(false);
+  useEffect(() => {
+    if (!status?.ok || startedAt.current) return;
+    startedAt.current = true;
+    void call("zotero.pending", {}).then(({ item }) => (item ? openRef.current(item) : undefined)).catch(() => undefined);
+  }, [status?.ok, call]);
 
   // Search as the person types, and only ever show the answer to what they typed last.
   useEffect(() => {
@@ -56,6 +63,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     return () => window.clearTimeout(timer);
   }, [call, status?.ok, text]);
 
+  const openRef = useRef<(ref: string) => void>(() => {});
   const open = (ref: string): void => {
     setBusy(true);
     setProblem("");
@@ -67,7 +75,8 @@ export const App = ({ connection }: { connection: Connection }) => {
       })
       .catch((error: Error) => setProblem(error.message))
       .finally(() => setBusy(false));
-  };
+  };  openRef.current = open;
+
 
   const bring = (): void => {
     if (!view) return;

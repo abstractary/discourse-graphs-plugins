@@ -824,7 +824,7 @@ export const canvasOfHolon = (input: HolonInput, holon: string): DgId | null =>
     .filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed && r.holon === holon)
     .sort((a, b) => b.editedAt.localeCompare(a.editedAt))[0]?.id ?? null;
 
-export const DEFAULT_PREFS: Prefs = { linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: DEFAULT_CARD_FIELDS, sidePinned: false };
+export const DEFAULT_PREFS: Prefs = { linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: DEFAULT_CARD_FIELDS, sidePinned: false, zoteroLibrary: false };
 const PREFS_KEY = "prefs";
 
 const latest = (records: DgRecord[]): DgRecord[] => {

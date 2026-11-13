@@ -13,6 +13,15 @@
 .srch-fields button[aria-pressed="true"] { border-color: color-mix(in oklch, var(--dg-accent) 60%, var(--dg-line)); color: var(--dg-ink); background: color-mix(in oklch, var(--dg-accent) 9%, transparent); }
 .srch-count { margin-left: auto; color: var(--dg-muted); font-size: var(--tiny); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+.srch-candidates { border-bottom: 1px solid var(--dg-line); }
+.srch-candidates-head { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 6px 10px; border: 0; background: color-mix(in oklch, var(--claim) 9%, transparent); color: inherit; font: inherit; font-size: var(--small); text-align: left; cursor: pointer; }
+.srch-candidates-head[aria-expanded="true"] .icon { transform: rotate(180deg); }
+.srch-candidates ul { list-style: none; margin: 0; padding: 0 10px; max-height: 40vh; overflow-y: auto; }
+.srch-candidates li { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 55%, transparent); }
+.srch-candidates li:last-child { border-bottom: 0; }
+.srch-candidate-text { overflow-wrap: anywhere; }
+.srch-candidate-from { grid-column: 1; color: var(--dg-muted); font-size: var(--tiny); }
+.srch-candidates li button { grid-column: 2; grid-row: 1 / span 2; white-space: nowrap; font-size: var(--small); }
 .srch-notice { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; padding: 4px 4px 4px 8px; border-radius: var(--dg-radius); background: var(--hover); font-size: var(--small); }
 .srch-notice span { flex: 1; overflow-wrap: anywhere; }
 .srch-notice button { display: flex; padding: 2px; color: var(--dg-muted); }

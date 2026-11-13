@@ -1,6 +1,6 @@
 import type { AiCall } from "./llm.ts";
 import type { DgRecord } from "./records.ts";
-import type { Identifier, LibraryAnnotation, LibraryItem, LibraryStatus, Notification, NotificationSummary, Signposts, WorkMetadata } from "./scholarly.ts";
+import type { Identifier, LibraryAnnotation, LibraryFile, LibraryItem, LibraryStatus, Notification, NotificationSummary, Signposts, WorkMetadata } from "./scholarly.ts";
 
 /**
  * What the plugins can ask of a server, as listed in docs/services.md. Core
@@ -157,6 +157,10 @@ export type Services = {
     item: (args: { ref: string }) => Promise<LibraryItem>;
     /** Every annotation on every file of one item, in reading order. */
     annotations: (args: { ref: string }) => Promise<LibraryAnnotation[]>;
+    /** Every PDF the library holds, newest first, each with the reference it belongs to. */
+    files: (args?: { limit?: number }) => Promise<LibraryFile[]>;
+    /** One PDF, by its attachment's address: where it is now, and the reference it belongs to. */
+    file: (args: { ref: string }) => Promise<LibraryFile>;
   };
   /**
    * A repository draft for a crate, on Zenodo. Only ever called on a person's own click. `open` starts a

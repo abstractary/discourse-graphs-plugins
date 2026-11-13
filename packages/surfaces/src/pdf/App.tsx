@@ -6,7 +6,9 @@ import type { NodeTypeRecord } from "@dg/contract/records.ts";
 import type { CanvasSummary, PdfDocument, PdfMark } from "@dg/contract/surface.ts";
 import { captureChoices } from "@dg/contract/keys.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Highlighted, Icon, plain } from "../shared/ui.tsx";
+import { Highlighted, Icon, plain, LibraryMark } from "../shared/ui.tsx";
+
+type LibraryState = { on: boolean; wanted: boolean; reachable: boolean; files: number; problem?: string };
 import { useFit } from "../canvas/fit.ts";
 import { boxesFor, findQuote, foldText, type Box, type DocText, type TextPiece } from "./quote.ts";
 
@@ -93,7 +95,12 @@ export const App = ({ connection }: { connection: Connection }) => {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  const refreshDocs = useCallback(() => void call("pdf.list", {}).then(setDocs).catch(report), [call, report]);
+  /** Whether the reference library is the PDF library, and whether it is answering. */
+  const [library, setLibrary] = useState<LibraryState | null>(null);
+  const refreshDocs = useCallback(() => {
+    void call("pdf.list", {}).then(setDocs).catch(report);
+    void call("pdf.library", {}).then(setLibrary).catch(() => setLibrary(null));
+  }, [call, report]);
   useEffect(refreshDocs, [refreshDocs]);
 
   // Opening a file: its bytes once, its marks again whenever the graph changes.
@@ -324,7 +331,8 @@ export const App = ({ connection }: { connection: Connection }) => {
     try {
       const made = await call("pdf.add", { name: file.name, dataBase64: await readFile(file) });
       refreshDocs();
-      say(`Kept ${made.name}${made.folder ? ` in ${made.folder}` : ""}`);
+      // With Zotero as the library, a PDF added here is only in this vault until it is added to Zotero too.
+      say(`Kept ${made.name}${made.folder ? ` in ${made.folder}` : ""}${library?.on ? ". It is in this vault only. Add it to Zotero to keep it in your library" : ""}`);
       open(made.ref);
     } catch (error) {
       report(error);
@@ -398,6 +406,18 @@ export const App = ({ connection }: { connection: Connection }) => {
             </button>
           )
         ) : null}
+        {ref && doc && doc.ref === ref && doc.library ? (
+          <>
+            {doc.libraryMarks ? (
+              <button type="button" className="tool" onClick={() => void call("zotero.show", { item: doc.library!.item }).catch(report)} data-dg="pdf-zotero-marks" title="Highlights you made on this PDF in Zotero that aren't units here yet">
+                <Icon name="marker" /><span className="tool-label">{doc.libraryMarks} in Zotero</span>
+              </button>
+            ) : null}
+            <button type="button" className="tool" onClick={() => void call("link.open", { url: doc.library!.open }).catch(report)} data-dg="pdf-zotero" title={`${doc.library.label} is in your Zotero library. Show it there.`}>
+              <Icon name="zotero" /><span className="tool-label">Zotero</span>
+            </button>
+          </>
+        ) : null}
         <button type="button" className="tool" onClick={() => filePicker.current?.click()} data-dg="pdf-add" title="Add a PDF to the vault">
           <Icon name="plus" /><span className="tool-label">Add PDF</span>
         </button>
@@ -405,7 +425,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       </header>
 
       {picker || !ref ? (
-        <Chooser docs={docs} current={ref} onOpen={open} onAdd={() => filePicker.current?.click()} floating={Boolean(ref)} onClose={() => setPicker(false)} />
+        <Chooser docs={docs} library={library} current={ref} onOpen={open} onAdd={() => filePicker.current?.click()} floating={Boolean(ref)} onClose={() => setPicker(false)} />
       ) : null}
 
       {listOpen && loaded ? (
@@ -595,6 +615,7 @@ const Page = ({
 /** Which PDF to read: papers first, then the rest of the vault, newest first. */
 const Chooser = ({
   docs,
+  library,
   current,
   onOpen,
   onAdd,
@@ -602,6 +623,7 @@ const Chooser = ({
   onClose,
 }: {
   docs: PdfDocument[] | null;
+  library: LibraryState | null;
   current: string | null;
   onOpen: (ref: string) => void;
   onAdd: () => void;
@@ -611,14 +633,16 @@ const Chooser = ({
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const shown = (docs ?? []).filter((d) => !needle || d.title.toLowerCase().includes(needle) || d.name.toLowerCase().includes(needle) || d.folder?.toLowerCase().includes(needle));
-  const papers = shown.filter((d) => d.paper);
-  const rest = shown.filter((d) => !d.paper);
+  // With Zotero as the library, its PDFs are the list. What is only in this vault follows, under its own heading.
+  const theirs = shown.filter((d) => d.library);
+  const papers = shown.filter((d) => d.paper && !d.library);
+  const rest = shown.filter((d) => !d.paper && !d.library);
   const row = (d: PdfDocument) => (
     <li key={d.ref}>
       <button type="button" aria-current={d.ref === current ? "true" : undefined} onClick={() => onOpen(d.ref)} data-dg={`pdf-open-${d.name}`}>
-        <span className="pdf-doc-title"><Highlighted text={d.title} query={query} /></span>
+        <span className="pdf-doc-title"><Highlighted text={d.title} query={query} /><LibraryMark library={d.library} /></span>
         <span className="pdf-doc-meta">
-          {[d.title !== d.name.replace(/\.pdf$/i, "") ? d.name : null, d.folder, sizeOf(d.size), d.units ? `${d.units} ${d.units === 1 ? "unit" : "units"} read` : null].filter(Boolean).join(" · ")}
+          {[d.library ? d.library.label : d.title !== d.name.replace(/\.pdf$/i, "") ? d.name : null, d.library ? null : d.folder, sizeOf(d.size), d.paper && d.library ? "Read into a canvas" : null, d.units ? `${d.units} ${d.units === 1 ? "unit" : "units"} read` : null].filter(Boolean).join(" · ")}
         </span>
       </button>
     </li>
@@ -635,11 +659,15 @@ const Chooser = ({
         {(docs?.length ?? 0) > 5 ? <input autoFocus={floating} aria-label="Find a PDF" placeholder="Find by title, file or folder" value={query} onChange={(event) => setQuery(event.target.value)} data-dg="pdf-search" /> : null}
         <button type="button" onClick={onAdd} data-dg="pdf-choose-file"><Icon name="plus" /> Add a PDF</button>
       </div>
+      {library?.wanted && library.problem ? <p className="pdf-none" role="status" data-dg="pdf-library-problem">Zotero is your PDF library, but it can't be read right now. {library.problem}</p> : null}
       {docs === null ? <p className="pdf-none">Looking for PDFs…</p> : null}
       {docs !== null && docs.length === 0 ? <p className="pdf-none">No PDFs here yet. Drop one on this panel, or add one, and it's kept with your papers.</p> : null}
-      {papers.length ? <h2>Papers</h2> : null}
+      {theirs.length ? <h2 data-dg="pdf-in-zotero">In Zotero</h2> : null}
+      {theirs.length ? <ul>{theirs.map(row)}</ul> : null}
+      {library?.on && !theirs.length && docs !== null && !needle && !library.problem ? <p className="pdf-none">Zotero has no PDFs yet. Add a paper to Zotero and it is listed here.</p> : null}
+      {papers.length ? <h2>{library?.on ? "Papers only in this vault" : "Papers"}</h2> : null}
       {papers.length ? <ul>{papers.map(row)}</ul> : null}
-      {rest.length ? <h2>{papers.length ? "Other PDFs" : "PDFs"}</h2> : null}
+      {rest.length ? <h2>{library?.on ? "Other PDFs in this vault" : papers.length ? "Other PDFs" : "PDFs"}</h2> : null}
       {rest.length ? <ul>{rest.map(row)}</ul> : null}
       {docs !== null && docs.length > 0 && !shown.length ? <p className="pdf-none">No PDF matches.</p> : null}
       {!floating ? <p className="pdf-hint">Or drop a PDF anywhere on this panel.</p> : null}

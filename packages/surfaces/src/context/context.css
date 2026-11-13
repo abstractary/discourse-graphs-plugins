@@ -13,6 +13,17 @@
 .ctx-notice { margin: 0; color: var(--opposes); font-size: var(--small); }
 .ctx-none { margin: 12px 0; color: var(--dg-muted); }
 
+.ctx-checks { list-style: none; margin: 0; padding: 0; }
+.ctx-checks li { display: grid; grid-template-columns: 18px 1fr auto; gap: 6px; align-items: start; padding: 4px 0; font-size: var(--small); }
+.ctx-check-mark { color: color-mix(in oklch, var(--evidence) 75%, var(--dg-ink)); }
+.ctx-checks li[data-verdict="needsWork"] .ctx-check-mark, .ctx-checks li[data-current="false"] .ctx-check-mark { color: var(--dg-muted); }
+.ctx-check-how { color: var(--dg-muted); }
+.ctx-check-note, .ctx-check-stale { display: block; margin-top: 1px; }
+.ctx-check-stale { color: var(--dg-muted); }
+.ctx-check-form { display: flex; flex-direction: column; gap: 5px; }
+.ctx-check-form input, .ctx-check-form select { box-sizing: border-box; padding: 3px 5px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; font-size: var(--small); }
+.ctx-check-form input { width: 100%; }
+.ctx-check-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .ctx-group { padding: 10px 0 2px; }
 .ctx-group h2 { margin: 0 0 4px; color: var(--dg-muted); font: 600 var(--tiny)/1.4 var(--dg-font); }
 .ctx-group h2 span { font-weight: 400; font-variant-numeric: tabular-nums; }

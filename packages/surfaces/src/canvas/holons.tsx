@@ -28,7 +28,7 @@ export const useHolonCanvas = ({
 }) => {
   const { call, on, route } = connection;
   const [info, setInfo] = useState<CanvasHolon | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"], sidePinned: false });
+  const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"], sidePinned: false, zoteroLibrary: false });
   const [lit, setLit] = useState<string[]>([]);
 
   const load = useCallback(async () => {

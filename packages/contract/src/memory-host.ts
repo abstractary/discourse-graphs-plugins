@@ -30,6 +30,8 @@ export type MemoryStore = {
   records: DgRecord[];
   local: Map<string, Json>;
   assets: Map<string, Asset>;
+  /** Files that live outside the base, by path: what a reference library keeps. */
+  outside: Map<string, Asset>;
   focus: HostRef | null;
   cursor: HostRef | null;
   selection: { ref: HostRef; text: string } | null;
@@ -46,6 +48,7 @@ export const createMemoryStore = (): MemoryStore => ({
   records: [],
   local: new Map(),
   assets: new Map(),
+  outside: new Map(),
   focus: null,
   cursor: null,
 });
@@ -234,6 +237,31 @@ export const createMemoryHost = ({
       if (!page) return fail("no-target", "No cursor to insert at.");
       page.body += ` [[${label ?? target.title}]]`;
       page.links.push(ref);
+      return ok(null);
+    },
+    readLocalFile: async ({ path }) => {
+      const asset = store.outside.get(path);
+      return asset ? ok(asset) : fail("not-found", `Nothing at ${path}.`);
+    },
+    listTagged: async ({ tags, limit }) => {
+      const found: { ref: HostRef; title: string; line: number; text: string; tag: string }[] = [];
+      for (const [ref, text] of store.texts) {
+        text.body.split("\n").forEach((held, line) => {
+          const tag = tags.find((item) => new RegExp(`#${item}(?![\\w/-])`, "i").test(held));
+          const words = tag ? held.replace(new RegExp(`#${tag}(?![\\w/-])`, "i"), "").replace(/^\s*[-*+]\s+/, "").replace(/\s+/g, " ").trim() : "";
+          if (tag && words && found.length < limit) found.push({ ref, title: text.title, line, text: words, tag });
+        });
+      }
+      return ok(found);
+    },
+    replaceTagged: async ({ ref, line, tag, target }) => {
+      const text = readRef(ref);
+      const to = readRef(target);
+      if (!text || !to) return notFound(text ? target : ref);
+      const lines = text.body.split("\n");
+      if (!new RegExp(`#${tag}(?![\\w/-])`, "i").test(lines[line] ?? "")) return fail("conflict", "That line has changed since it was listed. Look again.");
+      lines[line] = `${/^\s*[-*+]\s+/.exec(lines[line]!)?.[0] ?? ""}[[${to.title}]]`;
+      text.body = lines.join("\n");
       return ok(null);
     },
     setLinks: async ({ ref, links, managed, facts = {}, managedFacts = [] }) => {

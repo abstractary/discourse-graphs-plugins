@@ -1,7 +1,7 @@
 import { createAnchor, createCanvasItem, createNode, createNodeType, liveCanvasItems, revise, type DgId, type DgRecord, type NodeRecord, type NodeTypeRecord } from "@dg/contract/records.ts";
-import { mergeIdentifiers, sameIdentifier, type Identifier, type LibraryAnnotation, type LibraryItem } from "@dg/contract/scholarly.ts";
+import { isSharedLibraryRef, mergeIdentifiers, sameIdentifier, type Identifier, type LibraryAnnotation, type LibraryItem } from "@dg/contract/scholarly.ts";
 import type { LibraryImported, LibraryItemView } from "@dg/contract/surface.ts";
-import { citeAs, identifiersOf } from "./card.ts";
+import { citeAs, identifiersOf, inLibraryOf } from "./card.ts";
 import type { Context, Handlers } from "./context.ts";
 import { baseOf } from "./process.ts";
 import { keyOfPaper, sameWork } from "./work.ts";
@@ -49,18 +49,33 @@ export const libraryFeature = (context: Context) => {
   /** The Source unit that already stands for this item: same work first, same library item second. */
   const sourceFor = (item: LibraryItem): NodeRecord | undefined => {
     const sources = nodes().filter((node) => base(node) === "source");
+    // A personal library's address is one person's: it finds that person's own unit, never a teammate's.
+    const mine = (node: NodeRecord, held: Identifier): boolean => held.scheme !== "zotero" || node.by.id === context.me().id || isSharedLibraryRef(held.value);
     const shares = (schemes: Identifier["scheme"][]) => (node: NodeRecord) =>
-      identifiersOf(node).some((held) => schemes.includes(held.scheme) && item.identifiers.some((other) => sameIdentifier(held, other)));
+      identifiersOf(node).some((held) => schemes.includes(held.scheme) && mine(node, held) && item.identifiers.some((other) => sameIdentifier(held, other)));
     const paper = context.documents("paper").find((record) => sameWork(keyOfPaper(record), { identifiers: item.identifiers }) === "identifier");
     return (paper ? sources.find((node) => node.source?.paper === paper.id && node.source.own) : undefined) ?? sources.find(shares(IDENTITY)) ?? sources.find(shares(["zotero"]));
   };
   const markRef = (mark: LibraryAnnotation): Identifier => ({ scheme: "zotero", value: mark.ref });
-  const unitFor = (mark: LibraryAnnotation): NodeRecord | undefined => nodes().find((node) => node.facts?.identifiers?.some((held) => sameIdentifier(held, markRef(mark))));
+  const unitFor = (mark: LibraryAnnotation): NodeRecord | undefined =>
+    nodes().find((node) => (node.by.id === context.me().id || isSharedLibraryRef(mark.ref)) && node.facts?.identifiers?.some((held) => sameIdentifier(held, markRef(mark))));
 
   const typesHere = (): NodeTypeRecord[] => context.nodeTypes().filter((type) => type.base === "question" || type.base === "claim" || type.base === "evidence");
 
-  const handlers: Pick<Handlers, "zotero.status" | "zotero.search" | "zotero.item" | "zotero.import"> = {
+  let pending: string | undefined;
+  const handlers: Pick<Handlers, "zotero.status" | "zotero.search" | "zotero.item" | "zotero.import" | "zotero.show" | "zotero.pending"> = {
     "zotero.status": async () => services().status(),
+    "zotero.show": async ({ item, canvas }) => {
+      pending = item;
+      const opened = await context.host.openSurface({ route: { surface: "zotero", ...(canvas ? { id: canvas } : {}) }, placement: "dialog" });
+      if (!opened.ok) throw new Error(opened.error.message);
+      return null;
+    },
+    "zotero.pending": async () => {
+      const item = pending;
+      pending = undefined;
+      return item ? { item } : {};
+    },
     "zotero.search": async ({ text, limit }) => {
       const found = await services().search({ text, ...(limit ? { limit } : {}) });
       return found.map((item) => {
@@ -200,11 +215,10 @@ export const libraryFeature = (context: Context) => {
   const linkOf = (node: NodeRecord): { app: "zotero"; open: string; what: "item" | "passage"; exact?: string; comment?: string } | undefined => {
     const passage = node.facts?.sameAs?.find((link) => link.startsWith("zotero://open-pdf/"));
     const anchor = node.facts?.anchor;
-    if (passage) return { app: "zotero", open: passage, what: "passage", ...(anchor?.exact ? { exact: anchor.exact } : {}), ...(anchor?.comment ? { comment: anchor.comment } : {}) };
-    const ref = identifiersOf(node).find(({ scheme }) => scheme === "zotero")?.value;
-    if (!ref) return undefined;
-    const [kind, id, , key] = ref.split("/");
-    return { app: "zotero", open: kind === "groups" ? `zotero://select/groups/${id}/items/${key}` : `zotero://select/library/items/${key}`, what: "item" };
+    // Offered only where it will open: in the library of the person whose unit this is, or a group's.
+    const held = inLibraryOf(identifiersOf(node), node.by, context.me().id, passage);
+    if (!held) return undefined;
+    return held.what === "passage" ? { ...held, ...(anchor?.exact ? { exact: anchor.exact } : {}), ...(anchor?.comment ? { comment: anchor.comment } : {}) } : held;
   };
   return { handlers, linkOf };
 };

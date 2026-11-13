@@ -4,9 +4,10 @@ import { whenOf } from "../shared/people.tsx";
 import { Announcements, Work } from "./Work.tsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Reaction } from "@dg/contract/records.ts";
+import { CHECK_WAYS, type CheckWay, type UnitCheck } from "@dg/contract/surface.ts";
 import type { ContextEntry, NodeSummary, NodeView, RelationOption, SimilarUnit } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Chip, Icon, plain, Mark } from "../shared/ui.tsx";
+import { Chip, Icon, LibraryMark, plain, Mark } from "../shared/ui.tsx";
 import { Method } from "./Method.tsx";
 
 type Group = { label: string; entries: ContextEntry[] };
@@ -100,7 +101,7 @@ const Relate = ({ connection, node, onDone, initial }: { connection: Connection;
                 <button type="button" className="row-main" data-dg={`relate-result-${item.title}`} onClick={() => void pick(item)}>
                   <Chip node={item} />
                   <span>{plain(item.title)}</span>
-                  {item.paper ? <span className="from-paper" title={`Read from ${item.paper.title}`}>{item.paper.label}</span> : null}
+                  {item.paper ? <><span className="from-paper" title={`Read from ${item.paper.title}`}>{item.paper.label}</span><LibraryMark library={item.paper.library} /></> : null}
                 </button>
               </li>
             ))}
@@ -145,7 +146,7 @@ const Elsewhere = ({ connection, node, onWalk, onRelate }: { connection: Connect
               <button type="button" className="row-main" data-dg={`similar-${other.title}`} onClick={() => onWalk(other.id)} title="Show it here">
                 <Chip node={other} />
                 <span>{plain(other.title)}</span>
-                {other.paper ? <span className="from-paper" title={`Read from ${other.paper.title}`}>{other.paper.label}</span> : null}
+                {other.paper ? <><span className="from-paper" title={`Read from ${other.paper.title}`}>{other.paper.label}</span><LibraryMark library={other.paper.library} /></> : null}
                 <span className="row-words">Shares: {shared.join(", ")}</span>
               </button>
               <button type="button" className="icon-button" data-dg={`similar-relate-${other.title}`} aria-label="Relate these two" title="Relate these two" onClick={() => onRelate(other)}>
@@ -228,6 +229,7 @@ const Provenance = ({ view, call, report }: PanelProps) => {
           {library.exact && !pdf && !paper ? <blockquote data-dg="ctx-anchor">{library.exact}</blockquote> : null}
           {library.comment ? <p className="ctx-line" data-dg="ctx-anchor-comment">The note beside it: {library.comment}</p> : null}
           <button type="button" className="ctx-link" data-dg="ctx-library-open" onClick={() => void call("link.open", { url: library.open }).catch(report)}>
+            <LibraryMark library={library} />{" "}
             {library.what === "passage" ? "Open the passage in Zotero" : "Show it in Zotero"}
           </button>
         </div>
@@ -307,6 +309,64 @@ const Social = ({ view, call, report }: PanelProps) => {
           }}
         />
       </div>
+    </section>
+  );
+};
+
+/**
+ * Sign-off: who has checked this unit, how, and whether it has changed since. The author marking their
+ * own unit signs it; anyone else is a second pair of eyes. A mark holds only for the version it was made on.
+ */
+const Checks = ({ unit, mine, checks, call, report }: { unit: string; mine: boolean; checks: UnitCheck[]; call: Connection["call"]; report: (error: Error) => void }) => {
+  const [open, setOpen] = useState<"checked" | "needsWork" | null>(null);
+  const [way, setWay] = useState<CheckWay>("expertJudgment");
+  const [note, setNote] = useState("");
+  const own = checks.find((check) => check.mine);
+  const send = (verdict: "checked" | "needsWork"): void => {
+    void call("unit.check", { unit, verdict, way, ...(note.trim() ? { note } : {}) })
+      .then(() => (setOpen(null), setNote("")))
+      .catch(report);
+  };
+  return (
+    <section className="ctx-group" data-dg="ctx-checks">
+      <h2>Checked {checks.length ? <span>{checks.length}</span> : null}</h2>
+      {checks.length === 0 ? <p className="ctx-line">No one has checked this yet.</p> : null}
+      <ul className="ctx-checks">
+        {checks.map((check) => (
+          <li key={check.id} data-verdict={check.verdict} data-current={check.current} data-dg={`ctx-check-${check.verdict}`}>
+            <span className="ctx-check-mark"><Icon name={check.verdict === "checked" ? "check" : "pen"} /></span>
+            <span>
+              <strong>{check.verdict === "needsWork" ? "Needs work" : check.own ? "Signed by its author" : "Checked"}</strong>, {check.credit.name}, <time dateTime={check.at}>{whenOf(check.at)}</time>
+              <span className="ctx-check-how"> · {CHECK_WAYS.find((entry) => entry.method === check.way)?.label ?? check.way}</span>
+              {check.note ? <span className="ctx-check-note">{check.note}</span> : null}
+              {!check.current ? <span className="ctx-check-stale" data-dg="ctx-check-stale">This unit has changed since. The mark was made on an earlier version.</span> : null}
+            </span>
+            {check.mine ? <button type="button" className="icon-button" aria-label="Take back this mark" data-dg="ctx-uncheck" onClick={() => void call("unit.uncheck", { id: check.id }).catch(report)}><Icon name="close" /></button> : null}
+          </li>
+        ))}
+      </ul>
+      {open ? (
+        <div className="ctx-check-form" data-dg="ctx-check-form">
+          {open === "checked" ? (
+            <label className="ctx-line">
+              How you checked it{" "}
+              <select data-dg="ctx-check-way" value={way} onChange={(event) => setWay(event.target.value as CheckWay)}>
+                {CHECK_WAYS.map((entry) => <option key={entry.method} value={entry.method}>{entry.label}</option>)}
+              </select>
+            </label>
+          ) : null}
+          <input data-dg="ctx-check-note" aria-label={open === "needsWork" ? "What needs work" : "A note, if you like"} placeholder={open === "needsWork" ? "What needs work" : "A note, if you like"} value={note} onChange={(event) => setNote(event.target.value)} />
+          <span className="ctx-check-actions">
+            <button type="button" className="ctx-link" onClick={() => setOpen(null)}>Cancel</button>
+            <button type="button" className="ctx-link" data-dg="ctx-check-send" disabled={open === "needsWork" && !note.trim()} onClick={() => send(open)}>{open === "needsWork" ? "Send it back" : mine ? "Sign it" : "Mark as checked"}</button>
+          </span>
+        </div>
+      ) : (
+        <p className="ctx-line">
+          <button type="button" className="ctx-link" data-dg="ctx-check" onClick={() => setOpen("checked")}>{own?.current && own.verdict === "checked" ? "Check it again" : mine ? "Sign this unit" : "Mark as checked"}</button>
+          {mine ? null : <>{" · "}<button type="button" className="ctx-link" data-dg="ctx-needs-work" onClick={() => setOpen("needsWork")}>Needs work…</button></>}
+        </p>
+      )}
     </section>
   );
 };
@@ -447,6 +507,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             : view.provenance.library
               ? { onSource: () => void call("link.open", { url: view.provenance.library!.open }).catch(report) }
               : {})}
+          onLibrary={(url) => void call("link.open", { url }).catch(report)}
           onIdentifier={(id) => {
             const url = identifierUrl(id);
             if (url) void call("link.open", { url }).catch(report);
@@ -493,7 +554,7 @@ export const App = ({ connection }: { connection: Connection }) => {
                 <button type="button" className="row-main" data-dg={`row-${other.title}`} onClick={() => walk(other.id)}>
                   <Chip node={other} />
                   <span>{plain(other.title)}</span>
-                  {other.paper && other.paper.id !== node.paper?.id ? <span className="from-paper" title={`Read from ${other.paper.title}`}>{other.paper.label}</span> : null}
+                  {other.paper && other.paper.id !== node.paper?.id ? <><span className="from-paper" title={`Read from ${other.paper.title}`}>{other.paper.label}</span><LibraryMark library={other.paper.library} /></> : null}
                 </button>
                 {state === "pending" ? (
                   <div className="decide">
@@ -536,6 +597,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       <Announcements key={`n${node.id}`} unit={node.id} call={call} />
       <Provenance view={view} call={call} report={report} />
       {view.social ? <Social view={view} call={call} report={report} /> : null}
+      <Checks key={`c${node.id}`} unit={node.id} mine={Boolean(node.mine)} checks={view.checks ?? []} call={call} report={report} />
       {node.mine ? <RemoveUnit key={`r${node.id}`} unit={node.id} call={call} report={report} /> : null}
 
     </main>

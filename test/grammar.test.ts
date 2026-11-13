@@ -196,7 +196,7 @@ test("a new unit's note starts from its type's template, and carries the facts a
   assert.equal((await call("grammar.get", {})).tables, true);
   const opened = await call("table.open", { type: claim.id });
   assert.equal(opened.where, "Discourse tables/Claim.base");
-  assert.deepEqual(tables[0], { name: "Claim", property: "dg-type", value: "Claim", columns: [{ property: "dg-made", label: "Made" }, { property: "dg-by", label: "By" }, { property: "dg-source", label: "Source" }] });
+  assert.deepEqual(tables[0], { name: "Claim", property: "dg-type", value: "Claim", columns: [{ property: "dg-made", label: "Made" }, { property: "dg-by", label: "By" }, { property: "dg-checked", label: "Checked" }, { property: "dg-source", label: "Source" }] });
 });
 
 test("a canvas can be removed by its maker, and its units stay", async () => {

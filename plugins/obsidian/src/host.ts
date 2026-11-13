@@ -37,6 +37,7 @@ const ASSETS = `${ROOT}/assets`;
 const UNIT_FOLDERS = "Discourse Units";
 const PAPER_FILES = "Paper files";
 const TABLES = "Discourse tables";
+const PICTURES = "Discourse pictures";
 const ID_KEY = "dg-id";
 // A raw rename on disk arrives as a delete then a create, so a delete waits this
 // long to see whether the same id comes back at a new path.
@@ -484,6 +485,60 @@ export const createObsidianHost = async ({
       return ok({ where: path });
     },
 
+    readLocalFile: async ({ path }) => {
+      // Only a PDF, and only where a reference library says its file is. Read in place, never copied into the vault.
+      if (!/\.pdf$/i.test(path)) return fail("unavailable", "Only PDFs are read from outside the vault.");
+      const fs = (window as unknown as { require?: (name: string) => { promises: { readFile: (path: string) => Promise<Uint8Array> } } }).require?.("fs");
+      if (!fs) return fail("unavailable", "Files outside the vault can only be read in Obsidian's desktop app.");
+      const name = path.split(/[\\/]/).pop() ?? "Document.pdf";
+      try {
+        const bytes = new Uint8Array(await fs.promises.readFile(path));
+        let binary = "";
+        for (let at = 0; at < bytes.length; at += 0x8000) binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+        return ok({ name, mime: "application/pdf", dataUrl: `data:application/pdf;base64,${btoa(binary)}` });
+      } catch {
+        return fail("not-found", `${name} isn't where Zotero says it is. Open it in Zotero once so it downloads.`);
+      }
+    },
+
+    listTagged: async ({ tags, limit }) => {
+      const wanted = new Set(tags.map((tag) => `#${tag}`.toLowerCase()));
+      const found: { ref: HostRef; title: string; line: number; text: string; tag: string }[] = [];
+      for (const file of textFiles()) {
+        const marks = (metadataCache.getFileCache(file)?.tags ?? []).filter((mark) => wanted.has(mark.tag.toLowerCase()));
+        if (marks.length === 0) continue;
+        const lines = (await vault.cachedRead(file)).split("\n");
+        const ref = await refOf(file);
+        for (const mark of marks) {
+          const line = mark.position.start.line;
+          // The line's own words: no tag, no list mark, no checkbox.
+          const text = (lines[line] ?? "").replace(new RegExp(`${mark.tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`, "i"), "").replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[.\]\s+)?/, "").replace(/\s+/g, " ").trim();
+          if (text) found.push({ ref, title: file.basename, line, text, tag: mark.tag.slice(1) });
+          if (found.length >= limit) return ok(found);
+        }
+      }
+      return ok(found);
+    },
+
+    replaceTagged: async ({ ref, line, tag, target }) => {
+      const file = await resolve(ref);
+      const to = await resolve(target);
+      if (!file || !to) return notFound(file ? target : ref);
+      const pattern = new RegExp(`#${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`, "i");
+      let done = false;
+      await vault.process(file, (data) => {
+        const lines = data.split("\n");
+        const held = lines[line];
+        // The note may have been edited since it was listed. A line without the tag is left alone.
+        if (held === undefined || !pattern.test(held)) return data;
+        const lead = /^\s*(?:[-*+]|\d+[.)])\s+(?:\[.\]\s+)?/.exec(held)?.[0] ?? /^\s*/.exec(held)![0];
+        lines[line] = `${lead}[[${metadataCache.fileToLinktext(to, file.path, true)}]]`;
+        done = true;
+        return lines.join("\n");
+      });
+      return done ? ok(null) : fail("conflict", "That line has changed since it was listed. Look again.");
+    },
+
     openTable: async ({ name, property, value, columns }) => {
       // An Obsidian base: a table over every note whose property says it is this type.
       if (!vault.getFolderByPath(TABLES)) await vault.createFolder(TABLES);
@@ -654,6 +709,15 @@ export const createObsidianHost = async ({
         const [stem, extension] = splitName(sanitize(asset.name) || "Document.pdf");
         let path = normalizePath(`${PAPER_FILES}/${stem}.${extension}`);
         for (let n = 2; vault.getFileByPath(path); n += 1) path = normalizePath(`${PAPER_FILES}/${stem} ${n}.${extension}`);
+        await vault.createBinary(path, bytes.buffer);
+        return ok({ ref: path });
+      }
+      // A picture a person added is theirs to find again, under the name they gave it.
+      if (asset.mime.startsWith("image/")) {
+        await ensureFolder(PICTURES);
+        const [stem, extension] = splitName(sanitize(asset.name) || "Picture.png");
+        let path = normalizePath(`${PICTURES}/${stem}.${extension}`);
+        for (let n = 2; vault.getFileByPath(path); n += 1) path = normalizePath(`${PICTURES}/${stem} ${n}.${extension}`);
         await vault.createBinary(path, bytes.buffer);
         return ok({ ref: path });
       }

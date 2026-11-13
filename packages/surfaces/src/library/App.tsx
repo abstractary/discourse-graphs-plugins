@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasSummary, LabView, PaperSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, Mark } from "../shared/ui.tsx";
+import { Icon, LibraryMark, Mark } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
 import { Repository } from "./Repository.tsx";
 
@@ -43,7 +43,7 @@ const Papers = ({ connection, report }: { connection: Connection; report: (error
         {(papers ?? []).map((paper) => (
           <li key={paper.id}>
             <button type="button" data-dg={`paper-open-${paper.title}`} onClick={() => void call("canvas.show", { id: paper.canvas }).catch(report)}>
-              <span className="cvs-title">{paper.title}</span>
+              <span className="cvs-title">{paper.title}<LibraryMark library={paper.library} /></span>
               <span className="cvs-meta">{counted(paper.units, "unit")}, {paper.model}, read {whenEdited(paper.at)}{paper.labPaper ? ", in the lab" : ""}</span>
             </button>
             {inLab && !paper.labPaper ? <button type="button" data-dg={`paper-share-${paper.title}`} onClick={() => void call("paper.share", { id: paper.id, includeFile: false }).then(refresh).catch(report)}>Share</button> : null}

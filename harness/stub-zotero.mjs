@@ -15,6 +15,8 @@ const server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "application/json", "Zotero-Server-ID": "stub", "Zotero-API-Version": "3" });
     res.end(JSON.stringify(body));
   };
+  // With Zotero as the PDF library the app also asks for groups and for every PDF. The stand-in has no files to hand over.
+  if (path === "/users/0/groups") return send([]);
   if (path === "/users/0/items") return send([]);
   if (path === "/users/0/items/top") {
     const q = (new URL(req.url, "http://localhost").searchParams.get("q") ?? "").toLowerCase();

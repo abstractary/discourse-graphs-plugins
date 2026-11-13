@@ -132,7 +132,25 @@ Earlier: a crate exported from the sandbox vault passes every required check of 
 
 **License.** You pick one in the export dialog. With none, the crate says in words that none has been chosen. It never assumes one.
 
-**The lab-notebook form.** Choosing `.eln` writes the same crate in [the ELN file format](https://github.com/TheELNConsortium/TheELNFileFormat): one folder inside the archive, RO-Crate 1.2 (which that format pins), and who made the archive. eLabFTW, RSpace and others read that format. It hasn't been opened in either of them yet.
+**The lab-notebook form.** Choosing `.eln` writes the crate in [the ELN file format](https://github.com/TheELNConsortium/TheELNFileFormat), version 1.2+20260923, which eLabFTW, RSpace, Kadi4Mat, PASTA and others read. A notebook imports only what the crate's root lists, so the file is laid out as entries, each a folder with its own files:
+
+| Entry | From | What a notebook gets |
+|---|---|---|
+| An experiment | Each run | Its title; a body with the study, the protocol followed, departures, what was observed and its outputs; its parameters as fields; the files it made; each sign-off as a comment |
+| A protocol | Each protocol | Its materials, steps and text. eLabFTW reads the genre `protocol` as a template |
+| A resource | The graph itself | The README as its body, with the graph, its records, the canvas and every file no run made |
+
+Before 13 November the file listed only loose files at its root, so a notebook would have imported no experiments.
+
+**Checked three ways, short of opening it in a notebook.**
+
+- **The ELN Consortium's own checker** (`tests/run_checks.py` in their repository) passes all five of its checks at the required level on the four re-issued MATSUlab files: archive structure, metadata, schema, the RO-Crate validator and the `rocrate` library. The first run failed four of them; what it found is fixed. For comparison, eLabFTW's own example export fails the validator check with 41 required issues.
+- **eLabFTW's importer, read from its source** (`src/Import/Eln.php`). `test/eln.test.ts` walks our file the way that code does: the root's parts, each entry's genre, body, tags, fields, comments, and each file found at its path with a matching SHA-256. Two things came from reading it: an entry has no `description`, because eLabFTW appends it to the body, and no `about`, because eLabFTW reads that as a category.
+- **Real exports read here.** Example files from eLabFTW, RSpace, Kadi4Mat and PASTA each come in as runs with their files hashed. Two of them are test fixtures.
+
+**It has not been opened in a running notebook.** That needs eLabFTW or RSpace installed, and this machine has no container runtime. The address of the format's version differs between the Consortium's specification and its tests, so the file names both.
+
+**Reading a notebook's file.** An entry becomes a Run, or a Protocol when its genre says protocol, procedure, template or method. Its files become Outputs of that run, hashed from the archive. Its body is kept as the unit's text, with HTML reduced to plain words. A resource, sample or instrument has no kind of unit here, so it is left out and counted. The action that only records how the file was written is left out too.
 
 **Reading a crate.** A crate this app made is restored from its records: the same units under their own authors, the same canvas, and nothing new when read twice. Anyone else's crate (RO-Crate 1.0 to 1.3, zipped, as an `.eln` file, or a bare `ro-crate-metadata.json`) becomes units:
 
@@ -158,6 +176,18 @@ Earlier: a crate exported from the sandbox vault passes every required check of 
 **What is packaging, not a result.** In a crate that holds evidence, Markdown and JSON-LD files that nothing rests on (a README, a methods note, the metadata itself) do not become outputs. A named input that has no file, such as raw data held back, becomes an output with no bytes, so the run still says what it used.
 
 They arrive on a new canvas named for the crate, marked Imported. Reading the same crate again, with nothing new in it, opens that canvas instead of making another. A crate with more than 300 such entities keeps its runs and what they name first, and says how many files it left out.
+
+## Sign-off
+
+A person marks a unit as **checked**, or as **needs work**, from the Context panel, and says how they checked it: read it, read the source, checked the quote, reanalysed the data, or repeated it. [`core/checks.ts`](../packages/core/src/checks.ts) holds it.
+
+- **The mark is pinned to the unit as it stood.** It is an evaluation record with a hash of the unit's title, type, links and facts. Once any of those change, the mark reads as made on an earlier version, on the card and in the panel. It is never carried over to words its maker didn't see.
+- **The author signing their own unit is a signature. Anyone else is a second pair of eyes.** The panel words the two differently.
+- **One standing mark per person per unit.** A new one replaces that person's last. Only its maker can take a mark back.
+- **"Needs work" needs a reason,** and outweighs a check made on the same version.
+- **It travels.** A crate carries each mark as a `Review` of its unit, the README names who checked each finding, a notebook file carries a run's marks as comments, and a unit's note carries `dg-checked` so a table can filter by it.
+
+Not built: asking a named person to check something, a list of what is waiting for you, and sending a mark to a paper's repository as a COAR Notify review or endorsement, which the notification code can already build.
 
 ## Sending a crate to Zenodo
 
@@ -326,7 +356,7 @@ The whole path an identifier takes was read end to end: minting, storage, compar
 7. **To AT records:** paper records aren't converted at all, and a unit loses its paper link, its passage and its identifiers.
 8. **From AT records:** only title, date and type are kept. The author's name becomes the DID.
 9. **JSON-LD** leaves out untyped units, identifiers, authors and the paper link.
-10. **Our own crate** keeps ids but leaves out people (so ORCID iDs), labs, evaluations and comments. Since 13 November a unit's own text is carried, as `text`. The test compares titles, not ids.
+10. **Our own crate** keeps ids but leaves out people (so ORCID iDs), labs and comments. Since 13 November it carries evaluations. Since 13 November a unit's own text is carried, as `text`. The test compares titles, not ids.
 11. **Someone else's crate:** units get new ids. Fixed 13 November: Evidence, MIRA studies and protocols, their provenance links and the arguments between units are now read.
 12. **In a crate, Sources with the same DOI share one entity,** and authors with the same name merge.
 

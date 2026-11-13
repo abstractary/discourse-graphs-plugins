@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SearchHit, SearchQuery, SearchResults } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Chip, Mark, Marked } from "../shared/ui.tsx";
+import { Chip, Mark, Marked, LibraryMark } from "../shared/ui.tsx";
 
 export { Marked };
 import { DRAG_TYPE } from "../canvas/Drawer.tsx";
@@ -28,7 +28,7 @@ export const HitBody = ({ hit, places = false }: { hit: SearchHit; places?: bool
     <span className="hit-head">
       <Chip node={hit.node} />
       <span className="hit-title"><Marked text={hit.node.title} marks={hit.titleMarks} /></span>
-      {hit.node.paper ? <span className="from-paper" title={`Read from ${hit.node.paper.title}`}>{hit.node.paper.label}</span> : <Mark credit={hit.node.credit} />}
+      {hit.node.paper ? <><span className="from-paper" title={`Read from ${hit.node.paper.title}`}>{hit.node.paper.label}</span><LibraryMark library={hit.node.paper.library} /></> : <Mark credit={hit.node.credit} />}
     </span>
     {hit.match ? (
       <span className="hit-match">

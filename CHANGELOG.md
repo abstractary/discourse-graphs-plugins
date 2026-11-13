@@ -1,5 +1,20 @@
 # Changelog
 
+## Devices, removal that puts work away, and a simulation that replays (13 November 2026)
+
+- **A key per device.** A second computer asks to sign as you, and a device you already use lets it in. Labmates check that chain. Until it is let in, a new device shares nothing. A lost device is removed the same way. See **Your devices** on the Lab tab.
+- **Leaving a lab puts its shared work away.** On the device of someone removed, what the others shared leaves the graph and its notes go to the trash. Their own work and their own grammar stay. An invitation back returns it all.
+- **On a canvas, an edit made apart from a removal stands.** For memberships and devices, the removal does.
+- **Reach defaults to the lab,** and covers questions asked of a model as well as reading papers.
+- **A log a sync tool has damaged still loads.** Half-written, joined, repeated or marked lines are skipped. Before this, one bad line stopped a vault from loading.
+- **Obsidian keeps its device id on the device.** It was in the plugin's data file, which travels with the vault, so two devices could write to one log.
+- **Refusals are named.** The Lab tab says whose records were refused, which is how an out-of-date app shows up. It also says when this computer's clock is off.
+- **A labmate's record that arrives before their own record** is held and checked, where before it was let through.
+- **The simulation replays exactly.** Time, ids, keys and signatures come from the seed. It now has a second device for the PI, a file sync that damages logs, and an older and a newer app. 121 of 121 hold.
+- **A real Obsidian in a lab:** `harness/lab-real-test.mjs` runs the real app among simulated labmates.
+- **Research:** [docs/tooling.md](docs/tooling.md) lists open-source tools for contracts, testing and upkeep, with a first five to adopt.
+- **Not built:** routing model work to a labmate's computer. The role `agent` exists on a device key and nothing enforces it yet.
+
 ## Labs: invitations, inherited settings, signed records (13 November 2026)
 
 - **Invitations.** The PI makes a one-line invitation, good once for a week. Whoever pastes it into Join a lab is in at once. Asking with the lab's identifier still works.

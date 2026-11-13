@@ -1,5 +1,5 @@
 import { isIdentifier, type Identifier, type WorkAuthor, type WorkStanding } from "./scholarly.ts";
-import { isUnitId, unitId } from "./ids.ts";
+import { clock, entropy, isUnitId, stampMs, unitId } from "./ids.ts";
 
 export const FORMAT_VERSION = 2;
 
@@ -74,6 +74,7 @@ export const DOCUMENT_KINDS = [
   "unit-note",
   "evaluation",
   "release",
+  "device",
 ] as const;
 export const ASSERTION_KINDS = ["relation", "retraction", "decision"] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
@@ -112,13 +113,9 @@ type DocumentFields = {
   prev?: string;
 };
 
-/**
- * This device's clock, corrected. A lab's server says what time it is with every exchange, and a
- * device whose clock is off stamps its records with the difference added, so its later edit is
- * not read as an earlier one.
- */
-export const clock = { offsetMs: 0 };
-export const nowIso = (): string => new Date(Date.now() + clock.offsetMs).toISOString();
+export { clock, entropy };
+/** Now, as a record is stamped: on this device's corrected clock. */
+export const nowIso = (): string => new Date(stampMs()).toISOString();
 
 /** Names one version of a document, for the version that replaces it. */
 export const versionKey = (record: { rev: number; editedAt: string; editedBy: Author }): string =>
@@ -612,6 +609,25 @@ export type LabRecord = Envelope<"lab"> &
     settings?: LabSettings;
   };
 
+/**
+ * One more key that may sign as a person: a second computer of theirs, or an agent acting for them.
+ * A signing key can't be copied off the device that made it, so each device has its own, and a
+ * device already trusted vouches for the next. The vouch is a signature over the new key, and it
+ * is what a labmate checks. A record a person has not vouched for proves only that someone asked.
+ */
+export type DeviceRecord = Envelope<"device"> &
+  DocumentFields & {
+    /** The device's own signing key, as a `did:key`. */
+    key: string;
+    name: string;
+    /** An agent writes proposals for its person to accept. A device writes as the person. */
+    role: "device" | "agent";
+    /** A trusted key's signature over this one: which key signed, and the signature. */
+    vouch?: { by: string; sig: string };
+    /** No longer trusted. What it signed before stays as it was taken in. */
+    removed?: boolean;
+  };
+
 /** A person's choice to work in a lab, which puts the PI's key on their DID. */
 export type MembershipRecord = Envelope<"membership"> &
   DocumentFields & { lab: string; member: string; /** Ended, by the member or by the lab's custodian. */ removed?: boolean };
@@ -653,7 +669,8 @@ export type DocumentRecord =
   | ReactionRecord
   | UnitNoteRecord
   | EvaluationRecord
-  | ReleaseRecord;
+  | ReleaseRecord
+  | DeviceRecord;
 export type AssertionRecord =
   | RelationRecord
   | RetractionRecord
@@ -668,8 +685,8 @@ export const staysLocal = (record: DgRecord): boolean =>
   record.kind === "anchor" || record.kind === "decision";
 
 export const uuidv7 = (): DgId => {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  const ms = Date.now();
+  const bytes = entropy.fill(new Uint8Array(16));
+  const ms = clock.now();
   for (let i = 0; i < 6; i += 1) {
     bytes[i] = Math.floor(ms / 2 ** (8 * (5 - i))) % 256;
   }
@@ -927,6 +944,13 @@ export const createMembership = ({
   member,
 });
 
+export const createDevice = ({ key, name, role = "device", ...stamp }: Stamp & { key: string; name: string; role?: DeviceRecord["role"] }): DeviceRecord => ({
+  ...versioned({ ...stamp, kind: "device" }),
+  key,
+  name,
+  role,
+});
+
 export const assertRelation = ({
   type,
   source,
@@ -1127,6 +1151,13 @@ const compareStrings = (a: string, b: string): number =>
  */
 export const compareVersions = (a: DgRecord, b: DgRecord): number => {
   if (isDocument(a) && isDocument(b)) {
+    // Removal against an edit, made apart. On a canvas the edit stands: taking a card off removes only
+    // what its remover had seen, so nobody's move or rewording is lost to a race, and it can be taken
+    // off again. For what grants access, the removal stands. Both rules need every version of such a
+    // record to travel, so that "made apart" is read the same on every device.
+    const gone = Number(Boolean((a as { removed?: boolean }).removed)) - Number(Boolean((b as { removed?: boolean }).removed));
+    if (gone !== 0 && REMOVAL_WINS.includes(a.kind)) return gone;
+    if (gone !== 0 && a.kind === "canvas-item") return -gone;
     return (
       compareStrings(a.editedAt, b.editedAt) ||
       a.rev - b.rev ||
@@ -1139,7 +1170,10 @@ export const compareVersions = (a: DgRecord, b: DgRecord): number => {
 };
 
 /** Kinds only their author changes. A version by anyone else is kept in the log and never read. */
-const AUTHOR_ONLY: readonly string[] = ["lab", "node-type", "relation-type", "person", "evaluation"];
+const AUTHOR_ONLY: readonly string[] = ["lab", "node-type", "relation-type", "person", "evaluation", "device"];
+
+/** Kinds that grant something. For these a removal made apart from an edit stands, so access is never kept by a race. */
+const REMOVAL_WINS: readonly string[] = ["membership", "device"];
 
 /**
  * Whether a version may stand, given the versions it follows. An id carries its author's DID, so a
@@ -1167,9 +1201,18 @@ const standing = (records: DgRecord[], custodianOf: Map<string, string>): ((reco
       if (AUTHOR_ONLY.includes(record.kind)) ok = false;
       else if (record.kind === "membership") ok = record.editedBy.id === custodianOf.get(record.lab);
       else if (record.kind === "node") {
-        const before = record.prev ? byVersion.get(`${record.id}|${record.prev}`) : undefined;
+        const before = record.prev
+          ? byVersion.get(`${record.id}|${record.prev}`)
+          : // From before versions named what they replace, and before signing: the author's version just before it.
+            record.sig
+            ? undefined
+            : records.find((other): other is NodeRecord => other.kind === "node" && other.id === record.id && other.rev === record.rev - 1 && other.editedBy.id === other.by.id);
         ok = before?.kind === "node" && stands(before) && before.title === record.title && Boolean(before.removed) === Boolean(record.removed);
       }
+    } else if (ok && record.kind === "membership" && !record.removed && record.prev) {
+      // Once the lab's custodian has ended a membership, its member can't bring it back. Coming back is a new one.
+      const before = byVersion.get(`${record.id}|${record.prev}`);
+      if (before?.kind === "membership" && before.removed && before.editedBy.id !== record.by.id) ok = false;
     }
     known.set(record, ok);
     return ok;
@@ -1366,6 +1409,7 @@ const requiredByKind: Record<RecordKind, string[]> = {
   "unit-note": ["unit", "text"],
   evaluation: ["target", "method"],
   release: ["canvas", "name"],
+  device: ["key", "name", "role"],
   relation: ["type", "source", "target"],
   retraction: ["target"],
   decision: ["target", "decision"],

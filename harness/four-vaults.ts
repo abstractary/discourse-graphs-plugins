@@ -5,9 +5,11 @@
 // Nothing leaves this process. The report goes to reports/four-vaults.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { canonicalJson, foldRecords, type DgRecord } from "@dg/contract/records.ts";
+import { createHash } from "node:crypto";
+import { canonicalJson, foldRecords, versionKey, type DgRecord } from "@dg/contract/records.ts";
+import { signRecord } from "@dg/core/signing.ts";
 import type { DgId } from "@dg/contract/records.ts";
-import { GROUP_FILE, LAB_GROUP, openWorld, ZOTERO_FILE, zoteroWith, type Vault, type World } from "./vaults/world.ts";
+import { chance, GROUP_FILE, LAB_GROUP, openWorld, ZOTERO_FILE, zoteroWith, type Vault, type World } from "./vaults/world.ts";
 
 const { values: flags } = parseArgs({ options: { seed: { type: "string", default: "1" }, steps: { type: "string", default: "200" } } });
 const SEED = Number(flags.seed);
@@ -32,7 +34,8 @@ const stage = async (name: string, work: () => Promise<void>): Promise<void> => 
   }
 };
 
-const pause = (ms = 6): Promise<void> => new Promise((done) => setTimeout(done, ms));
+/** Time passes in the world. Nothing waits on the real clock. */
+const pause = async (ms = 6): Promise<void> => void (world.time.ms += ms);
 
 const typeOf = async (vault: Vault, base: string): Promise<DgId> => {
   const grammar = await vault.call("grammar.get", {});
@@ -100,16 +103,44 @@ const sentText = (vault: Vault): string => JSON.stringify(vault.sent.flatMap((en
 const holds = (vault: Vault, words: string): boolean => JSON.stringify(vault.records()).includes(words);
 const sentCount = (vault: Vault): number => vault.sent.reduce((sum, entry) => sum + entry.records.length, 0);
 
-/** A seeded source of chance, so a walk can be played again. */
-const chance = (seed: number): (() => number) => {
-  let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+/** Three people doing whatever comes up, on one shared canvas, exchanging with the lab now and then. */
+const randomWalk = async (within: World, members: string[], canvas: DgId, steps: number, random: () => number, log: string[]): Promise<number> => {
+  const pick = <T>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];
+  let made = 0;
+  let refusedHere = 0;
+  for (let step = 0; step < steps; step += 1) {
+    const vault = within.vault(pick(members)!);
+    const roll = random();
+    const view = await vault.call("canvas.open", { id: canvas });
+    const cards = view.items.filter((entry) => (entry.item as { dg?: { node?: DgId } }).dg?.node);
+    const act = async (name: string, work: () => Promise<unknown>): Promise<void> => {
+      log.push(`${step + 1}. ${vault.name} ${name}`);
+      await work().catch(() => void (refusedHere += 1));
+    };
+    if (roll < 0.25 || cards.length < 2) {
+      made += 1;
+      const title = `Walk unit ${made} by ${vault.name}`;
+      await act(`adds "${title}"`, async () => card(vault, canvas, await unit(vault, title, pick(["claim", "evidence", "question"])!), Math.floor(random() * 2000), Math.floor(random() * 1000)));
+    } else if (roll < 0.5) {
+      const held = pick(cards)!;
+      await act(`moves a card`, () => move(vault, canvas, held.id, Math.floor(random() * 2000), Math.floor(random() * 1000)));
+    } else if (roll < 0.6) {
+      const own = pick(Object.values(view.nodes).filter((node) => node.mine));
+      if (own) await act(`rewords "${own.title}"`, () => vault.call("node.rename", { id: own.id, title: `${own.title.replace(/ \(v\d+\)$/, "")} (v${step})` }));
+    } else if (roll < 0.68) {
+      const held = pick(cards)!;
+      await act(`takes a card off`, () => vault.call("canvas.write", { canvas, removes: [held.id] }));
+    } else if (roll < 0.8) {
+      const [a, b] = [pick(Object.values(view.nodes)), pick(Object.values(view.nodes))];
+      if (a && b && a.id !== b.id) await act(`links "${a.title}" to "${b.title}"`, async () => vault.call("relation.assert", { type: await relationOf(vault, pick(["supports", "opposes"])!), source: a.id, target: b.id, draw: true }));
+    } else if (roll < 0.84) {
+      const own = pick(Object.values(view.nodes).filter((node) => node.mine));
+      if (own) await act(`removes "${own.title}"`, () => vault.call("node.remove", { id: own.id }));
+    } else {
+      await act("exchanges with the lab", () => vault.sync());
+    }
+  }
+  return refusedHere;
 };
 
 // Mira has Zotero with the lab's group. Tomas has that and a library of his own. Ines and Kofi have no Zotero.
@@ -118,7 +149,7 @@ const world = await openWorld([
   { name: "Tomas", zotero: zoteroWith({ group: LAB_GROUP }) },
   { name: "Ines" },
   { name: "Kofi" },
-]);
+], { seed: SEED });
 const [mira, tomas, ines, kofi] = world.vaults as [Vault, Vault, Vault, Vault];
 const LAB = ["Mira", "Tomas", "Ines"];
 let labId = "";
@@ -360,6 +391,62 @@ await stage("6b. What the PI sets, every member inherits", async () => {
   expect("membership", "when Mira changes a setting later, members get the change", later.reach === "device" && later.compute === undefined, JSON.stringify(later));
 });
 
+await stage("6c. Mira opens her vault on a second computer", async () => {
+  const laptop = await world.openDevice("Mira", "Mira's laptop");
+  expect("membership", "the second computer knows it is Mira's", laptop.did() === mira.did(), `${laptop.did()} / ${mira.did()}`);
+  const asking = (await laptop.call("device.list", {})).find((device) => device.here);
+  expect("integrity", "it has a key of its own, and waits to be let in", asking?.state === "waiting", JSON.stringify(asking));
+  await online(laptop, async () => laptop.call("lab.acceptInvite", { invite: await invite() }));
+  const early = await unit(laptop, "A claim Mira made on her laptop", "claim");
+  const earlyCard = await card(laptop, shared, early, 0, 900);
+  await laptop.sync();
+  await world.settle(["Mira", "Tomas"]);
+  expect("integrity", "until it is let in, it sends nothing, so nothing of it is refused and lost", sentCount(laptop) === 0 && !holds(tomas, "made on her laptop"), `sent ${sentCount(laptop)}`);
+  expect("membership", "and its own lab panel says it is waiting", (await online(laptop, () => laptop.call("lab.view", {}))).deviceTrusted === false);
+
+  // The vault's files reach her first computer, with the last line still half written.
+  await world.fileSync(laptop, mira, "torn");
+  await world.fileSync(laptop, mira);
+  const request = (await mira.call("device.list", {})).find((device) => device.state === "waiting");
+  expect("membership", "her first computer shows the laptop asking", Boolean(request) && request!.fingerprint === asking?.fingerprint, JSON.stringify(request));
+  const selfServe = await laptop.call("device.approve", { id: request!.id }).then(() => "", (error: Error) => error.message);
+  expect("integrity", "the laptop can't let itself in", selfServe.includes("already trusted"), selfServe || "it approved itself");
+  const forgedAsk = await tomas.call("device.list", {});
+  expect("integrity", "a labmate is never offered Mira's device to approve", !forgedAsk.some((device) => device.fingerprint === asking?.fingerprint));
+  await mira.call("device.approve", { id: request!.id });
+
+  // Back to the laptop through a sync tool that repeats part of the file, then one that joins two copies with markers.
+  await world.fileSync(mira, laptop, "doubled");
+  const joined = await world.fileSync(mira, laptop, "joined");
+  await world.fileSync(mira, laptop, "crlf");
+  expect("integrity", "a log a sync tool repeated, joined and marked still loads, and the bad lines are skipped", joined.skipped > 0 && (await laptop.call("device.list", {})).find((device) => device.here)?.state === "trusted", `skipped ${joined.skipped}`);
+  await laptop.sync();
+  await world.settle(LAB);
+  const seen = await tomas.call("canvas.open", { id: shared });
+  expect("intent", "once let in, what Mira made on her laptop reaches Tomas, as Mira's", seen.nodes[early.id]?.credit.name === "Mira", JSON.stringify(seen.nodes[early.id]?.credit ?? null));
+
+  // Mira moves the same card on both computers before they have synced. Then everything catches up.
+  await move(mira, shared, earlyCard, 50, 900).catch(() => undefined);
+  await pause();
+  await move(laptop, shared, earlyCard, 90, 950);
+  await world.fileSync(mira, laptop);
+  await world.settle([...LAB, "Mira's laptop"]);
+  await world.fileSync(mira, laptop);
+  const places = await Promise.all([mira, laptop, tomas].map((vault) => placeOf(vault, shared, earlyCard)));
+  expect("convergence", "one person on two computers, then the lab: all end the same, with the later move", places.every((place) => place === "90,950"), places.join(" / "));
+  await sameView(world, [...LAB, "Mira's laptop"], shared, "her two computers and her labmates see the same canvas");
+
+  // She loses the laptop and takes it out. It doesn't hear of that, and goes on writing.
+  await mira.call("device.remove", { id: request!.id });
+  await world.settle(LAB);
+  const after = await unit(laptop, "Written on the laptop after it was taken out", "claim");
+  await card(laptop, shared, after, 0, 1000);
+  await laptop.sync().catch(() => undefined);
+  await world.settle(LAB);
+  expect("integrity", "what a removed device signs is refused by her labmates", !holds(tomas, "after it was taken out") && !holds(ines, "after it was taken out"));
+  expect("intent", "what it wrote while it was trusted still stands", (await tomas.call("canvas.open", { id: shared })).nodes[early.id]?.title === "A claim Mira made on her laptop");
+});
+
 await stage("7. Ines checks Mira's claim", async () => {
   await ines.call("unit.check", { unit: ids.claim!, verdict: "checked", way: "dataReanalyzed", note: "Reran the fits" });
   await world.settle(LAB);
@@ -428,6 +515,46 @@ await stage("9. Offline for a while, and the server restarts", async () => {
   expect("liveness", "once everyone has everything, further exchanges send nothing", canonicalJson(before) === canonicalJson(after), `records sent before ${before.join(", ")} and after ${after.join(", ")}`);
 });
 
+await stage("9b. An older app and a newer one in the same lab", async () => {
+  // Ines hasn't updated. What her app sends has no signatures and doesn't say what each version replaces.
+  ines.old = true;
+  const stale = await unit(ines, "Made on an app from before signing", "evidence");
+  const staleCard = await card(ines, shared, stale, 0, 1300);
+  await world.settle(LAB);
+  expect("integrity", "what an older app sends unsigned is not taken in", !holds(mira, "from before signing"));
+  const told = (await online(mira, () => mira.call("lab.view", {}))).refusedFrom;
+  expect("intent", "Mira is told whose records were refused, so someone can tell Ines to update", told.some((entry) => entry.name === "Ines" && entry.count > 0), JSON.stringify(told));
+  await sameView(world, ["Mira", "Tomas"], shared, "and the others carry on, seeing the same canvas");
+  const got = await unit(mira, "Made while Ines was behind", "claim");
+  await card(mira, shared, got, 300, 1300);
+  await world.settle(LAB);
+  expect("intent", "the older app still receives what the others make", holds(ines, "Made while Ines was behind"));
+  // She updates. What she does next is signed, and carries her earlier work with it.
+  ines.old = false;
+  await ines.call("node.rename", { id: stale.id, title: "Made on an app from before signing, since updated" });
+  await move(ines, shared, staleCard, 20, 1300);
+  await world.settle(LAB);
+  await sameView(world, LAB, shared, "once she updates, her work arrives and all three agree again");
+
+  // Tomas's app is ahead of everyone's. It writes a kind of record the others have never heard of,
+  // and a field they don't know on a kind they do.
+  const pair = (await tomas.keys.get(`signing:${tomas.did()}`))!;
+  const by = { id: tomas.did(), name: "Tomas" };
+  const stamp = new Date(world.time.ms).toISOString();
+  const unknown = await signRecord({ v: 2, id: `${tomas.did()}#3zzzzzzzzzzzz`, kind: "forecast", space: "s", at: stamp, by, rev: 1, editedAt: stamp, editedBy: by, horizon: "next quarter" } as unknown as DgRecord, pair, tomas.keys);
+  const counter = tomas.core.graph().documents.get(ids.counter!) as DgRecord & { rev: number; editedAt: string; editedBy: typeof by };
+  const { sig: _sig, ...bare } = counter;
+  const widened = await signRecord({ ...bare, rev: counter.rev + 1, prev: versionKey(counter), editedAt: new Date(world.time.ms + 1).toISOString(), confidence: { value: 0.8, by: "the newer app" } } as unknown as DgRecord, pair, tomas.keys);
+  const token = (await online(tomas, () => tomas.call("lab.view", {}))).link!.token!;
+  await fetch(`${world.server}/v1/labs/${labId}/records`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ records: [unknown, widened] }) });
+  await world.settle(LAB);
+  expect("integrity", "a kind of record from a newer app is kept in the log, untouched", mira.records().some((record) => canonicalJson(record) === canonicalJson(unknown)));
+  expect("integrity", "and is not mistaken for anything this app knows", !mira.core.graph().documents.has(unknown.id));
+  const kept = mira.core.graph().documents.get(ids.counter!) as unknown as { confidence?: { value: number } };
+  expect("integrity", "a field this app doesn't know stays on the record, through signing and reading", kept.confidence?.value === 0.8, JSON.stringify(kept.confidence ?? null));
+  await sameView(world, LAB, shared, "and the canvas reads the same for everyone, newer app or not");
+});
+
 await stage("10. A stranger, and a member who misbehaves", async () => {
   await online(kofi, () => kofi.call("lab.register", { server: world.server, name: "Other Lab" }));
   const own = await unit(kofi, "Kofi's shared claim in another lab", "claim");
@@ -462,45 +589,11 @@ await stage("11. Mira takes the canvas back", async () => {
 
 const walk = { canvas: "" as DgId, actions: [] as string[], refused: 0, notes: [] as string[] };
 await stage(`12. A random walk: ${STEPS} steps by three people, seed ${SEED}`, async () => {
-  const random = chance(SEED);
-  const pick = <T>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];
   const canvas = await mira.call("canvas.create", { title: "Walk" });
   walk.canvas = canvas.id;
   await mira.call("canvas.share", { id: canvas.id });
   await world.settle(LAB);
-  let made = 0;
-  for (let step = 0; step < STEPS; step += 1) {
-    const vault = world.vault(pick(LAB)!);
-    const roll = random();
-    const view = await vault.call("canvas.open", { id: canvas.id });
-    const cards = view.items.filter((entry) => (entry.item as { dg?: { node?: DgId } }).dg?.node);
-    const act = async (name: string, work: () => Promise<unknown>): Promise<void> => {
-      walk.actions.push(`${step + 1}. ${vault.name} ${name}`);
-      await work().catch(() => void (walk.refused += 1));
-    };
-    if (roll < 0.25 || cards.length < 2) {
-      made += 1;
-      const title = `Walk unit ${made} by ${vault.name}`;
-      await act(`adds "${title}"`, async () => card(vault, canvas.id, await unit(vault, title, pick(["claim", "evidence", "question"])!), Math.floor(random() * 2000), Math.floor(random() * 1000)));
-    } else if (roll < 0.5) {
-      const held = pick(cards)!;
-      await act(`moves a card`, () => move(vault, canvas.id, held.id, Math.floor(random() * 2000), Math.floor(random() * 1000)));
-    } else if (roll < 0.6) {
-      const own = pick(Object.values(view.nodes).filter((node) => node.mine));
-      if (own) await act(`rewords "${own.title}"`, () => vault.call("node.rename", { id: own.id, title: `${own.title.replace(/ \(v\d+\)$/, "")} (v${step})` }));
-    } else if (roll < 0.68) {
-      const held = pick(cards)!;
-      await act(`takes a card off`, () => vault.call("canvas.write", { canvas: canvas.id, removes: [held.id] }));
-    } else if (roll < 0.8) {
-      const [a, b] = [pick(Object.values(view.nodes)), pick(Object.values(view.nodes))];
-      if (a && b && a.id !== b.id) await act(`links "${a.title}" to "${b.title}"`, async () => vault.call("relation.assert", { type: await relationOf(vault, pick(["supports", "opposes"])!), source: a.id, target: b.id, draw: true }));
-    } else if (roll < 0.84) {
-      const own = pick(Object.values(view.nodes).filter((node) => node.mine));
-      if (own) await act(`removes "${own.title}"`, () => vault.call("node.remove", { id: own.id }));
-    } else {
-      await act("exchanges with the lab", () => vault.sync());
-    }
-  }
+  walk.refused = await randomWalk(world, LAB, canvas.id, STEPS, chance(SEED), walk.actions);
   await world.settle(LAB);
   await sameView(world, LAB, canvas.id, "after the walk and a final exchange, all three see the same canvas");
   const ghosts = (await digest(mira, canvas.id))?.cards.filter((line) => line.startsWith("(missing")) ?? [];
@@ -542,7 +635,10 @@ await stage("12b. Mira removes Tomas from the lab", async () => {
   const view = await online(tomas, () => tomas.call("lab.view", {}));
   expect("membership", "Tomas is told he was removed, and from which lab", view.removedFrom === "Tension Lab" && !view.link, JSON.stringify({ removedFrom: view.removedFrom, link: Boolean(view.link) }));
   expect("membership", "Tomas's own vault no longer says he is in the lab", !view.identity.lab, view.identity.lab?.name);
-  expect("intent", "Tomas keeps what he already had", (await digest(tomas, walk.canvas)) !== null);
+  expect("intent", "Tomas keeps his own work", holds(tomas, "CANARY-Tomas") && (await tomas.call("node.query", { text: "CANARY-Tomas", limit: 1 })).length === 1);
+  const ownClaim = (await tomas.call("grammar.get", {})).nodeTypes.find((type) => type.base === "claim" && !type.removed);
+  expect("intent", "and has his own grammar back, to change as he likes", ownClaim?.by.id === tomas.did(), ownClaim?.by.name);
+  expect("privacy", "what the others shared is put away on his device", (await digest(tomas, walk.canvas)) === null && (await tomas.call("node.query", { text: "Actin assembly rises", limit: 1 })).length === 0);
   await mira.call("node.create", { title: "Made after Tomas left" });
   const fresh = await unit(mira, "A claim made after Tomas left", "claim");
   await card(mira, walk.canvas, fresh, 100, 100);
@@ -583,6 +679,35 @@ await stage("13. The same records, in any order", async () => {
 });
 
 await world.close();
+
+/** A small lab and a walk, start to finish, and a fingerprint of every record each vault ends up holding. */
+const fingerprint = async (seed: number): Promise<string> => {
+  const small = await openWorld([{ name: "Mira" }, { name: "Tomas" }, { name: "Ines" }], { seed });
+  const [pi, ...members] = small.vaults as [Vault, Vault, Vault];
+  const names = small.vaults.map((vault) => vault.name);
+  pi.online = true;
+  await pi.call("lab.register", { server: small.server, name: "Replay Lab" });
+  for (const member of members) {
+    member.online = true;
+    await member.call("lab.acceptInvite", { invite: (await pi.call("lab.invite", {})).invite });
+    member.online = false;
+  }
+  pi.online = false;
+  const canvas = await pi.call("canvas.create", { title: "Replay" });
+  await pi.call("canvas.share", { id: canvas.id });
+  await small.settle();
+  await randomWalk(small, names, canvas.id, 150, chance(seed), []);
+  await small.settle();
+  const all = small.vaults.map((vault) => vault.records().map((record) => canonicalJson(record)).sort().join("\n")).join("\n--\n");
+  await small.close();
+  return createHash("sha256").update(all).digest("hex");
+};
+
+await stage("14. The same seed, played again", async () => {
+  const [first, second, other] = [await fingerprint(SEED), await fingerprint(SEED), await fingerprint(SEED + 1)];
+  expect("integrity", "a seed played twice leaves every vault with the same records, byte for byte, signatures included", first === second, `${first.slice(0, 12)} / ${second.slice(0, 12)}`);
+  expect("integrity", "and another seed leaves different ones", first !== other);
+});
 
 const failed = probes.filter((probe) => !probe.pass);
 const areas = [...new Set(probes.map((probe) => probe.area))];

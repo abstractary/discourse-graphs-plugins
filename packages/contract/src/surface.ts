@@ -363,9 +363,21 @@ export type LabView = {
   refused: number;
   /** Set once, after the PI removed this person from a lab. */
   removedFrom?: string;
+  /** Whose records were refused, and how many. An older app that doesn't sign shows up here. */
+  refusedFrom: { name: string; count: number }[];
+  /** False while this device waits for one of the person's trusted devices to vouch for it. Nothing it writes is shared until then. */
+  deviceTrusted: boolean;
+  /** How far this computer's clock is from the lab server's, in milliseconds, when it is off enough to correct. */
+  clockOffMs?: number;
 };
 
 export type BreadcrumbDefault = "ask" | "always" | "never";
+
+/**
+ * One of a person's own devices, or an agent of theirs. `waiting` has asked to sign as them and no
+ * trusted device has said yes. `here` is the device being used.
+ */
+export type DeviceView = { id: string; name: string; role: "device" | "agent"; here: boolean; state: "trusted" | "waiting" | "removed"; /** The end of its key, to compare by eye. */ fingerprint: string; at?: string };
 
 /** `source` says whose model answers: a person's own key, the lab's, or none (the closest units are quoted). */
 export type AiStatus = {
@@ -1167,6 +1179,13 @@ export type SurfaceMethods = {
   "lab.decide": { params: { requestId: string; decision: "accept" | "decline"; tokenKind?: "personal" | "team" }; result: LabView };
   "lab.setBreadcrumbs": { params: { value: BreadcrumbDefault }; result: LabView };
   /** Makes an invitation to hand to someone. `invite` is the one line they paste to join. */
+  /** This person's devices: the first, and each that has asked to sign as them. */
+  "device.list": { params: Record<string, never>; result: DeviceView[] };
+  /** Lets a waiting device sign as this person. Only works on a device that is already trusted. */
+  "device.approve": { params: { id: DgId }; result: DeviceView[] };
+  "device.remove": { params: { id: DgId }; result: DeviceView[] };
+  /** The person has read that they were removed from a lab. The notice goes. */
+  "lab.acknowledge": { params: Record<string, never>; result: LabView };
   "lab.invite": { params: { uses?: number; days?: number }; result: { invite: string; expiresAt: string; usesLeft: number } };
   "lab.revokeInvite": { params: { id: string }; result: LabView };
   /** Joins a lab with an invitation, at once. */

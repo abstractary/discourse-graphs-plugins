@@ -292,7 +292,9 @@ Library, then the **Lab** tab.
 - **Invite someone:** press **Make an invitation** and send them the line. It works once, for a week. They paste it into **Join a lab** and are in at once. Someone with only the lab's identifier can ask to join, and you accept them.
 - **What the lab sets for everyone** is yours to choose as PI, and every member gets it: the lab's shelf of papers (a Zotero group, or the lab's own repository), the model servers the lab offers, and how far a paper's text may travel to be read by a model.
 - **The lab's grammar** is the PI's. Members use it, and can add types of their own beside it.
-- **Remove a member** from the list of members. They get nothing more from the lab and keep what they had.
+- **Remove a member** from the list of members. They get nothing more from the lab and keep their own work.
+- **Your devices:** open the vault on a second computer and it asks to sign as you. On a computer you already use, the Lab tab lists it under **Your devices**. Press **Let it in**. Until then the new one shares nothing. Remove a lost device from the same list.
+- **If you are removed,** your own work and grammar stay. What the others shared is put away, and its notes go to the trash. It all comes back if you are invited again.
 - **A paper's shelf** tells you who can open its PDF. "Lab shelf" means everyone in the lab. "Not on the lab's shelf" means only you. "Tomas's copy" means it is in Tomas's own library, and you can find it by its DOI.
 
 ### Zotero as your PDF library

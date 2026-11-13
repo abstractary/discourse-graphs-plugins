@@ -4,7 +4,8 @@ import { sha256 as hash } from "@noble/hashes/sha256";
 import { base32 } from "multiformats/bases/base32";
 import { base58btc } from "multiformats/bases/base58";
 import { sha256 } from "multiformats/hashes/sha2";
-import { canonicalJson, isDocument, type DgRecord, type JsonObject, type PersonRecord } from "@dg/contract/records.ts";
+import { canonicalJson, isDocument, type DeviceRecord, type DgRecord, type JsonObject, type PersonRecord } from "@dg/contract/records.ts";
+import { signBytes, toBase64Url, type KeyStore } from "./identity.ts";
 
 /**
  * Each version of a record is signed by whoever wrote it, with the key their DID was made from.
@@ -15,9 +16,6 @@ import { canonicalJson, isDocument, type DgRecord, type JsonObject, type PersonR
  * So a person's own record is enough to check their signature: nothing is looked up anywhere.
  */
 
-const CURVE_ORDER = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n;
-
-const toBase64Url = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const fromBase64Url = (text: string): Uint8Array => Uint8Array.from(atob(text.replace(/-/g, "+").replace(/_/g, "/")), (char) => char.charCodeAt(0));
 
 /** What is signed: the record as every replica writes it, without the signature itself. */
@@ -29,19 +27,10 @@ const signedBytes = (record: DgRecord): Uint8Array => {
 /** Whose signature a version carries: whoever edited it last, or whoever made it. */
 export const signerOf = (record: DgRecord): string => (isDocument(record) ? record.editedBy.id : record.by.id);
 
-export const signRecord = async <R extends DgRecord>(record: R, pair: CryptoKeyPair): Promise<R> => {
-  const raw = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, pair.privateKey, signedBytes(record)));
-  // The same form PLC asks for, so one verifier reads both.
-  let s = raw.subarray(32).reduce((value, byte) => (value << 8n) | BigInt(byte), 0n);
-  if (s > CURVE_ORDER / 2n) s = CURVE_ORDER - s;
-  const low = new Uint8Array(64);
-  low.set(raw.subarray(0, 32));
-  for (let at = 63; at >= 32; at -= 1) {
-    low[at] = Number(s & 0xffn);
-    s >>= 8n;
-  }
-  return { ...record, sig: toBase64Url(low) };
-};
+export const signRecord = async <R extends DgRecord>(record: R, pair: CryptoKeyPair, keys?: Pick<KeyStore, "sign">): Promise<R> => ({
+  ...record,
+  sig: toBase64Url(await signBytes(keys, pair, signedBytes(record))),
+});
 
 /** The public key inside a `did:key` for P-256, as the compressed point. */
 const pointOf = (didKey: string): Uint8Array | null => {
@@ -77,23 +66,76 @@ export const signingKeyOf = async (person: Pick<PersonRecord, "did" | "plc">): P
   return typeof key === "string" ? key : null;
 };
 
+/** What a vouch signs: this person, and the key being let in. */
+const vouchBytes = (did: string, key: string): Uint8Array => new TextEncoder().encode(`dg-device:${did}:${key}`);
+
+const verifyBytes = (bytes: Uint8Array, sig: string, didKey: string): boolean => {
+  const point = pointOf(didKey);
+  if (!point) return false;
+  try {
+    return p256.verify(fromBase64Url(sig), hash(bytes), point, { lowS: false });
+  } catch {
+    return false;
+  }
+};
+
+/** A trusted device's word for another key: its signature over that key, for this person. */
+export const vouchFor = async ({ did, key, by, pair, keys }: { did: string; key: string; by: string; pair: CryptoKeyPair; keys?: Pick<KeyStore, "sign"> }): Promise<{ by: string; sig: string }> => ({
+  by,
+  sig: toBase64Url(await signBytes(keys, pair, vouchBytes(did, key))),
+});
+
 /**
- * Sorts arriving records into those to keep and those to refuse. A record whose writer's key is
- * known must carry that writer's signature. A writer nobody here has a key for can't be checked,
- * and can't pass for a labmate either, since a labmate's key is known.
+ * Every key that may sign as a person: the one their DID was made with, and each device a trusted
+ * key has vouched for, followed as far as the vouches go. A device taken out of use is left out.
  */
-export const checkSignatures = async (incoming: DgRecord[], known: PersonRecord[]): Promise<{ kept: DgRecord[]; refused: DgRecord[] }> => {
-  const keys = new Map<string, string>();
-  for (const person of [...known, ...incoming.filter((record): record is PersonRecord => record.kind === "person")]) {
+export const trustedKeys = async (person: Pick<PersonRecord, "did" | "plc">, devices: DeviceRecord[]): Promise<string[]> => {
+  const root = await signingKeyOf(person);
+  if (!root) return [];
+  const trusted = [root];
+  const waiting = devices.filter((device) => device.by.id === person.did && !device.removed && device.vouch);
+  for (let found = true; found; ) {
+    found = false;
+    for (const device of waiting) {
+      if (trusted.includes(device.key) || !trusted.includes(device.vouch!.by)) continue;
+      if (!verifyBytes(vouchBytes(person.did!, device.key), device.vouch!.sig, device.vouch!.by)) continue;
+      trusted.push(device.key);
+      found = true;
+    }
+  }
+  return trusted;
+};
+
+/**
+ * Sorts arriving records into those to keep, those to refuse and those to hold.
+ *
+ * A record whose writer's keys are known must carry a signature from one of them. A writer nobody
+ * here has a key for can't be checked, and can't pass for a labmate either, since a labmate's key
+ * is known. The one gap is a labmate whose own record hasn't arrived yet: what they wrote is held
+ * until it does, and checked then.
+ */
+export const checkSignatures = async (
+  incoming: DgRecord[],
+  known: { persons: PersonRecord[]; devices?: DeviceRecord[]; members?: Set<string> },
+): Promise<{ kept: DgRecord[]; refused: DgRecord[]; held: DgRecord[] }> => {
+  const persons = [...known.persons, ...incoming.filter((record): record is PersonRecord => record.kind === "person")];
+  const devices = [...(known.devices ?? []), ...incoming.filter((record): record is DeviceRecord => record.kind === "device")];
+  const keys = new Map<string, string[]>();
+  for (const person of persons) {
     if (!person.did || keys.has(person.did)) continue;
-    const key = await signingKeyOf(person);
-    if (key) keys.set(person.did, key);
+    const trusted = await trustedKeys(person, devices);
+    if (trusted.length > 0) keys.set(person.did, trusted);
   }
   const kept: DgRecord[] = [];
   const refused: DgRecord[] = [];
+  const held: DgRecord[] = [];
   for (const record of incoming) {
-    const key = keys.get(signerOf(record));
-    (!key || verifyRecord(record, key) ? kept : refused).push(record);
+    const writer = signerOf(record);
+    const theirs = keys.get(writer);
+    if (!theirs) (known.members?.has(writer) ? held : kept).push(record);
+    // A device asking to be let in is signed with its own key, which nobody trusts yet. It says only that someone asked.
+    else if (record.kind === "device" && !record.vouch && verifyRecord(record, record.key)) kept.push(record);
+    else (theirs.some((key) => verifyRecord(record, key)) ? kept : refused).push(record);
   }
-  return { kept, refused };
+  return { kept, refused, held };
 };

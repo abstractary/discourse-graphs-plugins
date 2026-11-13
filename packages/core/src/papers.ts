@@ -420,7 +420,8 @@ export const paperFeature = (
    */
   const withinReach = async (server: string | undefined): Promise<void> => {
     const lab = context.myLab();
-    const reach = lab?.settings?.reach ?? "anywhere";
+    // Unpublished papers are confidential until someone says otherwise, so a lab keeps them in the lab unless its PI widens that.
+    const reach = lab?.settings?.reach ?? "lab";
     if (!server || !lab || reach === "anywhere") return;
     const at = server.replace(/\/+$/, "");
     if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(at)) return;

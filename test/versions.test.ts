@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createNode, foldRecords, revise, versionKey, type DgRecord, type NodeRecord, type PersonRecord } from "@dg/contract/records.ts";
 import { createIdentity, memoryKeys } from "@dg/core/identity.ts";
-import { checkSignatures, signRecord } from "@dg/core/signing.ts";
+import { createDevice } from "@dg/contract/records.ts";
+import { didKeyFor, makeKeys } from "@dg/core/identity.ts";
+import { checkSignatures, signRecord, trustedKeys, vouchFor } from "@dg/core/signing.ts";
 
 // Which version of a record stands, and whose word a record is. First found wanting by the
 // four-vault simulation, `node harness/four-vaults.ts`.
@@ -58,14 +60,74 @@ test("a record that says a labmate wrote it needs that labmate's signature", asy
   const forged = { ...unit, title: "Not what she wrote" };
   const bare = createNode({ space: "s", by: author, title: "No signature at all" });
   const stranger = createNode({ space: "s", by: { id: "did:plc:someoneelse", name: "Elsewhere" }, title: "From outside the lab" });
-  const { kept, refused } = await checkSignatures([unit, forged, bare, stranger], [person]);
+  const { kept, refused } = await checkSignatures([unit, forged, bare, stranger], { persons: [person] });
   assert.deepEqual(kept.map((record) => (record as NodeRecord).title), ["Signed by Mira", "From outside the lab"], "a writer nobody has a key for can't be checked, and can't pass for a labmate");
   assert.deepEqual(refused.map((record) => (record as NodeRecord).title), ["Not what she wrote", "No signature at all"]);
 
   // A person record that claims a DID its own first operation doesn't hash to proves nothing.
   const other = await createIdentity(memoryKeys());
   const lying = { ...person, plc: other.plc };
-  assert.equal((await checkSignatures([forged], [lying])).kept.length, 1, "with no key that holds up, the record can't be checked");
+  assert.equal((await checkSignatures([forged], { persons: [lying] })).kept.length, 1, "with no key that holds up, the record can't be checked");
   // A revision drops the old signature, so a stale one is never carried forward.
   assert.equal(revise({ record: unit, changes: { title: "Next" }, by: author }).sig, undefined);
+});
+
+test("a second device signs as its person only once a trusted device has vouched for it", async () => {
+  const keys = memoryKeys();
+  const who = await createIdentity(keys);
+  const author = { id: who.did, name: "Mira" };
+  const person = { id: `${who.did}#p`, kind: "person", did: who.did, plc: who.plc, by: author, editedBy: author, rev: 1 } as unknown as PersonRecord;
+  const first = (await keys.get(`signing:${who.did}`))!;
+  const [rootKey] = await trustedKeys(person, []);
+
+  // The laptop makes a key of its own and asks.
+  const laptop = await makeKeys(keys);
+  const laptopKey = await didKeyFor(laptop);
+  const asking = await signRecord(createDevice({ space: "s", by: author, key: laptopKey, name: "Laptop" }), laptop);
+  const written = await signRecord(createNode({ space: "s", by: author, title: "Written on the laptop" }), laptop);
+  assert.deepEqual(await trustedKeys(person, [asking]), [rootKey], "asking is not being let in");
+  assert.equal((await checkSignatures([written], { persons: [person], devices: [asking] })).refused.length, 1);
+  assert.equal((await checkSignatures([asking], { persons: [person] })).kept.length, 1, "the request itself travels, signed with the key it asks for");
+
+  // The first device vouches. Now the laptop's signature holds, including on what it wrote before.
+  const let_in = { ...asking, vouch: await vouchFor({ did: who.did, key: laptopKey, by: rootKey!, pair: first }) };
+  assert.deepEqual(await trustedKeys(person, [let_in]), [rootKey, laptopKey]);
+  assert.equal((await checkSignatures([written], { persons: [person], devices: [let_in] })).kept.length, 1);
+
+  // A vouch can't be made by a key that isn't trusted, or moved to another key.
+  const stranger = await makeKeys(keys);
+  const strangerKey = await didKeyFor(stranger);
+  const selfMade = { ...asking, key: strangerKey, vouch: await vouchFor({ did: who.did, key: strangerKey, by: strangerKey, pair: stranger }) };
+  const moved = { ...asking, key: strangerKey, vouch: let_in.vouch };
+  assert.deepEqual(await trustedKeys(person, [selfMade, moved]), [rootKey]);
+  // The laptop can let a third device in, and taking the laptop out takes its word with it.
+  const phone = await makeKeys(keys);
+  const phoneKey = await didKeyFor(phone);
+  const third = { ...createDevice({ space: "s", by: author, key: phoneKey, name: "Phone" }), vouch: await vouchFor({ did: who.did, key: phoneKey, by: laptopKey, pair: laptop }) };
+  assert.deepEqual(await trustedKeys(person, [third, let_in]), [rootKey, laptopKey, phoneKey]);
+  assert.deepEqual(await trustedKeys(person, [third, { ...let_in, removed: true }]), [rootKey]);
+
+  // A labmate whose own record hasn't arrived: what they wrote waits, and is checked when it does.
+  const early = await checkSignatures([written], { persons: [], members: new Set([who.did]) });
+  assert.deepEqual([early.kept.length, early.held.length], [0, 1]);
+});
+
+test("on a canvas an edit made apart from a removal stands, and for access the removal does", () => {
+  const item = { v: 2, id: "did:plc:mira#3aaaaaaaaaaaa", kind: "canvas-item", space: "s", at: at(0), by: mira, rev: 1, editedAt: at(0), editedBy: mira, canvas: "c", z: 1, item: { id: "i", type: "text", text: "x", x: 0, y: 0, width: 1, height: 1 } } as unknown as DgRecord & { rev: number; editedAt: string; editedBy: typeof mira };
+  const taken = revise({ record: item as never, changes: { removed: true } as never, by: mira, at: at(9) }) as DgRecord;
+  const moved = revise({ record: item as never, changes: { z: 2 } as never, by: tomas, at: at(5) }) as DgRecord;
+  const seen = (records: DgRecord[]): unknown => (foldRecords({ records, localSpace: "s" }).documents.get(item.id) as { removed?: boolean; z: number });
+  assert.deepEqual([(seen([item, taken, moved]) as { removed?: boolean }).removed, (seen([moved, taken, item]) as { z: number }).z], [undefined, 2], "the move stands though the removal is later");
+  // Taken off after seeing the move: now it is gone.
+  const again = revise({ record: moved as never, changes: { removed: true } as never, by: mira, at: at(12) }) as DgRecord;
+  assert.equal((seen([item, taken, moved, again]) as { removed?: boolean }).removed, true);
+
+  // A membership the lab's custodian ended, against the member's own edit made apart: it stays ended, and the member can't bring it back.
+  const lab = { v: 2, id: "did:plc:mira#3bbbbbbbbbbbb", kind: "lab", space: "s", at: at(0), by: mira, rev: 1, editedAt: at(0), editedBy: mira, name: "L", did: "did:plc:lab", custodian: mira.id, custodianKey: "k", plc: [] } as unknown as DgRecord;
+  const joined = { v: 2, id: "did:plc:tomas#3ccccccccccccc".slice(0, 28), kind: "membership", space: "s", at: at(1), by: tomas, rev: 1, editedAt: at(1), editedBy: tomas, lab: "did:plc:lab", member: tomas.id } as unknown as DgRecord;
+  const ended = revise({ record: joined as never, changes: { removed: true } as never, by: mira, at: at(3) }) as DgRecord;
+  const apart = revise({ record: joined as never, changes: {} as never, by: tomas, at: at(8) }) as DgRecord;
+  const undone = revise({ record: ended as never, changes: { removed: false } as never, by: tomas, at: at(10) }) as DgRecord;
+  const membership = foldRecords({ records: [lab, joined, ended, apart, undone], localSpace: "s" }).documents.get(joined.id) as { removed?: boolean };
+  assert.equal(membership.removed, true);
 });

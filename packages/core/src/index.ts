@@ -1,7 +1,7 @@
 import { isLibraryRef, sameDoi, type LibraryFile, type LibraryStatus } from "@dg/contract/scholarly.ts";
 import { cardFacts, inLibraryOf, paperIdentifiers } from "./card.ts";
 import type { CardFacts } from "@dg/contract/scholarly.ts";
-import type { CrateExported, CrateImported, CanvasCommand } from "@dg/contract/surface.ts";
+import type { CrateExported, CrateImported, CanvasCommand, DeviceView } from "@dg/contract/surface.ts";
 import {
   assertRelation,
   buildCanvas,
@@ -14,6 +14,7 @@ import {
   createMembership,
   createNode,
   clock,
+  createDevice,
   createPerson,
   decide,
   defaultGrammar,
@@ -34,6 +35,7 @@ import {
   type HostRef,
   type JsonObject,
   type LabRecord,
+  type MembershipRecord,
   type NodeRecord,
   type PaperRecord,
   type NodeTypeRecord,
@@ -68,11 +70,13 @@ import {
   addCustodian,
   createIdentity,
   createLabIdentity,
+  didKeyFor,
+  makeKeys,
   memoryKeys,
   type Identity,
   type KeyStore,
 } from "./identity.ts";
-import { checkSignatures, signerOf, signRecord } from "./signing.ts";
+import { signerOf, signingKeyOf, signRecord, trustedKeys, vouchFor } from "./signing.ts";
 import { planAtImport, planImport, type ExistingGraph, type ImportReport } from "./migrate.ts";
 import type { Context, Handlers } from "./context.ts";
 import { labFeature } from "./labs.ts";
@@ -103,6 +107,7 @@ const LOCATE_MS = 400;
 
 type Located = { x: number; y: number; width: number; height: number } | null;
 const USAGE_LIMIT = 2000;
+const CLOCK_KEY = "clock-offset";
 const USAGE_FLUSH_MS = 2000;
 
 const value = <T>(result: Result<T>): T => {
@@ -253,6 +258,31 @@ export const createCore = async ({
   const keyOf = (record: DgRecord): string =>
     isDocument(record) ? `${record.id}:${canonicalJson(record)}` : `${record.id}:${record.sig ? 1 : 0}`;
 
+  /**
+   * After a person leaves a lab or is taken out of it, what its other members shared is put away on
+   * this device: it is no longer read into the graph. Their own work stays. The records stay in the
+   * log, because what was sent can't be unsent, and they are read again if the person comes back.
+   */
+  // What was just put away and still has a note or page here, to be taken out of the base as well.
+  let awayNow: DgId[] = [];
+  const putAway = (): void => {
+    awayNow = [];
+    const mine = [...graph.documents.values()].filter((record): record is MembershipRecord => record.kind === "membership" && record.member === me.id);
+    const left = new Set(mine.filter((item) => item.removed).map((item) => item.lab));
+    for (const item of mine) if (!item.removed) left.delete(item.lab);
+    if (left.size === 0) return;
+    for (const [id, record] of graph.documents) {
+      if (record.kind === "lab" || record.kind === "person" || record.kind === "membership") continue;
+      const theirs = record.by.id !== me.id && record.lab !== undefined && left.has(record.lab);
+      const shared = record.kind === "canvas" && record.by.id !== me.id && record.shared !== undefined && left.has(record.shared);
+      if (theirs || shared) {
+        graph.documents.delete(id);
+        awayNow.push(id);
+      }
+    }
+    for (const [id, { record }] of graph.relations) if (record.by.id !== me.id && record.lab !== undefined && left.has(record.lab)) graph.relations.delete(id);
+  };
+
   const absorb = (incoming: DgRecord[]): boolean => {
     let changed = false;
     for (const record of incoming) {
@@ -271,12 +301,21 @@ export const createCore = async ({
       trustedLab = joined.lab;
       graph = foldRecords({ records, localSpace, trustedLab });
     }
+    putAway();
     anchorsByRef = new Map();
     anchorsByNode = new Map();
     for (const record of graph.documents.values()) {
       if (record.kind === "anchor" && record.space === localSpace) {
         anchorsByRef.set(record.ref, record);
         anchorsByNode.set(record.node, record);
+      }
+    }
+    // Their notes or pages go to the base's trash, where they can still be got back.
+    for (const id of awayNow) {
+      const home = anchorsByNode.get(id);
+      if (home && !missingText.has(home.ref)) {
+        missingText.add(home.ref);
+        void host.removeText({ ref: home.ref });
       }
     }
     return true;
@@ -299,15 +338,22 @@ export const createCore = async ({
     return pulling;
   };
 
+  // This device's own correction to its clock, and the latest time it has stamped. Several cores can
+  // share a process in a simulation, so each puts its own in place before it stamps anything.
+  let clockOffset = 0;
+  let clockFloor = 0;
   // This device's signing key, once its person is known. What this person writes is signed on its way in.
   let signer: { did: string; pair: CryptoKeyPair } | null = null;
   const signed = async (fresh: DgRecord[]): Promise<DgRecord[]> => {
     const by = signer;
     if (!by) return fresh;
-    return Promise.all(fresh.map((record) => (!record.sig && signerOf(record) === by.did ? signRecord(record, by.pair) : record)));
+    return Promise.all(fresh.map((record) => (!record.sig && signerOf(record) === by.did ? signRecord(record, by.pair, keys) : record)));
   };
   const put = async (fresh: DgRecord[]): Promise<void> => {
+    clock.offsetMs = clockOffset;
+    clock.floorMs = Math.max(clock.floorMs, clockFloor);
     const ready = await signed(fresh);
+    clockFloor = clock.floorMs;
     value(await host.putRecords({ records: ready }));
     if (absorb(ready)) notify();
   };
@@ -345,15 +391,27 @@ export const createCore = async ({
     return fresh;
   };
   let identity = await loadIdentity();
+  // The key this person's DID was made with stays on the device that made it. Any other device of
+  // theirs has a key of its own, and signs with that once a trusted device has vouched for it.
+  let deviceKey: string | null = null;
   {
-    const pair = await keys.get(`signing:${identity.did}`);
-    // A second device has the DID and not the key, which can't be copied. What it writes goes unsigned.
-    signer = pair ? { did: identity.did, pair } : null;
+    const first = await keys.get(`signing:${identity.did}`);
+    let pair = first ?? (await keys.get(`device:${identity.did}`));
+    if (!pair) {
+      pair = await makeKeys(keys);
+      await keys.put(`device:${identity.did}`, pair);
+    }
+    if (!first) deviceKey = await didKeyFor(pair);
+    signer = { did: identity.did, pair };
   }
   me = {
     id: identity.did,
     name: documents("person").find((person) => person.did === identity.did)?.name ?? info.person.name,
   };
+  // A device other than the first says so in the log, so a trusted device can vouch for it.
+  if (deviceKey && !documents("device").some((device) => device.key === deviceKey)) {
+    await put([createDevice({ space: localSpace, by: me, key: deviceKey, name: `${info.host} ${deviceKey.slice(-4)}` })]);
+  }
 
   const myLab = (): LabRecord | undefined => {
     const joined = documents("membership").find((item) => item.member === identity.did && !item.removed);
@@ -406,9 +464,8 @@ export const createCore = async ({
     if (!lab) throw new Error("There's no lab here to join.");
     if (myLab()) return identityView();
     await savePlc(await addCustodian({ keys, identity, custodianKey: lab.custodianKey }));
-    const lapsed = documents("membership").find((item) => item.member === identity.did && item.lab === lab.did && item.by.id === me.id);
-    // Coming back after being taken out: the same membership stands again.
-    await put([lapsed ? revise({ record: lapsed, changes: { removed: false }, by: me }) : createMembership({ space: localSpace, by: me, lab: lab.did, member: identity.did })]);
+    // Coming back after being taken out is a new membership. The ended one stays ended.
+    await put([createMembership({ space: localSpace, by: me, lab: lab.did, member: identity.did })]);
     refreshStamp();
     await adoptLabGrammar();
     return identityView();
@@ -455,7 +512,18 @@ export const createCore = async ({
    */
   const adoptLabGrammar = async (): Promise<void> => {
     const lab = myLab();
-    if (!lab || lab.custodian === me.id) return;
+    if (!lab) {
+      // Out of the lab again: the person's own types come back into use. Units made with the lab's keep reading by them.
+      const back = [...documents("node-type"), ...documents("relation-type")].filter((type) => type.by.id === me.id && type.removed && type.replacedBy);
+      if (back.length > 0) {
+        await put(back.map((type) => {
+          const { replacedBy: _lab, removed: _gone, ...own } = revise({ record: type as NodeTypeRecord, changes: {}, by: me });
+          return own as DgRecord;
+        }));
+      }
+      return;
+    }
+    if (lab.custodian === me.id) return;
     const fresh: DgRecord[] = [];
     for (const kind of ["node-type", "relation-type"] as const) {
       const all = documents(kind) as (NodeTypeRecord | RelationTypeRecord)[];
@@ -1070,14 +1138,70 @@ export const createCore = async ({
     createLabRecord,
     joinLab,
     adoptLabGrammar,
+    trusted: () => trusted(),
     ...(askBreadcrumb ? { askBreadcrumb } : {}),
   });
   // A device whose clock is off stamps with the lab server's time. Small differences are left alone.
-  let clockOffset = 0;
+  // The correction is kept, so it still holds after a restart and before the next exchange.
+  {
+    const kept = await baseHost.getLocal({ key: CLOCK_KEY });
+    if (kept.ok && typeof kept.value === "number") clockOffset = kept.value;
+  }
   const serverTime = (now: string): void => {
-    const off = new Date(now).getTime() - Date.now();
-    clockOffset = Number.isFinite(off) && Math.abs(off) > 2000 ? off : 0;
+    const off = new Date(now).getTime() - clock.now();
+    const next = Number.isFinite(off) && Math.abs(off) > 2000 ? off : 0;
+    if (next !== clockOffset) void baseHost.setLocal({ key: CLOCK_KEY, value: next });
+    clockOffset = next;
     clock.offsetMs = clockOffset;
+  };
+
+  /** The key this device signs with, as others name it. */
+  const myKey = async (): Promise<string | null> => {
+    if (deviceKey) return deviceKey;
+    const person = documents("person").find((item) => item.did === identity.did);
+    return person ? signingKeyOf(person) : null;
+  };
+  /** Whether labmates will take what this device signs: it is the first device, or one of this person's trusted devices vouched for it. */
+  const trusted = async (): Promise<boolean> => {
+    if (!deviceKey) return true;
+    const person = documents("person").find((item) => item.did === identity.did);
+    return person ? (await trustedKeys(person, documents("device"))).includes(deviceKey) : false;
+  };
+  const deviceList = async (): Promise<DeviceView[]> => {
+    const person = documents("person").find((item) => item.did === identity.did);
+    const keysOf = person ? await trustedKeys(person, documents("device")) : [];
+    const mine = documents("device").filter((device) => device.by.id === identity.did);
+    return [
+      { id: "first", name: "The device you started on", role: "device", here: !deviceKey, state: "trusted", fingerprint: (keysOf[0] ?? "").slice(-8) },
+      ...mine.map((device): DeviceView => ({
+        id: device.id,
+        name: device.name,
+        role: device.role,
+        here: device.key === deviceKey,
+        state: device.removed ? "removed" : keysOf.includes(device.key) ? "trusted" : "waiting",
+        fingerprint: device.key.slice(-8),
+        at: device.at,
+      })),
+    ];
+  };
+  const deviceHandlers: Pick<Handlers, "device.list" | "device.approve" | "device.remove"> = {
+    "device.list": deviceList,
+    "device.approve": async ({ id }) => {
+      const device = documents("device").find((item) => item.id === id && item.by.id === identity.did);
+      if (!device || device.removed) throw new Error("That device isn't asking any more.");
+      const by = await myKey();
+      if (!signer || !by || !(await trusted())) throw new Error("Approve it from a device that is already trusted, such as the one you started on.");
+      const vouch = await vouchFor({ did: identity.did, key: device.key, by, pair: signer.pair, keys });
+      await put([revise({ record: device, changes: { vouch }, by: me })]);
+      return deviceList();
+    },
+    "device.remove": async ({ id }) => {
+      const device = documents("device").find((item) => item.id === id && item.by.id === identity.did);
+      if (!device) return deviceList();
+      if (!(await trusted())) throw new Error("Remove it from a device that is already trusted.");
+      await put([revise({ record: device, changes: { removed: true }, by: me })]);
+      return deviceList();
+    },
   };
 
   const onSharedCanvas = (node: DgId): boolean =>
@@ -1113,8 +1237,12 @@ export const createCore = async ({
   const checks = checkFeature(context);
   checkHooks = checks;
   const gather = gatherFeature(context, { place: (args) => reading.handlers["canvas.placeUnits"](args) });
+  // Someone who left a lab while the app was closed gets their own grammar back.
+  await adoptLabGrammar();
+
   const handlers: Handlers = {
     ...grammar.handlers,
+    ...deviceHandlers,
     ...gather.handlers,
     ...checks.handlers,
     ...holons.handlers,
@@ -1535,7 +1663,9 @@ export const createCore = async ({
     try {
       if (!handler) throw new Error(`No method ${message.method}`);
       clock.offsetMs = clockOffset;
+      clock.floorMs = Math.max(clock.floorMs, clockFloor);
       const result = await handler(message.params);
+      clockFloor = clock.floorMs;
       port.send({ id: message.id, ok: true, result });
       logUsage({
         op: `surface:${message.method}`,

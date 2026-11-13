@@ -128,6 +128,8 @@ export type Services = {
   removeMember: (link: LabLink, did: string) => Promise<void>;
   /** The lab this device was removed from, once, so the person can be told. */
   removedFrom: () => Promise<string | null>;
+  /** The person has read that they were removed. */
+  forgetRemoved: () => Promise<void>;
 
   uploadPaper: (
     link: LabLink,

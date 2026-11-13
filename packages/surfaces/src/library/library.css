@@ -22,6 +22,8 @@
 .cvs-bar button { display: flex; align-items: center; gap: 3px; padding: 2px 6px; color: var(--dg-accent); font-size: var(--small); }
 .cvs-static { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 5px 6px; }
 .cvs-list li > button:not(:first-child) { flex: none; padding: 2px 6px; color: var(--dg-accent); font-size: var(--small); }
+/* A person's mark in a row keeps its own round shape. The row's rule for buttons would stretch it. */
+.cvs-list li > .mark { flex: none; padding: 0; margin-left: 6px; align-items: center; }
 .lab-id { display: block; padding: 4px 6px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); font: var(--small)/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; user-select: all; }
 
 /* Shared by the pop-ups and the Library. */

@@ -187,6 +187,13 @@ export const aiFeature = (
       const mine = await own();
       const link = await labLink();
 
+      // A lab's reach covers questions too: the units sent with one are its unpublished work.
+      const reach = context.myLab()?.settings?.reach ?? (context.myLab() ? "lab" : "anywhere");
+      const local = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/.test(mine?.baseUrl ?? "");
+      if (mine?.route === "device" && reach !== "anywhere" && !local) {
+        throw new Error(`${context.myLab()!.name} keeps its work ${reach === "device" ? "on your own computer" : "inside the lab"}. Ask with a model on this computer${reach === "lab" ? ", or with the lab's" : ""}.`);
+      }
+      if (reach === "device" && mine?.route !== "device") throw new Error(`${context.myLab()!.name} keeps its work on your own computer. Ask with a model on this computer.`);
       if (mine?.route === "device") {
         const { route: _route, ...call } = mine;
         const controller = new AbortController();

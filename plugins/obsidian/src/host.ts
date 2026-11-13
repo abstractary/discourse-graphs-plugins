@@ -1,3 +1,4 @@
+import { cursorAfter, logLines, parseLogLine, resumeAt, type LogCursor } from "@dg/contract/log.ts";
 import {
   MarkdownView,
   TFile,
@@ -134,6 +135,8 @@ const skinNow = (): Skin => {
   };
 };
 
+const DEVICE_KEY = "discourse-graphs-device";
+
 export const createObsidianHost = async ({
   app,
   plugin,
@@ -230,12 +233,23 @@ export const createObsidianHost = async ({
 
   let data: LocalData = ((await plugin.loadData()) as LocalData | null) ?? {};
   const saveData = async (): Promise<void> => plugin.saveData(data);
-  if (!data.deviceId || !data.personId) {
-    data.deviceId ??= uuidv7();
-    data.personId ??= uuidv7();
+  // A device's id is kept on the device. The plugin's own data file travels with the vault, and two
+  // devices that shared an id would write to one log, which a sync tool then has to merge.
+  let deviceId = (app.loadLocalStorage(DEVICE_KEY) as string | null) ?? null;
+  if (!deviceId) {
+    // The first device to start after this change keeps the id the vault had. Any other makes its own.
+    deviceId = data.deviceId ?? uuidv7();
+    app.saveLocalStorage(DEVICE_KEY, deviceId);
+    if (data.deviceId) {
+      delete data.deviceId;
+      await saveData();
+    }
+  }
+  if (!data.personId) {
+    data.personId = uuidv7();
     await saveData();
   }
-  const deviceLog = `${RECORDS}/${data.deviceId}.jsonl`;
+  const deviceLog = `${RECORDS}/${deviceId}.jsonl`;
 
   const ensureFolder = async (path: string): Promise<void> => {
     if (!(await vault.adapter.exists(path))) await vault.createFolder(path);
@@ -258,12 +272,8 @@ export const createObsidianHost = async ({
     return files.filter((file) => file.endsWith(".jsonl")).sort();
   };
 
-  const readLines = async (path: string): Promise<string[]> => {
-    const lines = (await vault.adapter.read(path)).split("\n");
-    // A line with no trailing newline may still be mid-write, so leave it for later.
-    lines.pop();
-    return lines;
-  };
+  // Whole lines only. What a sync tool left half written, joined or marked is skipped when read as a record.
+  const readLines = async (path: string): Promise<string[]> => logLines(await vault.adapter.read(path));
 
   let known: Set<string> | null = null;
   const loadKnown = async (): Promise<Set<string>> => {
@@ -271,7 +281,8 @@ export const createObsidianHost = async ({
     const set = new Set<string>();
     for (const path of await recordFiles()) {
       for (const line of await readLines(path)) {
-        set.add(canonicalJson(JSON.parse(line)));
+        const record = parseLogLine(line);
+        if (record) set.add(canonicalJson(record));
       }
     }
     known = set;
@@ -384,8 +395,9 @@ export const createObsidianHost = async ({
     }),
   ];
 
-  const pageOfCursor = (after?: string): Record<string, number> =>
-    after ? (JSON.parse(after) as Record<string, number>) : {};
+  const pageOfCursor = (after?: string): Record<string, LogCursor | number> =>
+    after ? (JSON.parse(after) as Record<string, LogCursor | number>) : {};
+
 
   const host: Host = {
     describe: async () =>
@@ -656,12 +668,14 @@ export const createObsidianHost = async ({
       let done = true;
       for (const path of await recordFiles()) {
         const lines = await readLines(path);
-        let line = cursor[path] ?? 0;
+        // A log that was replaced or joined with a copy since is read again from its top.
+        let line = resumeAt(lines, cursor[path]);
         while (line < lines.length && items.length < limit) {
-          items.push(JSON.parse(lines[line]!) as DgRecord);
+          const record = parseLogLine(lines[line]!);
+          if (record) items.push(record);
           line += 1;
         }
-        cursor[path] = line;
+        cursor[path] = cursorAfter(lines, line);
         if (line < lines.length) done = false;
       }
       return ok({ items, next: JSON.stringify(cursor), done });

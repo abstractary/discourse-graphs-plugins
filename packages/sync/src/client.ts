@@ -188,6 +188,7 @@ export const createServices = ({
       await json(link.server, labPath(link, `/members/${encodeURIComponent(did)}`), { token: link.token!, method: "DELETE" });
     },
     removedFrom: async () => ((await store.get(REMOVED_KEY)) as string | null) ?? null,
+    forgetRemoved: () => store.set(REMOVED_KEY, null),
     pullRecords: (link, after) =>
       json<{ records: DgRecord[]; next?: string; done: boolean; now?: string }>(
         link.server,

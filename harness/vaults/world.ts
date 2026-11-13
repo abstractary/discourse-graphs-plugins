@@ -1,7 +1,14 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { p256 } from "@noble/curves/p256";
+import { sha256 } from "@noble/hashes/sha256";
 import { createCore, type Core } from "@dg/core/index.ts";
+import type { KeyStore } from "@dg/core/identity.ts";
+import { readLog } from "@dg/contract/log.ts";
+import { resetIds } from "@dg/contract/ids.ts";
+import { canonicalJson, clock, entropy } from "@dg/contract/records.ts";
+import type { HostEvent } from "@dg/contract/host.ts";
 import { createMemoryHost, createMemoryStore, type MemoryStore } from "@dg/contract/memory-host.ts";
 import type { DgRecord } from "@dg/contract/records.ts";
 import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
@@ -34,6 +41,12 @@ export type Vault = {
   online: boolean;
   /** How far this person's computer clock is off, in milliseconds. Everything they do runs on it. */
   skewMs: number;
+  /** An older app: what it sends carries no signature and doesn't say which version it replaces. */
+  old: boolean;
+  /** This device's keys, so a test can sign as it would. */
+  keys: KeyStore;
+  /** Tells the core that the log changed underneath it, as a file-sync tool arriving does. */
+  changed: (event: HostEvent) => void;
   /** Everything this vault sent to the lab server. */
   sent: Sent[];
   /** Files opened in the base's own panels, by surface name. */
@@ -46,8 +59,17 @@ export type Vault = {
   stop: () => void;
 };
 
+/** What a file-sync tool can do to a log on its way between two of a person's devices. */
+export type SyncFault = "clean" | "torn" | "doubled" | "joined" | "crlf";
+
 export type World = {
   server: string;
+  /** The world's one clock. Nothing in a run reads the real time, so the same seed gives the same records. */
+  time: { ms: number };
+  /** Another device of someone already here: same vault, its own keys and its own link to the lab. */
+  openDevice: (of: string, name: string) => Promise<Vault>;
+  /** Carries each device's log to the other, as a file-sync tool would, with whatever it does on the way. */
+  fileSync: (a: Vault, b: Vault, fault?: SyncFault) => Promise<{ skipped: number }>;
   vaults: Vault[];
   vault: (name: string) => Vault;
   /** Rounds for the named vaults, in order, until nothing more moves. */
@@ -127,52 +149,99 @@ export const ZOTERO_FILE = "zotero:users/0/items/PDFA0001";
 export const LAB_GROUP = { id: 4821, name: "Tension Lab papers" };
 export const GROUP_FILE = `zotero:groups/${LAB_GROUP.id}/items/PDFG0001`;
 
-/** Runs one person's work with their computer's clock set fast or slow. */
-const RealDate = Date;
-export const withClock = async <T>(offsetMs: number, work: () => Promise<T>): Promise<T> => {
-  if (offsetMs === 0) return work();
-  class Skewed extends RealDate {
-    constructor(...args: unknown[]) {
-      if (args.length === 0) super(RealDate.now() + offsetMs);
-      else super(...(args as [number]));
-    }
-    static override now(): number {
-      return RealDate.now() + offsetMs;
-    }
-  }
-  globalThis.Date = Skewed as DateConstructor;
-  try {
-    return await work();
-  } finally {
-    globalThis.Date = RealDate;
-  }
+/** A seeded source of chance. */
+export const chance = (seed: number): (() => number) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+const base64url = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+/**
+ * Keys that come out the same on every run of a seed, signed with the same bytes every time. The
+ * platform's own keys are random and so are its signatures, and a person's DID is the hash of a
+ * signed operation, so without this no two runs would even agree on who anyone is.
+ */
+const seededKeys = (random: () => number): KeyStore => {
+  const pairs = new Map<string, CryptoKeyPair>();
+  const scalars = new WeakMap<CryptoKey, Uint8Array>();
+  const ECDSA = { name: "ECDSA", namedCurve: "P-256" } as const;
+  return {
+    get: async (name) => pairs.get(name) ?? null,
+    put: async (name, pair) => void pairs.set(name, pair),
+    make: async () => {
+      let d = new Uint8Array(32);
+      do d = d.map(() => Math.floor(random() * 256));
+      while (!p256.utils.isValidPrivateKey(d));
+      const point = p256.getPublicKey(d, false);
+      const shared = { kty: "EC", crv: "P-256", x: base64url(point.subarray(1, 33)), y: base64url(point.subarray(33, 65)) };
+      const privateKey = await crypto.subtle.importKey("jwk", { ...shared, d: base64url(d) }, ECDSA, false, ["sign"]);
+      const publicKey = await crypto.subtle.importKey("jwk", shared, ECDSA, true, ["verify"]);
+      scalars.set(privateKey, d);
+      return { privateKey, publicKey };
+    },
+    sign: async (pair, bytes) => p256.sign(sha256(bytes), scalars.get(pair.privateKey)!, { lowS: true }).toCompactRawBytes(),
+  };
 };
 
 const offline = (): never => {
   throw new TypeError("fetch failed");
 };
 
-const openVault = async ({ name, server, zotero }: { name: string; server: () => string; zotero?: (store: MemoryStore) => Zotero }): Promise<Vault> => {
+type Setup = { time: { ms: number }; skew: { ms: number }; random: () => number; server: () => string };
+
+const openVault = async ({ name, setup, zotero, from }: { name: string; setup: Setup; zotero?: (store: MemoryStore) => Zotero; from?: MemoryStore }): Promise<Vault> => {
   const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
+  if (from) {
+    // The same vault on another device: its files arrive before the app first starts there.
+    store.spaceId = from.spaceId;
+    store.records.push(...from.records);
+  }
+  const { host, emit } = createMemoryHost({ store });
   const opened: string[] = [];
   const base = { ...host, openSurface: async (args: { route: { surface: string } }) => (opened.push(args.route.surface), { ok: true as const, value: null }) };
   const library = zotero?.(store);
   const sent: Sent[] = [];
-  const vault = { name, online: false, skewMs: 0, sent, opened, store } as Vault;
+  const keys = seededKeys(setup.random);
+  const vault = { name, online: false, skewMs: 0, old: false, sent, opened, store, keys, changed: emit } as Vault;
+  /** Everything this device does, it does on its own clock, a little later than the last thing. */
+  const onItsClock = async <T>(work: () => Promise<T>): Promise<T> => {
+    setup.time.ms += 3;
+    setup.skew.ms = vault.skewMs;
+    try {
+      return await work();
+    } finally {
+      setup.skew.ms = 0;
+    }
+  };
 
   const door = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
     if (url.startsWith(ZOTERO_LOCAL)) return library ? library(input) : offline();
-    if (!url.startsWith(server())) return offline();
+    if (!url.startsWith(setup.server())) return offline();
     if (!vault.online) return offline();
+    let sending = init;
     const body = typeof init?.body === "string" ? (JSON.parse(init.body) as { records?: DgRecord[] }) : {};
-    sent.push({ at: Date.now(), method: init?.method ?? "GET", path: new URL(url).pathname, records: body.records ?? [] });
-    const response = await fetch(input, init);
-    // The server shares this process, so it read the time off this vault's skewed clock. Its own clock is right.
-    if (vault.skewMs === 0 || !response.ok || !new URL(url).pathname.endsWith("/records")) return response;
+    if (vault.old && body.records) {
+      // What an app from before signing would have sent: the same records, without the two newer fields.
+      body.records = body.records.map((record) => {
+        const { sig: _sig, prev: _prev, ...bare } = record as DgRecord & { prev?: string };
+        return bare as DgRecord;
+      });
+      sending = { ...init, body: JSON.stringify(body) };
+    }
+    sent.push({ at: setup.time.ms, method: init?.method ?? "GET", path: new URL(url).pathname, records: body.records ?? [] });
+    const response = await fetch(input, sending);
+    // The server shares this process and has no clock of its own here: it tells the world's time.
+    if (!response.ok || !new URL(url).pathname.endsWith("/records")) return response;
     const answer = (await response.json()) as Record<string, unknown>;
-    return new Response(JSON.stringify({ ...answer, now: new RealDate().toISOString() }), { status: response.status, headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify({ ...answer, now: new Date(setup.time.ms).toISOString() }), { status: response.status, headers: { "content-type": "application/json" } });
   }) as typeof fetch;
 
   const kept = new Map<string, unknown>();
@@ -181,7 +250,7 @@ const openVault = async ({ name, server, zotero }: { name: string; server: () =>
     outside: door,
     store: { get: async (key) => kept.get(key) ?? null, set: async (key, value) => void kept.set(key, value) },
   });
-  const core = await createCore({ host: base as never, services, demoGraphs: [] });
+  const core = await onItsClock(() => createCore({ host: base as never, services, keys, demoGraphs: [] }));
 
   const pending = new Map<string, (message: SurfaceMessage) => void>();
   let listener: (message: SurfaceMessage) => void = () => {};
@@ -189,7 +258,7 @@ const openVault = async ({ name, server, zotero }: { name: string; server: () =>
   core.connectSurface({ port });
   let next = 0;
   const call: Call = (method, params) =>
-    withClock(vault.skewMs, () => new Promise((resolve, reject) => {
+    onItsClock(() => new Promise((resolve, reject) => {
       const id = `r${(next += 1)}`;
       pending.set(id, (message) => {
         const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
@@ -199,15 +268,16 @@ const openVault = async ({ name, server, zotero }: { name: string; server: () =>
       listener({ id, method, params } as SurfaceMessage);
     }));
 
-  // The real loop, with its own timer. A vault is offline unless a round was asked for, so the timer's own rounds fail and are dropped.
+  // The real loop, without its timer: a round happens when the story says so, so a run can be played again.
   let failures = 0;
   const loop = startLabSync({ services, target: core, onError: () => void (failures += 1) });
+  loop.stop();
   const sync = async (): Promise<void> => {
     vault.online = true;
     try {
       for (let tries = 0; tries < 5; tries += 1) {
         const before = failures;
-        await withClock(vault.skewMs, () => loop.now());
+        await onItsClock(() => loop.now());
         if (failures === before) return;
       }
       throw new Error(`${name} could not finish a round with the lab.`);
@@ -233,17 +303,45 @@ type Running = { port: number; close: () => Promise<void> };
 /** The reference server keeps its own type settings, so it is loaded as it runs and not checked here. */
 const serverModule = (name: string): Promise<Record<string, (...args: never[]) => unknown>> => import(new URL(`../../server/src/${name}.ts`, import.meta.url).href);
 
-export const openWorld = async (people: { name: string; zotero?: (store: MemoryStore) => Zotero }[]): Promise<World> => {
+/** What a sync tool does to a log's text on the way. */
+const mangle = (text: string, fault: SyncFault, random: () => number): string => {
+  const lines = text.split("\n").filter(Boolean);
+  if (fault === "clean" || lines.length < 2) return text;
+  // The last line is still being written when the file is copied.
+  if (fault === "torn") return `${lines.slice(0, -1).join("\n")}\n${lines.at(-1)!.slice(0, Math.max(1, Math.floor(lines.at(-1)!.length / 2)))}`;
+  // A stretch of the file is carried twice.
+  if (fault === "doubled") return `${[...lines, ...lines.slice(Math.floor(lines.length * 0.6))].join("\n")}\n`;
+  if (fault === "crlf") return `\uFEFF${lines.join("\r\n")}\r\n`;
+  // Two copies were joined by a tool that marks where they met, and one line was cut where they did.
+  const at = 1 + Math.floor(random() * (lines.length - 1));
+  return `${[...lines.slice(0, at), "<<<<<<< this device", lines[at]!.slice(0, 20), "=======", lines[at]!, ">>>>>>> the other device", ...lines.slice(at + 1)].join("\n")}\n`;
+};
+
+export const openWorld = async (people: { name: string; zotero?: (store: MemoryStore) => Zotero }[], { seed = 1, server: outside }: { seed?: number; /** A lab server already running in a process of its own, where something outside this process must reach it too. */ server?: string } = {}): Promise<World> => {
   const startServer = (await serverModule("app")).startServer as unknown as (config: Record<string, unknown>) => Promise<Running>;
   const loadConfig = (await serverModule("config")).loadConfig as unknown as (env: Record<string, string>) => Record<string, unknown>;
   const dataDir = mkdtempSync(join(tmpdir(), "dg-vaults-"));
   const config = { ...loadConfig({}), port: 0, dataDir, miraUrl: "http://127.0.0.1:9/closed", replayMs: 20 };
-  let running = await startServer(config);
+  let running: Running = outside ? { port: Number(new URL(outside).port), close: async () => {} } : await startServer(config);
   let port = running.port;
-  const server = (): string => `http://127.0.0.1:${port}`;
+
+  // One clock and one source of chance for the whole run, in place of the real ones.
+  const random = chance(seed);
+  const time = { ms: Date.UTC(2026, 10, 13, 9, 0, 0) };
+  const skew = { ms: 0 };
+  const real = { now: clock.now, fill: entropy.fill, offsetMs: clock.offsetMs };
+  resetIds();
+  clock.offsetMs = 0;
+  clock.now = () => time.ms + skew.ms;
+  entropy.fill = (into) => {
+    for (let at = 0; at < into.length; at += 1) into[at] = Math.floor(random() * (into.BYTES_PER_ELEMENT === 2 ? 65536 : 256));
+    return into;
+  };
+  const setup: Setup = { time, skew, random, server: () => `http://127.0.0.1:${port}` };
+
   const vaults: Vault[] = [];
   for (const person of people) {
-    const vault = await openVault({ ...person, server });
+    const vault = await openVault({ ...person, setup });
     await vault.call("identity.setName", { name: person.name });
     vaults.push(vault);
   }
@@ -260,14 +358,37 @@ export const openWorld = async (people: { name: string; zotero?: (store: MemoryS
       if (pass > 0 && before === names.map((name) => vault(name).records().length).join(",")) return;
     }
   };
+  /** Lets a core finish reading what just changed underneath it. */
+  const breathe = async (): Promise<void> => {
+    for (let turn = 0; turn < 6; turn += 1) await new Promise((done) => setImmediate(done));
+  };
+  const carry = async (from: Vault, to: Vault, fault: SyncFault): Promise<number> => {
+    const text = mangle(`${from.store.records.map((record) => JSON.stringify(record)).join("\n")}\n`, fault, random);
+    const read = readLog(text);
+    const held = new Set(to.store.records.map((record) => canonicalJson(record)));
+    const fresh = read.records.filter((record) => !held.has(canonicalJson(record)) && (held.add(canonicalJson(record)), true));
+    to.store.records.push(...fresh);
+    if (fresh.length > 0) to.changed({ type: "records-changed" });
+    await breathe();
+    return read.skipped;
+  };
   return {
     get server() {
-      return server();
+      return setup.server();
     },
+    time,
     vaults,
     vault,
     settle,
+    openDevice: async (of, name) => {
+      const first = vault(of);
+      const device = await openVault({ name, setup, from: first.store });
+      vaults.push(device);
+      return device;
+    },
+    fileSync: async (a, b, fault = "clean") => ({ skipped: (await carry(a, b, fault)) + (await carry(b, a, fault)) }),
     restartServer: async () => {
+      if (outside) throw new Error("This world doesn't run its own server.");
       await running.close();
       running = await startServer({ ...config, port });
       port = running.port;
@@ -276,6 +397,10 @@ export const openWorld = async (people: { name: string; zotero?: (store: MemoryS
       for (const item of vaults) item.stop();
       await running.close();
       rmSync(dataDir, { recursive: true, force: true });
+      clock.now = real.now;
+      clock.offsetMs = real.offsetMs;
+      entropy.fill = real.fill;
+      resetIds();
     },
   };
 };

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CanvasSummary, LabView, PaperSummary } from "@dg/contract/surface.ts";
+import type { CanvasSummary, DeviceView, LabView, PaperSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, LibraryMark, Mark } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
@@ -93,6 +93,36 @@ const Folders = ({ connection, report }: { connection: Connection; report: (erro
   );
 };
 
+/** This person's own devices. A new one waits here until a trusted one lets it in. */
+const Devices = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+  const { call, on } = connection;
+  const [devices, setDevices] = useState<DeviceView[]>([]);
+  const refresh = useCallback(() => void call("device.list", {}).then(setDevices).catch(() => setDevices([])), [call]);
+  useEffect(refresh, [refresh]);
+  useEffect(() => on("graph-changed", refresh), [on, refresh]);
+  const others = devices.filter((device) => device.id !== "first" || devices.length > 1);
+  if (others.length <= 1) return null;
+  const here = devices.find((device) => device.here);
+  return (
+    <section data-dg="lab-devices">
+      <h3>Your devices</h3>
+      <p className="note">Each device signs your work with a key of its own. A new one is let in from a device you already use, so nobody else can sign as you.</p>
+      <ul className="cvs-list">
+        {devices.filter((device) => device.state !== "removed").map((device) => (
+          <li key={device.id}>
+            <span className="cvs-static">
+              <span className="cvs-title">{device.name}{device.here ? " (this one)" : ""}</span>
+              <span className="cvs-meta" data-dg={`device-state-${device.fingerprint}`}>{device.state === "trusted" ? "Signs as you" : "Waiting to be let in"} · key ends {device.fingerprint}</span>
+            </span>
+            {device.state === "waiting" && !device.here && here?.state === "trusted" ? <button type="button" data-dg={`device-approve-${device.fingerprint}`} onClick={() => void call("device.approve", { id: device.id }).then(setDevices).catch(report)}>Let it in</button> : null}
+            {device.id !== "first" && !device.here && here?.state === "trusted" ? <button type="button" data-dg={`device-remove-${device.fingerprint}`} onClick={() => void call("device.remove", { id: device.id }).then(setDevices).catch(report)}>Remove</button> : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
+
 type Reach = NonNullable<LabView["settings"]["reach"]>;
 type LabChanges = { [K in keyof LabView["settings"]]?: LabView["settings"][K] | null };
 const REACH: { value: Reach; label: string }[] = [
@@ -113,7 +143,7 @@ const LabSettings = ({ connection, lab, onChange, report }: { connection: Connec
   }, [call, custodian]);
   const set = (changes: LabChanges): void => void call("lab.configure", changes).then(onChange).catch(report);
   const servers = settings.servers ?? [];
-  const reach = settings.reach ?? "anywhere";
+  const reach = settings.reach ?? "lab";
   const shelf = settings.zoteroGroup;
   // The lab's group stays in the list when this computer's Zotero is closed or isn't in it.
   const choices = shelf && !groups.some((group) => group.id === shelf.id) ? [shelf, ...groups] : groups;
@@ -193,7 +223,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   if (!link) {
     return (
       <div className="stack">
-        {lab.removedFrom ? <p className="note" role="status" data-dg="lab-removed">You were removed from {lab.removedFrom}. What you already had is still here. Ask its PI for a new invitation if that was a mistake.</p> : null}
+        {lab.removedFrom ? <p className="note" role="status" data-dg="lab-removed">You were removed from {lab.removedFrom}. Your own work is still here. What the others shared has been put away, and comes back if you rejoin. Ask its PI for a new invitation if that was a mistake. <button type="button" data-dg="lab-removed-ok" onClick={() => void call("lab.acknowledge", {}).then(setLab).catch(report)}>OK</button></p> : null}
         <LabJoin connection={connection} onChange={setLab} />
       </div>
     );
@@ -227,8 +257,14 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
         ) : null}
         <p className="note">{lab.custodian ? "Or people can ask to join with this identifier:" : "The lab's identifier:"}</p>
         <code className="lab-id" data-dg="lab-id">{link.id}</code>
-        {lab.refused > 0 ? <p className="note" role="status" data-dg="lab-refused">{lab.refused} {lab.refused === 1 ? "record" : "records"} arrived under a labmate's name without their signature, and {lab.refused === 1 ? "was" : "were"} not taken in.</p> : null}
+        {!lab.deviceTrusted ? <p className="note" role="status" data-dg="lab-device-waiting">This device isn't signing as you yet, so nothing from it is shared. Open the app on a device you already use and let this one in, under Your devices.</p> : null}
+        {lab.refusedFrom.map((entry) => (
+          <p className="note" role="status" data-dg="lab-refused" key={entry.name}>{entry.count} {entry.count === 1 ? "record" : "records"} from {entry.name} arrived without a signature that holds, and {entry.count === 1 ? "was" : "were"} not taken in. Their app may need updating, or one of their devices was removed.</p>
+        ))}
+        {lab.clockOffMs ? <p className="note" role="status" data-dg="lab-clock">This computer's clock is about {Math.abs(lab.clockOffMs) < 3_600_000 ? `${Math.round(Math.abs(lab.clockOffMs) / 60_000)} minutes` : `${Math.round(Math.abs(lab.clockOffMs) / 3_600_000)} hours`} {lab.clockOffMs > 0 ? "slow" : "fast"}. What you write is stamped with the lab's time.</p> : null}
       </section>
+
+      <Devices connection={connection} report={report} />
 
       {lab.requests.length > 0 ? (
         <section data-dg="lab-requests">
@@ -254,7 +290,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
               <span className="cvs-static"><span className="cvs-title">{member.name}</span>{member.role === "admin" ? <span className="cvs-meta">PI</span> : null}</span>
               {lab.custodian && member.role !== "admin" ? (
                 removing === member.did
-                  ? <button type="button" data-dg={`remove-confirm-${member.name}`} onClick={() => { setRemoving(""); void call("lab.remove", { did: member.did }).then(setLab).catch(report); }}>Remove {member.name}? They keep what they have.</button>
+                  ? <button type="button" data-dg={`remove-confirm-${member.name}`} onClick={() => { setRemoving(""); void call("lab.remove", { did: member.did }).then(setLab).catch(report); }}>Remove {member.name}? They keep their own work.</button>
                   : <button type="button" data-dg={`remove-${member.name}`} onClick={() => setRemoving(member.did)}>Remove</button>
               ) : null}
             </li>

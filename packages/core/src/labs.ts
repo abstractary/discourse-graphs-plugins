@@ -1,5 +1,5 @@
 import type { DgRecord, LabSettings, NodeRecord } from "@dg/contract/records.ts";
-import { revise, staysLocal } from "@dg/contract/records.ts";
+import { clock, revise, staysLocal } from "@dg/contract/records.ts";
 import type { LabLink } from "@dg/contract/services.ts";
 import type { BreadcrumbDefault, IdentityView, LabView } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
@@ -14,8 +14,11 @@ export const labFeature = (
     createLabRecord,
     joinLab,
     adoptLabGrammar,
+    trusted,
     askBreadcrumb,
   }: {
+    /** Whether labmates will take what this device signs. */
+    trusted: () => Promise<boolean>;
     /** Gives way to the lab's types, once they are here. */
     adoptLabGrammar: () => Promise<void>;
     identity: () => IdentityView;
@@ -24,7 +27,7 @@ export const labFeature = (
     /** Shown in the base, because the panel that was open has just closed. */
     askBreadcrumb?: (paper: { id: string; title: string }) => void;
   },
-): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
+): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "lab.acknowledge" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
   prepare: () => Promise<void>;
@@ -41,11 +44,17 @@ export const labFeature = (
     ((await context.getLocal(BREADCRUMB_KEY)) as BreadcrumbDefault | null) ?? "ask";
 
   let refused = 0;
+  const refusedBy = new Map<string, number>();
+  // Records from a labmate whose own record hasn't arrived. Checked again with each batch.
+  let held: DgRecord[] = [];
+  // Set before each exchange. A device nobody has vouched for sends nothing, so nothing of its is refused and lost.
+  let sharing = true;
 
   /** This person's own membership ends, on their device. Their work stays. */
   const leave = async (): Promise<void> => {
     const mine = context.documents("membership").find((item) => item.member === context.me().id && !item.removed);
     if (mine) await context.put([revise({ record: mine, changes: { removed: true }, by: context.me() })]);
+    await adoptLabGrammar();
   };
 
   /** An invitation is one line: the server, the lab and the code. */
@@ -80,6 +89,9 @@ export const labFeature = (
       custodian: Boolean(lab && lab.custodian === context.me().id),
       invites: admin ? await safely(() => services().invites(now!), []) : [],
       refused,
+      refusedFrom: [...refusedBy].map(([did, count]) => ({ name: context.documents("person").find((person) => person.did === did)?.name ?? "Someone", count })),
+      deviceTrusted: await trusted(),
+      ...(Math.abs(clock.offsetMs) > 2000 ? { clockOffMs: clock.offsetMs } : {}),
       ...(removedFrom ? { removedFrom } : {}),
     };
   };
@@ -96,9 +108,11 @@ export const labFeature = (
    */
   const shareable = (): DgRecord[] => {
     const lab = context.myLab();
-    if (!lab) return [];
+    if (!lab || !sharing) return [];
+    // Who is in, and which devices sign for them, with every version: a removal has to be seen to follow what it ended.
+    const mine = (): DgRecord[] => [lab, ...context.documents("person"), ...context.records().filter((record) => record.kind === "membership" || (record.kind === "device" && Boolean(record.vouch || record.removed)))];
     const canvases = context.documents("canvas").filter((canvas) => canvas.shared === lab.did);
-    if (canvases.length === 0) return [lab, ...context.documents("person"), ...context.documents("membership")];
+    if (canvases.length === 0) return mine();
     const open = new Set(canvases.filter((canvas) => !canvas.removed).map(({ id }) => id));
     const held = new Set(canvases.map(({ id }) => id));
     const items = context.documents("canvas-item").filter((item) => held.has(item.canvas));
@@ -126,13 +140,13 @@ export const labFeature = (
     }
     const shared = new Set<string>([...units, ...relations]);
     const records: DgRecord[] = [
-      lab,
-      ...context.documents("person"),
-      ...context.documents("membership"),
+      ...mine(),
       ...context.documents("node-type"),
       ...context.documents("relation-type"),
       ...canvases,
-      ...items,
+      // Every version of each card, not only the one that stands, so each device can tell a change
+      // made after a removal from one made apart from it.
+      ...context.records().filter((record) => record.kind === "canvas-item" && held.has(record.canvas)),
       ...[...units].flatMap((id) => {
         const node = unitOf(id);
         return node ? [node] : [];
@@ -153,6 +167,8 @@ export const labFeature = (
    * The signed copy stands in place of the unsigned one.
    */
   const prepare = async (): Promise<void> => {
+    sharing = await trusted();
+    if (!sharing) return;
     const me = context.me().id;
     const bare = shareable().filter((record) => !record.sig && signerOf(record) === me);
     if (bare.length > 0) await context.put(bare);
@@ -161,8 +177,15 @@ export const labFeature = (
   // Through the same door as local work, so what arrives shows up at once.
   const take = async (records: DgRecord[]): Promise<void> => {
     // A record that says a labmate wrote it has to carry that labmate's signature.
-    const checked = await checkSignatures(records, context.documents("person"));
+    const lab = context.myLab();
+    const members = new Set(context.documents("membership").filter((item) => !lab || item.lab === lab.did).map((item) => item.member));
+    for (const record of records) if (record.kind === "membership") members.add(record.member);
+    const waiting = held;
+    held = [];
+    const checked = await checkSignatures([...waiting, ...records], { persons: context.documents("person"), devices: context.documents("device"), members });
+    held = checked.held.slice(-5000);
     refused += checked.refused.length;
+    for (const record of checked.refused) refusedBy.set(signerOf(record), (refusedBy.get(signerOf(record)) ?? 0) + 1);
     await context.put(checked.kept);
     if (context.myLab()) {
       await adoptLabGrammar();
@@ -221,6 +244,13 @@ export const labFeature = (
     "lab.setBreadcrumbs": async ({ value }) => {
       await context.setLocal(BREADCRUMB_KEY, value);
       return view();
+    },
+    "lab.acknowledge": async () => {
+      // Seen first, so the shared work is put away before the notice goes.
+      const seen = await view();
+      await services().forgetRemoved();
+      const { removedFrom: _gone, ...rest } = seen;
+      return rest;
     },
     "lab.invite": async ({ uses, days }) => {
       const link = await services().link();

@@ -16,7 +16,8 @@ The report goes to `reports/four-vaults/report.md`. Nothing leaves the process: 
 | Each vault | The real core on the in-memory base, the real services client, the real sync loop |
 | The lab server | The reference server from `server/`, on a port of its own, restarted mid-run |
 | The door | Records everything each vault sends, so "did private work leave" is read off the wire |
-| The cast | Mira, the PI. Tomas, a member who reads from Zotero. Ines, a member who joins late. Kofi, in another lab on the same server |
+| The cast | Mira, the PI, on two computers. Tomas, a member who reads from Zotero. Ines, a member who joins late and for a while runs an older app. Kofi, in another lab on the same server |
+| Time and chance | One clock for the whole run and a seeded source of chance, in place of the real ones. The same seed gives the same records |
 
 The code is in [`harness/vaults/world.ts`](../harness/vaults/world.ts) (the world) and [`harness/four-vaults.ts`](../harness/four-vaults.ts) (the story and the walk). The cast and the story are mine and are easy to change.
 
@@ -33,7 +34,7 @@ It checks six things:
 
 ## What it found, and what was fixed
 
-The first run held 40 of 57 expectations. It now holds 95 of 95. Twelve of the first failures had one of six causes, all in what a vault chooses to send. These are fixed, and held by [`test/lab-share.test.ts`](../test/lab-share.test.ts).
+The first run held 40 of 57 expectations. It now holds 121 of 121. Twelve of the first failures had one of six causes, all in what a vault chooses to send. These are fixed, and held by [`test/lab-share.test.ts`](../test/lab-share.test.ts).
 
 | Fault | Cause | Fix |
 |---|---|---|
@@ -77,23 +78,50 @@ All five open items were then closed, on the product owner's word to do all of t
 5. **Tomas and Ines have all of it** after their next exchange: the settings, the lab's server in their own list of servers, the new type. When Mira changes a setting later, they get the change.
 6. **Neither can change it.** A member who tries to change the lab's settings or its types is told only the PI can.
 
-### What is still not right
+## The third round: what was still not right, and what the simulation couldn't see
 
-- **A second device can't sign.** A person's signing key can't be copied off the device that made it. A second device has their DID and not their key, so what it writes goes unsigned and labmates refuse it. The fix is for the first device to vouch for the second's own key. Until then a person works in a lab from one device.
-- **A unit's author is fixed by its id, not proved.** An id starts with its author's DID, and a record whose author doesn't match its id is never read. Someone could still make a rival first version under their own DID for a new id; they can't take over an existing one.
-- **Records from before signing** are signed the first time they are shared. Until every member has upgraded, an old client's records are refused.
-- **A labmate's changes to a unit made before this round** are no longer read unless they name the version they replace. In practice that drops old attachments of a PDF to someone else's source.
-- **A removed member keeps their copy.** Removal stops what comes next. It can't take back what was already sent.
-- **The clock is corrected only after an exchange.** A device whose clock goes wrong and that hasn't synced since still stamps wrong.
-- **Not done: the PI's second device as a fifth vault**, for the first reason above.
+The second round ended with seven things not right and five the simulation couldn't find. Each was then taken on. The simulation now holds 121 of 121, and a real Obsidian has been run in a lab with simulated labmates.
 
-## What it can't find
+### What was not right
 
-- Anything about files on disk: device logs copied or merged by a file-sync tool, a half-written last line.
-- Anything about a real base: Obsidian's file watcher, plugin start and stop, what the panels draw.
-- The same person on two devices.
-- Two versions of the software in one lab.
-- Exact replays of timing. A seed replays the actions. Real clocks decide ties.
+| What was wrong | What was built | What is still true |
+|---|---|---|
+| A second device couldn't sign | Every device has a signing key of its own. A new device asks, in the vault's own log. A device the person already uses lets it in by signing the new key, and labmates check that chain. Until then the new device sends nothing, so nothing of its is refused and lost. A lost device is removed the same way | Letting a device in takes a deliberate press on a trusted device. That is the point: anyone who can only write into the vault's files can ask, and can't approve |
+| A unit's author was fixed by its id, not proved | A record whose writer is a labmate must carry a signature from one of that labmate's keys. A record from a labmate whose own record hasn't arrived yet is held until it does, and checked then, where before it was let through | A writer nobody in the lab has a key for can't be checked. They also can't pass for anyone in the lab |
+| An older app's unsigned records were refused, silently | They are still refused, which is the safe side. The Lab tab now says whose records were refused and how many, so someone can tell them to update. The older app still receives everything. Once updated, its next change carries its earlier work | A lab is only as current as its oldest app, for what that app writes |
+| A labmate's earlier additions to someone else's unit were dropped | A version from before versions named what they replace, with no signature, stands if it keeps the title and existence of the author's version just before it | None found |
+| A removed member kept their copy | On their own device, what the lab's other members shared is put away: out of the graph, and its notes moved to the base's trash. Their own work stays, and their own grammar comes back. If they are invited back, it all returns | What was sent can't be unsent. The records are still in their log, and a changed app could read them. Keeping later work from a removed member is what removal does. Keeping earlier work from them would need the work to have been sealed before it was sent |
+| The clock was corrected only after an exchange | The correction is kept across restarts. A device never stamps earlier than its own last stamp, so a clock set back can't reorder its own work. The Lab tab says when this computer's clock is off and by how much | A device whose clock goes wrong and that has never exchanged since still stamps wrong until it does |
+| No second device in the simulation | Mira's laptop is the fifth vault | |
+
+### What the simulation couldn't see
+
+| Gap | What was done |
+|---|---|
+| Files on disk: logs copied, merged or half written by a sync tool | One reader for device logs, used by Obsidian and the local app, that skips and counts what isn't a whole record: a half-written last line, two records run together, merge markers, a repeated stretch, other line endings. A log that was replaced or joined is read again from its top. The simulation carries Mira's log between her two computers through each of those faults. Before this, one bad line stopped a vault from loading. Obsidian's device id also moved out of the plugin's data file, which travels with the vault: two devices sharing one id wrote to one log |
+| A real base: file watcher, plugin start and stop, what panels draw | `harness/lab-real-test.mjs` puts the real Obsidian in a lab run by simulated people, with the lab server in its own process. It joins by invitation, receives a shared canvas on its own loop, shows the PI's settings on the Lab tab, sends signed work back, catches up after the plugin restarts, and is removed. It found two faults the simulation couldn't: the lab's units stayed as notes in the vault after removal, and joining had replaced the person's grammar for good |
+| The same person on two devices | Covered by the fifth vault: both devices change the same card apart, sync files, sync with the lab, and all end the same |
+| Two versions of the software in one lab | An older app, by stripping what it sends of the newer fields. A newer app, by sending a kind of record and a field this app has never heard of: both are kept in the log untouched and neither is misread |
+| Exact replays | Time, ids, keys and signatures now come from the seed. The same seed leaves every vault with the same records, byte for byte, and the simulation checks that by running a walk twice |
+
+### Still out of reach
+
+- Several real Obsidians at once. One real one among simulated labmates covers the base. It doesn't cover two real file watchers racing.
+- A real file-sync tool. The faults are the ones those tools are known to make, applied to the text.
+- Logseq, which has no real-app harness for this yet.
+
+## The six decisions, taken
+
+Each was taken toward what is safer, lasts longer, or is the settled practice.
+
+| Decision | Position | Why |
+|---|---|---|
+| A relation between two shared units that isn't drawn | It stays private | Sharing follows what a person put on a shared canvas. Inferring that a relation should travel because its ends do would send a person's doubts without their say |
+| Remove against edit on a canvas | The edit stands | A removal takes away only what its maker had seen. This is the add-wins rule of observed-remove sets, the usual default in the research, and it never loses someone's work to a race. Whoever removed the card can remove it again. For memberships and devices it is the other way round: the removal stands, so access is never kept by a race |
+| How a second device signs | A key per device, vouched for by a device already trusted | This is how Signal, Matrix and Keybase link devices, and the shape UCAN and Keyhive delegate by. The alternative, copying one key around, puts the key in files that sync |
+| A labmate's computer taking model work | Through the lab server, with the paper's text sealed to the computer that will read it | No model server is opened to a network, no VPN is needed, and the server passes on what it can't read. **Not built.** It needs a sealing key per device and a job queue on the server |
+| Default reach | The lab | Unpublished work is confidential unless someone says otherwise, which is what funders and universities ask. A PI widens it once for everyone. Reach now covers questions asked of a model as well as reading papers |
+| The MCP: scopes, shared canvases, identity | An agent reads what its person can read. Everything it writes is a proposal that lands in the person's own space, never on a shared canvas. It has an identity of its own | An agent's key is a device key with the role `agent`, let in and removed the same way, so what it wrote can be told apart and cut off. **The role exists in the record. Nothing enforces it yet**, since there is no MCP server |
 
 ## Where this stands against current practice
 
@@ -171,15 +199,9 @@ That gives the model now built:
 - **What is built:** the lab's settings carry the servers it offers, a first choice, and a reach: each member's own computer only, the lab's servers, or anywhere. Members inherit all three. Reading a paper on a server outside the lab's reach is refused with the reason.
 - **What is not built:** the helper that lets a labmate's computer take work through the lab server, signed job requests, and a record of which model on which machine produced a result. Reach is enforced for reading papers, not yet for questions asked of a model.
 
-## Decisions
+## Decisions still open
 
-Answered on 13 November: versions name what they replace, records are signed, the PI removes members, a lab has one grammar, and a card taken off a shared canvas stops sharing its unit.
-
-Still the product owner's:
-
-1. Whether a relation between two shared units is shared when it isn't drawn.
-2. Whether remove should beat edit on a shared canvas, as in tldraw, or the later one should stand, as now.
-3. How a second device comes to sign: the first device vouching for it is my proposal.
-4. Whether a labmate's computer should take model work through the lab server, and whether the server may see the paper's text on the way or it is sealed to the target.
-5. Whether a paper with no label counts as lab-only by default. Today a lab's reach is "anywhere" until its PI says otherwise.
-6. For the MCP: which scopes an agent may read, whether proposals may target shared canvases, and whether an agent has an identity of its own.
+1. Whether to build the labmate-computer route for model work now, or after the MCP.
+2. Whether merging should go from whole records to single properties, so two people changing different things on one card both keep their change.
+3. Whether the AT Protocol's permissioned spaces replace the lab server once they are stable.
+4. The tooling questions in [tooling.md](tooling.md).

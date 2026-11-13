@@ -5,6 +5,7 @@
 // writes its own log there as one more device. So Obsidian sees what it writes,
 // and it sees Obsidian's edits as they land. It also mirrors each canvas as a
 // JSON Canvas file under `discourse-graph/canvases/`, which Obsidian opens natively.
+import { readLog } from "@dg/contract/log.ts";
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, watch, writeFileSync } from "node:fs";
 import { createServer, type ServerResponse } from "node:http";
@@ -109,11 +110,8 @@ const seen = new Set<string>();
 const readLogs = (): DgRecord[] => {
   const fresh: DgRecord[] = [];
   for (const name of readdirSync(RECORDS).filter((f) => f.endsWith(".jsonl")).sort()) {
-    const lines = readFileSync(join(RECORDS, name), "utf8").split("\n");
-    lines.pop();
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const record = JSON.parse(line) as DgRecord;
+    // Whole records only: a line a sync tool cut short, joined or marked is skipped.
+    for (const record of readLog(readFileSync(join(RECORDS, name), "utf8")).records) {
       const key = canonicalJson(record);
       if (seen.has(key)) continue;
       seen.add(key);

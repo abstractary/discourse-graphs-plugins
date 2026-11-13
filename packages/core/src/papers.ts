@@ -1,3 +1,5 @@
+import { cidOfBytes } from "./process.ts";
+import { normalDoi } from "@dg/contract/scholarly.ts";
 import {
   assertRelation,
   createCanvas,
@@ -30,9 +32,9 @@ const NODE_TYPES: Record<string, TypeSpec> = {
   Source: { label: "Source", abbreviation: "SRC", base: "source" },
   SourceDocument: { label: "Source", abbreviation: "SRC", base: "source" },
   // An extracted MIRA Study is an activity the paper reports, so it is a Run here.
-  Study: { label: "Run", abbreviation: "RUN", base: "run", lexicon: "science.mira.study", color: "#d98ab0" },
-  Protocol: { label: "Protocol", abbreviation: "PRO", base: "protocol", lexicon: "science.mira.protocol", color: "#8fbf6f" },
-  Request: { label: "Request", abbreviation: "REQ", base: "question", lexicon: "science.mira.request", color: "#b18cf2" },
+  Study: { label: "Run", abbreviation: "RUN", base: "run", lexicon: "science.mira.study" },
+  Protocol: { label: "Protocol", abbreviation: "PRO", base: "protocol", lexicon: "science.mira.protocol" },
+  Request: { label: "Request", abbreviation: "REQ", base: "question", lexicon: "science.mira.request" },
 };
 
 const RELATIONS: Record<string, { label: string; complement: string; base: BaseRelationType }> = {
@@ -55,7 +57,7 @@ const spec = (type: string): TypeSpec => NODE_TYPES[type] ?? { label: type, abbr
 const stemOf = (name: string): string => name.replace(/\.[^.]+$/, "");
 const fromBase64 = (text: string): Uint8Array => Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
 const textOfDataUrl = (dataUrl: string): string => new TextDecoder().decode(fromBase64(dataUrl.split(",")[1] ?? ""));
-const bareDoi = (text: string | undefined): string | undefined => text?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").trim() || undefined;
+const bareDoi = (text: string | undefined): string | undefined => normalDoi(text);
 
 const surname = (name: string): string => name.trim().split(/\s+/).pop() ?? name;
 /** A paper in a few words, the way it's cited in conversation: "Carroll 2020", "Dambre et al. 2012". */
@@ -153,7 +155,7 @@ const describeSaved = (name: string, graph: ExtractionGraph): SavedExtraction =>
   relations: graph.edges.length,
 });
 
-export type PaperMeta = { filename: string; model: string; server: string; schema: string };
+export type PaperMeta = { filename: string; model: string; server: string; schema: string; /** The hash of the PDF that was read, when the file was in hand. */ fileCid?: string | undefined };
 
 /** Turns one extraction into records. Units get no note or page until they're exported. */
 export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperMeta): { records: DgRecord[]; paper: PaperRecord } => {
@@ -211,6 +213,7 @@ export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperM
       title,
       canvas: canvas.id,
       filename: meta.filename,
+      ...(meta.fileCid ? { fileCid: meta.fileCid } : {}),
       authors: (graph.paper?.authors ?? []).map(({ name }) => name),
       model: meta.model,
       schema: meta.schema,
@@ -355,6 +358,10 @@ export const paperFeature = (
   };
 
   /** A picked PDF is kept where the reader looks, so its units can be opened at their passage. */
+  /** The PDF's own hash. A saved extraction read with no PDF beside it has none. */
+  const hashOf = async (file: { name: string; dataBase64: string }): Promise<string | undefined> =>
+    /\.pdf$/i.test(file.name) && file.dataBase64 ? cidOfBytes(fromBase64(file.dataBase64)).catch(() => undefined) : undefined;
+
   const keepFile = async (file: { name: string; mediaType: string; dataBase64: string }): Promise<void> => {
     if (!/\.pdf$/i.test(file.name) || !file.dataBase64) return;
     const listed = await context.host.listFiles({ extensions: ["pdf"], limit: 5000 });
@@ -366,7 +373,8 @@ export const paperFeature = (
   const keepGraph = async (paper: PaperRecord, graph: ExtractionGraph): Promise<PaperRecord> => {
     if (!paper.doi || !context.services) return paper;
     try {
-      await context.services.storeGraph({ doi: paper.doi, graph, schema: paper.schema, model: paper.model });
+      // The graph as this base holds it, so what the server serves carries the units' own ids.
+      await context.services.storeGraph({ doi: paper.doi, graph: graphOf(paper), schema: paper.schema, model: paper.model });
     } catch {
       return paper;
     }
@@ -455,7 +463,7 @@ export const paperFeature = (
         if (already) return summary(already);
         status("Making the paper's canvas");
         if (picked) await keepFile(picked);
-        paper = await importGraph(graph, { filename: name, model: madeBy, server: from, schema: schema ?? "mira" });
+        paper = await importGraph(graph, { filename: name, model: madeBy, server: from, schema: schema ?? "mira", fileCid: await hashOf(file) });
       } else {
         if (!context.services) throw new Error("No services are set up here.");
         if (!server || !model || !schema) throw new Error("Choose a server, a model and a schema first.");
@@ -472,7 +480,7 @@ export const paperFeature = (
         });
         status("Making the paper's canvas");
         if (picked) await keepFile(picked);
-        paper = await importGraph(graph, { filename: name, model: graph.models?.[0] ?? model, server: serverName, schema });
+        paper = await importGraph(graph, { filename: name, model: graph.models?.[0] ?? model, server: serverName, schema, fileCid: await hashOf(file) });
         paper = await keepGraph(paper, graph);
       }
       if (share) {

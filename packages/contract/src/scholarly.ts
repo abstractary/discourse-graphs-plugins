@@ -122,6 +122,17 @@ export const identifierUrl = ({ scheme, value }: Identifier): string | undefined
 export const identifierCurie = ({ scheme, value }: Identifier): string =>
   scheme === "url" || scheme === "at" || scheme === "swhid" ? value : scheme === "rrid" ? `RRID:${value}` : scheme === "citekey" ? `@${value}` : `${scheme}:${value}`;
 
+/** A DOI in its one stored form: bare and lowercase. A link, a `doi:` prefix or capitals all come to the same thing. */
+export const normalDoi = (text: string | undefined): string | undefined => {
+  if (!text?.trim()) return undefined;
+  return parseIdentifier(text, "doi")?.value.toLowerCase() ?? text.trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").replace(/^doi:\s*/i, "").toLowerCase();
+};
+/** True when both are the same DOI, however each was written. Two missing DOIs are not the same work. */
+export const sameDoi = (a: string | undefined, b: string | undefined): boolean => {
+  const [x, y] = [normalDoi(a), normalDoi(b)];
+  return x !== undefined && x === y;
+};
+
 export const sameIdentifier = (a: Identifier, b: Identifier): boolean => a.scheme === b.scheme && a.value.toLowerCase() === b.value.toLowerCase();
 
 /** Joins lists, keeps the first of each, and puts them in the order people look for them. */
@@ -302,7 +313,7 @@ export type LibraryStatus = { ok: boolean; app: "zotero"; problem?: string; canW
 export const CARD_FIELDS = [
   { id: "source", label: "Source", hint: "The PDF or paper it was read from, and whether a person or a model read it" },
   { id: "authors", label: "Authors", hint: "The paper's authors, or whoever made the unit" },
-  { id: "origin", label: "Workspace", hint: "The vault or workspace it was first written in" },
+  { id: "origin", label: "Workspace", hint: "The workspace it was first written in: yours, your lab's or someone else's" },
   { id: "created", label: "Date made", hint: "When it was first written" },
   { id: "identifiers", label: "Identifiers", hint: "Its DOI and other identifiers" },
 ] as const;
@@ -324,6 +335,8 @@ export type CardFacts = {
     how: ReadHow;
     /** What read it, for `auto`: the model's name. */
     by?: string;
+    /** Set when a person has reworded what a model read. */
+    reworded?: true;
     /** The paper record's id. */
     paper?: string;
   };

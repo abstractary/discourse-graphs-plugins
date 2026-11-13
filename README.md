@@ -194,6 +194,7 @@ Because both plugins share one core, a skill written once works in both. [docs/a
 | [User guide](docs/guide/README.md) | How the schema works and how to use every panel, with pictures |
 | [Schema reference](docs/guide/schema.md) | Every type, field, link and rule |
 | [Cards, identifiers and the scholarly record](docs/scholarly.md) | Card facts, registry lookups, RO-Crate, DataCite, Signposting and COAR Notify, with the dependency matrix |
+| [Information architecture](docs/information-architecture.md) | The objects, the one name each has, which frame is about which, where papers live across workspaces, and what is built |
 | [Zotero](docs/zotero.md) | What the existing Zotero plugins teach, the design for a long-lived integration, what is built and what to check first |
 | [LLM and MCP spec](docs/llm-and-mcp-spec.md) | Own-key AI as built, and the design for the MCP server and Jupyter |
 | [Interface audit](docs/ui-audit.md) | What was found in the Obsidian interface, what was fixed and what is open |

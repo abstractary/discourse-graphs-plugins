@@ -1,0 +1,1791 @@
+[
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3h2f",
+  "kind": "lab",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "name": "Example reading group",
+  "did": "did:web:lab.examples.records.example",
+  "custodian": "did:web:examples.records.example",
+  "custodianKey": "example-key-not-real",
+  "plc": []
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3i2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Question",
+  "base": "question",
+  "abbreviation": "QUE",
+  "titleFormat": "QUE - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3j2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Claim",
+  "base": "claim",
+  "abbreviation": "CLM",
+  "titleFormat": "CLM - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3k2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Evidence",
+  "base": "evidence",
+  "abbreviation": "EVD",
+  "titleFormat": "EVD - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3l2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Source",
+  "base": "source",
+  "abbreviation": "SRC",
+  "titleFormat": "@{content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3m2f",
+  "kind": "relation-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Supports",
+  "complement": "Supported by",
+  "base": "supports",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk3k2f",
+    "target": "did:web:examples.records.example#3n25ohzpk3j2f"
+   },
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk3j2f",
+    "target": "did:web:examples.records.example#3n25ohzpk3j2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3n2f",
+  "kind": "relation-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Opposes",
+  "complement": "Opposed by",
+  "base": "opposes",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk3k2f",
+    "target": "did:web:examples.records.example#3n25ohzpk3j2f"
+   },
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk3j2f",
+    "target": "did:web:examples.records.example#3n25ohzpk3j2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3o2f",
+  "kind": "relation-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Addresses",
+  "complement": "Addressed by",
+  "base": "addresses",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk3j2f",
+    "target": "did:web:examples.records.example#3n25ohzpk3i2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3p2f",
+  "kind": "relation-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Informs",
+  "complement": "Informed by",
+  "base": "informs",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk3k2f",
+    "target": "did:web:examples.records.example#3n25ohzpk3i2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3q2f",
+  "kind": "relation-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Derived from",
+  "complement": "Has derivation",
+  "base": "derivedFrom",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk3k2f",
+    "target": "did:web:examples.records.example#3n25ohzpk3l2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3r2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Protocol",
+  "base": "protocol",
+  "abbreviation": "PRO",
+  "titleFormat": "PRO - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3s2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Experiment",
+  "base": "study",
+  "abbreviation": "EXP",
+  "titleFormat": "EXP - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3t2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Run",
+  "base": "run",
+  "abbreviation": "RUN",
+  "titleFormat": "RUN - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3u2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Code",
+  "base": "code",
+  "abbreviation": "COD",
+  "titleFormat": "COD - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3v2f",
+  "kind": "node-type",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Output",
+  "base": "output",
+  "abbreviation": "OUT",
+  "titleFormat": "OUT - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3w2f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "How does a branched actin network produce enough force to internalize an endocytic pit against membrane tension?",
+  "type": "did:web:examples.records.example#3n25ohzpk3i2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3x2f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Akamatsu_CME_manuscript: simulation and image analysis code",
+  "type": "did:web:examples.records.example#3n25ohzpk3u2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "repo": "https://github.com/DrubinBarnes/Akamatsu_CME_manuscript",
+   "commit": "e0d5426515abaa37fdc9cd3151e108480a0337eb",
+   "license": "GPL-3.0",
+   "sameAs": [
+    "https://github.com/elifesciences-publications/Akamatsu_CME_manuscript"
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3y2f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Filament-based simulation of endocytic actin in Cytosim",
+  "type": "did:web:examples.records.example#3n25ohzpk3r2f",
+  "prov": {
+   "implementedBy": [
+    "did:web:examples.records.example#3n25ohzpk3x2f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "steps": [
+    "Find the force needed to pull in the coated pit from a continuum model of the membrane",
+    "Simulate branched actin assembly around the pit in Cytosim",
+    "Vary the number of Arp2/3 complexes available",
+    "Measure how far the pit is internalized over simulated time"
+   ],
+   "materials": [
+    "Cytosim",
+    "MATLAB R2017b",
+    "Python 3.7"
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3z2f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Molecule counting with GFP-tagged nanocage standards",
+  "type": "did:web:examples.records.example#3n25ohzpk3r2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "steps": [
+    "Express GFP-tagged nanocages of known copy number, from 12 to 120, in cells",
+    "Image the nanocages by spinning disk confocal microscopy",
+    "Fit a calibration curve of fluorescence intensity against copy number",
+    "Image ArpC3-tagGFP2 with AP2-tagRFP-T at endocytic sites",
+    "Convert each site's intensity to a number of molecules"
+   ],
+   "materials": [
+    "WTC-10 hiPSC AP2-tagRFP-T ArpC3-tagGFP2 (made in the study)",
+    "60mer-tagGFP2 nanocage",
+    "120mer-tagGFP2 nanocage",
+    "AP21967 (Clontech 635056)"
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk422f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Multiscale model of actin force production at an endocytic pit",
+  "type": "did:web:examples.records.example#3n25ohzpk3s2f",
+  "prov": {
+   "question": "did:web:examples.records.example#3n25ohzpk3w2f",
+   "protocols": [
+    "did:web:examples.records.example#3n25ohzpk3y2f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "design": "computational",
+   "conditions": [
+    "Number of available Arp2/3 complexes",
+    "Membrane tension"
+   ],
+   "variables": [
+    {
+     "name": "Pit internalization",
+     "role": "dependent",
+     "unit": "nm"
+    }
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk432f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Counting Arp2/3 complexes at endocytic sites in live human cells",
+  "type": "did:web:examples.records.example#3n25ohzpk3s2f",
+  "prov": {
+   "question": "did:web:examples.records.example#3n25ohzpk3w2f",
+   "protocols": [
+    "did:web:examples.records.example#3n25ohzpk3z2f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "design": "experimental",
+   "variables": [
+    {
+     "name": "Arp2/3 complexes per endocytic site",
+     "role": "dependent",
+     "unit": "molecules"
+    }
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk442f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Arp2/3 titration in simulation",
+  "type": "did:web:examples.records.example#3n25ohzpk3t2f",
+  "prov": {
+   "partOf": "did:web:examples.records.example#3n25ohzpk422f",
+   "follows": {
+    "uri": "did:web:examples.records.example#3n25ohzpk3y2f",
+    "cid": "bafkreicn7ret4ihxjsvguftxwgu6zcqkqfheyfdygrgh4fs7u7gddussee"
+   },
+   "instrument": [
+    {
+     "uri": "did:web:examples.records.example#3n25ohzpk3x2f"
+    }
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "status": "completed",
+   "parameterValues": {
+    "simulations per condition": 16
+   },
+   "environment": {
+    "software": "Cytosim"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk452f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Arp2/3 counting in hiPS cells",
+  "type": "did:web:examples.records.example#3n25ohzpk3t2f",
+  "prov": {
+   "partOf": "did:web:examples.records.example#3n25ohzpk432f",
+   "follows": {
+    "uri": "did:web:examples.records.example#3n25ohzpk3z2f",
+    "cid": "bafkreia7iwryg4cshzv4iajvvbqxlighegv64x2imefdif7c3kcto2sexy"
+   }
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "status": "completed",
+   "parameterValues": {
+    "calibration standards": "nanocages of 12 to 120 GFP copies"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk462f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Principles of self-organization and load adaptation by the actin cytoskeleton during clathrin-mediated endocytosis",
+  "type": "did:web:examples.records.example#3n25ohzpk3l2f",
+  "prov": {
+   "describesActivity": [
+    "did:web:examples.records.example#3n25ohzpk442f",
+    "did:web:examples.records.example#3n25ohzpk452f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "doi": "10.7554/elife.49840",
+   "authors": [
+    "Matthew Akamatsu",
+    "Ritvik Vasan",
+    "Daniel Serwas",
+    "Michael A. Ferrin",
+    "Padmini Rangamani",
+    "David G. Drubin"
+   ],
+   "published": "2020-01-17",
+   "venue": "eLife",
+   "identifiers": [
+    {
+     "scheme": "pmid",
+     "value": "31951196"
+    },
+    {
+     "scheme": "pmcid",
+     "value": "PMC7041948"
+    }
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk472f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Figure 1G: pit internalization against the number of Arp2/3 complexes",
+  "type": "did:web:examples.records.example#3n25ohzpk3v2f",
+  "prov": {
+   "generatedBy": "did:web:examples.records.example#3n25ohzpk442f"
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "outputKind": "figure",
+   "uri": "https://elifesciences.org/articles/49840#fig1",
+   "caption": "Pit internalization over simulated time as a function of the number of available molecules of Arp2/3 complex. Average of 16 simulations per condition."
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4a2f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Figure 2: molecule counting of GFP-tagged Arp2/3 complex in live hiPS cells",
+  "type": "did:web:examples.records.example#3n25ohzpk3v2f",
+  "prov": {
+   "generatedBy": "did:web:examples.records.example#3n25ohzpk452f"
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "outputKind": "figure",
+   "uri": "https://elifesciences.org/articles/49840#fig2",
+   "caption": "A calibration curve from GFP-tagged nanocages, and ArpC3-tagGFP2 at endocytic sites marked by AP2-tagRFP-T."
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4b2f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "A minimal branched actin network is sufficient to internalize endocytic pits against membrane tension",
+  "type": "did:web:examples.records.example#3n25ohzpk3j2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4c2f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "In simulation, around 200 activated Arp2/3 complexes were required for robust internalization",
+  "type": "did:web:examples.records.example#3n25ohzpk3k2f",
+  "prov": {
+   "observationBase": [
+    {
+     "uri": "did:web:examples.records.example#3n25ohzpk472f"
+    }
+   ],
+   "isGroundedIn": "did:web:examples.records.example#3n25ohzpk442f",
+   "sourceDocument": "did:web:examples.records.example#3n25ohzpk462f"
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "anchor": {
+    "exact": "Around 200 activated Arp2/3 complexes are required for robust internalization.",
+    "source": "did:web:examples.records.example#3n25ohzpk462f"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4d2f",
+  "kind": "node",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "About 200 Arp2/3 complexes assembled at sites of clathrin-mediated endocytosis in human cells",
+  "type": "did:web:examples.records.example#3n25ohzpk3k2f",
+  "prov": {
+   "observationBase": [
+    {
+     "uri": "did:web:examples.records.example#3n25ohzpk4a2f"
+    }
+   ],
+   "isGroundedIn": "did:web:examples.records.example#3n25ohzpk452f",
+   "sourceDocument": "did:web:examples.records.example#3n25ohzpk462f"
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "anchor": {
+    "exact": "A newly developed molecule-counting method determined that ~200 Arp2/3 complexes assemble at sites of clathrin-mediated endocytosis in human cells.",
+    "source": "did:web:examples.records.example#3n25ohzpk462f"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4e2f",
+  "kind": "relation",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk3o2f",
+  "source": "did:web:examples.records.example#3n25ohzpk4b2f",
+  "target": "did:web:examples.records.example#3n25ohzpk3w2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4f2f",
+  "kind": "relation",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk3m2f",
+  "source": "did:web:examples.records.example#3n25ohzpk4c2f",
+  "target": "did:web:examples.records.example#3n25ohzpk4b2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4g2f",
+  "kind": "relation",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk3m2f",
+  "source": "did:web:examples.records.example#3n25ohzpk4d2f",
+  "target": "did:web:examples.records.example#3n25ohzpk4b2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "kind": "canvas",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Actin force production in clathrin-mediated endocytosis (Akamatsu et al. 2020)"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4i2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "How does a branched actin network produce enough force to internalize an endocytic pit against membrane tension?",
+   "x": 0,
+   "y": 0,
+   "width": 280,
+   "height": 210,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk3w2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4i2f"
+  },
+  "z": 1
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4j2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "A minimal branched actin network is sufficient to internalize endocytic pits against membrane tension",
+   "x": 340,
+   "y": 0,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk4b2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4j2f"
+  },
+  "z": 2
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4k2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "In simulation, around 200 activated Arp2/3 complexes were required for robust internalization",
+   "x": 680,
+   "y": 0,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk4c2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4k2f"
+  },
+  "z": 3
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4l2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "About 200 Arp2/3 complexes assembled at sites of clathrin-mediated endocytosis in human cells",
+   "x": 680,
+   "y": 230,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk4d2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4l2f"
+  },
+  "z": 4
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4m2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Figure 1G: pit internalization against the number of Arp2/3 complexes",
+   "x": 1020,
+   "y": 0,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk472f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4m2f"
+  },
+  "z": 5
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4n2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Figure 2: molecule counting of GFP-tagged Arp2/3 complex in live hiPS cells",
+   "x": 1020,
+   "y": 230,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk4a2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4n2f"
+  },
+  "z": 6
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4o2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Arp2/3 titration in simulation",
+   "x": 1360,
+   "y": 0,
+   "width": 280,
+   "height": 150,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk442f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4o2f"
+  },
+  "z": 7
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4p2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Arp2/3 counting in hiPS cells",
+   "x": 1360,
+   "y": 190,
+   "width": 280,
+   "height": 150,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk452f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4p2f"
+  },
+  "z": 8
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4q2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Filament-based simulation of endocytic actin in Cytosim",
+   "x": 1700,
+   "y": 0,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk3y2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4q2f"
+  },
+  "z": 9
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4r2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Molecule counting with GFP-tagged nanocage standards",
+   "x": 1700,
+   "y": 210,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk3z2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4r2f"
+  },
+  "z": 10
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4s2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Akamatsu_CME_manuscript: simulation and image analysis code",
+   "x": 1700,
+   "y": 420,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk3x2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4s2f"
+  },
+  "z": 11
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4t2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Multiscale model of actin force production at an endocytic pit",
+   "x": 2040,
+   "y": 0,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk422f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4t2f"
+  },
+  "z": 12
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4u2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Counting Arp2/3 complexes at endocytic sites in live human cells",
+   "x": 2040,
+   "y": 210,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk432f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4u2f"
+  },
+  "z": 13
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4v2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "type": "text",
+   "text": "Principles of self-organization and load adaptation by the actin cytoskeleton during clathrin-mediated endocytosis",
+   "x": 2040,
+   "y": 420,
+   "width": 280,
+   "height": 210,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk462f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4v2f"
+  },
+  "z": 14
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4w2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4j2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4i2f",
+   "toEnd": "arrow",
+   "label": "Addresses",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk4e2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4w2f"
+  },
+  "z": 15
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4x2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4k2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4j2f",
+   "toEnd": "arrow",
+   "label": "Supports",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk4f2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk4x2f"
+  },
+  "z": 16
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4y2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4k2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4m2f",
+   "toEnd": "arrow",
+   "label": "Observation base",
+   "id": "did:web:examples.records.example#3n25ohzpk4y2f"
+  },
+  "z": 17
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk4z2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4k2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4o2f",
+   "toEnd": "arrow",
+   "label": "Grounded in",
+   "id": "did:web:examples.records.example#3n25ohzpk4z2f"
+  },
+  "z": 18
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk522f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4l2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4j2f",
+   "toEnd": "arrow",
+   "label": "Supports",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk4g2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk522f"
+  },
+  "z": 19
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk532f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4l2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4n2f",
+   "toEnd": "arrow",
+   "label": "Observation base",
+   "id": "did:web:examples.records.example#3n25ohzpk532f"
+  },
+  "z": 20
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk542f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4l2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4p2f",
+   "toEnd": "arrow",
+   "label": "Grounded in",
+   "id": "did:web:examples.records.example#3n25ohzpk542f"
+  },
+  "z": 21
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk552f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4m2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4o2f",
+   "toEnd": "arrow",
+   "label": "Generated by",
+   "id": "did:web:examples.records.example#3n25ohzpk552f"
+  },
+  "z": 22
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk562f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4n2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4p2f",
+   "toEnd": "arrow",
+   "label": "Generated by",
+   "id": "did:web:examples.records.example#3n25ohzpk562f"
+  },
+  "z": 23
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk572f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4o2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4q2f",
+   "toEnd": "arrow",
+   "label": "Follows",
+   "id": "did:web:examples.records.example#3n25ohzpk572f"
+  },
+  "z": 24
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5a2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4o2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4s2f",
+   "toEnd": "arrow",
+   "label": "Instrument",
+   "id": "did:web:examples.records.example#3n25ohzpk5a2f"
+  },
+  "z": 25
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5b2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4o2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4t2f",
+   "toEnd": "arrow",
+   "label": "Part of",
+   "id": "did:web:examples.records.example#3n25ohzpk5b2f"
+  },
+  "z": 26
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5c2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4p2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4r2f",
+   "toEnd": "arrow",
+   "label": "Follows",
+   "id": "did:web:examples.records.example#3n25ohzpk5c2f"
+  },
+  "z": 27
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5d2f",
+  "kind": "canvas-item",
+  "space": "example-biology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk4h2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk4p2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk4u2f",
+   "toEnd": "arrow",
+   "label": "Part of",
+   "id": "did:web:examples.records.example#3n25ohzpk5d2f"
+  },
+  "z": 28
+ }
+]

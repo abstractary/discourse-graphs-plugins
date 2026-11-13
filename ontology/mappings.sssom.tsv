@@ -41,7 +41,7 @@ dgp:partOf	part of	skos:exactMatch	dct:isPartOf	is part of	semapv:ManualMappingC
 dgp:derivedFrom	derived from	skos:exactMatch	prov:wasDerivedFrom	was derived from	semapv:ManualMappingCuration
 dgp:observationBase	observation base	skos:exactMatch	mira:observationBase	observation base	semapv:ManualMappingCuration	Multivalued (lexicon patch 01). Pinned by output CID.
 dgp:observationBase	observation base	skos:broadMatch	prov:wasDerivedFrom	was derived from	semapv:ManualMappingCuration
-dgp:isGroundedIn	is grounded in	skos:exactMatch	mira:isGroundedIn	is grounded in	semapv:ManualMappingCuration	Also written as mira:observationOriginActivity on publish.
+dgp:isGroundedIn	is grounded in	skos:exactMatch	mira:is_grounded_in	is grounded in	semapv:ManualMappingCuration	Also written as mira:observationOriginActivity on publish.
 dgp:sourceDocument	source document	skos:exactMatch	mira:sourceDocument	source document	semapv:ManualMappingCuration
 dgp:describesActivity	describes activity	skos:exactMatch	mira:describesActivity	describes activity	semapv:ManualMappingCuration
 dgp:supports	supports	skos:exactMatch	mira:supports	supports	semapv:ManualMappingCuration	dg:supportsCE and dg:supportsCC are its typed forms in dg_core.

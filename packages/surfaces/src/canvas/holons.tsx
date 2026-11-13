@@ -28,7 +28,7 @@ export const useHolonCanvas = ({
 }) => {
   const { call, on, route } = connection;
   const [info, setInfo] = useState<CanvasHolon | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"] });
+  const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"], sidePinned: false });
   const [lit, setLit] = useState<string[]>([]);
 
   const load = useCallback(async () => {
@@ -39,7 +39,14 @@ export const useHolonCanvas = ({
   useEffect(() => on("graph-changed", () => void load().catch(report)), [on, load, report]);
   useEffect(() => void call("prefs.get", {}).then(setPrefs).catch(report), [call, report]);
   useEffect(() => on("prefs-changed", ({ prefs: next }) => setPrefs(next)), [on]);
-  useEffect(() => on("highlight", ({ units }) => setLit(units)), [on]);
+  // A mark that only points something out lets go by itself.
+  const release = useRef(0);
+  useEffect(() => on("highlight", ({ units, brief }) => {
+    window.clearTimeout(release.current);
+    setLit(units);
+    if (brief) release.current = window.setTimeout(() => setLit([]), 2200);
+  }), [on]);
+  useEffect(() => () => window.clearTimeout(release.current), []);
   // A highlight belongs to the canvas it was made on.
   useEffect(() => setLit([]), [current]);
 

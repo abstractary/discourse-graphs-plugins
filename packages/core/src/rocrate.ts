@@ -2,6 +2,7 @@ import type { Author, BaseNodeType, DgId, FoldedGraph, JsonObject, NodeRecord, P
 import { identifierCurie, identifierUrl, parseIdentifier, type Identifier, type WorkAuthor } from "@dg/contract/scholarly.ts";
 import { identifiersOf, paperIdentifiers } from "./card.ts";
 import { iriOf } from "./jsonld.ts";
+import { MIRA, addMiraLayer } from "./mira.ts";
 import { baseOf, provenanceOf } from "./process.ts";
 
 /**
@@ -24,6 +25,7 @@ export type CrateVersion = keyof typeof CRATE_VERSIONS;
 
 export const PROCESS_RUN_CRATE = { id: "https://w3id.org/ro/wfrun/process/0.6", name: "Process Run Crate", version: "0.6" };
 export const DG_NAMESPACE = "https://discoursegraphs.com/ns/process#";
+const RUN_ENVIRONMENT = "https://w3id.org/ro/terms/workflow-run#environment";
 
 /** The terms schema.org lacks, with the sentence a reader of the crate is given for each. */
 const TERMS: { term: string; kind: "rdfs:Class" | "rdf:Property"; name: string; description: string }[] = [
@@ -151,6 +153,16 @@ const identifierEntity = (item: Identifier): Entity =>
     url: identifierUrl(item),
   }) as Entity;
 
+/** Where a script's bytes are, and the page a person reads it on. GitHub serves the two from different addresses. */
+const codeAddress = (repo: string, commit: string | undefined, path: string): { file: string; page: string } => {
+  const base = repo.replace(/\/+$/, "").replace(/\.git$/, "");
+  const where = path.split("/").map(encodeURIComponent).join("/");
+  const page = `${base}/blob/${commit ?? "HEAD"}/${where}`;
+  const github = /^https:\/\/github\.com\/([^/]+\/[^/]+)$/.exec(base);
+  return { file: github ? `https://raw.githubusercontent.com/${github[1]}/${commit ?? "HEAD"}/${where}` : page, page };
+};
+const MIME_OF_LANGUAGE: Record<string, string> = { python: "text/x-python", r: "text/x-r", julia: "text/x-julia", javascript: "text/javascript", typescript: "text/x-typescript", matlab: "text/x-matlab", shell: "application/x-sh" };
+
 const agentIri = (agent: string): string => (/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(agent) ? `https://orcid.org/${agent}` : agent);
 
 export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
@@ -187,7 +199,12 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
   const agentId = (agent: string): string => {
     const iri = agentIri(agent);
     const known = iri === author.id || agent === author.orcid;
-    return known ? personId(author) : add({ "@id": iri, "@type": "Person", name: iri.replace(/^https:\/\/orcid\.org\//, "ORCID ") });
+    if (known) return personId(author);
+    // Whoever ran it may be named in words alone, such as a model. That is a name, not an address.
+    const addressed = /^[a-z][a-z0-9+.-]*:/i.test(iri);
+    // Someone already named in the crate keeps their name.
+    if (addressed && entities.has(iri)) return iri;
+    return add({ "@id": addressed ? iri : `#agent-${encodeURIComponent(iri)}`, "@type": "Person", name: iri.replace(/^https:\/\/orcid\.org\//, "ORCID ") });
   };
   const me = personId(author);
   const publisherId = publisher
@@ -238,11 +255,15 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     const paper = node.source?.own ? papers.get(node.source.paper) : undefined;
     if (paper) ownSourceOf.set(node.id, paper);
   }
+  const hostedCode = (node: NodeRecord): string | undefined =>
+    /^https?:\/\//.test(node.facts?.repo ?? "") && node.facts?.path ? codeAddress(node.facts.repo!, node.facts.commit, node.facts.path).file : undefined;
   const unitId = (id: DgId): string => {
     const paper = ownSourceOf.get(id);
     if (paper) return paper.doi ? `https://doi.org/${paper.doi}` : (paper.url ?? `#paper-${paper.id}`);
     const node = nodeAt(id);
     if (node && baseOf(graph, node) === "source" && node.facts?.doi) return `https://doi.org/${node.facts.doi}`;
+    // A script in a repository is a file on the web: its address at the version that ran is its id.
+    if (node && baseOf(graph, node) === "code" && hostedCode(node)) return hostedCode(node)!;
     if (node && baseOf(graph, node) === "output" && fileOfUnit.has(id)) return fileOfUnit.get(id)!;
     if (node && baseOf(graph, node) === "output" && /^https?:\/\//.test(node.facts?.uri ?? "")) return node.facts!.uri!;
     return iriOf(graph, id);
@@ -256,8 +277,18 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     return id;
   };
 
+  // What each unit says at length: the newest text kept for it.
+  const said = new Map<DgId, { at: string; body: string }>();
+  for (const record of graph.documents.values()) {
+    if (record.kind !== "snapshot" || !record.body.trim()) continue;
+    const held = said.get(record.node);
+    if (!held || record.at > held.at) said.set(record.node, { at: record.at, body: record.body });
+  }
+
   const actions: string[] = [];
   const units: string[] = [];
+  /** Which entity stands for which kind of unit, for the MIRA layer. */
+  const bases = new Map<string, BaseNodeType>();
   const outputFiles: string[] = [];
   let step = 0;
   for (const node of chosen.values()) {
@@ -268,6 +299,7 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     const facts = node.facts ?? {};
     const paper = node.source ? papers.get(node.source.paper) : undefined;
     const ownPaper = ownSourceOf.get(node.id);
+    bases.set(id, base);
     if (ownPaper) {
       paperId(ownPaper);
       continue;
@@ -276,14 +308,18 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     const common = {
       "@id": id,
       name: node.title,
-      description: node.source?.description,
+      description: node.source?.description ?? (base === "run" ? said.get(node.id)?.body : undefined),
+      text: base === "run" || base === "code" || base === "output" ? undefined : said.get(node.id)?.body,
       dateCreated: node.at,
       // A unit read from a paper is its extractor's reading of the authors' work, so both are named.
-      creator: ref(authorOf(node.by)),
+      // A unit that arrived from elsewhere is its first makers' work. Whoever brought it in contributed it.
+      creator: facts.creators?.length ? refs(facts.creators.map((person) => personId({ id: person.name, name: person.name, ...(person.orcid ? { orcid: person.orcid } : {}) }))) : ref(authorOf(node.by)),
+      contributor: facts.creators?.length ? ref(authorOf(node.by)) : undefined,
       isBasedOn: paper ? ref(paperId(paper)) : prov.sourceDocument ? ref(unitId(prov.sourceDocument)) : undefined,
       anchor: node.source?.anchor ?? facts.anchor?.exact,
       pagination: facts.anchor?.page,
-      identifier: identifiers,
+      // The unit's own id first: it stays the same when the unit is retyped, which its address does not.
+      identifier: [node.id, ...identifiers],
       sameAs: facts.sameAs,
     };
     if (base === "run") {
@@ -320,15 +356,22 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
       add(
         clean({
           ...common,
-          "@type": "SoftwareSourceCode",
-          codeRepository: facts.repo,
-          version: facts.commit,
+          // RO-Crate asks that a script be a file as well as source code.
+          // A whole repository, with no one file named, is software a run used, not a script.
+          "@type": hostedCode(node) ? ["File", "SoftwareSourceCode"] : "SoftwareApplication",
+          codeRepository: hostedCode(node) ? facts.repo : undefined,
+          // RO-Crate asks every piece of software for a version, and says so when none is known.
+          version: facts.commit ?? (hostedCode(node) ? undefined : "unknown"),
           programmingLanguage: facts.language,
           license: facts.license,
-          url: facts.repo && facts.path ? `${facts.repo.replace(/\/+$/, "")}/blob/${facts.commit ?? "HEAD"}/${facts.path}` : undefined,
+          url: hostedCode(node) ? codeAddress(facts.repo!, facts.commit, facts.path!).page : facts.repo,
+          encodingFormat: hostedCode(node) ? (MIME_OF_LANGUAGE[(facts.language ?? "").toLowerCase()] ?? "text/plain") : undefined,
+          sdDatePublished: hostedCode(node) ? input.published.slice(0, 10) : undefined,
+          description: hostedCode(node) ? `${facts.path} in ${facts.repo}, ${facts.commit ? `at commit ${facts.commit}` : "with no commit on record, so this points at whatever the repository holds now"}.` : common.description,
           contentIdentifier: facts.sourceCid,
         }) as Entity,
       );
+      if (hostedCode(node)) outputFiles.push(id);
     } else if (base === "output") {
       const file = files.find((item) => item.unit === node.id);
       const web = !file && /^https?:\/\//.test(facts.uri ?? "");
@@ -336,7 +379,15 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
       add(
         clean({
           ...common,
-          "@type": file || web ? ["File", OUTPUT_TYPE[facts.outputKind ?? "file"]!].filter((type, index, all) => all.indexOf(type) === index && type !== "MediaObject") : OUTPUT_TYPE[facts.outputKind ?? "file"]!,
+          // A data file is a file. `Dataset` on a file would say it is a folder.
+          // With no bytes here or on the web it is something cited, not a data entity the crate holds.
+          "@type":
+            file || web
+              ? ["File", OUTPUT_TYPE[facts.outputKind ?? "file"]!].filter((type, index, all) => all.indexOf(type) === index && type !== "MediaObject" && type !== "Dataset")
+              : ["Dataset", "MediaObject"].includes(OUTPUT_TYPE[facts.outputKind ?? "file"]!)
+                ? "CreativeWork"
+                : OUTPUT_TYPE[facts.outputKind ?? "file"]!,
+          additionalType: OUTPUT_TYPE[facts.outputKind ?? "file"] === "Dataset" ? "Dataset" : undefined,
           encodingFormat: facts.mediaType,
           contentSize: facts.size !== undefined ? String(facts.size) : undefined,
           caption: facts.caption,
@@ -376,7 +427,16 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
         }) as Entity,
       );
     } else if (base === "source") {
-      add(clean({ ...common, "@type": facts.doi ? "ScholarlyArticle" : "CreativeWork", creativeWorkStatus: facts.standing?.retracted ? "Retracted" : undefined, url: facts.uri }) as Entity);
+      add(
+        clean({
+          ...common,
+          "@type": facts.doi ? "ScholarlyArticle" : "CreativeWork",
+          creativeWorkStatus: facts.standing?.retracted ? "Retracted" : undefined,
+          url: facts.uri,
+          // The runs a paper reports. MIRA has the word for it and schema.org does not.
+          "mira:describesActivity": refs((prov.describesActivity ?? []).filter((run) => chosen.has(run)).map(unitId)),
+        }) as Entity,
+      );
     } else {
       add(
         clean({
@@ -401,6 +461,9 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     const target = unitId(record.target);
     if (!held.some((item) => item["@id"] === target)) from[kind] = [...held, ref(target)];
   }
+
+  // The same units in MIRA's words, in this one graph.
+  addMiraLayer(entities as Map<string, JsonObject & { "@id": string }>, bases);
 
   // The payload.
   const parts: string[] = [];
@@ -461,7 +524,7 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
     identifier: input.identifier,
     conformsTo: profile ? [ref(profile)] : undefined,
     hasPart: refs(parts),
-    mentions: refs([...actions, ...units]),
+    mentions: refs([...actions, ...units, ...(bases.size ? [MIRA.namespace] : [])]),
     about: refs(questions),
     citation: refs(citations),
     keywords: ["discourse graph", ...new Set([...chosen.values()].map((node) => baseOf(graph, node)).filter((base): base is BaseNodeType => base !== undefined))].join(", "),
@@ -469,10 +532,14 @@ export const toRoCrate = async (input: CrateInput): Promise<JsonObject> => {
   const descriptor: Entity = { "@id": "ro-crate-metadata.json", "@type": "CreativeWork", conformsTo: ref(CRATE_VERSIONS[version].conformsTo), about: ref("./") };
 
   const context: (string | JsonObject)[] = [CRATE_VERSIONS[version].context];
-  if (used.size) context.push(Object.fromEntries(TERMS.filter(({ term }) => used.has(term)).map(({ term }) => [term, `${DG_NAMESPACE}${term}`])));
+  // A run's environment is a Workflow Run Crate term, which the base RO-Crate context doesn't carry.
+  const environment = [...entities.values()].some((entity) => "environment" in entity);
+  if (environment) add({ "@id": RUN_ENVIRONMENT, "@type": "rdf:Property", name: "environment", description: "The settings a run was carried out under, such as its language and package versions.", "rdfs:label": "environment" });
+  context.push({ ...Object.fromEntries(TERMS.filter(({ term }) => used.has(term)).map(({ term }) => [term, `${DG_NAMESPACE}${term}`])), ...(environment ? { environment: RUN_ENVIRONMENT } : {}), ...(bases.size ? { mira: MIRA.namespace } : {}) });
   // RO-Crate asks for a single value where there is only one, not a list of one.
   const single = (entity: Entity): Entity =>
     Object.fromEntries(Object.entries(entity).map(([key, value]) => [key, Array.isArray(value) && value.length === 1 && key !== "@type" ? value[0] : value])) as Entity;
+  if (Object.keys(context[1] as JsonObject).length === 0) context.pop();
   return { "@context": context.length === 1 ? context[0]! : (context as never), "@graph": [descriptor, root, ...entities.values()].map(single) as never };
 };
 
@@ -515,4 +582,99 @@ ${sections}
 <script type="application/ld+json">${JSON.stringify(metadata).replace(/</g, "\\u003c")}</script>
 </body></html>
 `;
+};
+
+/**
+ * `README.md`: the crate told as findings. For each piece of evidence, what was
+ * observed, the figure and data it rests on, the run that produced them, the
+ * protocol that run followed and the code it ran. Made from the metadata alone,
+ * so it can't say anything the crate doesn't.
+ */
+export const crateReadme = (metadata: JsonObject): string => {
+  const graph = (metadata["@graph"] as Entity[]) ?? [];
+  const byId = new Map(graph.map((entity) => [entity["@id"], entity]));
+  const root = byId.get("./");
+  const list = (value: unknown): unknown[] => (value === undefined || value === null ? [] : Array.isArray(value) ? value : [value]);
+  const ids = (value: unknown): string[] => list(value).flatMap((item) => (item && typeof item === "object" && "@id" in item ? [String((item as JsonObject)["@id"])] : []));
+  const types = (entity: Entity | undefined): string[] => list(entity?.["@type"]).map(String);
+  const nameOf = (id: string): string => String(byId.get(id)?.name ?? id);
+  const isFile = (id: string): boolean => types(byId.get(id)).includes("File") && !/^https?:/.test(id);
+  const linked = (id: string): string => (/^https?:\/\//.test(id) || isFile(id) ? `[${nameOf(id)}](${id})` : nameOf(id));
+  const day = (value: unknown): string => (typeof value === "string" ? value.slice(0, 10) : "");
+  const lines: string[] = [`# ${root?.name ?? "Research crate"}`, "", String(root?.description ?? ""), ""];
+
+  const evidence = graph.filter((entity) => types(entity).includes("Evidence"));
+  if (evidence.length) lines.push("## Findings", "");
+  for (const item of evidence) {
+    lines.push(`### ${item.name}`, "");
+    if (typeof item.anchor === "string") lines.push(`> ${item.anchor}`, "");
+    if (typeof item.text === "string") lines.push(item.text, "");
+    const rests = ids(item.observationBase);
+    // The pictures a reader can look at: the ones the finding rests on, then the ones its run made.
+    const made = ids(item.isGroundedIn).flatMap((run) => ids(byId.get(run)?.result));
+    const pictures = [...new Set([...rests, ...made])].filter((file) => isFile(file) && /^image\/(png|jpeg|svg\+xml)$/.test(String(byId.get(file)?.encodingFormat ?? "")));
+    for (const id of pictures.slice(0, 2)) lines.push(`![${nameOf(id).replace(/[\[\]]/g, "")}](${id})`, "", ...(typeof byId.get(id)?.caption === "string" ? [`*${byId.get(id)!.caption}*`, ""] : []));
+    for (const [kind, verb] of [["supports", "Supports"], ["opposes", "Opposes"], ["informs", "Informs"]] as const) for (const id of ids(item[kind])) lines.push(`- **${verb}:** ${nameOf(id)}`);
+    for (const id of ids(item.isBasedOn)) lines.push(`- **Read from:** ${linked(id)}`);
+    if (rests.length) {
+      lines.push("- **Rests on:**");
+      for (const id of rests) {
+        const file = byId.get(id);
+        const hash = typeof file?.sha256 === "string" ? `, SHA-256 \`${file.sha256.slice(0, 16)}…\`` : typeof file?.contentIdentifier === "string" ? `, content id \`${file.contentIdentifier}\`` : "";
+        lines.push(`  - ${linked(id)}${isFile(id) ? "" : " (cited, not in this crate)"}${hash}`);
+      }
+    }
+    for (const run of ids(item.isGroundedIn)) {
+      const action = byId.get(run);
+      if (!action) continue;
+      const when = [day(action.startTime), day(action.endTime)].filter(Boolean).join(" to ");
+      lines.push(`- **Produced by:** ${action.name}${when ? ` (${when})` : ""}`);
+      for (const id of ids(action.follows)) lines.push(`  - Followed ${linked(id)}${byId.get(id)?.version ? `, version ${byId.get(id)!.version}` : ""}`);
+      for (const id of ids(action.instrument)) lines.push(`  - Ran ${linked(id)}${byId.get(id)?.version ? ` at \`${String(byId.get(id)!.version).slice(0, 12)}\`` : ""}`);
+      const inputs = ids(action.object).filter((id) => !types(byId.get(id)).includes("PropertyValue"));
+      for (const id of inputs) lines.push(`  - Used ${linked(id)}${isFile(id) ? "" : " (cited, not in this crate)"}`);
+      const values = ids(action.object).map((id) => byId.get(id)).filter((value): value is Entity => Boolean(value) && types(value).includes("PropertyValue"));
+      if (values.length) lines.push(`  - Parameters: ${values.map((value) => `${value.name} = ${value.value}`).join(", ")}`);
+      if (typeof action.disambiguatingDescription === "string") lines.push(`  - ${action.disambiguatingDescription}`);
+      if (typeof action.error === "string") lines.push(`  - Failed: ${action.error}`);
+    }
+    lines.push("");
+  }
+
+  const claims = graph.filter((entity) => types(entity).includes("Claim"));
+  const questions = graph.filter((entity) => types(entity).includes("Question"));
+  if (questions.length || claims.length) lines.push("## The argument", "");
+  for (const question of questions) lines.push(`- **Question:** ${question.name}`);
+  for (const claim of claims) {
+    const backing = evidence.filter((item) => ids(item.supports).includes(claim["@id"])).length;
+    const against = evidence.filter((item) => ids(item.opposes).includes(claim["@id"])).length;
+    lines.push(`- **Claim:** ${claim.name}${backing || against ? ` (${backing} for, ${against} against, in this crate)` : ""}`);
+  }
+  if (questions.length || claims.length) lines.push("");
+
+  const protocols = graph.filter((entity) => types(entity).includes("HowTo"));
+  if (protocols.length) lines.push("## Methods", "");
+  for (const protocol of protocols) {
+    lines.push(`### ${protocol.name}${protocol.version ? ` (version ${protocol.version})` : ""}`, "");
+    if (typeof protocol.text === "string") lines.push(protocol.text, "");
+    ids(protocol.step).forEach((id, index) => lines.push(`${index + 1}. ${nameOf(id)}`));
+    lines.push("");
+  }
+
+  const files = ids(root?.hasPart).filter(isFile);
+  if (files.length) lines.push("## Files", "", "| File | What it is | Size | SHA-256 |", "|---|---|---|---|");
+  for (const id of files) {
+    const file = byId.get(id)!;
+    lines.push(`| [${decodeURIComponent(id)}](${id}) | ${String(file.name ?? "").replace(/\|/g, "/")} | ${file.contentSize ?? ""} | ${typeof file.sha256 === "string" ? `\`${file.sha256.slice(0, 16)}…\`` : ""} |`);
+  }
+  if (files.length) lines.push("");
+
+  lines.push("## Reuse", "");
+  const license = ids(root?.license)[0];
+  lines.push(license ? `Licensed under ${linked(license)}.` : String(root?.license ?? ""));
+  const people = ids(root?.author).map(nameOf).join(", ");
+  const cite = typeof root?.identifier === "string" ? root.identifier : "";
+  if (people) lines.push("", `Cite as: ${people}. ${root?.name}. ${day(root?.datePublished).slice(0, 4)}.${cite ? ` ${cite}` : ""}`);
+  lines.push("", "Every unit here is also described in the [MIRA schema](https://github.com/MIRA-science/schema), in `ro-crate-metadata.json`. Made with Discourse Graphs.", "");
+  return lines.join("\n");
 };

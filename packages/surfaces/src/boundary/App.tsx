@@ -23,10 +23,22 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   useEffect(() => on("holon-focus-changed", ({ ref, canvas }) => setFocus({ ref, canvas })), [on]);
   useEffect(() => on("graph-changed", () => setVersion((v) => v + 1)), [on]);
   useEffect(() => on("highlight", ({ units }) => setLit(units)), [on]);
+  // The selected question, claim or evidence is what the panel is about. With none selected, it is the canvas's own.
+  const [picked, setPicked] = useState<HolonRef | null>(null);
+  const follow = useCallback(
+    (node: string | null) => {
+      if (!node) return setPicked(null);
+      void call("holon.locate", { id: node }).then((ref) => setPicked(ref && ref.level !== "lab" ? ref : null)).catch(() => setPicked(null));
+    },
+    [call],
+  );
+  useEffect(() => void call("focus.get", {}).then(follow).catch(() => undefined), [call, follow]);
+  useEffect(() => on("focus-changed", ({ node }) => follow(node)), [on, follow]);
+  const subject = picked ?? focus?.ref ?? null;
   useEffect(() => {
-    if (!focus?.ref) return setView(null);
-    void call("holon.view", { ref: focus.ref, stance }).then(setView).catch((e: Error) => setNotice(e.message));
-  }, [call, focus?.ref?.id, focus?.ref?.level, stance, version]);
+    if (!subject) return setView(null);
+    void call("holon.view", { ref: subject, stance }).then(setView).catch((e: Error) => setNotice(e.message));
+  }, [call, subject?.id, subject?.level, stance, version]);
 
   const pick = useCallback(
     (unit: string) => {
@@ -49,13 +61,13 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
     [call, onShowCanvas],
   );
 
-  if (!focus?.ref || !view) {
+  if (!subject || !view) {
     return (
       <main className="bd bd-empty">
         <p className="hv-muted">
           {focus?.canvas
-            ? "This canvas isn't tied to a question or claim yet. Use the Boundary menu above the canvas to tie it to one."
-            : "Open a canvas that is about a question or claim, or a note of a question, claim or evidence, and its boundary shows here."}
+            ? "Select a question, a claim or a piece of evidence, and what it rests on and leaves open shows here."
+            : "Open a canvas and select a question, a claim or a piece of evidence. What it rests on and leaves open shows here."}
         </p>
       </main>
     );
@@ -64,7 +76,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   return (
     <main className="bd" data-dg="boundary-panel">
       <header className="bd-head">
-        <nav className="hv-path" aria-label="Holarchy">
+        <nav className="hv-path" aria-label="Where it sits">
           {view.path.slice(0, -1).map((p, i) => (
             <span key={p.ref.id}>
               {i > 0 ? <span className="hv-sep" aria-hidden="true">/</span> : null}
@@ -72,6 +84,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
             </span>
           ))}
         </nav>
+        <p className="bd-about" data-dg="boundary-about">{picked ? "The selected unit" : "This canvas is about"}</p>
         <div className="hv-title-row">
           <BaseChip base={view.base} label={view.label ?? LEVEL_WORD[view.base]} />
           <h1 className="bd-title" data-dg="boundary-title">{plain(view.title)}</h1>
@@ -107,7 +120,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
           )
         }
       />
-      {focus.canvas ? null : (
+      {focus?.canvas && !picked ? null : (
         <p className="bd-foot">
           <button type="button" className="hv-link" onClick={() => void open(view.ref)} data-dg="boundary-open-canvas">
             <Icon name="canvas" /> Open its canvas

@@ -1,0 +1,27 @@
+{
+ "title": "Inequality and unpredictability in an artificial cultural market (Salganik, Dodds and Watts 2006)",
+ "upload_type": "dataset",
+ "description": "<p>Sociology: The design carries the weight. The study records what a reader of an experiment with people asks first: the conditions, who was assigned to them, and how many took part. A worked example for Discourse Graphs, read from the paper by hand. The paper's own text and figures are not included.</p><p>An RO-Crate: open <code>README.md</code> or <code>ro-crate-preview.html</code> inside the archive to read it. Every finding is also described in the MIRA schema.</p>",
+ "creators": [
+  {
+   "name": "reader, Example"
+  }
+ ],
+ "publication_date": "2026-11-13",
+ "access_right": "open",
+ "license": "cc-by-4.0",
+ "keywords": [
+  "Discourse graph",
+  "Sociology",
+  "RO-Crate",
+  "MIRA"
+ ],
+ "related_identifiers": [
+  {
+   "identifier": "10.1126/science.1121066",
+   "relation": "isDerivedFrom",
+   "resource_type": "publication-article"
+  }
+ ],
+ "prereserve_doi": true
+}

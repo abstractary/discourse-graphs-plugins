@@ -1,39 +1,39 @@
 area,capability,roam,obsidian,ours,note
 Grammar and settings,Default node and relation types,on,on,full,
 Grammar and settings,Types carry format and color,on,on,full,Read from today's plugins on import
-Grammar and settings,Settings screen for node types,on,on,none,
-Grammar and settings,Settings screen for relation types and allowed pairs,on,on,none,
-Grammar and settings,Node templates,on,on,none,
+Grammar and settings,Settings screen for node types,on,on,full,"Types and relations dialog, 13 Nov"
+Grammar and settings,Settings screen for relation types and allowed pairs,on,on,full,"Types and relations dialog, 13 Nov"
+Grammar and settings,Node templates,on,on,full,"A template per type, with starter headings"
 Grammar and settings,Folder per node type,none,on,none,
 Grammar and settings,Node type defined by a query,flag,none,none,Decision 5 drops this
 Grammar and settings,Score attributes,on,none,none,
 Grammar and settings,Configurable trigger keys,on,on,none,
-Grammar and settings,Export and import of the schema,none,on,none,
+Grammar and settings,Export and import of the schema,none,on,full,One JSON file by label; also reads the official plugin's export
 Grammar and settings,Personal and shared settings,on,none,none,
 Node creation,Create a typed node,on,on,full,From the canvas
 Node creation,Reuse an existing node while creating,on,on,full,
 Node creation,Relate while creating,none,on,full,Dropping a connection on empty canvas
 Node creation,Create from selected text in the editor,on,on,full,"Select, press the key, pick a type"
 Node creation,Hotkey menu in the editor,on,on,full,Same key and menu in both bases
-Node creation,Insert a link at the cursor,on,on,part,Replaces a selection; no insert at a bare cursor
+Node creation,Insert a link at the cursor,on,on,full,From the finder and the search panel
 Node creation,Convert the current page to a node,on,on,full,
 Node creation,Create from a candidate tag,on,on,none,
-Node creation,Apply a template on create,on,on,none,
+Node creation,Apply a template on create,on,on,full,When the unit gets its note
 Node creation,Block-level nodes,on,none,none,
 Node creation,Turn an image into a node,on,on,none,
 Node creation,Bulk identify existing notes,none,on,part,Import does this once; harness only
-Node creation,Inline node search and insert,on,none,none,
+Node creation,Inline node search and insert,on,none,part,The finder inserts a link; it isn't inline in the editor
 Recognition and inline UI,Recognize nodes from titles or frontmatter,on,on,part,At import; not live
 Recognition and inline UI,Relation badge beside links,flag,on,full,Live Preview and Reading view; Roam links tags and aliases; off switch per device
 Recognition and inline UI,Context popover from a link,flag,on,part,Opens the context panel rather than a popover
 Recognition and inline UI,Candidate tag styling,on,on,none,
-Recognition and inline UI,Type shown in base views,on,on,part,Dot color on link badges only
+Recognition and inline UI,Type shown in base views,on,on,full,"Each note carries dg-type, so Obsidian tables show and filter it"
 Relations,Stored relations,on,on,full,Records with union merge
 Relations,Pattern-derived relations,on,none,part,Title sources become proposals; If specs aren't read
 Relations,Add a relation from a panel within the grammar,on,on,full,
 Relations,Complement wording by direction,on,on,full,
 Relations,Duplicate guard,on,on,full,
-Relations,Delete a relation,on,on,part,Method exists; no button
+Relations,Delete a relation,on,on,full,"Delete prompt on the canvas, 12 Nov"
 Relations,Review imported or proposed relations,on,on,full,
 Relations,Browse all relations in a table,on,none,none,
 Relations,Provenance on a relation,none,on,full,Shown on hover; person inside a lab and lab from outside it
@@ -43,9 +43,9 @@ Context and browsing,Follows the canvas selection,on,on,full,
 Context and browsing,Walk to a related node,on,on,full,
 Context and browsing,Group by target,on,none,none,
 Context and browsing,Canvas references,on,none,none,
-Context and browsing,Search with filters and sort,flag,on,part,Title search when adding a node
-Context and browsing,Docked search panel,flag,none,none,
-Context and browsing,Left sidebar sections,flag,none,none,
+Context and browsing,Search with filters and sort,flag,on,full,"Search panel, 12 Nov"
+Context and browsing,Docked search panel,flag,none,full,"Search panel, 12 Nov"
+Context and browsing,Left sidebar sections,flag,none,part,"A canvas sidebar with Places, Search and Units; not the base's own sidebar"
 Canvas,Node cards bound to notes,on,on,full,
 Canvas,Relation arrows with labels,on,on,full,
 Canvas,Draw a relation between cards,on,on,full,
@@ -56,18 +56,18 @@ Canvas,Renames reach the card,on,on,full,
 Canvas,Open a node beside the canvas,on,on,full,
 Canvas,Merge outside changes,on,on,full,Per item
 Canvas,Notes and text,on,on,full,
-Canvas,Edit a title from its card,on,on,none,
+Canvas,Edit a title from its card,on,on,full,"Your own units, 12 Nov"
 Canvas,Freehand drawing,on,on,part,One pen; no eraser
-Canvas,Undo and redo,on,on,part,Removing and Tidy only
+Canvas,Undo and redo,on,on,full,"Every edit, 12 Nov"
 Canvas,Drag a link or block in from the base,on,on,part,Plain text becomes a note
 Canvas,Shapes frames lines media and embeds,on,on,none,
 Canvas,Align group lock rotate and reorder,on,on,none,
-Canvas,Copy and paste,on,on,none,
+Canvas,Copy and paste,on,on,full,12 Nov
 Canvas,Export PNG or SVG,on,on,none,
 Canvas,Convert a shape or arrow,on,on,none,
 Canvas,Key image on a card,on,on,none,Off by default in both
 Canvas,Create a relation type from the canvas,none,on,none,
-Canvas,Canvas drawer and clipboard,on,none,none,
+Canvas,Canvas drawer and clipboard,on,none,part,A drawer of units not on the canvas; no clipboard
 Canvas,Embed a canvas in a block,on,none,none,
 Canvas,Real-time co-editing,flag,none,none,
 Queries and views,Query builder conditions,on,none,none,
@@ -77,8 +77,8 @@ Queries and views,Table results,on,none,none,
 Queries and views,Charts timeline and Kanban,on,none,none,
 Queries and views,Result actions,on,none,none,
 Queries and views,SmartBlock and JavaScript API,on,none,none,
-Queries and views,Base view per type,none,on,none,
-Import export and sharing,Export to Markdown JSON CSV Neo4j JSON-LD PDF,on,none,none,
+Queries and views,Base view per type,none,on,full,"Open its table, in Types and relations"
+Import export and sharing,Export to Markdown JSON CSV Neo4j JSON-LD PDF,on,none,part,"JSON-LD and RO-Crate; no Markdown, CSV, Neo4j or PDF"
 Import export and sharing,Send results to a page or canvas,on,none,none,
 Import export and sharing,Send to GitHub,on,none,none,
 Import export and sharing,Publish to groups,flag,flag,part,Shared canvases reach the lab
@@ -118,3 +118,10 @@ New in ours,Reactions and notes on shared units,none,none,full,
 New in ours,AI mode with chosen units as grounding,none,none,full,Tested with search-only answers and a fake model
 New in ours,Provenance and everywhere a unit lives,none,none,full,
 New in ours,"Join a lab by identifier, with AI provisioned on acceptance",none,none,full,
+New in ours,"Remove a canvas, or a unit you made",none,none,full,"Canvas menu and Context panel, 13 Nov"
+New in ours,"A PDF reader beside the canvas, with highlights that become units",none,none,full,12 Nov
+New in ours,"Protocol, study, run, code and output units, with run pages",none,none,full,11 Nov
+New in ours,"Evidence crates: RO-Crate with MIRA, hashed files and a README",none,none,full,13 Nov
+New in ours,Reads MIRA evidence bundles and other tools' run crates,none,none,full,13 Nov
+New in ours,A Zenodo draft with a reserved DOI,none,none,part,Not tried against the real service
+New in ours,"Registry lookups, retraction marks and a Zotero read import",none,none,part,Zotero only against a stand-in

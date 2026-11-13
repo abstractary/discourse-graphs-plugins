@@ -203,6 +203,15 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
         if (file) await plugin.app.workspace.getLeaf("tab").openFile(file);
         return Boolean(file);
       },
+      /** A note's properties and the notes Obsidian itself resolves its links to. */
+      noteLinks: (path: string) => {
+        const file = plugin.app.vault.getFileByPath(path);
+        return file ? { frontmatter: plugin.app.metadataCache.getFileCache(file)?.frontmatter ?? null, out: Object.keys(plugin.app.metadataCache.resolvedLinks[path] ?? {}) } : null;
+      },
+      setProperty: async (path: string, key: string, value: unknown) => {
+        const file = plugin.app.vault.getFileByPath(path);
+        if (file) await plugin.app.fileManager.processFrontMatter(file, (held) => void (value === null ? delete held[key] : (held[key] = value)));
+      },
       searchBase: (title: string) => plugin.app.vault.getMarkdownFiles().filter((item) => item.basename.includes(title)).map((item) => item.path),
       open: (id?: string) => {
         if (!id) return plugin.openCanvas();

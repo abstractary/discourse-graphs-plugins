@@ -48,6 +48,8 @@ export type Context = {
   creditFor: (record: { by: Author; lab?: string }) => Credit;
   myLab: () => LabRecord | undefined;
   anchorOf: (node: DgId) => AnchorRecord | undefined;
+  /** The unit or canvas a text in this base belongs to. */
+  anchoredAt: (ref: HostRef) => DgId | undefined;
   hasLiveText: (ref: HostRef) => boolean;
   makeCanvas: (title: string, fields?: Parameters<typeof import("@dg/contract/records.ts").createCanvas>[0]["fields"]) => Promise<CanvasRecord>;
   send: (event: SurfaceEvent) => void;

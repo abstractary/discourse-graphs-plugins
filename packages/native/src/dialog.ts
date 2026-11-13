@@ -9,6 +9,8 @@ export const closeDialogFrame = (): void => {
 
 /** The quick finder sits high, like a base's own switcher, and a click outside it closes it. */
 const FINDER = { width: 640, height: 460 };
+/** Types and relations shows a list beside a form, so it is wider than the other dialogs. */
+const GRAMMAR = { width: 780, height: 660 };
 
 /** A pop-up over the base. The panel inside it is the same sandboxed frame as any other. */
 export const openDialogFrame = ({
@@ -16,8 +18,8 @@ export const openDialogFrame = ({
   route,
   skin,
   connect,
-  width = route.surface === "find" ? FINDER.width : 480,
-  height = route.surface === "find" ? FINDER.height : 640,
+  width = route.surface === "find" ? FINDER.width : route.surface === "grammar" ? GRAMMAR.width : 480,
+  height = route.surface === "find" ? FINDER.height : route.surface === "grammar" ? GRAMMAR.height : 640,
 }: {
   html: string;
   route: SurfaceRoute;

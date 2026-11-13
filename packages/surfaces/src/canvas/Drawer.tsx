@@ -39,6 +39,7 @@ export const Drawer = ({
   onPlace,
   height,
   onResize,
+  side = false,
 }: {
   data: UnitsAvailable | null;
   open: boolean;
@@ -46,6 +47,8 @@ export const Drawer = ({
   onPlace: (units: string[]) => void;
   height: number;
   onResize: (height: number) => void;
+  /** Inside the sidebar: it fills the tab, and has no handle or toggle of its own. */
+  side?: boolean;
 }) => {
   const [view, setView] = useState<"list" | "grid">("list");
   const [query, setQuery] = useState("");
@@ -78,8 +81,8 @@ export const Drawer = ({
   const resizing = useRef<{ y: number; height: number } | null>(null);
 
   return (
-    <section className="drawer" data-open={open} style={open ? { height } : undefined} aria-label="Units to place" data-dg="drawer">
-      {open ? (
+    <section className={side ? "drawer side-drawer" : "drawer"} data-open={open} style={open && !side ? { height } : undefined} aria-label="Units to place" data-dg={side ? "drawer" : "drawer-door"}>
+      {open && !side ? (
         <div
           className="drawer-grip"
           role="separator"
@@ -99,10 +102,12 @@ export const Drawer = ({
         />
       ) : null}
       <div className="drawer-bar">
-        <button type="button" className="drawer-toggle" aria-expanded={open} onClick={onToggle} title={open ? "Close the drawer (U)" : "Units not on this canvas yet (U)"} data-dg="drawer-toggle">
-          <span className="drawer-caret" aria-hidden="true"><Icon name="chevron" /></span>
-          Units to place <span className="drawer-count" data-dg="drawer-count">{data ? total : "…"}</span>
-        </button>
+        {side ? null : (
+          <button type="button" className="drawer-toggle" aria-expanded={false} onClick={onToggle} title="Units not on this canvas yet, in the sidebar (U)" data-dg="drawer-toggle">
+            <span className="drawer-caret" aria-hidden="true"><Icon name="chevron" /></span>
+            Units to place <span className="drawer-count" data-dg="drawer-count">{data ? total : "…"}</span>
+          </button>
+        )}
         {open ? (
           <>
             <input className="drawer-search" aria-label="Find a unit" placeholder="Find a unit" value={query} onChange={(event) => setQuery(event.target.value)} data-dg="drawer-search" />

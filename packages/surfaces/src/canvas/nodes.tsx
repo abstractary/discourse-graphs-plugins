@@ -306,12 +306,21 @@ export const ZoneNode = memo(({ id, data, selected }: NodeProps<Node<ZoneData>>)
   );
 });
 
-export type InkData = { path: string };
+export type InkData = { path: string; credit?: Credit; at?: string };
 
-export const InkNode = memo(({ data }: NodeProps<Node<InkData>>) => (
-  <svg className="ink" width="100%" height="100%" aria-label="Freehand mark">
-    <path d={data.path} />
-  </svg>
+/** A freehand line. Selected, it shows its frame and who drew it, as a card or a sticky does. */
+export const InkNode = memo(({ data, selected }: NodeProps<Node<InkData>>) => (
+  <div className="ink-box" data-dg="ink" data-selected={selected ? "" : undefined} title={data.credit ? `Drawn by ${data.credit.name}${data.at ? `, ${new Date(data.at).toLocaleString()}` : ""}` : undefined}>
+    <svg className="ink" width="100%" height="100%" aria-label="Freehand line">
+      <path d={data.path} />
+    </svg>
+    {selected && data.credit ? (
+      <span className="ink-by" data-dg="ink-credit">
+        <Mark credit={data.credit} />
+        <span>{data.credit.name}{data.at ? `, ${whenOf(data.at)}` : ""}</span>
+      </span>
+    ) : null}
+  </div>
 ));
 
 export const nodeTypes = { card: CardNode, note: NoteNode, zone: ZoneNode, ink: InkNode, nested: NestedNode };

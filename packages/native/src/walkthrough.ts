@@ -236,11 +236,11 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
     {
       id: "welcome",
       title: "Welcome to Discourse Graphs",
-      body: `You'll turn ideas in your notes into a graph of questions, claims and evidence. It takes about 3 minutes and uses your real ${base.place}: we'll make a ${base.note}, four nodes and a canvas. At the end, you choose whether to keep them.`,
+      body: `You'll turn ideas in your notes into a graph of questions, claims and evidence. It takes about 3 minutes and uses your real ${base.place}: we'll make a ${base.note}, four units and a canvas. At the end, you choose whether to keep them.`,
     },
     {
       id: "claim",
-      title: "Turn a sentence into a node",
+      title: "Turn a sentence into a unit",
       body: `We've written a ${base.note} and selected a sentence. Press \\ then ${keyFor("claim")} to make it a claim. A link takes its place.`,
       target: () => ({ selection: true }),
       enter: async () => {
@@ -265,7 +265,7 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
     {
       id: "badge",
       title: "Links show what they connect",
-      body: "Every link to a node gets a badge: a dot for its type, then how many relations it has. Click this one.",
+      body: "Every link to a unit gets a badge: a dot for its type, then how many relations it has. Click this one.",
       target: () => ({ host: `[data-dg="link-badge"][data-dg-ref=${JSON.stringify(refOfNode(nodeTitled(SENTENCES.claim)) ?? "")}]` }),
       enter: async () => {
         await track(SENTENCES.evidence);
@@ -281,13 +281,13 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
     {
       id: "context",
       title: "The context panel",
-      body: "This shows one node: what it's related to, its text and who made it. It follows you from note to note.",
+      body: "This shows one unit: what it's related to, its text and who made it. It follows you from note to note.",
       target: () => ({ surface: "context" }),
     },
     {
       id: "canvases",
       title: "Find your canvases",
-      body: `A canvas lays nodes out so you can see the whole argument. We've made one, with two more nodes. ${base.canvasesHint ?? "Click here to see your canvases."}`,
+      body: `A canvas lays units out so you can see the whole argument. We've made one, with two more units. ${base.canvasesHint ?? "Click here to see your canvases."}`,
       target: () => ({ host: base.canvasesButton }),
       enter: async () => {
         await base.showNavigation?.();
@@ -325,7 +325,7 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
     {
       id: "card",
       title: "Cards",
-      body: "Each card is a node. The chip shows its type, and the round mark shows who made it. Work shared from another lab shows that lab's square mark instead.",
+      body: "Each card is a unit. The chip shows its type, and the round mark shows who made it. Work shared from another lab shows that lab's square mark instead.",
       target: () => ({ surface: "canvas", selector: `[data-dg=${JSON.stringify(`card-${SENTENCES.claim}`)}]` }),
     },
     {

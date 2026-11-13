@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { whenOf } from "./people.tsx";
 import { CARD_FIELDS, READ_HOW_LABEL, authorLine, identifierLabel, identifierUrl, type CardFacts, type CardField, type Identifier } from "@dg/contract/scholarly.ts";
 
@@ -30,11 +30,16 @@ export type FactsProps = {
   onSource?: () => void;
   /** Opens an identifier where it resolves. Without it identifiers are plain text. */
   onIdentifier?: (id: Identifier) => void;
+  /** The panel only: who made the unit, drawn beside when it was made. */
+  maker?: ReactNode;
+  /** The panel only: the unit's own identifier, which a click copies. */
+  uri?: string;
 };
 
 type Row = { id: CardField; label: string; value: ReactNode };
 
-export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier }: FactsProps) => {
+export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier, maker, uri }: FactsProps) => {
+  const [copied, setCopied] = useState(false);
   const card = density === "card";
   const rows = CARD_FIELDS.filter(({ id }) => fields.includes(id)).flatMap(({ id }): Row[] => {
     const label = LABELS[id](facts);
@@ -56,8 +61,8 @@ export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier }: Fa
           value: (
             <>
               {name}
-              <span className="fact-how" data-how={source.how} data-dg={dg ? `fact-how-${dg}` : "fact-how"} title={source.by ? `${HOW_HINT[source.how]}: ${source.by}` : HOW_HINT[source.how]}>
-                {READ_HOW_LABEL[source.how]}
+              <span className="fact-how" data-how={source.how} data-dg={dg ? `fact-how-${dg}` : "fact-how"} title={`${source.by ? `${HOW_HINT[source.how]}: ${source.by}` : HOW_HINT[source.how]}${source.reworded ? ". A person has since reworded it" : ""}`}>
+                {READ_HOW_LABEL[source.how]}{source.reworded ? ", reworded" : ""}
               </span>
               {facts.retracted ? <span className="fact-how" data-how="retracted" title="A registry lists this work as retracted">Retracted</span> : null}
             </>
@@ -67,7 +72,7 @@ export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier }: Fa
     }
     if (id === "authors") return [{ id, label, value: <span title={facts.authors.names.join(", ")}>{authorLine(facts.authors.names, card ? 2 : 6)}</span> }];
     if (id === "origin") return [{ id, label, value: <span>{facts.origin.name}</span> }];
-    if (id === "created") return [{ id, label, value: <time dateTime={facts.created} title={new Date(facts.created).toLocaleString()}>{whenOf(facts.created)}</time> }];
+    if (id === "created") return [{ id, label, value: <><time dateTime={facts.created} title={new Date(facts.created).toLocaleString()}>{whenOf(facts.created)}</time>{maker ? <span className="fact-maker">{maker}</span> : null}</> }];
     const shown = card ? facts.identifiers.slice(0, 2) : facts.identifiers;
     if (shown.length === 0) return card ? [] : [{ id, label, value: <span className="fact-none">None yet</span> }];
     return [
@@ -84,9 +89,16 @@ export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier }: Fa
               );
               const key = `${item.scheme}:${item.value}`;
               return onIdentifier && identifierUrl(item) ? (
-                <button key={key} type="button" className="fact-id nodrag" data-scheme={item.scheme} title={`Open ${identifierUrl(item)}`} onClick={() => onIdentifier(item)} onDoubleClick={(event) => event.stopPropagation()}>
-                  {text}
-                </button>
+                <span key={key} className="fact-id-pair">
+                  <button type="button" className="fact-id nodrag" data-scheme={item.scheme} title={`Open ${identifierUrl(item)}`} onClick={() => onIdentifier(item)} onDoubleClick={(event) => event.stopPropagation()}>
+                    {text}
+                  </button>
+                  {card ? null : (
+                    <button type="button" className="fact-copy" aria-label={`Copy ${identifierUrl(item)}`} title={`Copy ${identifierUrl(item)}`} onClick={() => void navigator.clipboard?.writeText(identifierUrl(item)!).catch(() => undefined)}>
+                      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 5.5v-2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2m-7-5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" strokeWidth="1.2" /></svg>
+                    </button>
+                  )}
+                </span>
               ) : (
                 <span key={key} className="fact-id" data-scheme={item.scheme} title={item.value}>
                   {text}
@@ -108,6 +120,28 @@ export const Facts = ({ facts, fields, density, dg, onSource, onIdentifier }: Fa
           <dd>{value}</dd>
         </div>
       ))}
+      {uri ? (
+        <div className="fact" data-field="unit">
+          <dt title="This unit's own identifier: who first wrote it, then a key. It stays the same when the unit is reworded, retyped or moved">Unit ID</dt>
+          <dd>
+            <button
+              type="button"
+              className="fact-id fact-uri"
+              data-dg="ctx-uri"
+              title={`${uri}\nClick to copy`}
+              onClick={() => {
+                void navigator.clipboard?.writeText(uri).then(() => {
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 1400);
+                }).catch(() => undefined);
+              }}
+            >
+              {uri}
+            </button>
+            {copied ? <span className="fact-copied" role="status">Copied</span> : null}
+          </dd>
+        </div>
+      ) : null}
     </dl>
   );
 };

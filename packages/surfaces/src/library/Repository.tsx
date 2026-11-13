@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasDiff, HolonCanvas, HolonEvent, ReleaseSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon } from "../shared/ui.tsx";
+import { Icon, Mark } from "../shared/ui.tsx";
 import { DiffView, Flag, Preview, counted, when } from "../holon/parts.tsx";
 
 type Scope = "everyone" | "lab" | "mine";
 const SCOPES: { value: Scope; label: string; hint: string }[] = [
-  { value: "everyone", label: "Everyone", hint: "Every canvas this graph holds, from any lab" },
-  { value: "lab", label: "Lab", hint: "Your lab's canvases and your own" },
-  { value: "mine", label: "Mine", hint: "Canvases you made" },
+  { value: "everyone", label: "All", hint: "Every canvas here, from any workspace" },
+  { value: "lab", label: "Lab", hint: "Canvases in your lab's workspace, and your own" },
+  { value: "mine", label: "Yours", hint: "Canvases you made" },
 ];
 
 /**
@@ -35,8 +35,10 @@ export const Thumb = ({ thumb }: { thumb: RepositoryCanvas["thumb"] }) => {
 };
 
 /**
- * The Library's Canvases tab: each canvas as a picture of its real graph, its
- * title, and whether it was read from a PDF or built as a workspace. The scope
+ * The Library's Canvases tab, grouped by the workspace each canvas lives in.
+ * A row is a picture of the canvas's real graph, its title, whether it is a
+ * PDF canvas or one people laid out, the papers it draws on and who did most
+ * on it. The scope
  * narrows the same list, from everyone's canvases to the lab's to your own.
  * A canvas's history, releases and forks open in place, so they fit a 300 px sidebar.
  */
@@ -47,7 +49,7 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
   const [privacy, setPrivacy] = useState<"all" | "private" | "lab" | "published">("all");
   const [withGaps, setWithGaps] = useState(false);
   const [scope, setScope] = useState<Scope>("everyone");
-  const [kind, setKind] = useState<"all" | "paper" | "workspace">("all");
+  const [kind, setKind] = useState<"all" | "paper" | "canvas">("all");
   const [open, setOpen] = useState<string | null>(null);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
@@ -76,6 +78,22 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
   const titleOf = (id: string) => canvases?.find((c) => c.id === id)?.title ?? "a canvas";
 
   const show = (id: string) => void call("canvas.show", { id }).catch(report);
+  /** One group per workspace: yours first, then your lab's, then anyone else's. */
+  const groups = useMemo(() => {
+    const rank = { own: 0, lab: 1, other: 2 } as const;
+    const byWorkspace = new Map<string, { workspace: RepositoryCanvas["workspace"]; canvases: RepositoryCanvas[] }>();
+    for (const c of shown) {
+      const key = `${c.workspace.kind}:${c.workspace.id}`;
+      const group = byWorkspace.get(key) ?? { workspace: c.workspace, canvases: [] };
+      group.canvases.push(c);
+      byWorkspace.set(key, group);
+    }
+    return [...byWorkspace.values()].sort((a, b) => rank[a.workspace.kind] - rank[b.workspace.kind] || a.workspace.name.localeCompare(b.workspace.name));
+  }, [shown]);
+  /** The canvas someone is about to move to the lab's workspace, with who would then see it. */
+  const [moving, setMoving] = useState<{ id: string; lab?: { name: string; members: string[] } } | null>(null);
+  const askMove = (id: string) => void call("canvas.audience", { id }).then(({ lab }) => setMoving({ id, ...(lab ? { lab } : {}) })).catch(report);
+  const move = (id: string) => void call("canvas.share", { id }).then(() => setMoving(null)).catch(report);
   const create = async (): Promise<void> => {
     const title = name.trim();
     if (!title) return;
@@ -114,13 +132,13 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
           <div className="repo-filters">
             <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} aria-label="Kind of canvas" data-dg="canvases-kind">
               <option value="all">Any kind</option>
-              <option value="paper">Read from a PDF</option>
-              <option value="workspace">Workspaces</option>
+              <option value="paper">PDF canvases</option>
+              <option value="canvas">Canvases</option>
             </select>
             <select value={privacy} onChange={(e) => setPrivacy(e.target.value as typeof privacy)} aria-label="Privacy">
-              <option value="all">Any privacy</option>
-              <option value="private">Private</option>
-              <option value="lab">Shared with the lab</option>
+              <option value="all">Seen by anyone</option>
+              <option value="private">Only you</option>
+              <option value="lab">Your lab</option>
               <option value="published">Published</option>
             </select>
             <label><input type="checkbox" checked={withGaps} onChange={(e) => setWithGaps(e.target.checked)} /> Has gaps</label>
@@ -129,40 +147,86 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
       ) : null}
       {canvases !== null && canvases.length === 0 ? <p className="cvs-none">No canvases yet. A canvas lays out questions, claims and evidence, and how they connect.</p> : null}
       {canvases !== null && canvases.length > 0 && shown.length === 0 ? <p className="cvs-none">No canvas matches.</p> : null}
+      {groups.map(({ workspace, canvases: held }) => (
+        <section key={`${workspace.kind}:${workspace.id}`} className="repo-workspace" data-dg={`workspace-${workspace.name}`}>
+          <h3 className="repo-workspace-head">
+            <span className="repo-workspace-name">{workspace.name}</span>
+            <span className="cvs-meta">{workspace.kind === "own" ? "Only you" : workspace.kind === "lab" ? "Your lab's members" : "Not yours"} · {counted(held.length, "canvas")}</span>
+          </h3>
       <ul className="cvs-list repo-list">
-        {shown.map((c) => (
+        {held.map((c) => (
           <li key={c.id} data-open={open === c.id}>
             <div className="repo-row">
               <button type="button" className="repo-main" data-dg={`canvases-open-${c.title}`} data-kind={c.kind} onClick={() => show(c.id)}>
                 <Thumb thumb={c.thumb} />
                 <span className="repo-text">
                 <span className="cvs-title">{c.title}</span>
-                <span className="repo-kind" data-kind={c.kind} data-dg={`repo-kind-${c.title}`} title={c.kind === "paper" ? `Made by reading ${c.paper ?? "a PDF"}. It holds that paper's units.` : "Built by hand to work out an argument."}>
-                  <Icon name={c.kind === "paper" ? "pdf" : "canvas"} /> {c.kind === "paper" ? "From a PDF" : "Workspace"}
-                  <span className="cvs-meta"> · {c.mine ? "yours" : c.by}{c.lab ? ` · ${c.lab}` : ""}</span>
+                <span className="repo-kind" data-kind={c.kind} data-dg={`repo-kind-${c.title}`} title={c.kind === "paper" ? `One reading of ${c.paper ?? "a PDF"}. It stays as it was read.` : "Laid out by people, drawing on any papers."}>
+                  <Icon name={c.kind === "paper" ? "pdf" : "canvas"} /> {c.kind === "paper" ? "PDF canvas" : "Canvas"}
+                  <span className="cvs-meta"> · {counted(c.cards, "card")}</span>
                 </span>
+                {c.kind === "canvas" && c.sources.length ? (
+                  <span className="cvs-meta repo-sources" data-dg={`repo-sources-${c.title}`} title={c.sources.map((s) => `${s.title} (${counted(s.units, "card")})`).join("\n")}>
+                    Draws on {c.sources.map((s) => s.label).join(", ")}{c.sourceCount > c.sources.length ? ` and ${c.sourceCount - c.sources.length} more` : ""}
+                  </span>
+                ) : null}
                 <span className="cvs-meta" data-dg={`repo-meta-${c.title}`}>
-                  {counted(c.cards, "card")} · {c.releases.length ? `${counted(c.releases.length, "release")}, latest ${c.releases.at(-1)!.name}` : "no releases"}
+                  {c.releases.length ? `${counted(c.releases.length, "release")}, latest ${c.releases.at(-1)!.name}` : "no releases"}
                   {c.forkOf ? ` · fork of ${c.forkOf.title} ${c.forkOf.release}` : ""}
                   {c.forks ? ` · ${counted(c.forks, "fork")}` : ""}
                   {c.nested.length ? ` · holds ${counted(c.nested.length, "canvas")}` : ""}
                   {c.nestedIn.length ? ` · inside ${c.nestedIn.map(titleOf).join(", ")}` : ""}
                   {` · edited ${when(c.editedAt)}`}
                 </span>
-                <span className="repo-tags">
-                  <span className="hv-privacy-dot" data-level={c.privacy} /> {c.privacy === "lab" ? "Lab" : c.privacy === "published" ? "Published" : "Private"}
-                  {c.gaps ? <Flag name={`${c.gaps} with gaps`} /> : null}
-                </span>
+                {c.privacy === "published" || c.gaps ? (
+                  <span className="repo-tags">
+                    {c.privacy === "published" ? <><span className="hv-privacy-dot" data-level="published" /> Published</> : null}
+                    {c.gaps ? <Flag name={`${c.gaps} with gaps`} /> : null}
+                  </span>
+                ) : null}
                 </span>
               </button>
-              <button type="button" className="repo-toggle" aria-expanded={open === c.id} aria-label={`Versions of ${c.title}`} title="History, releases and forks" onClick={() => setOpen(open === c.id ? null : c.id)} data-dg={`versions-${c.title}`}>
+              <span className="repo-faces" data-dg={`repo-faces-${c.title}`} role="group" aria-label="Who did most on it" title="Who did most on it, most first">
+                {c.contributors.map((person) => <Mark key={person.id} credit={person} />)}
+                {c.contributorCount > c.contributors.length ? <span className="repo-more">+{c.contributorCount - c.contributors.length}</span> : null}
+              </span>
+              <button type="button" className="repo-toggle" aria-expanded={open === c.id} aria-label={`More about ${c.title}`} title="Who sees it, history, releases and forks" onClick={() => setOpen(open === c.id ? null : c.id)} data-dg={`versions-${c.title}`}>
                 <Icon name="chevron" />
               </button>
             </div>
+            {open === c.id && c.workspace.kind === "own" ? (
+              <div className="repo-invite" data-dg={`invite-${c.title}`}>
+                {moving?.id === c.id ? (
+                  moving.lab ? (
+                    <>
+                      <p>
+                        Moving it to {moving.lab.name}'s workspace lets {moving.lab.members.length ? `its ${counted(moving.lab.members.length, "member")} (${moving.lab.members.slice(0, 6).join(", ")}${moving.lab.members.length > 6 ? "…" : ""})` : "everyone in the lab"} see this canvas, its cards and their units, and add to it.
+                      </p>
+                      <div className="repo-invite-actions">
+                        <button type="button" className="primary" data-dg="invite-move" onClick={() => move(c.id)}>Move to {moving.lab.name}</button>
+                        <button type="button" onClick={() => setMoving(null)}>Cancel</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>Only you can see this canvas. Working on it with others needs a workspace with members, and the one kind there is today is a lab.</p>
+                      <div className="repo-invite-actions">
+                        <button type="button" data-dg="invite-lab" onClick={() => { setMoving(null); void call("dialog.open", { surface: "welcome" }).catch(report); }}>Join or start a lab</button>
+                        <button type="button" onClick={() => setMoving(null)}>Cancel</button>
+                      </div>
+                    </>
+                  )
+                ) : (
+                  <button type="button" data-dg="invite-open" onClick={() => askMove(c.id)}><Icon name="link" /> Work on it with others…</button>
+                )}
+              </div>
+            ) : null}
             {open === c.id ? <Versions connection={connection} canvas={c} version={version} report={report} onShow={show} /> : null}
           </li>
         ))}
       </ul>
+        </section>
+      ))}
     </>
   );
 };

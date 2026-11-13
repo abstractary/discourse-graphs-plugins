@@ -43,7 +43,9 @@ import type {
   ReleaseSummary,
   RepositoryCanvas,
   Stance,
+  WorkspaceRef,
 } from "@dg/contract/surface.ts";
+import { paperLabel } from "./papers.ts";
 import type { Context, Handlers } from "./context.ts";
 import { baseOf, claimSupport, evidenceChain, protocolCids, unitCid } from "./process.ts";
 
@@ -188,7 +190,7 @@ export const holonIndex = (input: HolonInput, stance: Stance = "lab") => {
   };
 
   const rootTitle = (id: string): string =>
-    id.startsWith(SPACE) ? (id.slice(SPACE.length) === localSpace ? "My space" : `Space ${id.slice(SPACE.length, SPACE.length + 8)}`) : (labName(id) ?? id);
+    id.startsWith(SPACE) ? (id.slice(SPACE.length) === localSpace ? "Your workspace" : "Someone else's workspace") : (labName(id) ?? id);
 
   const titleOf = (ref: HolonRef): string => (ref.level === "lab" ? rootTitle(ref.id) : (nodeById.get(ref.id)?.title ?? ref.id));
 
@@ -508,7 +510,7 @@ export const holonView = (input: HolonInput, ref: HolonRef, stance: Stance): Hol
       privacy: {
         counts: privacy,
         next: unpublished
-          ? `Publishing a release of this holon would make ${unpublished} ${unpublished === 1 ? "unit" : "units"} public under ${[...new Set(parts.map((p) => p.by.id))].length} authors' DIDs.`
+          ? `Publishing a release of this would make ${unpublished} ${unpublished === 1 ? "unit" : "units"} public under ${[...new Set(parts.map((p) => p.by.id))].length} authors' DIDs.`
           : parts.length ? "Everything here is already published." : "Nothing here yet.",
       },
       stance: {
@@ -587,8 +589,41 @@ export const repository = (input: HolonInput): RepositoryCanvas[] => {
         })),
         links: laid.links.flatMap((link): [number, number][] => (at.has(link.from) && at.has(link.to) ? [[at.get(link.from)!, at.get(link.to)!]] : [])),
       };
-      const labDid = canvas.shared ?? canvas.lab;
+      // Only a canvas moved to the lab's workspace is the lab's: one merely made by a lab member stays theirs.
+      const labDid = canvas.shared;
       const labName = labDid ? index.labs.find((lab) => lab.did === labDid)?.name : undefined;
+      const workspace: WorkspaceRef = labDid
+        ? { kind: "lab", id: labDid, name: labName ?? "A lab" }
+        : canvas.by.id === input.me.id
+          ? { kind: "own", id: input.me.id, name: "Your workspace" }
+          : { kind: "other", id: canvas.by.id, name: `${canvas.by.name}'s workspace` };
+      // The papers its cards were read from, most cards first.
+      const fromPaper = new Map<DgId, number>();
+      for (const u of units) {
+        const from = index.nodeById.get(u)?.source?.paper;
+        if (from) fromPaper.set(from, (fromPaper.get(from) ?? 0) + 1);
+      }
+      const sources = [...fromPaper]
+        .flatMap(([id, count]) => {
+          const read = papers.find((item) => item.id === id);
+          return read ? [{ id, title: read.title, label: paperLabel(read, ""), units: count }] : [];
+        })
+        .sort((a, b) => b.units - a.units || a.title.localeCompare(b.title));
+      // Who did most on it: every saved change to the canvas and its cards, and each unit on it they wrote themselves.
+      const did = new Map<string, { credit: Credit; edits: number }>();
+      const count = (by: Author) => {
+        const entry = did.get(by.id) ?? { credit: { kind: "person" as const, id: by.id, name: by.name }, edits: 0 };
+        entry.edits += 1;
+        did.set(by.id, entry);
+      };
+      for (const r of input.records) {
+        if (r.id === canvas.id || (r.kind === "canvas-item" && r.canvas === canvas.id)) count("editedBy" in r ? r.editedBy : r.by);
+      }
+      for (const u of units) {
+        const n = index.nodeById.get(u);
+        if (n && !n.source) count(n.by);
+      }
+      const contributors = [...did.values()].sort((a, b) => b.edits - a.edits || a.credit.name.localeCompare(b.credit.name));
       const releases = releasesOf(canvas.id);
       const forkSource = canvas.forkOf ? index.releases.find((r) => r.id === canvas.forkOf!.uri) : undefined;
       const sourceCanvas = forkSource ? (input.graph.documents.get(forkSource.canvas) as CanvasRecord | undefined) : undefined;
@@ -610,8 +645,13 @@ export const repository = (input: HolonInput): RepositoryCanvas[] => {
         nested: embeds(canvas.id),
         nestedIn: canvases.filter((c) => embeds(c.id).includes(canvas.id)).map((c) => c.id),
         gaps: flagged.length,
-        privacy: releases.some((r) => r.published) ? "published" : canvas.shared || canvas.lab ? "lab" : "private",
-        kind: paper ? "paper" : "workspace",
+        privacy: releases.some((r) => r.published) ? "published" : canvas.shared ? "lab" : "private",
+        kind: paper ? "paper" : "canvas",
+        workspace,
+        sources: sources.slice(0, 3),
+        sourceCount: sources.length,
+        contributors: contributors.slice(0, 4).map(({ credit, edits }) => ({ ...credit, edits })),
+        contributorCount: contributors.length,
         ...(paper ? { paper: paper.title } : {}),
         by: canvas.by.name,
         mine: canvas.by.id === input.me.id,
@@ -784,7 +824,7 @@ export const canvasOfHolon = (input: HolonInput, holon: string): DgId | null =>
     .filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed && r.holon === holon)
     .sort((a, b) => b.editedAt.localeCompare(a.editedAt))[0]?.id ?? null;
 
-export const DEFAULT_PREFS: Prefs = { linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: DEFAULT_CARD_FIELDS };
+export const DEFAULT_PREFS: Prefs = { linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: DEFAULT_CARD_FIELDS, sidePinned: false };
 const PREFS_KEY = "prefs";
 
 const latest = (records: DgRecord[]): DgRecord[] => {
@@ -879,8 +919,8 @@ export const holonFeature = (context: Context) => {
       if (focus.canvas === id) await focusCanvas(id);
       return null;
     },
-    "canvas.highlight": async ({ units }) => {
-      context.send({ event: "highlight", units });
+    "canvas.highlight": async ({ units, brief }) => {
+      context.send({ event: "highlight", units, ...(brief ? { brief } : {}) });
       return null;
     },
     "prefs.get": async () => prefs(),

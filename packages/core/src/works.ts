@@ -1,5 +1,6 @@
+import { paperOfWork } from "./work.ts";
 import { revise, type DgRecord, type NodeRecord, type PaperRecord } from "@dg/contract/records.ts";
-import { isIdentifier, mergeIdentifiers, parseIdentifier, sameIdentifier, standingOf, type Identifier, type WorkMetadata } from "@dg/contract/scholarly.ts";
+import { sameDoi, isIdentifier, mergeIdentifiers, parseIdentifier, sameIdentifier, standingOf, type Identifier, type WorkMetadata } from "@dg/contract/scholarly.ts";
 import type { WorkLookup, WorkView } from "@dg/contract/surface.ts";
 import { identifiersOf, paperIdentifiers } from "./card.ts";
 import type { Context, Handlers } from "./context.ts";
@@ -56,7 +57,7 @@ export const worksFeature = (context: Context) => {
     const own = paperAt(context.summarize(node).card.source?.paper);
     if (baseOf(node) === "source" && !node.source?.own) {
       // A source unit that stands for a held paper is that paper.
-      const standsFor = context.documents("paper").find((paper) => (paper.doi !== undefined && paper.doi === node.facts?.doi) || paper.title === node.title);
+      const standsFor = paperOfWork(context.documents("paper"), node);
       return standsFor ? { paper: standsFor } : { unit: node };
     }
     return own ? { paper: own } : undefined;

@@ -8,6 +8,7 @@ const PATHS: Record<string, ReactNode> = {
   note: <path d="M3.5 3.5h9v6l-3 3h-6zM9.5 12.5v-3h3" />,
   pen: <path d="M3 13l.8-3L10.6 3.2a1.1 1.1 0 0 1 1.6 0l.6.6a1.1 1.1 0 0 1 0 1.6L6 12.2zM9.5 4.3l2.2 2.2" />,
   chevron: <path d="M4.5 6.5 8 10l3.5-3.5" />,
+  sidebar: <><rect x="2.5" y="3" width="11" height="10" rx="1.5" /><path d="M6.5 3v10M4 5.5h1M4 7.5h1" /></>,
   open: <path d="M6.5 3.5h-3v9h9v-3M9 3.5h3.5V7M12.3 3.7 7.5 8.5" />,
   close: <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />,
   pin: <path d="M6 2.5h4l-.5 4 2 2.5h-7l2-2.5zM8 9v4.5" />,

@@ -120,3 +120,36 @@
 .ctx-head .facts { border-top: 0; padding-top: 0; }
 .ctx-json { max-height: 180px; margin: 4px 0; padding: 6px 8px; overflow: auto; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); font: var(--tiny)/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .ctx-note-when { color: var(--dg-muted); font-size: var(--tiny); }
+
+/* Sections: a ruled, spaced, small-capital label above each, so the eye finds a section before it reads one. */
+.ctx-group { padding: 12px 0 4px; border-top: 1px solid color-mix(in oklch, var(--dg-line) 65%, transparent); margin-top: 8px; }
+.ctx-head + .ctx-group, .ctx-head + .relate + .ctx-group { border-top: 0; margin-top: 0; }
+.ctx-group h2 { margin: 0 0 6px; color: var(--dg-muted); font: 600 10.5px/1.4 var(--dg-font); letter-spacing: 0.06em; text-transform: uppercase; }
+.ctx-group h2 span { margin-left: 4px; padding: 0 5px; border-radius: 8px; background: color-mix(in oklch, var(--dg-muted) 16%, transparent); color: var(--dg-ink); font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.ctx-title { font: 650 calc(var(--dg-size) + 3px)/1.3 var(--dg-font); letter-spacing: -0.005em; }
+.ctx-text { color: var(--dg-ink); }
+.row-main > span:not(.chip):not(.from-paper):not(.row-words) { color: var(--dg-ink); font-weight: 450; line-height: 1.4; }
+.ctx-line { color: color-mix(in oklch, var(--dg-ink) 62%, var(--dg-muted)); }
+.ctx-source blockquote { border-left: 2px solid color-mix(in oklch, var(--source) 55%, var(--dg-line)); font-style: italic; }
+.ctx-link { font-weight: 500; }
+.mentions li .ctx-link { font-size: var(--small); }
+.ctx-asread q { color: var(--dg-ink); }
+
+/* Standing at a glance: a coloured dot with its words, and counts as an icon with a number. */
+.ctx-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 4px 0 6px; font-size: var(--small); color: color-mix(in oklch, var(--dg-ink) 78%, var(--dg-muted)); }
+.ctx-mark { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ctx-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dg-muted); }
+.ctx-mark[data-oa="green"] .ctx-dot { background: oklch(0.68 0.16 150); }
+.ctx-mark[data-oa="gold"] .ctx-dot, .ctx-mark[data-oa="diamond"] .ctx-dot { background: oklch(0.8 0.15 88); }
+.ctx-mark[data-oa="hybrid"] .ctx-dot { background: oklch(0.72 0.12 230); }
+.ctx-mark[data-oa="bronze"] .ctx-dot { background: oklch(0.62 0.1 55); }
+.ctx-mark[data-oa="closed"] .ctx-dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--dg-muted); }
+.ctx-mark-icon { width: 13px; height: 13px; color: var(--dg-muted); }
+.ctx-count { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--dg-ink); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ctx-asread .ctx-link { display: block; margin-top: 2px; }
+.ctx-group h2 { font-size: 11px; }
+/* The open-access kinds differ in shape as well as colour, so the mark doesn't rest on hue. */
+.ctx-mark[data-oa="gold"] .ctx-dot, .ctx-mark[data-oa="diamond"] .ctx-dot { border-radius: 1px; transform: rotate(45deg) scale(0.85); }
+.ctx-mark[data-oa="bronze"] .ctx-dot { border-radius: 1px; }
+.ctx-mark[data-oa="hybrid"] .ctx-dot { background: linear-gradient(90deg, oklch(0.72 0.12 230) 50%, transparent 50%); box-shadow: inset 0 0 0 1.5px oklch(0.72 0.12 230); }

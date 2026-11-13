@@ -19,6 +19,7 @@ import {
 } from "@xyflow/react";
 import { getStroke } from "perfect-freehand";
 import type { CanvasItem, CanvasRecord, NodeTypeRecord, TidyMode, WithoutId } from "@dg/contract/records.ts";
+import { PDF_CANVAS_FIXED } from "@dg/contract/surface.ts";
 import type { CanvasItemView, CanvasView, Credit, LinkDelete, NodeSummary, RelationOption, RepositoryCanvas, SearchHit } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Chip, Icon, Mark, plain, type IconName } from "../shared/ui.tsx";
@@ -33,6 +34,7 @@ import { MODES, arrange, leaningOf, measureOf, type Card, type RelationLink } fr
 import { ActionsContext, nodeTypes, type Actions, type Box, type CardData } from "./nodes.tsx";
 import { HolonBar, isHolon, useHolonCanvas } from "./holons.tsx";
 import { DRAG_TYPE, Drawer, useUnitsDrawer } from "./Drawer.tsx";
+import { Sidebar, type SideTab } from "./Sidebar.tsx";
 import { useHistory } from "./history.ts";
 import { useFit } from "./fit.ts";
 import { LinkAskDialog, type LinkAsk } from "./LinkAsk.tsx";
@@ -66,7 +68,7 @@ const toNode = ({ id, z, item, credit, at }: CanvasItemView, view: CanvasView): 
   if ("fromNode" in item) return null;
   const base = { id, position: { x: item.x, y: item.y }, zIndex: z };
   const sized = { ...base, width: item.width, height: item.height };
-  if (item.type === "stroke") return { ...sized, type: "ink", data: { path: item.path } };
+  if (item.type === "stroke") return { ...sized, type: "ink", data: { path: item.path, credit, at } };
   if (item.type === "group") {
     const fixed = item.guide ? { draggable: false, selectable: false, focusable: false, deletable: false } : {};
     return { ...sized, ...fixed, type: "zone", zIndex: -1, data: { label: item.label ?? "", guide: item.guide ?? false } };
@@ -188,6 +190,8 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [addAt, setAddAt] = useState<Anchor | null>(null);
   const [linking, setLinking] = useState<Linking | null>(null);
   const [menu, setMenu] = useState(false);
+  /** Set while the menu asks whether to remove this canvas. */
+  const [removeAsk, setRemoveAsk] = useState(false);
   useEffect(() => {
     if (!menu) return;
     void call("repository.canvases", {})
@@ -223,8 +227,19 @@ export const App = ({ connection }: { connection: Connection }) => {
   const addButton = useRef<HTMLButtonElement>(null);
   const tidyButton = useRef<HTMLButtonElement>(null);
 
+  /** Set when someone tried to change a PDF canvas, so the way to build on it is put in front of them. */
+  const [fixedAsk, setFixedAsk] = useState(false);
+  const refreshRef = useRef<() => Promise<void>>(async () => {});
   const report = useCallback((error: unknown) => {
-    setNotice(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.startsWith(PDF_CANVAS_FIXED)) {
+      // Nothing was saved, so the canvas is drawn again as it stands.
+      setFixedAsk(true);
+      setNotice("");
+      void refreshRef.current().catch(() => undefined);
+      return;
+    }
+    setNotice(message);
   }, []);
   const { record, drop, undo, redo, status: done, dismiss, next } = useHistory(current, report);
 
@@ -236,6 +251,13 @@ export const App = ({ connection }: { connection: Connection }) => {
   currentRef.current = current;
   // Units picked for a question belong to the canvas they were picked on.
   useEffect(() => setGrounded([]), [current]);
+  useEffect(() => setFixedAsk(false), [current]);
+  /** The PDF most of this canvas's cards came from, asked once per canvas and again when the PDF button is pressed. */
+  const [pdfFor, setPdfFor] = useState<{ canvas: string; pdf: { ref: string; name: string } } | null>(null);
+  useEffect(() => {
+    if (!current) return;
+    void call("canvas.pdf", { id: current }).then((pdf) => setPdfFor(pdf ? { canvas: current, pdf } : null)).catch(() => setPdfFor(null));
+  }, [call, current]);
 
   // Going to another canvas from here stays in this tab.
   const switchTo = useCallback((id: string) => {
@@ -244,8 +266,13 @@ export const App = ({ connection }: { connection: Connection }) => {
   }, []);
   const holon = useHolonCanvas({ connection, current, switchTo, report, notify: setNotice });
   const drawerData = useUnitsDrawer({ connection, current, report });
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerHeight, setDrawerHeight] = useState(280);
+  /** The sidebar: closed, or open on one of its tabs. It reopens on the tab it was last on. */
+  const [side, setSide] = useState<SideTab | null>(null);
+  const lastSide = useRef<SideTab>("places");
+  const openSide = useCallback((tab: SideTab) => {
+    lastSide.current = tab;
+    setSide(tab);
+  }, []);
   /** Units just put on this canvas, waiting for their cards to draw; `fromHere` when this canvas placed them. */
   const [arrived, setArrived] = useState<{ units: string[]; fromHere: boolean }>({ units: [], fromHere: true });
   const [fresh, setFresh] = useState<string[]>([]);
@@ -264,6 +291,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     const next = await call("canvas.open", { id });
     if ((currentRef.current ?? id) === id) setView(next);
   }, [call]);
+  refreshRef.current = refresh;
 
   useEffect(() => {
     void call("grammar.get", {}).then(({ nodeTypes: types }) => setNodeTypeList(types));
@@ -655,6 +683,12 @@ export const App = ({ connection }: { connection: Connection }) => {
   const createNode = async (type?: string): Promise<void> => {
     const title = query.trim();
     if (!title) return;
+    // A PDF canvas takes new units only from its paper, by highlighting. Nothing is made, so nothing is left loose.
+    if (viewRef.current?.paper && viewRef.current.canvas.id === current) {
+      closeAdd();
+      setFixedAsk(true);
+      return;
+    }
     try {
       await addCard(await call("node.create", { title, ...(type ? { type } : {}) }));
     } catch (error) {
@@ -1073,6 +1107,16 @@ export const App = ({ connection }: { connection: Connection }) => {
       } else if (dx || dy) void flow.setViewport({ x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom }, { duration: 280 });
     }
   }, [arrived, nodes, flow, freeSpot, startingPoint, write, report]);
+  // A link elsewhere pointed at a unit here: bring its card into view and mark it for a moment.
+  useEffect(() => on("reveal-unit", ({ canvas, unit }) => {
+    if (canvas !== currentRef.current) return;
+    void call("canvas.revealed", { id: canvas }).catch(() => null);
+    setArrived({ units: [unit], fromHere: true });
+  }), [on, call]);
+  useEffect(() => {
+    if (!current) return;
+    void call("canvas.revealed", { id: current }).then((unit) => (unit && currentRef.current === current ? setArrived({ units: [unit], fromHere: true }) : undefined)).catch(() => undefined);
+  }, [call, current]);
   useEffect(() => {
     if (!fresh.length) return;
     const timer = window.setTimeout(() => setFresh([]), 1800);
@@ -1320,7 +1364,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       } else if (key === "l") {
         tidyUp(mode);
       } else if (key === "u") {
-        setDrawerOpen((open) => !open);
+        setSide((old) => (old === "units" ? null : ((lastSide.current = "units"), "units")));
       } else if (key === "enter") {
         const picked = flow.getNodes().filter((node) => node.selected);
         const node = (picked[0]?.data as CardData | undefined)?.node;
@@ -1461,19 +1505,42 @@ export const App = ({ connection }: { connection: Connection }) => {
   }
 
   const title = canvases.find((canvas) => canvas.id === current)?.title ?? "Canvas";
+  /** A PDF canvas stays as its paper was read. */
+  const reading = view?.canvas.id === current ? view?.paper : undefined;
+  const fixedWhy = "A PDF canvas holds only what comes from its paper. Build on it to add your own.";
+  const buildOn = (): void => {
+    if (!current) return;
+    void call("canvas.buildOn", { id: current })
+      .then(async ({ id, title: made }) => {
+        setFixedAsk(false);
+        if (route.pinned) await call("canvas.show", { id });
+        else switchTo(id);
+        setNotice(`Made “${made}” in your workspace. The PDF canvas is unchanged.`);
+      })
+      .catch(report);
+  };
+  const parentPdf = pdfFor && pdfFor.canvas === current ? pdfFor.pdf : undefined;
+  // Asked again at the press, since cards may have come and gone since the canvas opened.
+  const openPdf = (): void =>
+    void (current ? call("canvas.pdf", { id: current }).catch(() => null) : Promise.resolve(null))
+      .then((pdf) => call("pdf.show", pdf ? { ref: pdf.ref } : {}))
+      .catch(report);
   const modeLabel = MODES.find((entry) => entry.mode === mode)!.label;
   /** The panels that work beside a canvas, opened from its bar. */
   // Panels open beside the canvas. Context keeps its word longest, since no icon says "context".
   const panelButtons: { dg: string; label: string; title: string; icon: IconName; keep?: boolean; open: () => void }[] = [
-    { dg: "open-search", label: "Search", title: "Search units in the side panel", icon: "search", open: () => void call("panel.open", { surface: "search" }).catch(report) },
+    { dg: "open-search", label: "Search units", title: "Search units, in the sidebar", icon: "search", open: () => openSide("search") },
     { dg: "open-context", label: "Context", title: "Open the context panel", icon: "context", keep: true, open: () => void call("panel.open", { surface: "context" }).catch(report) },
-    { dg: "open-pdf", label: "PDF", title: "Read a PDF beside the canvas", icon: "pdf", open: () => void call("pdf.show", {}).catch(report) },
+    { dg: "open-pdf", label: "PDF", title: parentPdf ? `Read ${parentPdf.name}, the PDF most of these cards came from. Its title there lists the others` : "Read a PDF beside the canvas", icon: "pdf", open: openPdf },
   ];
 
   return (
     <ActionsContext.Provider value={actions}>
-      <div className="shell" ref={shell}>
+      <div className="shell" ref={shell} data-side={side ? (holon.prefs.sidePinned ? "pinned" : "floating") : undefined}>
         <header className="bar" ref={bar} data-fit={fit} role="toolbar" aria-label="Canvas" onKeyDown={moveAlongBar} onFocus={rememberBarFocus}>
+          <button type="button" className="tool side-toggle" data-dg="side-toggle" aria-label="Library, search units and units to place" aria-expanded={side !== null} title="Library, search units and units to place" onClick={() => (side ? setSide(null) : openSide(lastSide.current))}>
+            <Icon name="sidebar" />
+          </button>
           <div className="picker" data-fit-min="96">
             <button
               type="button"
@@ -1497,26 +1564,27 @@ export const App = ({ connection }: { connection: Connection }) => {
               type="button"
               className="tool"
               data-dg="add-node"
-              aria-label="Add node"
-              title="Add node · N"
-              aria-expanded={adding}
-              onClick={() => (adding ? closeAdd() : openAdd())}
+              aria-label={reading ? "Highlight in the PDF" : "Add unit"}
+              title={reading ? "Add a unit by highlighting it in this paper's PDF" : "Add unit · N"}
+              aria-expanded={reading ? undefined : adding}
+              onClick={() => (reading ? openPdf() : adding ? closeAdd() : openAdd())}
             >
-              <Icon name="plus" />
-              <span className="tool-label">Add node</span>
+              <Icon name={reading ? "pdf" : "plus"} />
+              <span className="tool-label">{reading ? "Highlight" : "Add unit"}</span>
             </button>
             {fit !== "more" ? (
               <>
-                <button type="button" className="tool" data-dg="add-note" aria-label="Add note" title="Add note · T" onClick={addNote}>
+                <button type="button" className="tool" data-dg="add-note" aria-label="Add sticky" disabled={Boolean(reading)} title={reading ? fixedWhy : "Add a sticky · T"} onClick={addNote}>
                   <Icon name="note" />
-                  <span className="tool-label">Note</span>
+                  <span className="tool-label">Sticky</span>
                 </button>
                 <button
                   type="button"
                   className="tool"
                   data-dg="draw"
                   aria-label="Draw"
-                  title="Draw · D"
+                  disabled={Boolean(reading)}
+                  title={reading ? fixedWhy : "Draw · D"}
                   aria-pressed={tool === "draw"}
                   onClick={() => setTool((old) => (old === "draw" ? "select" : "draw"))}
                 >
@@ -1669,8 +1737,20 @@ export const App = ({ connection }: { connection: Connection }) => {
             <button type="button" role="menuitem" data-dg="ai" onClick={() => { setMoreOpen(false); setAiOn((on_) => !on_); }}>
               <Icon name="ai" /> Ask AI
             </button>
-            <button type="button" role="menuitem" data-dg="open-pdf" onClick={() => { setMoreOpen(false); void call("pdf.show", {}).catch(report); }}>
-              <Icon name="pdf" /> Read a PDF
+            <button type="button" role="menuitem" data-dg="open-pdf" onClick={() => { setMoreOpen(false); openPdf(); }}>
+              <Icon name="pdf" /> {parentPdf ? "Read its PDF" : "Read a PDF"}
+            </button>
+          </div>
+        ) : null}
+        {reading ? (
+          <div className="fixed-strip" data-dg="pdf-canvas-fixed" data-asked={fixedAsk} role={fixedAsk ? "alert" : "note"}>
+            <span className="repo-kind" data-kind="paper"><Icon name="pdf" /> PDF canvas</span>
+            <span className="fixed-why">
+              {fixedAsk ? "That isn't from this paper, so it can't go here. " : ""}
+              {reading.filename}, read by {reading.model} on {new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" }).format(Date.parse(reading.at))}. Reword or retype a card, or highlight in the PDF to add one. Everything here comes from this paper.
+            </span>
+            <button type="button" className={fixedAsk ? "primary" : undefined} data-dg="build-on" title="Make a canvas of your own with the same cards, and add to that" onClick={buildOn}>
+              Build on it
             </button>
           </div>
         ) : null}
@@ -1700,7 +1780,7 @@ export const App = ({ connection }: { connection: Connection }) => {
                       <span className="canvas-pick-title">{canvas.title}</span>
                       {pictures[canvas.id] ? (
                         <span className="repo-kind" data-kind={pictures[canvas.id]!.kind}>
-                          <Icon name={pictures[canvas.id]!.kind === "paper" ? "pdf" : "canvas"} /> {pictures[canvas.id]!.kind === "paper" ? "From a PDF" : "Workspace"}
+                          <Icon name={pictures[canvas.id]!.kind === "paper" ? "pdf" : "canvas"} /> {pictures[canvas.id]!.kind === "paper" ? "PDF canvas" : "Canvas"}
                           <span className="cvs-meta"> · {pictures[canvas.id]!.cards} {pictures[canvas.id]!.cards === 1 ? "card" : "cards"}</span>
                         </span>
                       ) : null}
@@ -1728,6 +1808,34 @@ export const App = ({ connection }: { connection: Connection }) => {
                 <button type="button" className="new" data-dg="export" onClick={() => { setMenu(false); setExportOpen(true); }}>
                   <Icon name="export" /> Export…
                 </button>
+                <button type="button" className="new" data-dg="open-grammar" onClick={() => { setMenu(false); void call("dialog.open", { surface: "grammar" }).catch(report); }}>
+                  <Icon name="card" /> Types and relations…
+                </button>
+                {current && view && !view.paper ? (
+                  removeAsk ? (
+                    <div className="remove-ask" data-dg="remove-canvas-ask">
+                      <span>Remove this canvas? Its units and their links stay.</span>
+                      <button type="button" onClick={() => setRemoveAsk(false)}>Keep it</button>
+                      <button
+                        type="button"
+                        data-dg="remove-canvas-yes"
+                        onClick={() => {
+                          setRemoveAsk(false);
+                          setMenu(false);
+                          void call("canvas.remove", { id: current })
+                            .then(() => call("panel.open", { surface: "canvases" }))
+                            .catch(report);
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="new" data-dg="remove-canvas" onClick={() => setRemoveAsk(true)}>
+                      <Icon name="close" /> Remove this canvas…
+                    </button>
+                  )
+                ) : null}
               </>
             )}
           </div>
@@ -1800,8 +1908,8 @@ export const App = ({ connection }: { connection: Connection }) => {
             <input
               autoFocus
               data-dg="node-search"
-              aria-label="Find or name a node"
-              placeholder={linking ? "Find or name the next node" : "Find or name a node"}
+              aria-label="Find or name a unit"
+              placeholder={linking ? "Find or name the next unit" : "Find or name a unit"}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
@@ -1885,9 +1993,19 @@ export const App = ({ connection }: { connection: Connection }) => {
             onPaneClick={() => {
               closeMenus();
               setExportOpen(false);
+              // A floating sidebar goes when the canvas is clicked. A pinned one stays.
+              if (!holon.prefs.sidePinned) setSide(null);
             }}
             onNodeClick={(_, node) => {
               const summary = (node.data as CardData).node;
+              // Picking a card shows where it came from: its passage in an open reader, and the Context panel.
+              if (summary && !aiOn) {
+                void call("pdf.follow", { unit: summary.id }).catch(() => undefined);
+                // The panel opening must not take the keyboard: Delete and undo still belong to the picked card.
+                void call("panel.open", { surface: "context" })
+                  .then(() => window.focus())
+                  .catch(() => undefined);
+              }
               if (!aiOn || !summary) return;
               setGrounded((old) => (old.includes(summary.id) ? old.filter((id) => id !== summary.id) : [...old, summary.id]));
             }}
@@ -1977,12 +2095,30 @@ export const App = ({ connection }: { connection: Connection }) => {
         </div>
         <Drawer
           data={drawerData}
-          open={drawerOpen}
-          onToggle={() => setDrawerOpen((open) => !open)}
+          open={false}
+          onToggle={() => openSide("units")}
           onPlace={(ids) => void placeGroup(ids)}
-          height={drawerHeight}
-          onResize={setDrawerHeight}
+          height={0}
+          onResize={() => undefined}
         />
+        {side ? (
+          <Sidebar
+            connection={connection}
+            current={current}
+            tab={side}
+            pinned={holon.prefs.sidePinned}
+            units={drawerData}
+            onTab={openSide}
+            onPin={(pinned) => void call("prefs.set", { sidePinned: pinned }).catch(report)}
+            onClose={() => setSide(null)}
+            onGo={(id) => {
+              if (id !== current) switchTo(id);
+              if (!holon.prefs.sidePinned) setSide(null);
+            }}
+            onPlace={(ids) => void placeGroup(ids)}
+            report={report}
+          />
+        ) : null}
         {edgeTip ? (
           <div className="edge-tip" data-dg="edge-credit" style={{ left: Math.max(0, Math.min(edgeTip.x, (shell.current?.clientWidth ?? edgeTip.x) - TIP_WIDTH)), top: edgeTip.y }}>
             <Mark credit={edgeTip.credit} />
@@ -1993,7 +2129,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         {relationMenu ? (
           <div className="popover menu relation-menu" role="menu" style={{ left: relationMenu.x, top: relationMenu.y }}>
             {relationMenu.options.length === 0 ? (
-              <p>The grammar has no relation for these two nodes. Check that both have a type.</p>
+              <p>The grammar has no relation for these two units. Check that both have a type.</p>
             ) : (
               relationMenu.options.map((option) => (
                 <button key={`${option.type}-${option.flipped}`} type="button" role="menuitem" data-dg={`relation-${option.label}`} onClick={() => void chooseRelation(option)}>

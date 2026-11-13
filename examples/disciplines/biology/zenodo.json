@@ -1,0 +1,32 @@
+{
+ "title": "Actin force production in clathrin-mediated endocytosis (Akamatsu et al. 2020)",
+ "upload_type": "dataset",
+ "description": "<p>Biology: Two different methods reach the same number. A simulation says about 200 Arp2/3 complexes are needed, and a count in live cells finds about 200. Each is its own run, under its own protocol, and both support one claim. A worked example for Discourse Graphs, read from the paper by hand. The paper's own text and figures are not included.</p><p>An RO-Crate: open <code>README.md</code> or <code>ro-crate-preview.html</code> inside the archive to read it. Every finding is also described in the MIRA schema.</p>",
+ "creators": [
+  {
+   "name": "reader, Example"
+  }
+ ],
+ "publication_date": "2026-11-13",
+ "access_right": "open",
+ "license": "cc-by-4.0",
+ "keywords": [
+  "Discourse graph",
+  "Biology",
+  "RO-Crate",
+  "MIRA"
+ ],
+ "related_identifiers": [
+  {
+   "identifier": "10.7554/elife.49840",
+   "relation": "isDerivedFrom",
+   "resource_type": "publication-article"
+  },
+  {
+   "identifier": "https://github.com/DrubinBarnes/Akamatsu_CME_manuscript",
+   "relation": "requires",
+   "resource_type": "software"
+  }
+ ],
+ "prereserve_doi": true
+}

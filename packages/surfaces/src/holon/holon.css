@@ -191,3 +191,6 @@ button.hv-link:hover { text-decoration: underline; background: none; }
 .ws-find { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; box-sizing: border-box; background: color-mix(in oklch, black 22%, transparent); }
 .ws-find-box { width: min(640px, calc(100vw - 32px)); height: min(460px, calc(100vh - 24vh)); overflow: hidden; border: 1px solid var(--dg-line); border-radius: calc(var(--dg-radius) + 4px); background: var(--dg-page); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28); }
 .ws-find-box .find { height: 100%; }
+
+/* Which object the panel is about, said above its name. */
+.bd-about { margin: 0 0 2px; color: var(--dg-muted); font-size: var(--tiny); text-transform: uppercase; letter-spacing: 0.04em; }

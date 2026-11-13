@@ -136,9 +136,10 @@ const notice = await until(async () => {
 check("pdf.save-says-where", notice?.includes("Issue exchange"), notice);
 const onCanvas = await until(async () => {
   const view = await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`);
-  return Object.values(view.nodes).find((n) => n.title === title) ?? null;
+  // Every unit gets a note of its own in Obsidian, so the highlighted one has text soon after it is saved.
+  return Object.values(view.nodes).find((n) => n.title === title && n.hasText) ?? null;
 });
-check("canvas.gets-the-highlighted-unit", onCanvas?.typeLabel === "Claim" && onCanvas?.staged, onCanvas?.title);
+check("canvas.gets-the-highlighted-unit", onCanvas?.typeLabel === "Claim" && onCanvas?.hasText, onCanvas?.title);
 const marksAfter = await until(async () => {
   const n = await s(`s.pdfCount(".pdf-mark:not(.pending)")`);
   return n > marksBefore ? n : null;
@@ -166,8 +167,29 @@ const scrolled = await until(async () => {
   return page > 1 ? page : null;
 });
 check("pdf.show-scrolls-to-the-passage", scrolled > 1, `page ${scrolled}`);
-const active = await until(() => s(`s.pdfCount(".pdf-mark[data-active]")`).then((n) => (n > 0 ? n : null)));
-check("pdf.show-marks-it-active", active > 0);
+const flashed = await until(() => s(`s.pdfCount(".pdf-mark[data-flash]")`).then((n) => (n > 0 ? n : null)));
+check("pdf.show-marks-it-for-a-moment", flashed > 0);
+check("pdf.the-mark-lets-go", await until(() => s(`s.pdfCount(".pdf-mark[data-flash]")`).then((n) => n === 0), 6000));
+
+// A card picked on the canvas goes to its passage in the open reader, and opens Context.
+await s(`s.call("units.put", { canvas: ${q(canvas.id)}, nodes: ${q([evidence.unit.id])} })`);
+const cardOf = async () => (await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`)).items.find((entry) => entry.item.dg?.node === evidence.unit.id && !("fromNode" in entry.item));
+const followCard = await until(cardOf);
+await s(`s.call("pdf.show", { ref: ${q(PAPER)}, unit: ${q((await s(`s.call("pdf.open", { ref: ${q(PAPER)}, data: false })`)).marks[0].unit.id)} })`);
+await sleep(3000);
+await canvasClick(`.react-flow__node[data-id="${followCard.id}"] .card`);
+check("follow.card-click-marks-the-passage", await until(() => s(`s.pdfCount('.pdf-mark[data-flash][data-unit="${evidence.unit.id}"]')`).then((n) => n > 0), 6000));
+check("follow.card-click-opens-context", await until(() => s(`s.at("context", "count", "body")`).then((n) => n > 0), 6000));
+check("follow.passage-mark-lets-go", await until(() => s(`s.pdfCount(".pdf-mark[data-flash]")`).then((n) => n === 0), 6000));
+
+// A highlight picked in the paper marks its card, and the mark lets go by itself.
+const passage = await until(() => s(`s.pdfLocate('.pdf-mark[data-unit="${evidence.unit.id}"]')`));
+await clickAt(centre(passage));
+check("follow.highlight-click-marks-the-card", await until(() => s(`s.count(".react-flow__node.lit")`).then((n) => n > 0), 5000));
+check("follow.card-mark-lets-go", await until(() => s(`s.count(".react-flow__node.lit")`).then((n) => n === 0), 6000));
+
+await sleep(500);
+await host.shot(`${OUT}/follow.png`);
 
 // A PDF dropped on the reader is kept with the papers and opened.
 await s(`s.pdfDropVaultFile('[data-dg="pdf-shell"]', ${q(PAPER)}, "Dropped paper.pdf")`);
@@ -211,7 +233,7 @@ const loose = next.segments.find((g) => g.kind !== "canvas" || !g.title.startsWi
 const dragged = next.units[loose.units[0]];
 const area = await s(`s.locate(".area")`);
 const frame = await s(`s.locate("html")`);
-const drop = { x: area.x - frame.x + area.width * 0.35, y: area.y - frame.y + area.height * 0.3 };
+const drop = { x: area.x - frame.x + area.width * 0.82, y: area.y - frame.y + area.height * 0.3 };
 const types = await s(`s.dragTo(${q(`[data-dg="drawer-seg-${loose.title}"] [data-dg="drawer-unit-${dragged.title}"]`)}, ${q(drop)})`);
 const landed = await until(() => s(`s.locate(${q(`[data-dg="card-${dragged.title}"]`)})`));
 const off = landed ? Math.hypot(landed.x + Math.min(landed.width, 240) / 2 - (drop.x + frame.x), landed.y - (drop.y + frame.y)) : Infinity;

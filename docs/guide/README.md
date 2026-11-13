@@ -133,7 +133,7 @@ A canvas is where you build an argument. Cards are units. Lines are relations, d
 | Group | Control | Does |
 |---|---|---|
 | Canvas | The canvas's name | Opens the canvas picker, New canvas, Upload a paper, the Library and Export |
-| Build | Add node (N) | Finds a unit or makes a new one |
+| Build | Add unit (N) | Finds a unit or makes a new one |
 | | Note (T) | A plain sticky note, not part of the graph |
 | | Draw (D) | Freehand strokes |
 | | Tidy (L) | Arranges the cards. The menu beside it picks how |
@@ -148,11 +148,11 @@ Labels drop away as the pane narrows, and the icons stay.
 
 **Tidy** has nine arrangements. Six lay the argument out: Logic, For and against, Timeline, Kinds, People and Focus. Three rank the cards: Most connected, Bridges and Load-bearing.
 
-**The line under the bar** says where the canvas sits (its lab, and the question it is about) and opens the Boundary panel.
+**The line under the bar** says where the canvas sits (its lab, and the question it is about) and opens the Boundary panel. The Boundary panel is about the question, claim or evidence you have selected, and says so at its head. With nothing selected it is about the question the canvas is tied to, if any.
 
 **Units to place**, at the bottom (U), is a drawer of the units not on this canvas, grouped by where they are. Drag one on, or select several and place them together.
 
-**What a card shows.** The **Cards** list switches five facts on or off for every card at once: the source it was read from, its authors, the workspace it was written in, the date it was made, and its identifiers. The list stays open while you switch things, and your choice is remembered on this device.
+**What a card shows.** The **Cards** list switches five facts on or off for every card at once: the source it was read from, its authors, the workspace it was written in (yours, your lab's or someone else's), the date it was made, and its identifiers. The list stays open while you switch things, and your choice is remembered on this device.
 
 ![The Cards list, and cards showing every fact](media/card-facts.png)
 
@@ -175,8 +175,22 @@ A click on a card selects it and nothing else. Once a card is selected, its sour
 
 Click the canvas's name. Each canvas is drawn as a small picture of its real layout: every card where it sits, coloured by type. Under the title is its kind:
 
-- **Workspace:** built by hand to work out an argument.
-- **From a PDF:** made by reading a paper, and holding that paper's units.
+- **Canvas:** laid out by people to work out an argument, drawing on any papers.
+- **PDF canvas:** one reading of one paper, as the model drew it.
+
+### PDF canvases can be polished, and hold only their paper
+
+A PDF canvas is the paper, not your argument about it. A line under its bar says which file it is, which model read it and when. Everything on it comes from that paper.
+
+You can polish it:
+
+- **Reword** a card (F2 or double-click) or change its type. The card's source row then says "Auto, reworded", and the Context panel keeps the model's wording under the title with **Put the model's words back**.
+- **Highlight** opens the paper's PDF. A highlight saved from there joins the PDF canvas as a card marked "By hand".
+- Link two of its cards, take a wrong card off, move and tidy.
+
+You can't add anything that isn't from the paper: a unit typed from nothing, a unit or highlight from another paper, a sticky or a drawing. Trying to offers **Build on it**, which makes a canvas in your workspace with the same cards, pointing at the same units. That one takes anything.
+
+**The PDF button** on a canvas opens the PDF most of its cards came from. On a PDF canvas that is its own paper. The reader's title lists the others.
 
 ### The Library
 
@@ -186,10 +200,12 @@ The Library is a side panel with four tabs: Canvases, Papers, Folders and Lab.
 
 On **Canvases**:
 
-- **Everyone, Lab, Mine** narrows the list by scope. The number beside each is how many canvases it holds.
+- Canvases are grouped by the **workspace** they live in: yours, which only you see, then your lab's. A workspace is a place with members. A lab is a workspace with one PI.
+- A canvas row says what it **draws on** (the papers most of its cards were read from) and shows the initials of **who did most on it**, most first.
+- **All, Lab, Yours** narrows the list. The number beside each is how many canvases it holds.
 - The search box finds by title, paper or person.
-- **Any kind** filters to canvases read from a PDF, or to workspaces. **Any privacy** filters to private, shared with the lab, or published. **Has gaps** keeps only canvases with something to look at.
-- The arrow on a row opens its history, releases and forks. A release pins every unit on the canvas at that moment, so it can be cited.
+- **Any kind** filters to PDF canvases or to canvases. **Seen by anyone** filters to only you, your lab, or published. **Has gaps** keeps only canvases with something to look at.
+- The arrow on a row opens its history, releases and forks. On a canvas in your workspace it also offers **Work on it with others…**, which names your lab and its members before moving the canvas to the lab's workspace. A release pins every unit on the canvas at that moment, so it can be cited.
 
 ### Context, and the Method section
 
@@ -319,7 +335,7 @@ Asking twice for the same paper opens the canvas you already have. Once a paper 
 
 ![Units from three papers on one canvas, a column for each paper](media/across-papers.png)
 
-A workspace canvas can hold units from any number of papers. Four things help you read across them:
+A canvas can hold units from any number of papers. Four things help you read across them:
 
 - **A paper tag on each card,** such as "Carroll 2020". It shows wherever units from different papers sit together: on cards, in search results, and beside related units in Context. On a paper's own canvas the tag is left off, because every card there would say the same thing. Click a card's tag to open its passage in the reader.
 - **Tidy → Papers** gives each paper a column, and one more for what you wrote yourself.
@@ -388,6 +404,22 @@ A figure is shown only while the notebook on your device still holds the same by
 
 **Make evidence from this**, on an output, asks nothing and makes evidence pinned to those bytes. Rename it to say what the output shows. That sentence is yours to write.
 
+### Types and relations
+
+**Types and relations…** is in the command palette, the ribbon menu, a canvas's menu and Settings. It is where a lab sets its own words.
+
+- **A type** has a name, a kind of unit, an abbreviation, the pattern its note is titled by, and a template. The kind is one of nine: question, claim, evidence, source, study, protocol, run, code or output. The kind is what other tools read, so "Hypothesis" as a claim still travels as a claim. A lab can add as many types as it likes on those nine, and can't add a tenth kind.
+- **A template** is what a new note of that type starts with. `{title}`, `{date}`, `{author}` and `{type}` are filled in. **Start from the usual headings** gives the headings a lab notebook would use for that kind: a run starts with what was done, departures from the protocol, observations and files.
+- **A relation** has its wording both ways, such as Supports and Supported by, and the pairs of types it may join. A relation is only offered between the types it lists.
+- **Remove…** takes a type or relation out of use. It is refused while units or links still have it, and it says how many.
+- **Open its table** makes a table of every unit of that type, with Obsidian's own Bases, in the folder `Discourse tables`. Each unit's note carries its type, the day it was made, who made it, a run's status and its paper as properties (`dg-type`, `dg-made`, `dg-by`, `dg-status`, `dg-source`), so the table can sort and filter by them. A table you rearrange stays as you left it.
+- **Save as a schema file** writes every type, relation, allowed pair and template to `discourse-graphs-schema.json`, by name. **Read a schema file…** adds what is missing from such a file and changes nothing that is already here. It also reads the schema file the official Discourse Graphs plugin for Obsidian exports.
+
+### Removing things
+
+- **A canvas:** its menu, then **Remove this canvas…**. Only its maker can, and a paper's own canvas stays. The units on it and their links are untouched, and its note goes to Obsidian's trash.
+- **A unit you made:** the foot of the Context panel, then **Remove this unit…**. It leaves every canvas and its note goes to the trash.
+
 ### Settings
 
 ![The settings page](media/settings.png)
@@ -398,7 +430,7 @@ Obsidian → Settings → Discourse Graphs.
 |---|---|
 | You | Your name. Your lab, with a button to join or start one |
 | Ask AI | Whose model answers, and the same fields as the form in the bar |
-| In your notes | The key that makes a node from selected text (empty turns it off). Type badges on links. A button to Obsidian's hotkeys, filtered to this plugin |
+| In your notes | The key that makes a unit from selected text (empty turns it off). Type badges on links. A button to Obsidian's hotkeys, filtered to this plugin |
 | Canvas | What Delete does on a link: ask, take it off this canvas, or withdraw the relation |
 | Papers and notebooks | Whether reading a notebook also keeps printed text |
 | Help and privacy | The walkthrough. The on-device usage log, with Clear. What leaves this device |
@@ -421,7 +453,7 @@ Each has no default key. Give any of them a hotkey in Obsidian's Hotkeys setting
 | Import this research crate (RO-Crate or .eln) | Reads the crate in front into the graph. A crate made here is restored; another tool's becomes units |
 | Upload a paper | The same, for a file that isn't in the vault yet |
 | Open runs and notebooks, Read this notebook into the graph | Runs, and reading the notebook in front |
-| Create node from selection, Turn this note into a node | Capture from a note |
+| Create unit from selection, Turn this note into a unit | Capture from a note |
 | Toggle link badges | Type badges beside links in notes |
 | Join or start a lab, Set my name | Identity |
 | Start walkthrough, Remove walkthrough examples | The tour |
@@ -469,3 +501,18 @@ There is no telemetry. The usage log stays on your device and holds action names
 - **Gap:** something a rule noticed. It never blocks you.
 - **Scope:** mine, lab or everyone.
 - **Release:** a canvas at one moment, with every unit pinned.
+
+## Paper map
+
+**Open paper map** (command, panel menu, or the Library's Paper map button) places every paper by how tied it is to the others. Two papers sit closer the more links people drew between their units, and when one cites the other. The line between them says what the links amount to: supports, opposes, both, other links, or a citation alone. A paper tied to nothing waits underneath with a dashed outline.
+
+The tabs at the top choose whose work counts: one canvas, only you, your lab, or everyone. Pick a paper or a line to see the links behind it; double-click a paper to open its PDF canvas.
+
+## Type colors
+
+Green and red mean Supports and Opposes, on lines only. Types use other colors: Question violet, Claim amber, Evidence blue, Source grey. Each card has a colored left edge and a lettered chip, so the type never rests on color alone. `docs/color.md` has the reasoning and the measurements.
+
+
+## The canvas sidebar
+
+The icon left of the canvas title opens the sidebar. **Library** lists every workspace with its canvases and papers, marks the one you are on, and says where you are at the top. **Search units** finds a unit anywhere. **Units** lists what isn't on this canvas yet, to drag or place. Click the canvas and the sidebar goes; **Pin** keeps it open beside the canvas. The selected unit's own facts stay in the Context panel on the right.

@@ -103,7 +103,8 @@ export const notifyFeature = (context: Context) => {
       origin: { id: server, inbox: `${server}/v1/notify/inbox` },
       target: { id: new URL(inbox).origin, inbox },
       about: { id: paper.url ?? doi, citeAs: doi },
-      object: { id: iriOf(graph, node.id) },
+      // Named by its own id, which a later retyping doesn't change.
+      object: { id: node.id },
       relationship: base === "claim" || base === "evidence" || base === "question" ? RELATIONSHIPS.readFrom : RELATIONSHIPS.discusses,
     });
     return { ready: true, inbox, paper: paper.title, notification };
@@ -131,7 +132,7 @@ export const notifyFeature = (context: Context) => {
       if (!node || !link || !context.services) return [];
       const view = context.summarize(node);
       const paper = context.documents("paper").find((item) => item.id === view.card.source?.paper);
-      const asked = [paper?.doi ? `https://doi.org/${paper.doi}` : undefined, iriOf(context.graph(), node.id)].filter((item): item is string => Boolean(item));
+      const asked = [paper?.doi ? `https://doi.org/${paper.doi}` : undefined, node.id, iriOf(context.graph(), node.id)].filter((item): item is string => Boolean(item));
       const found = await Promise.all(asked.map((about) => context.services!.notifications({ server: link.server, about }).catch(() => [])));
       const seen = new Set<string>();
       return found.flat().filter(({ id }) => !seen.has(id) && seen.add(id));

@@ -3,6 +3,8 @@ import type { AiModel, AiProviderKind, AiRoute, AiSettings, AiSource } from "./l
 import type { ComputeServer, ExtractionGraph, JoinRequest, LabLink, LabMember, LabPaper, ServerInfo, ServerOption } from "./services.ts";
 import type {
   BaseNodeType,
+  BaseRelationType,
+  RelationRule,
   CanvasItem,
   CanvasLayout,
   CanvasRecord,
@@ -151,10 +153,27 @@ export type ProfileCard = ProfilePerson & { units: number; written: number; read
 export type NotifyDraft = { ready: true; inbox: string; paper: string; notification: Notification } | { ready: false; why: string };
 
 /** What a crate export wrote. `added` counts the units pulled in because the chosen ones rest on them. */
-export type CrateExported = { where: string; name: string; units: number; added: number; files: number; pdfs: number; papers: number; version: string };
+export type CrateExported = {
+  where: string;
+  name: string;
+  units: number;
+  added: number;
+  files: number;
+  pdfs: number;
+  papers: number;
+  version: string;
+  /** Output files packed with the crate, each checked against its recorded hash. */
+  outputs: number;
+  /** Outputs left out because the file in the base no longer matches the hash on record. */
+  changed: number;
+};
+/** A draft on Zenodo with the crate in it. `page` is where the person reviews and publishes it. */
+export type CrateDeposited = CrateExported & { page: string; doi?: string; sandbox: boolean };
+/** Whether a Zenodo token is kept, and the last characters of it. Never the token. */
+export type DepositSettings = { live: { kept: boolean; hint?: string }; sandbox: { kept: boolean; hint?: string }; canKeep: boolean; reachable: boolean; drafts: { name: string; page: string; doi?: string; at: string; sandbox: boolean }[] };
 
 /** `own`: a crate this app made, restored record for record. `foreign`: another tool's, read into units. */
-export type CrateImported = { name: string; kind: "own" | "foreign"; units: number; fresh: number; canvas?: DgId; skipped: number };
+export type CrateImported = { name: string; kind: "own" | "foreign"; units: number; fresh: number; canvas?: DgId; skipped: number; /** Arguments between the units that were read. */ relations?: number; /** Files whose bytes were found and hashed. */ hashed?: number };
 
 export type Provenance = {
   /** Where the unit sits in the person's reference library, to open it there. */
@@ -180,6 +199,8 @@ export type Provenance = {
     license?: string;
     anchor?: string;
     description?: string;
+    /** The model's own wording, when a person has since reworded the unit. */
+    asRead?: string;
   };
   /** The PDF it was highlighted or extracted from, when the base holds that file. */
   pdf?: { ref: string; name: string; page?: number; exact?: string };
@@ -317,9 +338,61 @@ export type AiStatus = {
   canSetUp?: boolean;
 };
 
+/** How a refusal to put something foreign on a PDF canvas begins. A surface offers "Build on it" when it sees it. */
+export const PDF_CANVAS_FIXED = "This is a PDF canvas";
+
+/** Whose work a paper map counts: one canvas, the person's own workspace, a lab's, or everything this device holds. */
+export type PaperScope = { kind: "canvas"; id: DgId } | { kind: "own" } | { kind: "lab"; id: string } | { kind: "everyone" };
+export type PaperScopeChoice = { scope: PaperScope; label: string; hint: string };
+export type PaperMapUnit = { id: DgId; title: string; paper: DgId; abbreviation?: string; base?: string };
+/** One relation someone drew between a unit of one paper and a unit of another. */
+export type PaperMapLink = { relation: DgId; label: string; stance?: "supports" | "opposes"; from: PaperMapUnit; to: PaperMapUnit };
+export type PaperMapPaper = {
+  id: DgId;
+  title: string;
+  /** The paper in a few words: "Carroll 2020". */
+  label: string;
+  /** Its PDF canvas. */
+  canvas: DgId;
+  units: number;
+  /** How many of its units are linked to a unit of another paper in this scope. */
+  reaching: number;
+  /** How many other papers it is tied to in this scope. */
+  tiedTo: number;
+  /** The sum of its ties' strengths. */
+  weight: number;
+  x: number;
+  y: number;
+  /** Tied to nothing in this scope. */
+  apart?: true;
+};
+export type PaperMapTie = {
+  a: DgId;
+  b: DgId;
+  /** From 0 to 1: links people drew, each further one adding less, and whether either paper cites the other. */
+  strength: number;
+  supports: number;
+  opposes: number;
+  other: number;
+  /** Which way a citation runs between them. */
+  cites?: "a-b" | "b-a" | "both";
+  /** What the links between them say, taken together. `cites` is a citation and no drawn link. */
+  stance: "agree" | "conflict" | "mixed" | "linked" | "cites";
+  links: PaperMapLink[];
+};
+export type PaperMap = { scope: PaperScope; papers: PaperMapPaper[]; ties: PaperMapTie[]; card: { width: number; height: number } };
+
+/** Where something lives: the person's own workspace, their lab's, or one that isn't theirs. */
+export type WorkspaceRef = { kind: "own" | "lab" | "other"; id: string; name: string };
+
+/** A paper or other source the cards of a canvas were read from, with how many of them. */
+export type CanvasSource = { id: DgId; title: string; label: string; units: number };
+
 export type CanvasSummary = {
   id: DgId;
   title: string;
+  /** `paper`: one reading of one paper, which stays as it was read. `canvas`: laid out by people. */
+  kind: "paper" | "canvas";
   cards: number;
   links: number;
   editedAt: string;
@@ -422,6 +495,8 @@ export type Prefs = {
   notebookText: boolean;
   /** Which facts every card shows under its title, on this device. */
   cardFields: CardField[];
+  /** Whether the canvas sidebar stays open beside the canvas, or floats over it and goes. */
+  sidePinned: boolean;
 };
 
 /** One rule a unit breaks, from the process shapes. The same rule names as `ontology/dg_process.shacl.ttl`. */
@@ -603,7 +678,16 @@ export type RepositoryCanvas = {
   gaps: number;
   privacy: Privacy;
   /** `paper`: made by reading a PDF, and it holds that paper's units. `workspace`: made by a person to build an argument. */
-  kind: "paper" | "workspace";
+  kind: "paper" | "canvas";
+  /** The workspace it lives in. */
+  workspace: WorkspaceRef;
+  /** The papers most of its cards were read from, most first, three at most. */
+  sources: CanvasSource[];
+  /** How many papers its cards were read from in all. */
+  sourceCount: number;
+  /** Who did most on it, most first, four at most, with how many people in all. */
+  contributors: (Credit & { edits: number })[];
+  contributorCount: number;
   /** The paper it was read from, for a paper canvas. */
   paper?: string;
   /** Who made it, and whether that is the person looking. */
@@ -701,6 +785,7 @@ export type CanvasView = {
   relations: Record<DgId, { label: string; state: RelationState; kind?: string; credit: Credit; mine?: true; type: DgId; source: DgId; target: DgId }>;
   /** Reactions and notes, by node. Only shared canvases have them. */
   social: Record<DgId, UnitSocial>;
+  /** Set on a PDF canvas: the reading it shows. Such a canvas stays as it was read. */
   paper?: PaperSummary;
 };
 
@@ -728,6 +813,11 @@ export type SurfaceMethods = {
   "node.setType": { params: { id: DgId; type: DgId | null }; result: NodeSummary };
   /** Renames a unit and its note or page. Only its author can. */
   "node.rename": { params: { id: DgId; title: string }; result: NodeSummary };
+  /**
+   * Takes back a unit its author made. It leaves every canvas, its links stop counting, and its note
+   * goes to the base's trash. The record stays, so nothing that named it loses its history.
+   */
+  "node.remove": { params: { id: DgId }; result: null };
   /** Puts a link to the unit's note at the last cursor in the base. */
   "node.insertLink": { params: { id: DgId }; result: null };
   /** Titles, note text and PDF passages, ranked, with what the results hold by type and by person or lab. */
@@ -765,7 +855,8 @@ export type SurfaceMethods = {
   /** Ties a canvas to a holon, so it becomes that holon's view. */
   "canvas.setHolon": { params: { id: DgId; holon: string | null }; result: null };
   /** Lights these units on whatever canvas shows them, from any panel. */
-  "canvas.highlight": { params: { units: DgId[] }; result: null };
+  /** Marks units on the open canvases. `brief` lets the mark go by itself after a moment, for pointing something out. */
+  "canvas.highlight": { params: { units: DgId[]; brief?: boolean }; result: null };
   "prefs.get": { params: Record<string, never>; result: Prefs };
   "prefs.set": { params: Partial<Prefs>; result: Prefs };
   /** The holon a unit opens as. A run or protocol opens as the evidence it stands behind. */
@@ -786,6 +877,10 @@ export type SurfaceMethods = {
   "canvas.summaries": { params: Record<string, never>; result: CanvasSummary[] };
   /** Goes to a canvas in the base, in the base's own way. */
   "canvas.show": { params: { id: DgId }; result: null };
+  /** Opens a canvas and points at one unit on it: the canvas brings its card into view and marks it for a moment. */
+  "canvas.reveal": { params: { id: DgId; unit: DgId }; result: null };
+  /** The unit a canvas was just asked to point at, handed over once, for a canvas that wasn't open when asked. */
+  "canvas.revealed": { params: { id: DgId }; result: DgId | null };
   /** Layouts are shared, so a teammate sees the same headings and scores. */
   "canvas.setLayout": { params: { id: DgId; layout: CanvasLayout }; result: null };
   "canvas.create": { params: { title: string }; result: CanvasRecord };
@@ -828,12 +923,52 @@ export type SurfaceMethods = {
   /** Takes back a unit just made from a highlight, and its card. */
   "pdf.uncut": { params: { node: DgId }; result: null };
   /** Opens the reader beside the canvas, at a unit's passage if given. With no file, it offers the choice of PDFs. */
+  /** The PDF most of a canvas's cards were read from, when the file is here: its own paper's for a PDF canvas. */
+  "canvas.pdf": { params: { id: DgId }; result: { ref: string; name: string } | null };
   "pdf.show": { params: { ref?: string; unit?: DgId }; result: null };
+  /** A reader that is already open and holds this unit's passage scrolls to it and marks it for a moment. Opens nothing. */
+  "pdf.follow": { params: { unit: DgId }; result: null };
   "canvas.export": { params: { id: DgId }; result: DgCanvas };
   "grammar.get": {
     params: Record<string, never>;
-    result: { nodeTypes: NodeTypeRecord[]; relationTypes: RelationTypeRecord[] };
+    result: {
+      nodeTypes: NodeTypeRecord[];
+      relationTypes: RelationTypeRecord[];
+      /** How many live units have each node type, and how many active relations each relation type. */
+      uses?: Record<DgId, number>;
+      /** Whether this base can make a table of the units of one type. */
+      tables?: boolean;
+    };
   };
+  /**
+   * Adds a node type, or changes one when `id` is given. A type always sits on one of the nine bases:
+   * the base is what other tools understand, and the label is the lab's own word for it.
+   */
+  "grammar.saveNodeType": {
+    params: { id?: DgId; label: string; base: BaseNodeType; abbreviation?: string; titleFormat?: string; color?: string; template?: string };
+    result: NodeTypeRecord;
+  };
+  /** Takes a type out of use. Refused while units still have it, so nothing is left untyped by accident. */
+  "grammar.removeNodeType": { params: { id: DgId }; result: null };
+  /** Adds a relation type, or changes one. `rules` are the pairs of node types it may join, source first. */
+  "grammar.saveRelationType": {
+    params: { id?: DgId; label: string; complement: string; base?: BaseRelationType; rules: RelationRule[]; color?: string };
+    result: RelationTypeRecord;
+  };
+  "grammar.removeRelationType": { params: { id: DgId }; result: null };
+  /** Saves the types, relations, allowed pairs and templates as one JSON file, named by label so another base can read it. */
+  "grammar.export": { params: Record<string, never>; result: { where: string; name: string; nodeTypes: number; relationTypes: number } };
+  /** JSON files in the base that could be a schema, newest first. */
+  "grammar.files": { params: Record<string, never>; result: { ref: string; name: string; folder?: string }[] };
+  /**
+   * Reads a schema file: ours, or one exported by the official Discourse Graphs plugin for Obsidian.
+   * Adds what is missing and never changes or removes what is here.
+   */
+  "grammar.import": { params: { ref: string }; result: { nodeTypes: number; relationTypes: number; rules: number; kept: number; from: "discourse-graphs" | "official-plugin" } };
+  /** Opens the base's own table of every unit of one type. */
+  "table.open": { params: { type: DgId }; result: { where: string } };
+  /** Takes a canvas away. Its units stay, and so do their links. Only its maker can. */
+  "canvas.remove": { params: { id: DgId }; result: null };
   "base.reveal": { params: { id: DgId; placement: Placement }; result: null };
   /** Opens where an identifier resolves, or any `http` or `https` address, in the person's browser. */
   "link.open": { params: { url: string }; result: null };
@@ -846,6 +981,10 @@ export type SurfaceMethods = {
   /** A person's work as this viewer may see it. Without an id, the viewer's own. */
   "profile.view": { params: { id?: string }; result: Profile };
   "profile.card": { params: { id: string }; result: ProfileCard };
+  /** Papers placed by how tied they are, in one scope, with the scopes on offer. */
+  "papers.map": { params: { scope?: PaperScope }; result: PaperMap & { scopes: PaperScopeChoice[] } };
+  /** Opens the paper map, on a canvas's scope when one is given. */
+  "papers.show": { params: { canvas?: DgId }; result: null };
   /** Opens a person's profile in the base. */
   "profile.show": { params: { id?: string }; result: null };
   /** Builds the COAR Notify announcement that would tell a paper's repository about a unit. Sends nothing. */
@@ -860,9 +999,20 @@ export type SurfaceMethods = {
    * The papers' PDFs go in only when asked, since their licenses may not allow passing them on.
    */
   "crate.export": {
-    params: { canvas?: DgId; nodes?: DgId[]; name?: string; description?: string; license?: string; pdfs?: boolean; format?: "zip" | "eln" };
+    params: { canvas?: DgId; nodes?: DgId[]; name?: string; description?: string; license?: string; pdfs?: boolean; outputs?: boolean; format?: "zip" | "eln" };
     result: CrateExported;
   };
+  /**
+   * Packs the same crate and puts it in a new draft on Zenodo, with the DOI Zenodo reserved written into it.
+   * The draft is never published from here: the person reviews it on Zenodo and publishes it there.
+   */
+  "crate.deposit": {
+    params: { canvas?: DgId; nodes?: DgId[]; name?: string; description?: string; license?: string; pdfs?: boolean; outputs?: boolean; sandbox?: boolean };
+    result: CrateDeposited;
+  };
+  "deposit.settings": { params: Record<string, never>; result: DepositSettings };
+  /** `token` saves a Zenodo token, and null removes it. The token is never sent back. */
+  "deposit.configure": { params: { sandbox?: boolean; token: string | null }; result: DepositSettings };
   /** Reads a crate the base holds: a `.zip`, an `.eln`, or a bare `ro-crate-metadata.json`. */
   "crate.import": { params: { ref: string }; result: CrateImported };
   "crate.licenses": { params: Record<string, never>; result: { url: string; name: string }[] };
@@ -873,7 +1023,7 @@ export type SurfaceMethods = {
   /** Opens a panel in the base's side area. */
   "panel.open": { params: { surface: "context" | "canvases" | "boundary" | "search" }; result: null };
   /** Opens a pop-up over the base. `find` is the quick finder. */
-  "dialog.open": { params: { surface: "upload" | "welcome" | "find" | "zotero"; /** For upload: a file the base already holds. */ id?: string }; result: null };
+  "dialog.open": { params: { surface: "upload" | "welcome" | "find" | "zotero" | "grammar"; /** For upload: a file the base already holds. */ id?: string }; result: null };
   "dialog.close": { params: Record<string, never>; result: null };
 
   "server.list": { params: Record<string, never>; result: ComputeServer[] };
@@ -926,6 +1076,10 @@ export type SurfaceMethods = {
   "lab.decide": { params: { requestId: string; decision: "accept" | "decline"; tokenKind?: "personal" | "team" }; result: LabView };
   "lab.setBreadcrumbs": { params: { value: BreadcrumbDefault }; result: LabView };
   "canvas.share": { params: { id: DgId }; result: null };
+  /** Who would see a canvas if it moved to the lab's workspace. */
+  "canvas.audience": { params: { id: DgId }; result: { workspace: WorkspaceRef; lab?: { name: string; members: string[] } } };
+  /** A canvas of the person's own showing the same cards as a PDF canvas, to build on. */
+  "canvas.buildOn": { params: { id: DgId; title?: string }; result: { id: DgId; title: string } };
 
   /** How a unit was produced: the chain behind evidence, or behind each piece of evidence for a claim. */
   "process.method": { params: { id: DgId }; result: MethodView };
@@ -992,19 +1146,21 @@ export type SurfaceResponse =
 export type SurfaceEvent =
   | { event: "graph-changed" }
   | { event: "holon-focus-changed"; ref: HolonRef | null; canvas: DgId | null }
-  | { event: "highlight"; units: DgId[] }
+  | { event: "highlight"; units: DgId[]; brief?: boolean }
   | { event: "prefs-changed"; prefs: Prefs }
   | { event: "focus-changed"; node: DgId | null }
   | { event: "appearance-changed"; appearance: Appearance; skin: Skin }
   | { event: "place-node"; node: DgId }
   /** Units just put on a canvas from another panel, so that canvas can bring them into view. */
   | { event: "units-placed"; canvas: DgId; units: DgId[] }
+  | { event: "reveal-unit"; canvas: DgId; unit: DgId }
   /** The search panel takes this search, from the quick finder or a command. */
   | { event: "search-set"; query: SearchCarry }
   /** Notes have been read, so a search can now match their text. */
   | { event: "search-ready" }
   /** Scroll an open reader to a unit's passage. */
   | { event: "pdf-reveal"; ref: string; unit: DgId }
+  | { event: "pdf-follow"; unit: DgId }
   /** Progress on something slow, such as an extraction. */
   | { event: "job-status"; message: string }
   | { event: "ai-delta"; requestId: string; text: string }

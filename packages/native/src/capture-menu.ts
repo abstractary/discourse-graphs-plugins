@@ -44,7 +44,7 @@ export const openCaptureMenu = ({
   const menu = document.createElement("div");
   menu.id = ID;
   menu.setAttribute("role", "menu");
-  menu.setAttribute("aria-label", "Create a node");
+  menu.setAttribute("aria-label", "Create a unit");
   menu.dataset.dg = "capture-menu";
   menu.style.cssText = `${surface(skin)};padding:4px;min-width:170px;`;
   let active = 0;

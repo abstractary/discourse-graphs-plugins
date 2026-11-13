@@ -17,3 +17,11 @@ spike-canvas/
 
 # The worked example's demo vault, made by `npm run seed:example`
 examples/worked-example/vault/
+
+# The re-issued MATSUlab bundles, made by `node examples/evidence-bundles/reissue.ts`
+examples/evidence-bundles/out/*
+!examples/evidence-bundles/out/summary.json
+
+# The three discipline examples: the unpacked crate and archive are rebuilt by `node examples/disciplines/build.ts`
+examples/disciplines/*/crate/
+examples/disciplines/*/*.crate.zip

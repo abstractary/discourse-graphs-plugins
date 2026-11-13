@@ -42,8 +42,11 @@ export const cidOfText = (text: string): Promise<string> => cidOfBytes(encoder.e
  * it or when. A run pins the protocol by this, so an edit that changes nothing
  * a reader would see doesn't count as drift.
  */
-export const unitCid = (node: NodeRecord): Promise<string> =>
-  cidOfText(canonicalJson({ title: node.title, type: node.type ?? null, prov: node.prov ?? {}, facts: node.facts ?? {} }));
+export const unitCid = (node: NodeRecord): Promise<string> => {
+  // What a registry said when it was last asked isn't part of the unit: checking a paper again must not look like an edit.
+  const { standing: _checked, ...facts } = node.facts ?? {};
+  return cidOfText(canonicalJson({ title: node.title, type: node.type ?? null, prov: node.prov ?? {}, facts }));
+};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,14 +54,31 @@ export const unitCid = (node: NodeRecord): Promise<string> =>
 /** Default labels. A lab can rename any of them; the base is what interoperates. */
 export const PROCESS_TYPES: Record<
   "protocol" | "study" | "run" | "code" | "output",
-  { label: string; abbreviation: string; color: string }
+  { label: string; abbreviation: string }
 > = {
-  protocol: { label: "Protocol", abbreviation: "PRO", color: "#8fbf6f" },
-  study: { label: "Experiment", abbreviation: "EXP", color: "#d98ab0" },
-  run: { label: "Run", abbreviation: "RUN", color: "#c9a0dc" },
-  code: { label: "Code", abbreviation: "COD", color: "#7aa6c2" },
-  output: { label: "Output", abbreviation: "OUT", color: "#c2a878" },
+  protocol: { label: "Protocol", abbreviation: "PRO" },
+  study: { label: "Experiment", abbreviation: "EXP" },
+  run: { label: "Run", abbreviation: "RUN" },
+  code: { label: "Code", abbreviation: "COD" },
+  output: { label: "Output", abbreviation: "OUT" },
 };
+
+/**
+ * Built-in types take their color from the stylesheet, by base, so one palette
+ * serves both themes. These are the colors earlier builds wrote onto built-in
+ * types; a type still carrying one is treated as having none of its own.
+ */
+const RETIRED_COLORS = new Set(["#8fbf6f", "#d98ab0", "#c9a0dc", "#7aa6c2", "#c2a878", "#b18cf2"]);
+/**
+ * The official plugin's defaults for Question, Claim, Evidence and Source,
+ * which arrive with an imported vault. They are defaults too, and two of them
+ * (a green claim, a red evidence) read as Supports and Opposes.
+ */
+const IMPORTED_DEFAULTS = new Set(["#99890e", "#7da13e", "#db134a", "#9e9e9e"]);
+
+/** The color a lab chose for a type, when it chose one. */
+export const ownColor = (type: { color?: string } | undefined): string | undefined =>
+  type?.color && !RETIRED_COLORS.has(type.color.toLowerCase()) && !IMPORTED_DEFAULTS.has(type.color.toLowerCase()) ? type.color : undefined;
 
 /** The space's type for each process base, creating the ones it lacks. */
 export const ensureProcessTypes = ({
@@ -77,7 +97,7 @@ export const ensureProcessTypes = ({
     const spec = PROCESS_TYPES[base];
     const made = createNodeType({
       ...stamp,
-      fields: { label: spec.label, base, abbreviation: spec.abbreviation, color: spec.color, titleFormat: titleFormat(spec.abbreviation) },
+      fields: { label: spec.label, base, abbreviation: spec.abbreviation, titleFormat: titleFormat(spec.abbreviation) },
     });
     created.push(made);
     return [base, made] as const;

@@ -142,7 +142,7 @@ await sleep(600);
 await s(`s.call("focus.set", { node: ${q(labNode.id)} })`);
 await until(async () => (await s(`s.ctx.count('[data-dg="ctx-uri"]')`)) === 1, 5000);
 const shown = await s(`s.ctx.text('[data-dg="ctx-uri"]')`);
-check("panel.shows-the-at-uri", shown?.startsWith("at://did:plc:"), shown);
+check("panel.shows-the-unit-id", /^did:plc:[a-z0-9]+#[a-z0-9]+$/.test(shown ?? ""), shown);
 await sleep(300);
 await host.shot(`${OUT}/${host.name}-panel.png`);
 

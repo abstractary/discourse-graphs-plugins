@@ -74,6 +74,7 @@ export class SurfaceView extends ItemView {
     if (this.route.surface === "holon") return "Overview";
     if (this.route.surface === "boundary") return "Boundary";
     if (this.route.surface === "profile") return "Profile";
+    if (this.route.surface === "papers") return "Paper map";
     if (this.route.surface === "pdf") return this.route.id?.split("/").pop()?.replace(/\.pdf$/i, "") ?? "PDF";
     if (this.route.surface === "search") return "Search units";
     if (this.route.surface === "run") return (this.route.id ? this.unitName(this.route.id) : null) ?? "Runs and notebooks";
@@ -87,6 +88,7 @@ export class SurfaceView extends ItemView {
     if (this.route.surface === "search") return "search";
     if (this.route.surface === "run") return "flask-conical";
     if (this.route.surface === "profile") return "circle-user";
+    if (this.route.surface === "papers") return "waypoints";
     return this.route.surface === "canvases" ? "layout-list" : "layout-dashboard";
   }
   getState(): Record<string, unknown> {
@@ -146,6 +148,12 @@ export class SurfaceView extends ItemView {
   }
 }
 
+/**
+ * The Discourse Graphs tabs that are loaded. Obsidian leaves a background tab
+ * unloaded until it is first shown, and such a tab has no route to read yet.
+ */
+const loadedSurfaces = (workspace: { getLeavesOfType: (type: string) => WorkspaceLeaf[] }): WorkspaceLeaf[] => workspace.getLeavesOfType(VIEW).filter((leaf) => (leaf.view as Partial<Pick<SurfaceView, "route">>).route !== undefined);
+
 /** Notices when a frame says it now shows another canvas, or another PDF. */
 const watchRoute = (port: SurfacePort, onShown: (id: string) => void): SurfacePort => ({
   send: (message) => port.send(message),
@@ -185,6 +193,13 @@ class DiscourseGraphsSettings extends PluginSettingTab {
     const lab = new Setting(containerEl).setName("Lab").setDesc("Checking…");
     lab.addButton((button) => button.setButtonText("Join or start a lab").onClick(() => void plugin.openDialog("welcome")));
 
+    // ---------------------------------------------------------------- Types
+    heading("Types and relations", "Your lab's own kinds of unit, what may join them, and what a new note of each kind starts with.");
+    new Setting(containerEl)
+      .setName("Types, relations and templates")
+      .setDesc("Add or change a type, give it a template, say which types a relation may join, or share the whole set as a schema file.")
+      .addButton((button) => button.setButtonText("Open").onClick(() => void plugin.openDialog("grammar")));
+
     // ---------------------------------------------------------------- AI
     heading("Ask AI", "Whose model answers questions about a canvas. With none set up, a question quotes the closest units word for word.");
     const source = new Setting(containerEl).setName("Model").setDesc("Checking…");
@@ -198,9 +213,9 @@ class DiscourseGraphsSettings extends PluginSettingTab {
     // ---------------------------------------------------------------- Notes
     heading("In your notes");
     const capture = new Setting(containerEl)
-      .setName("Key that makes a node from selected text")
-      .setDesc("With text selected in a note, this key opens the list of node types. Leave it empty to turn the key off; “Create node from selection” stays in the command palette and can take any hotkey.");
-    const badges = new Setting(containerEl).setName("Type badges on links").setDesc("Shows a node's type beside each link to it in your notes.");
+      .setName("Key that makes a unit from selected text")
+      .setDesc("With text selected in a note, this key opens the list of unit types. Leave it empty to turn the key off; “Create unit from selection” stays in the command palette and can take any hotkey.");
+    const badges = new Setting(containerEl).setName("Type badges on links").setDesc("Shows a unit's type beside each link to it in your notes.");
     new Setting(containerEl)
       .setName("Hotkeys")
       .setDesc("Every Discourse Graphs action is a command, so each can have a key of your choosing.")
@@ -374,7 +389,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
   panelReport: unknown = null;
 
   surfaceFrame(surface: SurfaceRoute["surface"] = "canvas"): HTMLIFrameElement | null {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW).filter((item) => (item.view as SurfaceView).route.surface === surface);
+    const leaves = loadedSurfaces(this.app.workspace).filter((item) => (item.view as SurfaceView).route.surface === surface);
     // With several open, the one a person can see.
     const leaf = leaves.find((item) => item.view.containerEl.offsetParent !== null) ?? leaves[0];
     return leaf ? (leaf.view as SurfaceView).frame : null;
@@ -420,7 +435,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
     }
     if (placement === "main") {
       const showing = route.id
-        ? workspace.getLeavesOfType(VIEW).find((item) => {
+        ? loadedSurfaces(workspace).find((item) => {
             const shown = (item.view as SurfaceView).route;
             return shown.surface === route.surface && shown.id === route.id;
           })
@@ -429,10 +444,10 @@ export default class DiscourseGraphsPlugin extends Plugin {
         await workspace.revealLeaf(showing);
         return ok(null);
       }
-      const surfaces = workspace.getLeavesOfType(VIEW);
+      const surfaces = loadedSurfaces(workspace);
       const surfaceOf = (item: WorkspaceLeaf) => (item.view as SurfaceView).route.surface;
       // A run's page replaces the run list or the last run, the way a link does: one tab for runs, and one for profiles.
-      const runs = route.surface === "run" || route.surface === "profile" ? surfaces.find((item) => surfaceOf(item) === route.surface) : undefined;
+      const runs = route.surface === "run" || route.surface === "profile" || route.surface === "papers" ? surfaces.find((item) => surfaceOf(item) === route.surface) : undefined;
       if (runs) {
         await runs.setViewState({ type: VIEW, active: true, state: { route } });
         await workspace.revealLeaf(runs);
@@ -452,13 +467,17 @@ export default class DiscourseGraphsPlugin extends Plugin {
       return ok(null);
     }
     // A side panel keeps a person company, so the note they were in keeps the keyboard.
-    const writing = workspace.getActiveViewOfType(MarkdownView)?.leaf;
-    const open = workspace.getLeavesOfType(VIEW).find((item) => (item.view as SurfaceView).route.surface === route.surface);
+    // Context follows what is picked on a canvas, so the canvas keeps the keyboard too: Delete and undo still work.
+    const front = workspace.getMostRecentLeaf();
+    const working = route.surface === "context" && front && (front.view as unknown as { route?: SurfaceRoute }).route?.surface === "canvas" ? front : undefined;
+    const writing = workspace.getActiveViewOfType(MarkdownView)?.leaf ?? working;
+    const open = loadedSurfaces(workspace).find((item) => (item.view as SurfaceView).route.surface === route.surface);
     const leaf = open ?? workspace.getRightLeaf(false);
     if (!leaf) return { ok: false as const, error: { code: "unavailable" as const, message: "No pane." } };
     if (!open) await leaf.setViewState({ type: VIEW, active: true, state: { route } });
     await workspace.revealLeaf(leaf);
     if (writing) workspace.setActiveLeaf(writing, { focus: true });
+    if (working) working.view.containerEl.querySelector("iframe")?.focus();
     return ok(null);
   };
 
@@ -535,6 +554,12 @@ export default class DiscourseGraphsPlugin extends Plugin {
       callback: () => void this.openDialog("upload"),
     });
     this.addCommand({
+      id: "types-and-relations",
+      name: "Types and relations…",
+      icon: "shapes",
+      callback: () => void this.openDialog("grammar"),
+    });
+    this.addCommand({
       id: "from-zotero",
       name: "Bring in from Zotero…",
       icon: "library-big",
@@ -566,7 +591,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
     });
     this.addCommand({
       id: "capture-selection",
-      name: "Create node from selection",
+      name: "Create unit from selection",
       icon: "circle-plus",
       editorCheckCallback: (checking, editor) => {
         if (!editor.somethingSelected()) return false;
@@ -576,7 +601,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
     });
     this.addCommand({
       id: "convert-page",
-      name: "Turn this note into a node",
+      name: "Turn this note into a unit",
       icon: "file-plus",
       callback: () => void this.capture("page"),
     });
@@ -632,6 +657,12 @@ export default class DiscourseGraphsPlugin extends Plugin {
       name: "Open boundary",
       icon: "layers",
       callback: () => void this.openBoundary(),
+    });
+    this.addCommand({
+      id: "open-paper-map",
+      name: "Open paper map",
+      icon: "waypoints",
+      callback: () => void this.openPaperMap(),
     });
     this.addCommand({
       id: "open-profile",
@@ -734,7 +765,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
       this.app.workspace.on("editor-menu", (menu, editor) => {
         if (editor.somethingSelected()) {
           menu.addItem((item) =>
-            item.setTitle("Create node from selection").setIcon("circle-plus").setSection("discourse-graphs").onClick(() => void this.capture("selection")),
+            item.setTitle("Create unit from selection").setIcon("circle-plus").setSection("discourse-graphs").onClick(() => void this.capture("selection")),
           );
         }
         menu.addItem((item) =>
@@ -803,6 +834,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
     add("Open canvas", "layout-dashboard", () => this.openCanvas(), "canvas");
     add("Library", "library", () => this.openCanvases(), "canvases");
     add("Overview", "network", () => this.openHolons(), "holon");
+    add("Paper map", "waypoints", () => this.openPaperMap(), "papers");
     add("New canvas…", "square-plus", () => this.newCanvas());
     group("Panels");
     add("Search units", "search", () => this.openSide("search"), "search");
@@ -814,12 +846,18 @@ export default class DiscourseGraphsPlugin extends Plugin {
     add("Read a PDF…", "file-text", () => this.openPdf());
     add("Upload a paper…", "upload", () => this.openDialog("upload"));
     add("From Zotero…", "library-big", () => this.openDialog("zotero"));
+    add("Types and relations…", "shapes", () => this.openDialog("grammar"));
     add("Runs and notebooks", "flask-conical", () => this.openRuns(), "run");
     if (!here) menu.addSeparator();
     add("Settings", "settings", () => this.openSettings());
   }
 
   labLink = () => this.services.link();
+
+  async openPaperMap(canvas?: string): Promise<void> {
+    await this.ensureCore();
+    await this.adapter!.host.openSurface({ route: { surface: "papers", ...(canvas ? { id: canvas } : {}) }, placement: "main" });
+  }
 
   async openProfile(id?: string): Promise<void> {
     await this.ensureCore();
@@ -893,10 +931,10 @@ export default class DiscourseGraphsPlugin extends Plugin {
     setting?.openTabById(this.manifest.id);
   }
 
-  async openDialog(surface: "upload" | "welcome" | "zotero"): Promise<void> {
+  async openDialog(surface: "upload" | "welcome" | "zotero" | "grammar"): Promise<void> {
     await this.ensureCore();
     // What comes from Zotero lands on the canvas in front, when there is one.
-    const front = surface === "zotero" ? this.app.workspace.getLeavesOfType(VIEW).map((leaf) => leaf.view as SurfaceView).find((view) => view.route.surface === "canvas" && view.route.id && view.containerEl.offsetParent !== null)?.route.id : undefined;
+    const front = surface === "zotero" ? loadedSurfaces(this.app.workspace).map((leaf) => leaf.view as SurfaceView).find((view) => view.route.surface === "canvas" && view.route.id && view.containerEl.offsetParent !== null)?.route.id : undefined;
     await this.adapter!.host.openSurface({ route: { surface, ...(front ? { id: front } : {}) }, placement: "dialog" });
   }
 
@@ -979,7 +1017,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
         await host.openSurface({ route: { surface: "canvas", id }, placement: "main" });
       },
       closeExamples: async ({ canvases, texts }) => {
-        for (const leaf of workspace.getLeavesOfType(VIEW)) {
+        for (const leaf of loadedSurfaces(workspace)) {
           const { id, surface } = (leaf.view as SurfaceView).route;
           if (surface === "canvas" && id && canvases.includes(id)) leaf.detach();
         }
@@ -1024,7 +1062,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
   async openHolons(id?: string): Promise<void> {
     await this.ensureCore();
     const { workspace } = this.app;
-    const open = workspace.getLeavesOfType(VIEW).find((leaf) => (leaf.view as SurfaceView).route.surface === "holon");
+    const open = loadedSurfaces(workspace).find((leaf) => (leaf.view as SurfaceView).route.surface === "holon");
     const route = { surface: "holon" as const, ...(id ? { id } : {}) };
     if (open && (open.view as SurfaceView).route.id === route.id) {
       await workspace.revealLeaf(open);
@@ -1043,7 +1081,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
     await this.ensureCore();
     const { workspace } = this.app;
     const route = { surface: "pdf" as const, ...(ref ? { id: ref } : {}) };
-    const surfaces = workspace.getLeavesOfType(VIEW);
+    const surfaces = loadedSurfaces(workspace);
     const open = surfaces.find((leaf) => (leaf.view as SurfaceView).route.surface === "pdf");
     if (open) {
       // With no file named, the reader goes back to its list of PDFs, as it would with no reader open.
@@ -1077,7 +1115,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
   }
 
   async openCanvas(): Promise<void> {
-    const open = this.app.workspace.getLeavesOfType(VIEW).find((leaf) => (leaf.view as SurfaceView).route.surface === "canvas");
+    const open = loadedSurfaces(this.app.workspace).find((leaf) => (leaf.view as SurfaceView).route.surface === "canvas");
     if (open) {
       await this.app.workspace.revealLeaf(open);
       return;

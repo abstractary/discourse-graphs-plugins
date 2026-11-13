@@ -1,3 +1,4 @@
+import { ownColor } from "./process.ts";
 import type { CanvasRecord, DgId, DgRecord, FoldedGraph, NodeRecord, RelationTypeRecord } from "@dg/contract/records.ts";
 import type { Profile, ProfileAudience, ProfileCard, ProfileEvent, ProfileStats } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
@@ -33,7 +34,7 @@ const unitOf = (graph: FoldedGraph, id: DgId): ProfileEvent["unit"] | undefined 
   const node = graph.documents.get(id);
   if (node?.kind !== "node") return undefined;
   const type = typeOf(graph, node);
-  return { id, title: node.title, ...(type?.abbreviation ? { abbreviation: type.abbreviation } : {}), ...(type?.base ? { base: type.base } : {}), ...(type?.color ? { color: type.color } : {}) };
+  return { id, title: node.title, ...(type?.abbreviation ? { abbreviation: type.abbreviation } : {}), ...(type?.base ? { base: type.base } : {}), ...(ownColor(type) ? { color: ownColor(type)! } : {}) };
 };
 
 /** What one person did, newest first, each marked with who can see it. */

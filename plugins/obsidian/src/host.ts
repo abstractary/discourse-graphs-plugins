@@ -36,6 +36,7 @@ export const RECORDS = `${ROOT}/records`;
 const ASSETS = `${ROOT}/assets`;
 const UNIT_FOLDERS = "Discourse Units";
 const PAPER_FILES = "Paper files";
+const TABLES = "Discourse tables";
 const ID_KEY = "dg-id";
 // A raw rename on disk arrives as a delete then a create, so a delete waits this
 // long to see whether the same id comes back at a new path.
@@ -396,6 +397,7 @@ export const createObsidianHost = async ({
         appearance: appearanceNow(),
         skin: skinNow(),
         sharedSpace: false,
+        textForEveryUnit: true,
       }),
 
     listText: async ({ after, limit }) => {
@@ -482,6 +484,34 @@ export const createObsidianHost = async ({
       return ok({ where: path });
     },
 
+    openTable: async ({ name, property, value, columns }) => {
+      // An Obsidian base: a table over every note whose property says it is this type.
+      if (!vault.getFolderByPath(TABLES)) await vault.createFolder(TABLES);
+      const path = normalizePath(`${TABLES}/${sanitize(name)}.base`);
+      const quoted = (text: string): string => `"${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+      const yaml = [
+        "filters:",
+        "  and:",
+        `    - 'note[${quoted(property)}] == ${quoted(value).replace(/'/g, "''")}'`,
+        "properties:",
+        "  file.name:",
+        "    displayName: Unit",
+        ...columns.flatMap((column) => [`  note.${column.property}:`, `    displayName: ${quoted(column.label)}`]),
+        "views:",
+        "  - type: table",
+        `    name: ${quoted(name)}`,
+        "    order:",
+        "      - file.name",
+        ...columns.map((column) => `      - note.${column.property}`),
+        "",
+      ].join("\n");
+      const held = vault.getFileByPath(path);
+      // One a person has since arranged is theirs. It is opened as it is.
+      const file = held ?? (await vault.create(path, yaml));
+      await workspace.getLeaf(false).openFile(file);
+      return ok({ where: path });
+    },
+
     fileInFolder: async ({ ref, folder }) => {
       const file = await resolve(ref);
       if (!file) return notFound(ref);
@@ -505,6 +535,49 @@ export const createObsidianHost = async ({
       }
       await fileManager.renameFile(file, path);
       return ok(await summary(file));
+    },
+
+    setLinks: async ({ ref, links, managed, facts = {}, managedFacts = [] }) => {
+      const file = await resolve(ref);
+      if (!file) return notFound(ref);
+      const wanted: Record<string, string[]> = {};
+      for (const [key, refs] of Object.entries(links)) {
+        const texts = new Set<string>();
+        for (const other of refs) {
+          const target = await resolve(other);
+          // The shortest text Obsidian resolves to this file, so two notes of one name in different folders stay apart.
+          if (target && target.path !== file.path) texts.add(`[[${metadataCache.fileToLinktext(target, file.path, true)}]]`);
+        }
+        if (texts.size > 0) wanted[key] = [...texts].sort();
+      }
+      const ours = (held: unknown): held is string[] | undefined | null =>
+        held === undefined || held === null || (Array.isArray(held) && held.every((item) => typeof item === "string" && /^\[\[.*\]\]$/.test(item)));
+      const differs = (held: Record<string, unknown>): string[] =>
+        managed.filter((key) => {
+          const now = held[key];
+          // A property of the same name that a person filled with something else is theirs, and stays.
+          if (!ours(now)) return false;
+          return JSON.stringify(now ?? []) !== JSON.stringify(wanted[key] ?? []);
+        });
+      // Facts are plain text under names only this plugin uses, so they are simply kept in step.
+      const stale = (held: Record<string, unknown>): string[] => managedFacts.filter((key) => (held[key] ?? undefined) !== (facts[key] ?? undefined));
+      const cached = metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+      if (cached && differs(cached).length === 0 && stale(cached).length === 0) return ok({ written: false });
+      let written = false;
+      await fileManager.processFrontMatter(file, (frontmatter) => {
+        const held = frontmatter as Record<string, unknown>;
+        for (const key of differs(held)) {
+          written = true;
+          if (wanted[key]) held[key] = wanted[key];
+          else delete held[key];
+        }
+        for (const key of stale(held)) {
+          written = true;
+          if (facts[key] !== undefined) held[key] = facts[key];
+          else delete held[key];
+        }
+      });
+      return ok({ written });
     },
 
     pinText: async ({ ref, unit }) => {

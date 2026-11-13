@@ -210,7 +210,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   const [past, setPast] = useState<HolonRef[]>([]);
   const [roots, setRoots] = useState<{ ref: HolonRef; title: string; holds: number }[] | null>(null);
   const [view, setView] = useState<HolonView | null>(null);
-  const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"] });
+  const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"], sidePinned: false });
   const [lit, setLit] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
@@ -267,7 +267,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
 
   if (error) return <p className="hv-error" role="alert">{error}</p>;
   if (!roots) return <p className="hv-muted hv-pad">Reading the graph…</p>;
-  if (!roots.length) return <p className="hv-muted hv-pad">No questions yet. A lab's holarchy starts from its questions.</p>;
+  if (!roots.length) return <p className="hv-muted hv-pad">No questions yet. A workspace's overview starts from its questions.</p>;
   if (!view) return <p className="hv-muted hv-pad">Opening…</p>;
 
   return (
@@ -302,7 +302,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
               ))}
             </nav>
             {roots.length > 1 && view.ref.level === "lab" ? (
-              <select className="hv-roots" value={view.ref.id} aria-label="Lab or space" onChange={(e) => go({ level: "lab", id: e.target.value })}>
+              <select className="hv-roots" value={view.ref.id} aria-label="Workspace" onChange={(e) => go({ level: "lab", id: e.target.value })}>
                 {roots.map((r) => <option key={r.ref.id} value={r.ref.id}>{r.title}</option>)}
               </select>
             ) : null}

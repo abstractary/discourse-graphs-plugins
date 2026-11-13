@@ -265,6 +265,8 @@ export type UnitFacts = {
   standing?: WorkStanding;
   /** How the unit was made, so a reader can weigh it. */
   provenance?: HowMade;
+  /** Any unit that arrived from elsewhere: who first made it. The record's own author is whoever brought it in. */
+  creators?: { name: string; orcid?: string }[];
 };
 
 export const EVALUATION_METHODS = [
@@ -297,6 +299,8 @@ export type UnitSource = {
   /** The passage it was read from, word for word. */
   anchor?: string;
   description?: string;
+  /** The wording the model gave it, kept from the first time a person rewords it. */
+  asRead?: string;
   /** A source unit that stands for the paper itself, among the sources the paper cites. */
   own?: true;
 };
@@ -318,9 +322,12 @@ export type NodeTypeRecord = Envelope<"node-type"> &
     titleFormat?: string;
     tag?: string;
     color?: string;
+    /** The text a new unit of this type starts with. `{title}`, `{date}`, `{type}` and `{author}` are filled in. */
     template?: string;
     /** The AT Protocol collection for this type, when its base type isn't enough. */
     lexicon?: string;
+    /** Taken out of use. Units that have it keep it, and it is no longer offered. */
+    removed?: boolean;
   };
 
 export type RelationRule = { source: DgId; target: DgId };
@@ -332,6 +339,8 @@ export type RelationTypeRecord = Envelope<"relation-type"> &
     base?: BaseRelationType;
     rules: RelationRule[];
     color?: string;
+    /** Taken out of use. Relations that have it keep it, and it is no longer offered. */
+    removed?: boolean;
   };
 
 type CanvasBox = {
@@ -466,6 +475,8 @@ export type PaperRecord = Envelope<"paper"> &
     title: string;
     canvas: DgId;
     filename: string;
+    /** The hash of the PDF's bytes when it was read, so the file is known by what it is and not by its name. */
+    fileCid?: string;
     authors: string[];
     doi?: string;
     url?: string;

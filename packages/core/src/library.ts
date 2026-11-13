@@ -4,6 +4,8 @@ import type { LibraryImported, LibraryItemView } from "@dg/contract/surface.ts";
 import { citeAs, identifiersOf } from "./card.ts";
 import type { Context, Handlers } from "./context.ts";
 import { baseOf } from "./process.ts";
+import { keyOfPaper, sameWork } from "./work.ts";
+import { readingOf, refusal } from "./locks.ts";
 
 /**
  * A reference library, read into the graph only when a person asks. Zotero
@@ -49,7 +51,7 @@ export const libraryFeature = (context: Context) => {
     const sources = nodes().filter((node) => base(node) === "source");
     const shares = (schemes: Identifier["scheme"][]) => (node: NodeRecord) =>
       identifiersOf(node).some((held) => schemes.includes(held.scheme) && item.identifiers.some((other) => sameIdentifier(held, other)));
-    const paper = context.documents("paper").find((record) => record.doi && item.identifiers.some((id) => id.scheme === "doi" && id.value === record.doi));
+    const paper = context.documents("paper").find((record) => sameWork(keyOfPaper(record), { identifiers: item.identifiers }) === "identifier");
     return (paper ? sources.find((node) => node.source?.paper === paper.id && node.source.own) : undefined) ?? sources.find(shares(IDENTITY)) ?? sources.find(shares(["zotero"]));
   };
   const markRef = (mark: LibraryAnnotation): Identifier => ({ scheme: "zotero", value: mark.ref });
@@ -83,6 +85,8 @@ export const libraryFeature = (context: Context) => {
       };
     },
     "zotero.import": async ({ ref, annotations = [], canvas }): Promise<LibraryImported> => {
+      const reading = canvas ? readingOf(context.graph(), canvas) : undefined;
+      if (reading) throw refusal(reading);
       const [item, marks] = await Promise.all([services().item({ ref }), annotations.length ? services().annotations({ ref }) : Promise.resolve([])]);
       const stamp = context.stamp();
       const me = context.me();

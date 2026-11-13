@@ -1,0 +1,32 @@
+{
+ "title": "Next generation reservoir computing (Gauthier et al. 2021)",
+ "upload_type": "dataset",
+ "description": "<p>Computer science: The whole chain is on record. The code is public under an MIT license, the version the paper used is tagged v1.0 and archived on Zenodo, and the run's parameters are read from the script itself. A worked example for Discourse Graphs, read from the paper by hand. The paper's own text and figures are not included.</p><p>An RO-Crate: open <code>README.md</code> or <code>ro-crate-preview.html</code> inside the archive to read it. Every finding is also described in the MIRA schema.</p>",
+ "creators": [
+  {
+   "name": "reader, Example"
+  }
+ ],
+ "publication_date": "2026-11-13",
+ "access_right": "open",
+ "license": "cc-by-4.0",
+ "keywords": [
+  "Discourse graph",
+  "Computer science",
+  "RO-Crate",
+  "MIRA"
+ ],
+ "related_identifiers": [
+  {
+   "identifier": "10.1038/s41467-021-25801-2",
+   "relation": "isDerivedFrom",
+   "resource_type": "publication-article"
+  },
+  {
+   "identifier": "https://github.com/quantinfo/ng-rc-paper-code",
+   "relation": "requires",
+   "resource_type": "software"
+  }
+ ],
+ "prereserve_doi": true
+}

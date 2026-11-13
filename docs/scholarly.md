@@ -12,7 +12,8 @@ For how to use these in the app, see the [user guide](guide/README.md). For the 
 | Read the same facts, laid out the same way, in the Context panel | The rows under the unit's title | The same component, at panel size |
 | Find a paper's other identifiers, and whether it was retracted | **Look it up**, under Published work | [`sync/scholarly.ts`](../packages/sync/src/scholarly.ts), [`core/works.ts`](../packages/core/src/works.ts) |
 | Hand a graph to Zenodo, WorkflowHub or a lab notebook | **Export**, then **A research crate** | [`core/rocrate.ts`](../packages/core/src/rocrate.ts), [`core/crate.ts`](../packages/core/src/crate.ts) |
-| Read someone's Workflow Run crate or `.eln` file | **Import this research crate** | [`core/crate.ts`](../packages/core/src/crate.ts) |
+| Read someone's Workflow Run crate, `.eln` file or MIRA evidence bundle | **Import this research crate** | [`core/crate.ts`](../packages/core/src/crate.ts), [`core/mira.ts`](../packages/core/src/mira.ts) |
+| Put a crate on Zenodo as a draft, with a DOI reserved for it | **Export**, **A research crate**, then **Also start a draft on Zenodo** | [`core/zenodo.ts`](../packages/core/src/zenodo.ts), [`sync/zenodo.ts`](../packages/sync/src/zenodo.ts) |
 | Tell a paper's repository that a unit was read from it | **Announce**, under Published work | [`core/notify.ts`](../packages/core/src/notify.ts) |
 | Bring a reference and its highlights in from Zotero | **From Zotero…** in a canvas's menu. See [zotero.md](zotero.md) | [`sync/zotero.ts`](../packages/sync/src/zotero.ts), [`core/library.ts`](../packages/core/src/library.ts) |
 | Serve a stored graph so machines can follow it | The server's landing pages | [`server/signposting.ts`](../server/src/signposting.ts), [`server/notify.ts`](../server/src/notify.ts) |
@@ -80,15 +81,19 @@ Two limits found in use. PubMed's id converter only knows papers that are in Pub
 
 | File | What it is |
 |---|---|
-| `ro-crate-metadata.json` | The description of everything below, as JSON-LD |
-| `ro-crate-preview.html` | The same description as a page a person can read |
+| `ro-crate-metadata.json` | The description of everything below, as JSON-LD. Every unit is described in schema.org's words and in the MIRA schema's, in this one graph |
+| `README.md` | The crate told as findings: what was observed, the figure and files each finding rests on, the run that made them, the protocol it followed and the code it ran |
+| `ro-crate-preview.html` | The metadata as a page a person can read |
 | `discourse-graph.jsonld` | The graph as PROV-O, the same export the process ontology checks |
 | `dg-records.jsonl` | The graph as Discourse Graphs records, so importing the crate restores it exactly |
 | `<canvas>.canvas` | Where each card sits, as a JSON Canvas |
 | `datacite.json` | The crate described in DataCite's schema, for a repository that will mint its DOI |
+| `outputs/*` | Each output's own file, when the base holds it. On unless you untick it |
 | `papers/*.pdf` | The papers, only if you tick the box |
 
 Units that the chosen ones rest on come along: a run's code and outputs, the protocol it followed, the source of a piece of evidence.
+
+**An output's file is checked before it is packed.** The output's record holds a hash of its bytes. If the file in the base no longer hashes to that, it is left out and the export says how many were. A crate never passes changed bytes off as the result on record. Outputs that live inside a notebook cell are described but not yet packed as files.
 
 **How units are described**
 
@@ -102,13 +107,28 @@ Units that the chosen ones rest on come along: a run's code and outputs, the pro
 | Protocol | `HowTo` | Steps as `HowToStep` |
 | Study | `CreativeWork` and `Study` | |
 | Run | `CreateAction` | `instrument` is the code, `object` is what it used and its parameter values, `result` is its outputs, with `agent`, `startTime`, `endTime` and `actionStatus` |
-| Code | `SoftwareSourceCode` | Repository, commit, language, SWHID |
+| Code, one file | `File` and `SoftwareSourceCode` | Its `@id` is the file's own address at the commit that ran. On GitHub that is the raw file, and `url` is the page a person reads |
+| Code, a whole repository | `SoftwareApplication` | Repository as `url`, commit as `version`, or "unknown" when none is on record |
 | Output | `File` when the crate holds or links its bytes, otherwise `ImageObject`, `Dataset` or `MediaObject` | Size, type and content hash |
 | Supports, Opposes, Addresses, Informs | Properties of the same names | Defined in the crate |
 
+**The same units in MIRA's words.** [`core/mira.ts`](../packages/core/src/mira.ts) is the only file that knows the MIRA schema's names. Each unit is also typed as its MIRA class, and carries MIRA's properties beside ours:
+
+| Unit | MIRA class | MIRA properties written |
+|---|---|---|
+| Question, Claim | `mira:Question`, `mira:Claim` | `mira:addresses`, `mira:supports`, `mira:opposes` |
+| Evidence | `mira:Evidence` | `mira:observationStatement` (its title, as a statement of its own), `mira:observationBase`, `mira:is_grounded_in`, `mira:sourceDocument`, `mira:supports`, `mira:opposes` |
+| Run | `mira:Study` | `mira:follows`, `mira:grounds` |
+| Protocol | `mira:Protocol` | |
+| Source, paper | `mira:SourceDocument` | `mira:describesActivity` |
+
+A run is what MIRA calls a study: the activity that grounds evidence. Our Study, which is the design, has no MIRA class and stays a Discourse Graphs term.
+
 Every payload file is listed with its size and SHA-256. Where a property has one value it is written as one value, as RO-Crate asks. The eleven terms that schema.org lacks are each defined in the crate with a name and a sentence, and listed in one `DefinedTermSet`.
 
-**Checked from outside.** A crate exported from the sandbox vault passes every required check of the community [rocrate-validator](https://github.com/crs4/rocrate-validator) (0.13.1) for RO-Crate 1.3. Five recommended checks remain, and all five ask for something the crate won't invent: an ORCID iD and an affiliation for you, and a contact point. Set your ORCID iD and join a lab, and the first two are met. The validator doesn't yet know Process Run Crate 0.6, so that profile is covered by the unit tests alone.
+**Checked from outside, 13 November.** The four MATSUlab bundles re-issued through this export, and the three discipline examples, each pass every required check of the validator for RO-Crate 1.3. Seven recommended checks remain on the re-issued bundles: an ORCID iD, an affiliation and a contact point for the person exporting, the size of scripts that are only linked, and a programming language given as an entity.
+
+Earlier: a crate exported from the sandbox vault passes every required check of the community [rocrate-validator](https://github.com/crs4/rocrate-validator) (0.13.1) for RO-Crate 1.3. Five recommended checks remain, and all five ask for something the crate won't invent: an ORCID iD and an affiliation for you, and a contact point. Set your ORCID iD and join a lab, and the first two are met. The validator doesn't yet know Process Run Crate 0.6, so that profile is covered by the unit tests alone.
 
 **License.** You pick one in the export dialog. With none, the crate says in words that none has been chosen. It never assumes one.
 
@@ -125,7 +145,35 @@ Every payload file is listed with its size and SHA-256. Where a property has one
 | `HowTo` | Protocol | Version and steps |
 | `Question`, `Claim` | Question, Claim | |
 
-They arrive on a new canvas named for the crate, marked Imported. A crate with more than 300 such entities keeps its runs and what they name first, and says how many files it left out.
+| `mira:Evidence`, or our `Evidence` | Evidence | What was observed as its title, the outputs it rests on (pinned by hash when the files could be read), the run that grounds it, the document it was read from |
+| `mira:Study` | Run | Times, who ran it, the protocol it followed, code as its instrument, everything else it used |
+| `mira:Protocol` | Protocol | Its description, as the unit's text |
+| `mira:SourceDocument` | Source | Its link, and the runs it describes |
+| `supports`, `opposes`, `addresses`, `informs`, in our words or MIRA's | Relations | Between units that both came in |
+
+**A MIRA evidence bundle.** A bundle such as the MATSUlab ones keeps its argument in `evidence.jsonld` beside the crate's metadata. Any JSON-LD file beside the metadata that is written in MIRA's context is read as part of the same graph, joined on `@id`. A bare `evidence.jsonld` can also be imported on its own.
+
+**Files are hashed on the way in.** When the crate is a folder in the base, or a zip, each file it names is read and hashed. The output gets that hash and its size, and evidence that rests on it pins the hash. From a folder, the output also remembers where the file sits, so a later export packs it. From a zip, the bytes are hashed but not copied into the base.
+
+**What is packaging, not a result.** In a crate that holds evidence, Markdown and JSON-LD files that nothing rests on (a README, a methods note, the metadata itself) do not become outputs. A named input that has no file, such as raw data held back, becomes an output with no bytes, so the run still says what it used.
+
+They arrive on a new canvas named for the crate, marked Imported. Reading the same crate again, with nothing new in it, opens that canvas instead of making another. A crate with more than 300 such entities keeps its runs and what they name first, and says how many files it left out.
+
+## Sending a crate to Zenodo
+
+**Also start a draft on Zenodo**, in the export dialog, does three things in order:
+
+1. Opens a draft on Zenodo with the crate's title, description, creators, license and related identifiers. Zenodo reserves a DOI for the draft.
+2. Packs the crate with that DOI written in as its own identifier, in the metadata, in `datacite.json` and in the README's citation line. The crate is saved in the base first, so nothing is lost if the upload fails.
+3. Uploads the archive to the draft.
+
+**It never publishes.** Publishing registers the DOI for good and can't be undone, so that step stays with the person, on Zenodo, after they have read the draft. The dialog shows the draft's link and the reserved DOI.
+
+**The token.** The person pastes a Zenodo token once. It is kept where the base keeps secrets (the system keychain in Obsidian) and is never sent back to a panel, which sees only its last four characters. The dialog asks for a token with only the `deposit:write` scope, which can add drafts and can't publish. Zenodo's sandbox has its own token and its own tick box, for trying this out.
+
+**What is sent, and when.** Nothing until the button is pressed. Then the crate's description and the archive go to zenodo.org or sandbox.zenodo.org, with the token.
+
+**Not checked against the real service.** The core is tested against a stand-in that answers as Zenodo's documented API does (read 13 November 2026), and the dialog was driven in Obsidian up to the point of sending. No real token was used, so no draft has been made on Zenodo or its sandbox. With no license chosen, the form names none, and Zenodo asks for one before it will publish.
 
 ## DataCite and Crossref
 
@@ -237,6 +285,58 @@ The server stands alone on purpose. It shares a wire format with the plugins, no
 - Looking every paper up at once. Each lookup is one click, by design, and a batch would be the same call in a loop.
 - Review and endorsement in the interface, which the other four notification patterns need.
 - A DOI for a stored graph, which would make `cite-as` exact.
-- Crossref deposit, and sending a crate to Zenodo from inside the app. Both need an account and a decision about whose it is.
-- Fetching a foreign crate's files. An imported output records where its bytes are and doesn't copy them.
+- Crossref deposit, which needs a member's credentials.
+- Publishing a Zenodo draft from inside the app, updating a draft that already exists, or adding it to a Zenodo community. Each export starts a new draft.
+- Copying a zipped crate's files into the base. They are hashed on import but stay in the zip.
+- Packing outputs that live inside a notebook cell as files of their own.
+- Showing an imported unit's first maker everywhere a person is shown. Since 13 November the unit keeps who first made it, with their ORCID iD (`facts.creators`). The card names them, and an exported crate gives them as `creator` and the importer as `contributor`. Profiles and search still go by the record's own author.
 - Roam. The card rows, the panel and the core features are shared code, so they are there, but none of this was run in Roam, and Roam has no file-menu command for importing a crate.
+
+## Identifier audit, 13 November 2026
+
+The whole path an identifier takes was read end to end: minting, storage, comparison, the three exports, the two imports, the server's pages and both hosts. The verdict: **the unit's own id is sound, and the web around it is not solid yet.** What follows is what was fixed that day and what is open, most serious first.
+
+**Fixed**
+
+| Was | Now |
+|---|---|
+| The Context panel showed the unit's AT address as its identifier. That address includes the unit's type, so retyping a unit changed it, and it resolves nowhere | The panel shows the unit id (`did…#key`), which never changes. A click copies it |
+| DOIs from an extraction were stored as written, and a dozen places compared them with `===`, so `10.1016/J.X` never met `10.1016/j.x` from Zotero | `normalDoi` and `sameDoi` in the contract. Extraction stores the normal form, and every comparison in the core uses `sameDoi` |
+| Asking the registries about a paper changed its units' version hash, so pinned releases looked out of date | The hash leaves out what a registry last said |
+| The server kept the model's own node ids for a paper's graph, so its public `graph.json` couldn't be traced to a unit | It keeps the graph as the base holds it, with unit ids |
+| Pulling AT records a second time dropped new relations to units already held | Units already held count as known |
+| Identifiers could be opened but not copied | Each has a copy button in the Context panel, which copies its `https` address |
+| "Is this the same paper?" was answered in six places, each a little differently, and equal titles always counted | One resolver, [`core/work.ts`](../packages/core/src/work.ts), used by all of them. A shared identifier decides first, then the PDF's bytes, then the file's name. A title joins two things only when neither has an identifier, and two different DOIs are never the same work |
+| A paper knew its PDF only by file name | A reading stores the hash of the PDF it read (`fileCid`), and the reader matches a file to its paper by that hash first. Readings made before 13 November have no hash and still match by name |
+| A Zotero item met an extracted paper only if both wrote the DOI the same way | It meets it through the resolver, on any identifier they share |
+| A crate named a unit only by its AT address, which changes with its type | Each unit also carries its own id as its first `identifier` |
+| An announcement named its unit by the AT address | It names it by the unit's own id. Looking for announcements about a unit asks by both, so earlier ones are still found |
+
+**Open: breaks identity**
+
+1. **Nothing resolves from outside.** The person's DID is computed on the device and never registered, no record is published, and the server has pages for papers only. A unit or a canvas has no address anyone else can open. A unit page needs: a stable HTTP address from its DID and key, HTML and JSON-LD at that address, `cite-as`, `describedby`, `type`, `author`, `collection`, an inbox and a version hash. **Publishing anything is your decision.**
+2. **The `@id` in JSON-LD and in a crate is still the AT address.** The MIRA lexicon and the committed worked example expect it there, so it was left, and the unit's own id was added beside it in a crate. The JSON-LD view has no such field yet. Changing the `@id` itself is a decision about the lexicon.
+3. **One work can still be two Source units.** The resolver now recognises a Zotero Source and a reading's own Source as the same paper everywhere they are compared, but they remain two units, and a relation drawn to one isn't on the other. Merging them, or pointing one at the other, is not built. Reading a paper twice makes two readings on purpose.
+4. **Two different hashes are both called `cid`.** A pin holds one kind; AT conversion computes another. A pin written into an AT record looks like a strong reference and will never match.
+5. **The id written in a note isn't reliably the unit id.** Obsidian keeps a legacy id if one is there. Roam writes `dg-id` and never reads it. A note copied to another vault is cut off from its unit.
+6. **A unit id isn't checked to start with a DID.** The check was tried and backed out, because test fixtures use plain names as authors. It needs the fixtures changed first.
+
+**Open: loses data on a round trip**
+
+7. **To AT records:** paper records aren't converted at all, and a unit loses its paper link, its passage and its identifiers.
+8. **From AT records:** only title, date and type are kept. The author's name becomes the DID.
+9. **JSON-LD** leaves out untyped units, identifiers, authors and the paper link.
+10. **Our own crate** keeps ids but leaves out people (so ORCID iDs), labs, evaluations and comments. Since 13 November a unit's own text is carried, as `text`. The test compares titles, not ids.
+11. **Someone else's crate:** units get new ids. Fixed 13 November: Evidence, MIRA studies and protocols, their provenance links and the arguments between units are now read.
+12. **In a crate, Sources with the same DOI share one entity,** and authors with the same name merge.
+
+**Open: smaller**
+
+13. arXiv versions (`v1`, `v2`) count as different works.
+14. Several written forms aren't recognised: `www.doi.org`, a percent-encoded DOI, `PMID 123`, old PubMed links, an OpenAlex works link. ORCID checksums aren't checked.
+15. Authors are name strings on a card. ORCID iDs and ROR ids arrive with a lookup and are never shown.
+16. A person gets a different DID in each vault.
+
+**What is solid:** the unit id itself; one table of schemes for parsing and links, each opening at the resolver its registry recommends; the registry layer; Zotero's identifiers; the server's DOI handling and linkset; and highlight-made Sources carrying their PDF's hash.
+
+**Tests that don't exist yet:** extract-then-Zotero and Zotero-then-extract; reading a paper twice; id equality after a crate round trip; fields surviving an AT round trip; the id written into notes.

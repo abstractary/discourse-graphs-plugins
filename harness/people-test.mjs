@@ -71,8 +71,25 @@ if (wants("profile")) {
   if (await has("profile", ".profile-unit")) {
     const title = await at("profile", "text", ".profile-unit span:last-child");
     await click("profile", ".profile-unit");
-    check("profile.a-line-leads-to-its-unit", await until(async () => (await at("context", "text", '[data-dg="ctx-title"]')) === title, 8000), title);
+    check("profile.a-line-leads-to-its-unit", await until(async () => (await at("context", "text", '[data-dg="ctx-title"]')) === title, 8000), `${title} / context says: ${await at("context", "text", '[data-dg="ctx-title"]')}`);
   }
+}
+
+if (wants("ink")) {
+  // A freehand line shows it is selected, and who drew it.
+  await s("s.closeAll()");
+  await s(`s.open(${q(board.id)})`);
+  await sleep(2500);
+  await call("canvas.write", { canvas: board.id, upserts: [{ z: 999, item: { type: "stroke", x: 40, y: -160, width: 120, height: 14, path: "M0,4 L120,4 L120,10 L0,10 Z" } }] });
+  await until(() => has("canvas", '[data-dg="ink"]'), 5000);
+  await s(`s.canvasReveal('[data-dg="ink"]')`).catch(() => null);
+  await click("canvas", '[data-dg="ink"]');
+  check("ink.selected-shows-a-frame", await until(() => has("canvas", '[data-dg="ink"][data-selected]'), 4000));
+  const drawnBy = await at("canvas", "text", '[data-dg="ink-credit"]');
+  check("ink.selected-says-who-drew-it", (drawnBy ?? "").length > 2, drawnBy);
+  await shot("09-line-selected");
+  const drawn = (await call("canvas.open", { id: board.id })).items.filter((entry) => entry.item.type === "stroke").map((entry) => entry.id);
+  await call("canvas.write", { canvas: board.id, removes: drawn });
 }
 
 if (wants("notes")) {

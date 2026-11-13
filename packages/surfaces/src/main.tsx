@@ -10,6 +10,8 @@ import "./search/search.css";
 import "./run/run.css";
 import "./profile/profile.css";
 import "./zotero/zotero.css";
+import "./papers/papers.css";
+import "./grammar/grammar.css";
 import { App as Canvas } from "./canvas/App.tsx";
 import { App as Context } from "./context/App.tsx";
 import { App as Library } from "./library/App.tsx";
@@ -22,6 +24,8 @@ import { Find } from "./search/Find.tsx";
 import { App as Run } from "./run/App.tsx";
 import { App as ProfilePage } from "./profile/App.tsx";
 import { App as Zotero } from "./zotero/App.tsx";
+import { App as PaperMap } from "./papers/App.tsx";
+import { App as Grammar } from "./grammar/App.tsx";
 import { PeopleContext, type People } from "./shared/people.tsx";
 import { connect } from "./shared/rpc.ts";
 
@@ -55,6 +59,10 @@ void connect().then((connection) => {
       <Zotero connection={connection} />
     ) : connection.route.surface === "profile" ? (
       <ProfilePage connection={connection} />
+    ) : connection.route.surface === "papers" ? (
+      <PaperMap connection={connection} />
+    ) : connection.route.surface === "grammar" ? (
+      <Grammar connection={connection} />
     ) : (
       <ReactFlowProvider>
         <Canvas connection={connection} />

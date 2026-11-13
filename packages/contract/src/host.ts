@@ -60,6 +60,11 @@ export type HostInfo = {
   skin: Skin;
   /** True when other people write to this space, such as a Roam team graph. */
   sharedSpace: boolean;
+  /**
+   * True where every unit should have a text of its own, so the base's links,
+   * search and graph reach all of them. Core then makes the missing ones.
+   */
+  textForEveryUnit?: boolean;
 };
 
 export type TextScope = "page" | "part";
@@ -119,6 +124,8 @@ export type SurfaceName =
   | "run"
   /** A person's profile. `id` is their DID; none is the viewer's own. */
   | "profile"
+  /** Papers laid out by how far they have been worked into each other. `id` is a canvas to open on. */
+  | "papers"
   | "check";
 export type SurfaceRoute = {
   surface: SurfaceName;
@@ -212,6 +219,29 @@ export type Host = {
     ref: HostRef;
     label?: string;
   }) => Promise<Result<null>>;
+  /**
+   * Shows a text's relations as the base's own links, so its backlinks, graph
+   * and renames follow them. `links` maps a relation's wording to the texts at
+   * the other end. Every name in `managed` that `links` leaves out is cleared.
+   * One-way: the records stay the source, and a hand edit is put back.
+   */
+  setLinks: (args: {
+    ref: HostRef;
+    links: Record<string, HostRef[]>;
+    managed: string[];
+    /**
+     * Plain facts about the unit, such as its type and the day it was made, written beside the links
+     * so the base's own tables can sort and filter by them. Every name in `managedFacts` that `facts`
+     * leaves out is cleared. One-way, like the links.
+     */
+    facts?: Record<string, string>;
+    managedFacts?: string[];
+  }) => Promise<Result<{ written: boolean }>>;
+  /**
+   * A table of every text whose `property` is `value`, made with the base's own table tool and opened.
+   * Absent where the base has none. Making it again opens the one already there.
+   */
+  openTable?: (args: { name: string; property: string; value: string; columns: { property: string; label: string }[] }) => Promise<Result<{ where: string }>>;
   /** What's selected in the base's editor, or null when nothing is. */
   readSelection: () => Promise<Result<{ text: string } | null>>;
   /** Swaps the selection for a link to this text, in the base's own link form. */

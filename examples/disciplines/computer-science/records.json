@@ -1,0 +1,1312 @@
+[
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk222f",
+  "kind": "lab",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "name": "Example reading group",
+  "did": "did:web:lab.examples.records.example",
+  "custodian": "did:web:examples.records.example",
+  "custodianKey": "example-key-not-real",
+  "plc": []
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk232f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Question",
+  "base": "question",
+  "abbreviation": "QUE",
+  "titleFormat": "QUE - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk242f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Claim",
+  "base": "claim",
+  "abbreviation": "CLM",
+  "titleFormat": "CLM - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk252f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Evidence",
+  "base": "evidence",
+  "abbreviation": "EVD",
+  "titleFormat": "EVD - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk262f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Source",
+  "base": "source",
+  "abbreviation": "SRC",
+  "titleFormat": "@{content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk272f",
+  "kind": "relation-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Supports",
+  "complement": "Supported by",
+  "base": "supports",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk252f",
+    "target": "did:web:examples.records.example#3n25ohzpk242f"
+   },
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk242f",
+    "target": "did:web:examples.records.example#3n25ohzpk242f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2a2f",
+  "kind": "relation-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Opposes",
+  "complement": "Opposed by",
+  "base": "opposes",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk252f",
+    "target": "did:web:examples.records.example#3n25ohzpk242f"
+   },
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk242f",
+    "target": "did:web:examples.records.example#3n25ohzpk242f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2b2f",
+  "kind": "relation-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Addresses",
+  "complement": "Addressed by",
+  "base": "addresses",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk242f",
+    "target": "did:web:examples.records.example#3n25ohzpk232f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2c2f",
+  "kind": "relation-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Informs",
+  "complement": "Informed by",
+  "base": "informs",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk252f",
+    "target": "did:web:examples.records.example#3n25ohzpk232f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2d2f",
+  "kind": "relation-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Derived from",
+  "complement": "Has derivation",
+  "base": "derivedFrom",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk252f",
+    "target": "did:web:examples.records.example#3n25ohzpk262f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2e2f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Protocol",
+  "base": "protocol",
+  "abbreviation": "PRO",
+  "titleFormat": "PRO - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2f2f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Experiment",
+  "base": "study",
+  "abbreviation": "EXP",
+  "titleFormat": "EXP - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2g2f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Run",
+  "base": "run",
+  "abbreviation": "RUN",
+  "titleFormat": "RUN - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2h2f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Code",
+  "base": "code",
+  "abbreviation": "COD",
+  "titleFormat": "COD - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2i2f",
+  "kind": "node-type",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Output",
+  "base": "output",
+  "abbreviation": "OUT",
+  "titleFormat": "OUT - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2j2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Can a reservoir computer forecast chaotic dynamics without a random recurrent network?",
+  "type": "did:web:examples.records.example#3n25ohzpk232f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2k2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "LorenzConstLinQuadraticNVARtimedelayNRMSE-RK23.py: Lorenz63 forecast with its error",
+  "type": "did:web:examples.records.example#3n25ohzpk2h2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "repo": "https://github.com/quantinfo/ng-rc-paper-code",
+   "commit": "410de8c3f4a902ab3ca70d023207cdde23f64daf",
+   "path": "LorenzConstLinQuadraticNVARtimedelayNRMSE-RK23.py",
+   "sourceCid": "bafkreiaetogffwwfurvxkov437wo55xhoc3qd4l5ntucl3c4gtlt6kf4xa",
+   "language": "python",
+   "license": "MIT",
+   "sameAs": [
+    "https://doi.org/10.5281/zenodo.5218954"
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2l2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "NG-RC forecasting by nonlinear vector autoregression",
+  "type": "did:web:examples.records.example#3n25ohzpk2e2f",
+  "prov": {
+   "implementedBy": [
+    "did:web:examples.records.example#3n25ohzpk2k2f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "steps": [
+    "Integrate the system's equations to make training and test data",
+    "Build the features: a constant, the last k states, and their quadratic products",
+    "Fit the output weights by ridge regression on the training data",
+    "Forecast one step at a time, feeding each prediction back in",
+    "Score the forecast by normalised root-mean-square error over one Lyapunov time"
+   ],
+   "parameters": [
+    {
+     "name": "k"
+    },
+    {
+     "name": "s"
+    },
+    {
+     "name": "dt"
+    },
+    {
+     "name": "ridge parameter"
+    },
+    {
+     "name": "training time"
+    }
+   ],
+   "materials": [
+    "Python",
+    "NumPy",
+    "SciPy",
+    "matplotlib"
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2m2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Benchmarking a next generation reservoir computer on chaotic systems",
+  "type": "did:web:examples.records.example#3n25ohzpk2f2f",
+  "prov": {
+   "question": "did:web:examples.records.example#3n25ohzpk2j2f",
+   "protocols": [
+    "did:web:examples.records.example#3n25ohzpk2l2f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "design": "computational",
+   "hypothesis": "A nonlinear vector autoregression does what a reservoir computer does, with less training data.",
+   "conditions": [
+    "Forecasting Lorenz63",
+    "Forecasting a double-scroll electronic circuit",
+    "Inferring an unseen Lorenz63 variable"
+   ],
+   "variables": [
+    {
+     "name": "Normalised root-mean-square error over one Lyapunov time",
+     "role": "dependent"
+    }
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2n2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Lorenz63 forecast, trained on 400 points",
+  "type": "did:web:examples.records.example#3n25ohzpk2g2f",
+  "prov": {
+   "partOf": "did:web:examples.records.example#3n25ohzpk2m2f",
+   "follows": {
+    "uri": "did:web:examples.records.example#3n25ohzpk2l2f",
+    "cid": "bafkreicyssmitesbcbfxmiedzkllxdnrabwrj3aruplq5cccp4x4j7nin4"
+   },
+   "instrument": [
+    {
+     "uri": "did:web:examples.records.example#3n25ohzpk2k2f",
+     "cid": "bafkreiaetogffwwfurvxkov437wo55xhoc3qd4l5ntucl3c4gtlt6kf4xa"
+    }
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "status": "completed",
+   "parameterValues": {
+    "k": 2,
+    "s": 1,
+    "dt": 0.025,
+    "ridge parameter": 0.0000025,
+    "training time": 10,
+    "training points": 400,
+    "trials averaged": 10
+   },
+   "environment": {
+    "language": "Python"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2o2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Next generation reservoir computing",
+  "type": "did:web:examples.records.example#3n25ohzpk262f",
+  "prov": {
+   "describesActivity": [
+    "did:web:examples.records.example#3n25ohzpk2n2f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "doi": "10.1038/s41467-021-25801-2",
+   "authors": [
+    "Daniel J. Gauthier",
+    "Erik Bollt",
+    "Aaron Griffith",
+    "Wendson A. S. Barbosa"
+   ],
+   "published": "2021-09-21",
+   "venue": "Nature Communications",
+   "identifiers": [
+    {
+     "scheme": "pmid",
+     "value": "34548491"
+    },
+    {
+     "scheme": "pmcid",
+     "value": "PMC8455577"
+    }
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2p2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Figure 2: forecasting a dynamical system with the NG-RC",
+  "type": "did:web:examples.records.example#3n25ohzpk2i2f",
+  "prov": {
+   "generatedBy": "did:web:examples.records.example#3n25ohzpk2n2f"
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "outputKind": "figure",
+   "uri": "https://www.nature.com/articles/s41467-021-25801-2/figures/2",
+   "caption": "True and predicted Lorenz63 strange attractors, with the training and forecasting phases."
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2q2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Nonlinear vector autoregression excels at reservoir computing benchmark tasks, with shorter training data sets and less training time",
+  "type": "did:web:examples.records.example#3n25ohzpk242f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2r2f",
+  "kind": "node",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Forecasting Lorenz63 after training on 400 points, the NG-RC's error over one Lyapunov time was 2.40 ± 0.53 × 10⁻³",
+  "type": "did:web:examples.records.example#3n25ohzpk252f",
+  "prov": {
+   "observationBase": [
+    {
+     "uri": "did:web:examples.records.example#3n25ohzpk2p2f"
+    }
+   ],
+   "isGroundedIn": "did:web:examples.records.example#3n25ohzpk2n2f",
+   "sourceDocument": "did:web:examples.records.example#3n25ohzpk2o2f"
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "anchor": {
+    "exact": "nonlinear vector autoregression excels at reservoir computing benchmark tasks and requires even shorter training data sets and training time",
+    "source": "did:web:examples.records.example#3n25ohzpk2o2f"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2s2f",
+  "kind": "snapshot",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "node": "did:web:examples.records.example#3n25ohzpk2r2f",
+  "body": "From the caption of Figure 2: the normalised root-mean-square error over one Lyapunov time is 1.06 ± 0.01 × 10⁻⁴ during training and 2.40 ± 0.53 × 10⁻³ during forecasting, where the uncertainty is the standard error of the mean. The training phase uses 400 data points for each variable.",
+  "format": "markdown"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2t2f",
+  "kind": "relation",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk2b2f",
+  "source": "did:web:examples.records.example#3n25ohzpk2q2f",
+  "target": "did:web:examples.records.example#3n25ohzpk2j2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2u2f",
+  "kind": "relation",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk272f",
+  "source": "did:web:examples.records.example#3n25ohzpk2r2f",
+  "target": "did:web:examples.records.example#3n25ohzpk2q2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "kind": "canvas",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Next generation reservoir computing (Gauthier et al. 2021)"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2w2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "Can a reservoir computer forecast chaotic dynamics without a random recurrent network?",
+   "x": 0,
+   "y": 0,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2j2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk2w2f"
+  },
+  "z": 1
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2x2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "Nonlinear vector autoregression excels at reservoir computing benchmark tasks, with shorter training data sets and less training time",
+   "x": 340,
+   "y": 0,
+   "width": 280,
+   "height": 210,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2q2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk2x2f"
+  },
+  "z": 2
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2y2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "Forecasting Lorenz63 after training on 400 points, the NG-RC's error over one Lyapunov time was 2.40 ± 0.53 × 10⁻³",
+   "x": 680,
+   "y": 0,
+   "width": 280,
+   "height": 210,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2r2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk2y2f"
+  },
+  "z": 3
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk2z2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "Figure 2: forecasting a dynamical system with the NG-RC",
+   "x": 1020,
+   "y": 0,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2p2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk2z2f"
+  },
+  "z": 4
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk322f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "Lorenz63 forecast, trained on 400 points",
+   "x": 1360,
+   "y": 0,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2n2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk322f"
+  },
+  "z": 5
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk332f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "NG-RC forecasting by nonlinear vector autoregression",
+   "x": 1700,
+   "y": 0,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2l2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk332f"
+  },
+  "z": 6
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk342f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "LorenzConstLinQuadraticNVARtimedelayNRMSE-RK23.py: Lorenz63 forecast with its error",
+   "x": 1700,
+   "y": 210,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2k2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk342f"
+  },
+  "z": 7
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk352f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "Benchmarking a next generation reservoir computer on chaotic systems",
+   "x": 2040,
+   "y": 0,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2m2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk352f"
+  },
+  "z": 8
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk362f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "type": "text",
+   "text": "Next generation reservoir computing",
+   "x": 2040,
+   "y": 210,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk2o2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk362f"
+  },
+  "z": 9
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk372f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk2x2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk2w2f",
+   "toEnd": "arrow",
+   "label": "Addresses",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk2t2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk372f"
+  },
+  "z": 10
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3a2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk2y2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk2x2f",
+   "toEnd": "arrow",
+   "label": "Supports",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk2u2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk3a2f"
+  },
+  "z": 11
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3b2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk2y2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk2z2f",
+   "toEnd": "arrow",
+   "label": "Observation base",
+   "id": "did:web:examples.records.example#3n25ohzpk3b2f"
+  },
+  "z": 12
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3c2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk2y2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk322f",
+   "toEnd": "arrow",
+   "label": "Grounded in",
+   "id": "did:web:examples.records.example#3n25ohzpk3c2f"
+  },
+  "z": 13
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3d2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk2z2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk322f",
+   "toEnd": "arrow",
+   "label": "Generated by",
+   "id": "did:web:examples.records.example#3n25ohzpk3d2f"
+  },
+  "z": 14
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3e2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk322f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk332f",
+   "toEnd": "arrow",
+   "label": "Follows",
+   "id": "did:web:examples.records.example#3n25ohzpk3e2f"
+  },
+  "z": 15
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3f2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk322f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk342f",
+   "toEnd": "arrow",
+   "label": "Instrument",
+   "id": "did:web:examples.records.example#3n25ohzpk3f2f"
+  },
+  "z": 16
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk3g2f",
+  "kind": "canvas-item",
+  "space": "example-computer-science",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk2v2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk322f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk352f",
+   "toEnd": "arrow",
+   "label": "Part of",
+   "id": "did:web:examples.records.example#3n25ohzpk3g2f"
+  },
+  "z": 17
+ }
+]

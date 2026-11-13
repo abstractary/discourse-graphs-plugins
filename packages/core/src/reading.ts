@@ -1,3 +1,4 @@
+import { sameDoi } from "@dg/contract/scholarly.ts";
 import {
   createCanvasItem,
   createNode,
@@ -16,6 +17,8 @@ import type { FileSummary } from "@dg/contract/host.ts";
 import type { HolonLevel, PdfDocument, PdfMark, Provenance, UnitsAvailable, UnitsSegment } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { cidOfBytes } from "./process.ts";
+import { mustBeOfPaper, readingOf, refusal } from "./locks.ts";
+import { paperOfWork, standsFor } from "./work.ts";
 
 /**
  * Reading PDFs into the graph, and the units waiting to go on a canvas.
@@ -63,7 +66,12 @@ export const readingFeature = (context: Context) => {
   const papers = (): PaperRecord[] => context.documents("paper");
   const baseOf = (node: NodeRecord) => context.typeOf(node.type)?.base;
 
-  const paperOf = (file: FileSummary): PaperRecord | undefined => papers().find((paper) => paper.filename === file.name);
+  /** The paper a file is: by its bytes when both are known, otherwise by its name. The newest reading wins. */
+  const paperOf = (file: FileSummary): PaperRecord | undefined => {
+    const cid = cids.get(file.ref);
+    const all = [...papers()].sort((a, b) => b.at.localeCompare(a.at));
+    return (cid ? all.find((paper) => paper.fileCid === cid) : undefined) ?? all.find((paper) => paper.filename === file.name);
+  };
   /** The unit that stands for this file: the paper's own source, or one made from a highlight. */
   const sourceOf = (file: FileSummary, cid?: string): NodeRecord | undefined => {
     const paper = paperOf(file);
@@ -72,10 +80,9 @@ export const readingFeature = (context: Context) => {
       const sources = nodes().filter((node) => baseOf(node) === "source");
       const own =
         sources.find((node) => node.source?.paper === paper.id && node.source.own) ??
-        sources.find((node) => node.source?.paper === paper.id && paper.doi !== undefined && node.facts?.doi === paper.doi) ??
+        sources.find((node) => node.source?.paper === paper.id && sameDoi(node.facts?.doi, paper.doi)) ??
         sources.find((node) => node.source?.paper === paper.id) ??
-        (paper.doi ? sources.find((node) => node.facts?.doi === paper.doi) : undefined) ??
-        sources.find((node) => node.title === paper.title);
+        sources.find((node) => !node.source && standsFor(node, paper));
       if (own) return own;
     }
     return nodes().find((node) => baseOf(node) === "source" && (node.facts?.uri === file.ref || (cid !== undefined && node.facts?.cid === cid)));
@@ -185,7 +192,7 @@ export const readingFeature = (context: Context) => {
 
   const handlers: Pick<
     Handlers,
-    "pdf.list" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "units.available" | "canvas.placeUnits" | "units.put"
+    "pdf.list" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "pdf.follow" | "canvas.pdf" | "units.available" | "canvas.placeUnits" | "units.put"
   > = {
     "pdf.list": async () => {
       const all = (await files(true)).map(documentOf);
@@ -251,6 +258,9 @@ export const readingFeature = (context: Context) => {
       let target = canvas;
       if (newCanvas?.trim()) target = (await context.makeCanvas(newCanvas.trim())).id;
       if (target && !context.canvasOf(target)) throw new Error("That canvas is gone.");
+      // A PDF canvas takes a highlight only from its own paper's file.
+      const reading = target ? readingOf(context.graph(), target) : undefined;
+      if (reading && paperOf(file)?.id !== reading.id) throw refusal(reading);
       await context.put(fresh);
       if (target) {
         const height = cardHeight(name);
@@ -270,10 +280,17 @@ export const readingFeature = (context: Context) => {
       return null;
     },
 
+    "canvas.pdf": async ({ id }) => (await canvasPdf(id)) ?? null,
+
     "pdf.show": async ({ ref, unit }) => {
       if (ref && unit) pendingReveal = { ref, unit };
       value(await context.host.openSurface({ route: { surface: "pdf", ...(ref ? { id: ref } : {}) }, placement: "main" }));
       if (ref && unit) context.send({ event: "pdf-reveal", ref, unit });
+      return null;
+    },
+
+    "pdf.follow": async ({ unit }) => {
+      context.send({ event: "pdf-follow", unit });
       return null;
     },
 
@@ -342,6 +359,7 @@ export const readingFeature = (context: Context) => {
 
     "canvas.placeUnits": async ({ canvas, places }) => {
       if (!context.canvasOf(canvas)) throw new Error("That canvas is gone.");
+      mustBeOfPaper(context.graph(), canvas, places.map((place) => place.node));
       const cards = cardsOn(canvas);
       const stamp = context.stamp();
       const fresh: DgRecord[] = [];
@@ -391,6 +409,7 @@ export const readingFeature = (context: Context) => {
     // A column beside what's there. An open canvas then brings them to where the person is looking.
     "units.put": async ({ canvas, nodes: ids }) => {
       if (!context.canvasOf(canvas)) throw new Error("That canvas is gone.");
+      mustBeOfPaper(context.graph(), canvas, ids);
       const cards = cardsOn(canvas);
       const wanted = [...new Set(ids)].filter((id) => context.nodeOf(id) && !context.nodeOf(id)!.removed);
       const already = wanted.filter((id) => cards.has(id));
@@ -428,11 +447,37 @@ export const readingFeature = (context: Context) => {
     const paper = paperId
       ? papers().find((entry) => entry.id === paperId)
       : source
-        ? papers().find((entry) => (entry.doi && entry.doi === source.facts?.doi) || entry.title === source.title)
+        ? paperOfWork(papers(), source)
         : undefined;
     const file = paper ? listing.find((entry) => entry.name === paper.filename) : undefined;
     return file ? { ref: file.ref, name: file.name, ...at } : undefined;
   };
 
-  return { handlers, pdfOf };
+  /** The PDF most of a canvas's cards were read from: its own paper's for a PDF canvas. */
+  async function canvasPdf(canvas: DgId): Promise<{ ref: string; name: string } | undefined> {
+    const record = context.canvasOf(canvas);
+    const counts = new Map<DgId, number>();
+    if (record?.paper) counts.set(record.paper, Number.MAX_SAFE_INTEGER);
+    const highlighted = new Map<string, number>();
+    for (const unit of cardsOn(canvas).keys()) {
+      const node = context.nodeOf(unit);
+      if (node?.source?.paper) counts.set(node.source.paper, (counts.get(node.source.paper) ?? 0) + 1);
+      const source = node?.prov?.sourceDocument ? context.nodeOf(node.prov.sourceDocument) : undefined;
+      if (source?.facts?.uri) highlighted.set(source.facts.uri, (highlighted.get(source.facts.uri) ?? 0) + 1);
+    }
+    const listing = await files();
+    const byPaper = [...counts].sort((a, b) => b[1] - a[1]).flatMap(([id, count]) => {
+      const paper = papers().find((entry) => entry.id === id);
+      const file = paper ? listing.find((entry) => entry.name === paper.filename) : undefined;
+      return file ? [{ ref: file.ref, name: file.name, count }] : [];
+    });
+    const byHighlight = [...highlighted].sort((a, b) => b[1] - a[1]).flatMap(([ref, count]) => {
+      const file = listing.find((entry) => entry.ref === ref);
+      return file ? [{ ref, name: file.name, count }] : [];
+    });
+    const best = [...byPaper, ...byHighlight].sort((a, b) => b.count - a.count)[0];
+    return best ? { ref: best.ref, name: best.name } : undefined;
+  }
+
+  return { handlers, pdfOf, canvasPdf };
 };

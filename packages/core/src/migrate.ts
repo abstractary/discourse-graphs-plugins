@@ -383,8 +383,10 @@ export const planAtImport = ({
     const collection = uri.replace("at://", "").split("/")[1] ?? "";
     if (collection === "science.mira.relation" || !collection.startsWith("science.mira.")) continue;
     const id = unitIdOf(uri);
-    if (graph.documents.has(id) || known.has(id)) continue;
+    // A unit already here still counts as known, so a later pull keeps new relations to it.
+    if (known.has(id)) continue;
     known.add(id);
+    if (graph.documents.has(id)) continue;
     const { did } = splitUnitId(id);
     const type = typeFor(collection);
     const raw = String(value.title ?? "");

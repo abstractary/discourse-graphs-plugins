@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import type { NodeView, NotifyDraft, WorkLookup } from "@dg/contract/surface.ts";
 import type { NotificationSummary, WorkService } from "@dg/contract/scholarly.ts";
@@ -14,6 +15,16 @@ const day = (at: string): string => new Date(at).toLocaleDateString(undefined, {
  * asked only when a person asks. Its identifiers sit with the unit's other
  * facts at the head of the panel; here is how the work stands.
  */
+/** What each open-access colour means, in the Unpaywall convention. */
+const OA_MEANS: Record<string, string> = {
+  gold: "Open access: gold. Free to read at the publisher, in an open-access journal",
+  green: "Open access: green. A free copy is in a repository",
+  hybrid: "Open access: hybrid. Free to read at the publisher, in a subscription journal",
+  bronze: "Open access: bronze. Free to read at the publisher, with no open licence",
+  diamond: "Open access: diamond. Free to read and to publish",
+  closed: "Not open access. No free copy was found",
+};
+
 export const Work = ({ view, call, report }: { view: NodeView; call: Connection["call"]; report: (error: Error) => void }) => {
   const { work } = view.provenance;
   const [busy, setBusy] = useState(false);
@@ -39,13 +50,28 @@ export const Work = ({ view, call, report }: { view: NodeView; call: Connection[
 
   const standing = work?.standing;
   const failed = last?.work.services.filter(({ ok }) => !ok) ?? [];
-  const facts = standing
+  // Standing as marks a person reads at a glance. Each keeps its words in a tooltip and for screen readers,
+  // and the open-access colour is never the only signal: the words "Open access" stay beside it.
+  const oa = standing?.openAccess?.status?.toLowerCase();
+  const marks: ReactNode[] = standing
     ? [
-        standing.openAccess?.status ? `Open access (${standing.openAccess.status})` : null,
-        standing.citedBy !== undefined ? `Cited ${standing.citedBy.toLocaleString()} ${standing.citedBy === 1 ? "time" : "times"}` : null,
-        standing.agency && standing.agency !== "other" ? `DOI registered with ${SERVICE_NAMES[standing.agency]}` : null,
-        standing.inbox ? "Takes announcements" : null,
-      ].filter((item): item is string => item !== null)
+        oa ? (
+          <span key="oa" className="ctx-mark" data-dg="ctx-open-access" data-oa={oa} title={OA_MEANS[oa] ?? `Open access: ${oa}`}>
+            <span className="ctx-dot" aria-hidden="true" />
+            {oa === "closed" ? "Not open access" : "Open access"}
+            <span className="sr-only">, {oa}</span>
+          </span>
+        ) : null,
+        standing.citedBy !== undefined ? (
+          <span key="cited" className="ctx-mark" data-dg="ctx-cited" title={`Cited by ${standing.citedBy.toLocaleString()} ${standing.citedBy === 1 ? "work" : "works"}, as the registries count`}>
+            <svg className="ctx-mark-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 9.5c0-3 1.4-5 4-6v1.8C5.9 5.9 5.3 6.7 5.2 7.8H7V12H3V9.5Zm6 0c0-3 1.4-5 4-6v1.8c-1.1.6-1.7 1.4-1.8 2.5H13V12H9V9.5Z" fill="currentColor" /></svg>
+            <span className="ctx-count">{standing.citedBy.toLocaleString()}</span>
+            <span className="sr-only"> citations</span>
+          </span>
+        ) : null,
+        standing.agency && standing.agency !== "other" ? <span key="agency" className="ctx-mark" title={`Its DOI is registered with ${SERVICE_NAMES[standing.agency]}`}>DOI at {SERVICE_NAMES[standing.agency]}</span> : null,
+        standing.inbox ? <span key="inbox" className="ctx-mark" title="Its page has an inbox, so a unit can be announced to it">Takes announcements</span> : null,
+      ].filter((item) => item !== null)
     : [];
 
   return (
@@ -54,7 +80,6 @@ export const Work = ({ view, call, report }: { view: NodeView; call: Connection[
       {work ? (
         <>
           {work.venue || work.published ? <p className="ctx-line" data-dg="ctx-work-venue">{[work.venue, work.published].filter(Boolean).join(", ")}</p> : null}
-          {standing?.retracted ? <p className="ctx-flag" role="alert" data-dg="ctx-retracted">Retracted. A registry lists this work as retracted, so weigh what was read from it.</p> : null}
           {(standing?.updates ?? []).filter(({ type }) => type !== "retraction").map((update) => (
             <p key={`${update.type}${update.doi ?? ""}`} className="ctx-line">
               {update.type === "correction" ? "Corrected" : update.type === "concern" ? "Has an expression of concern" : update.type === "version" ? "Has another version" : "Updated"}
@@ -67,7 +92,7 @@ export const Work = ({ view, call, report }: { view: NodeView; call: Connection[
               ) : null}
             </p>
           ))}
-          {facts.length ? <p className="ctx-line" data-dg="ctx-work-facts">{facts.join(". ")}</p> : null}
+          {marks.length ? <p className="ctx-marks" data-dg="ctx-work-facts">{marks}</p> : null}
           <p className="ctx-line" data-dg="ctx-work-checked">
             {standing
               ? `Checked with ${list(standing.services.map((name) => (name === "signposting" ? "its own page" : SERVICE_NAMES[name])))} on ${day(standing.checkedAt)}. `

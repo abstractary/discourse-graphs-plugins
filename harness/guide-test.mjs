@@ -92,16 +92,16 @@ await click("canvas", '[data-dg="canvas-menu"]');
 const pictures = await until(async () => ((await at("canvas", "count", ".canvas-menu .thumb rect")) ?? 0) > 5 ? at("canvas", "count", ".canvas-menu svg.thumb") : null);
 check("picker.shows-each-canvas-as-its-graph", pictures >= 2, `${pictures} pictures`);
 const kind = await at("canvas", "text", `[data-dg="canvas-${TITLE}"] .repo-kind`);
-check("picker.says-workspace-or-pdf", /Workspace/.test(kind ?? ""), kind);
+check("picker.says-canvas-or-pdf-canvas", /^\s*Canvas/.test(kind ?? ""), kind);
 await shot("canvas-picker");
 await key("Escape", 27);
 
 // ---------------------------------------------------------------- The Library: scopes and kinds
 await s("s.openLibrary()");
 const row = await until(() => at("canvases", "text", `[data-dg="repo-kind-${TITLE}"]`));
-check("library.kind", /Workspace/.test(row ?? ""), row);
+check("library.kind", /^\s*Canvas/.test(row ?? ""), row);
 const pdfRow = await at("canvases", "text", '[data-kind="paper"] .repo-kind');
-check("library.pdf-kind", /From a PDF/.test(pdfRow ?? ""), pdfRow);
+check("library.pdf-kind", /PDF canvas/.test(pdfRow ?? ""), pdfRow);
 const everyone = Number(((await at("canvases", "text", '[data-dg="scope-everyone"] span')) ?? "0").trim());
 await click("canvases", '[data-dg="scope-mine"]');
 const mine = await until(async () => ((await at("canvases", "count", ".repo-list > li")) ?? 99) < everyone ? at("canvases", "count", ".repo-list > li") : null, 6000);

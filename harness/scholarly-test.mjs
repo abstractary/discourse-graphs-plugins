@@ -88,7 +88,7 @@ if (wants("panel")) {
   await pick(EVIDENCE);
   await until(async () => (await at("context", "text", '[data-dg="ctx-title"]')) === EVIDENCE);
   const labels = await at("context", "text", '.ctx-head .facts[data-density="panel"]');
-  check("panel.heads-with-all-five-facts", (await at("context", "count", '.ctx-head .facts[data-density="panel"] .fact')) === 5, q(labels));
+  check("panel.heads-with-five-facts-and-the-unit-id", (await at("context", "count", '.ctx-head .facts[data-density="panel"] .fact')) === 6 && /Unit IDdid:plc:/.test(labels ?? "") && /Made.*Dana Lee/.test(labels ?? ""), q(labels));
   const cardLabel = await s(`s.style(${q(`[data-dg="facts-${EVIDENCE}"] dt`)}, "color")`).catch(() => null);
   const panelLabel = await s(`s.ctx.style(".ctx-head .facts dt", "color")`).catch(() => null);
   check("panel.labels-weigh-the-same-as-the-card", !cardLabel || cardLabel === panelLabel, `${cardLabel} / ${panelLabel}`);

@@ -312,7 +312,9 @@ test("a canvas exports as an RO-Crate that says everything a crate reader expect
   assert.equal(pmid?.["@type"], "PropertyValue");
 
   // Claims and questions are schema.org's own; what schema.org lacks is defined in the crate.
-  const claim = graph.find((entity) => entity["@type"] === "Claim")!;
+  const claim = graph.find((entity) => [entity["@type"]].flat().includes("Claim"))!;
+  // The same claim is also MIRA's, in the one graph.
+  assert.deepEqual(claim["@type"], ["Claim", "mira:Claim"]);
   assert.ok(claim && (claim.isBasedOn as JsonObject)["@id"] === article["@id"]);
   const extra = context[1] as Record<string, string>;
   for (const [term, iri] of Object.entries(extra)) assert.equal((byId.get(iri) as JsonObject | undefined)?.name !== undefined, true, `${term} is defined`);

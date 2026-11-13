@@ -158,6 +158,14 @@ export type Services = {
     /** Every annotation on every file of one item, in reading order. */
     annotations: (args: { ref: string }) => Promise<LibraryAnnotation[]>;
   };
+  /**
+   * A repository draft for a crate, on Zenodo. Only ever called on a person's own click. `open` starts a
+   * draft with its metadata and reserves a DOI; `upload` adds one file to it. Neither publishes.
+   */
+  deposit: {
+    open: (args: { server: string; token: string; metadata: Record<string, unknown> }) => Promise<{ id: string; bucket: string; page: string; doi?: string }>;
+    upload: (args: { bucket: string; token: string; name: string; bytes: Uint8Array }) => Promise<{ checksum?: string; size?: number }>;
+  };
   /** The notifications a server's inbox holds, newest first. `about` narrows to one work or unit by its IRI. */
   notifications: (args: { server: string; about?: string }) => Promise<NotificationSummary[]>;
 };

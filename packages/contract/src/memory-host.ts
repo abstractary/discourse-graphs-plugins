@@ -21,7 +21,7 @@ import {
 } from "./host.ts";
 import type { ConformanceDriver, ConformanceSetup } from "./conformance.ts";
 
-type StoredText = Omit<TextUnit, "ref">;
+type StoredText = Omit<TextUnit, "ref"> & { properties?: Record<string, HostRef[] | string> };
 
 /** The durable part. Sharing one store between hosts simulates a reload. */
 export type MemoryStore = {
@@ -75,9 +75,11 @@ const pageOf = <T>(
 export const createMemoryHost = ({
   store,
   host = "memory",
+  textForEveryUnit = false,
 }: {
   store: MemoryStore;
   host?: string;
+  textForEveryUnit?: boolean;
 }): { host: Host; emit: (event: HostEvent) => void } => {
   const listeners = new Set<HostListener>();
   const emit = (event: HostEvent): void => {
@@ -94,6 +96,7 @@ export const createMemoryHost = ({
         contract: CONTRACT_VERSION,
         host,
         adapterVersion: "0.0.0",
+        ...(textForEveryUnit ? { textForEveryUnit } : {}),
         space: { id: store.spaceId, name: "Memory" },
         person: { id: "person-1", name: "Test Person" },
         appearance: "light",
@@ -232,6 +235,21 @@ export const createMemoryHost = ({
       page.body += ` [[${label ?? target.title}]]`;
       page.links.push(ref);
       return ok(null);
+    },
+    setLinks: async ({ ref, links, managed, facts = {}, managedFacts = [] }) => {
+      const text = readRef(ref);
+      if (!text) return notFound(ref);
+      const before = JSON.stringify(text.properties ?? {});
+      const next: Record<string, HostRef[] | string> = { ...(text.properties ?? {}) };
+      for (const key of [...managed, ...managedFacts]) delete next[key];
+      for (const [key, value] of Object.entries(facts)) next[key] = value;
+      for (const [key, refs] of Object.entries(links)) {
+        const live = refs.filter((other) => other !== ref && store.texts.has(other));
+        if (live.length) next[key] = live;
+      }
+      if (JSON.stringify(next) === before) return ok({ written: false });
+      text.properties = next;
+      return ok({ written: true });
     },
     readSelection: async () => ok(store.selection ? { text: store.selection.text } : null),
     replaceSelection: async ({ ref }) => {

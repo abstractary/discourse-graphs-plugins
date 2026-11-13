@@ -132,7 +132,7 @@ export const Boundary = ({
               {(["private", "lab", "published"] as const).map((level) => (
                 <div key={level} data-level={level}>
                   <strong>{privacy.counts[level]}</strong>
-                  <span>{level === "private" ? "Private" : level === "lab" ? "Shared with the lab" : "Published"}</span>
+                  <span>{level === "private" ? "Only you" : level === "lab" ? "Your lab" : "Published"}</span>
                 </div>
               ))}
             </div>
@@ -178,7 +178,7 @@ const Gaps = ({ gaps, onLight, onPick, titleOf }: { gaps: Gap[]; onLight: (u: st
 };
 
 const Crossings = ({ crossings, onPick, onOpen }: { crossings: Crossing[]; onPick: (u: string) => void; onOpen: (r: HolonRef) => void }) => {
-  if (!crossings.length) return <p className="hv-muted">Nothing crosses this holon's boundary.</p>;
+  if (!crossings.length) return <p className="hv-muted">Nothing crosses its boundary.</p>;
   return (
     <>
       {(["in", "out"] as const).map((direction) => {

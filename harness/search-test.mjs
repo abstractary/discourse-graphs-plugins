@@ -74,6 +74,11 @@ const canvasClick = async (selector, options) => {
   await sleep(150);
   await click("s", selector, options);
 };
+/** A click on bare canvas, near its lower left, where no card sits: the middle can hold one. */
+const paneClick = async () => {
+  const frame = await s(`s.locate("html")`);
+  await clickAt({ x: frame.x + 60, y: frame.y + frame.height - 120 });
+};
 const fitAll = async () => {
   await canvasClick('[data-dg="fit"]');
   await sleep(500);
@@ -103,6 +108,12 @@ const canvasNamed = async (title) => {
 const board = await canvasNamed("Search test");
 const target = await canvasNamed("Paste target");
 await s(`s.call("units.put", { canvas: ${q(board)}, nodes: ${q([A.id, B.id])} })`);
+// The two cards sit apart whatever facts cards are showing, so the link between them can be clicked.
+{
+  const card = (await view(board)).items.find((item) => item.item.dg?.node === B.id);
+  const { id: _id, ...item } = card.item;
+  await s(`s.call("canvas.write", { canvas: ${q(board)}, upserts: ${q([{ id: card.id, z: card.z, item: { ...item, x: item.x + 420 } }])} })`);
+}
 // A's note says something only it says.
 await s(`(async () => { const f = app.vault.getMarkdownFiles().find((x) => x.basename.endsWith("ST claim about mediators")); await app.vault.modify(f, (await app.vault.read(f)) + "\\nMeasured with a quokka bead panel.\\n"); return true; })()`);
 await s(`s.open(${q(board)})`);
@@ -168,7 +179,7 @@ await until(() => s(`s.search.count('[data-dg="search-preview"]')`).then((n) => 
 await click("s.search", '[data-dg="search-put"]');
 const put = await until(async () => ((await unitsOn(board)).includes(notHere.node.id) ? true : null));
 check("search.put-on-the-open-canvas", put, notHere.node.title);
-await canvasClick(".react-flow__pane");
+await paneClick();
 await press("z", { meta: true });
 const putUndone = await until(async () => ((await unitsOn(board)).includes(notHere.node.id) ? null : true));
 check("undo.takes-off-units-put-from-search", putUndone, await status());
@@ -319,7 +330,7 @@ const askAgain = await until(() => s(`s.count('[data-dg="link-delete-ask-again"]
 check("link.remembered-answer-skips-the-question", noAsk && gone && askAgain, await status());
 await click("s", '[data-dg="link-delete-ask-again"]');
 check("link.ask-again-restores-the-question", await until(async () => ((await s("s.prefs()")).linkDelete === "ask" ? true : null)));
-await canvasClick(".react-flow__pane");
+await paneClick();
 await press("z", { meta: true });
 rel = await until(relationOf);
 
@@ -345,7 +356,7 @@ const copied = await until(async () => (/Copied 2 items/.test((await status()) ?
 await s(`s.open(${q(target)})`);
 await until(() => s(`s.text('[data-dg="canvas-menu"]')`).then((t) => t === "Paste target"));
 await sleep(400);
-await canvasClick(".react-flow__pane");
+await paneClick();
 await press("v", { meta: true, commands: ["paste"] });
 let seen = "";
 const pasted = await until(async () => {

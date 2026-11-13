@@ -716,6 +716,9 @@ export const createRoamHost = async ({
       return ok(null);
     },
 
+    // Roam only gets an exporter, so relations aren't written into its pages.
+    setLinks: async () => ok({ written: false }),
+
     insertLink: async ({ ref, label }) => {
       const target = pullUnit(ref);
       if (!target?.[":block/uid"]) return notFound(ref);

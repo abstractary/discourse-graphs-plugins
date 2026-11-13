@@ -36,6 +36,7 @@ const Papers = ({ connection, report }: { connection: Connection; report: (error
       <div className="cvs-bar">
         <button type="button" data-dg="library-upload" onClick={() => void call("dialog.open", { surface: "upload" }).catch(report)}><Icon name="plus" /> Upload a paper</button>
         <button type="button" data-dg="library-demo" onClick={() => void call("paper.loadDemo", {}).catch(report)}>Load demo papers</button>
+        {papers && papers.length > 1 ? <button type="button" data-dg="library-paper-map" title="Papers placed by how tied they are" onClick={() => void call("papers.show", {}).catch(report)}>Paper map</button> : null}
       </div>
       {papers !== null && papers.length === 0 ? <p className="cvs-none">No papers yet. Upload one, and its claims and evidence get a canvas of their own.</p> : null}
       <ul className="cvs-list">

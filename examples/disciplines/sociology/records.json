@@ -1,0 +1,1270 @@
+[
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5e2f",
+  "kind": "lab",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "name": "Example reading group",
+  "did": "did:web:lab.examples.records.example",
+  "custodian": "did:web:examples.records.example",
+  "custodianKey": "example-key-not-real",
+  "plc": []
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5f2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Question",
+  "base": "question",
+  "abbreviation": "QUE",
+  "titleFormat": "QUE - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5g2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Claim",
+  "base": "claim",
+  "abbreviation": "CLM",
+  "titleFormat": "CLM - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5h2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Evidence",
+  "base": "evidence",
+  "abbreviation": "EVD",
+  "titleFormat": "EVD - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5i2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Source",
+  "base": "source",
+  "abbreviation": "SRC",
+  "titleFormat": "@{content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5j2f",
+  "kind": "relation-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Supports",
+  "complement": "Supported by",
+  "base": "supports",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk5h2f",
+    "target": "did:web:examples.records.example#3n25ohzpk5g2f"
+   },
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk5g2f",
+    "target": "did:web:examples.records.example#3n25ohzpk5g2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5k2f",
+  "kind": "relation-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Opposes",
+  "complement": "Opposed by",
+  "base": "opposes",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk5h2f",
+    "target": "did:web:examples.records.example#3n25ohzpk5g2f"
+   },
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk5g2f",
+    "target": "did:web:examples.records.example#3n25ohzpk5g2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5l2f",
+  "kind": "relation-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Addresses",
+  "complement": "Addressed by",
+  "base": "addresses",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk5g2f",
+    "target": "did:web:examples.records.example#3n25ohzpk5f2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5m2f",
+  "kind": "relation-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Informs",
+  "complement": "Informed by",
+  "base": "informs",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk5h2f",
+    "target": "did:web:examples.records.example#3n25ohzpk5f2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5n2f",
+  "kind": "relation-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Derived from",
+  "complement": "Has derivation",
+  "base": "derivedFrom",
+  "rules": [
+   {
+    "source": "did:web:examples.records.example#3n25ohzpk5h2f",
+    "target": "did:web:examples.records.example#3n25ohzpk5i2f"
+   }
+  ]
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5o2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Protocol",
+  "base": "protocol",
+  "abbreviation": "PRO",
+  "titleFormat": "PRO - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5p2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Experiment",
+  "base": "study",
+  "abbreviation": "EXP",
+  "titleFormat": "EXP - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5q2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Run",
+  "base": "run",
+  "abbreviation": "RUN",
+  "titleFormat": "RUN - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5r2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Code",
+  "base": "code",
+  "abbreviation": "COD",
+  "titleFormat": "COD - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5s2f",
+  "kind": "node-type",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "label": "Output",
+  "base": "output",
+  "abbreviation": "OUT",
+  "titleFormat": "OUT - {content}"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5t2f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Why is the success of cultural products so unequal, and so hard to predict?",
+  "type": "did:web:examples.records.example#3n25ohzpk5f2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5u2f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Web-based music market with two information conditions",
+  "type": "did:web:examples.records.example#3n25ohzpk5o2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "steps": [
+    "Offer previously unknown songs to participants on a website",
+    "Show each participant the earlier participants' choices, or not, by condition",
+    "Record which songs each participant downloads",
+    "Compare the inequality and unpredictability of success between the conditions"
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5v2f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Artificial music market experiment",
+  "type": "did:web:examples.records.example#3n25ohzpk5p2f",
+  "prov": {
+   "question": "did:web:examples.records.example#3n25ohzpk5t2f",
+   "protocols": [
+    "did:web:examples.records.example#3n25ohzpk5u2f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "design": "experimental",
+   "hypothesis": "Knowing what earlier participants chose increases both the inequality and the unpredictability of success.",
+   "conditions": [
+    "Without knowledge of previous participants' choices",
+    "With knowledge of previous participants' choices"
+   ],
+   "variables": [
+    {
+     "name": "Knowledge of previous participants' choices",
+     "role": "independent"
+    },
+    {
+     "name": "Inequality of success",
+     "role": "dependent"
+    },
+    {
+     "name": "Unpredictability of success",
+     "role": "dependent"
+    }
+   ],
+   "sampleSize": 14341
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5w2f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "The music market experiment, as reported",
+  "type": "did:web:examples.records.example#3n25ohzpk5q2f",
+  "prov": {
+   "partOf": "did:web:examples.records.example#3n25ohzpk5v2f",
+   "follows": {
+    "uri": "did:web:examples.records.example#3n25ohzpk5u2f",
+    "cid": "bafkreici4bbdfgses2sge6bxoxy6tdatz2veantzeptzjzfcdkocncy7mm"
+   }
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "status": "completed",
+   "parameterValues": {
+    "participants": 14341
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5x2f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Experimental study of inequality and unpredictability in an artificial cultural market",
+  "type": "did:web:examples.records.example#3n25ohzpk5i2f",
+  "prov": {
+   "describesActivity": [
+    "did:web:examples.records.example#3n25ohzpk5w2f"
+   ]
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "doi": "10.1126/science.1121066",
+   "authors": [
+    "Matthew J. Salganik",
+    "Peter Sheridan Dodds",
+    "Duncan J. Watts"
+   ],
+   "published": "2006-02",
+   "venue": "Science",
+   "identifiers": [
+    {
+     "scheme": "pmid",
+     "value": "16469928"
+    }
+   ]
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5y2f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Social influence makes success in a cultural market more unequal and less predictable",
+  "type": "did:web:examples.records.example#3n25ohzpk5g2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk5z2f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Success in a cultural market is only partly determined by quality",
+  "type": "did:web:examples.records.example#3n25ohzpk5g2f",
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk622f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Increasing the strength of social influence increased both the inequality and the unpredictability of success",
+  "type": "did:web:examples.records.example#3n25ohzpk5h2f",
+  "prov": {
+   "isGroundedIn": "did:web:examples.records.example#3n25ohzpk5w2f",
+   "sourceDocument": "did:web:examples.records.example#3n25ohzpk5x2f"
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   },
+   "anchor": {
+    "exact": "Increasing the strength of social influence increased both inequality and unpredictability of success.",
+    "source": "did:web:examples.records.example#3n25ohzpk5x2f"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk632f",
+  "kind": "node",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "The best songs rarely did poorly and the worst rarely did well, but any other result was possible",
+  "type": "did:web:examples.records.example#3n25ohzpk5h2f",
+  "prov": {
+   "isGroundedIn": "did:web:examples.records.example#3n25ohzpk5w2f",
+   "sourceDocument": "did:web:examples.records.example#3n25ohzpk5x2f"
+  },
+  "facts": {
+   "provenance": {
+    "method": "authored",
+    "agent": "Read from the paper, its figure captions and its code repository"
+   }
+  }
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk642f",
+  "kind": "relation",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk5l2f",
+  "source": "did:web:examples.records.example#3n25ohzpk5y2f",
+  "target": "did:web:examples.records.example#3n25ohzpk5t2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk652f",
+  "kind": "relation",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk5l2f",
+  "source": "did:web:examples.records.example#3n25ohzpk5z2f",
+  "target": "did:web:examples.records.example#3n25ohzpk5t2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk662f",
+  "kind": "relation",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk5j2f",
+  "source": "did:web:examples.records.example#3n25ohzpk622f",
+  "target": "did:web:examples.records.example#3n25ohzpk5y2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk672f",
+  "kind": "relation",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "type": "did:web:examples.records.example#3n25ohzpk5j2f",
+  "source": "did:web:examples.records.example#3n25ohzpk632f",
+  "target": "did:web:examples.records.example#3n25ohzpk5z2f"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "kind": "canvas",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "title": "Inequality and unpredictability in an artificial cultural market (Salganik, Dodds and Watts 2006)"
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6b2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "Why is the success of cultural products so unequal, and so hard to predict?",
+   "x": 0,
+   "y": 0,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk5t2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6b2f"
+  },
+  "z": 1
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6c2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "Social influence makes success in a cultural market more unequal and less predictable",
+   "x": 340,
+   "y": 0,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk5y2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6c2f"
+  },
+  "z": 2
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6d2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "Success in a cultural market is only partly determined by quality",
+   "x": 340,
+   "y": 230,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk5z2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6d2f"
+  },
+  "z": 3
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6e2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "Increasing the strength of social influence increased both the inequality and the unpredictability of success",
+   "x": 680,
+   "y": 0,
+   "width": 280,
+   "height": 210,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk622f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6e2f"
+  },
+  "z": 4
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6f2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "The best songs rarely did poorly and the worst rarely did well, but any other result was possible",
+   "x": 680,
+   "y": 250,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk632f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6f2f"
+  },
+  "z": 5
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6g2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "The music market experiment, as reported",
+   "x": 1020,
+   "y": 0,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk5w2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6g2f"
+  },
+  "z": 6
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6h2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "Web-based music market with two information conditions",
+   "x": 1360,
+   "y": 0,
+   "width": 280,
+   "height": 170,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk5u2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6h2f"
+  },
+  "z": 7
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6i2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "Artificial music market experiment",
+   "x": 1700,
+   "y": 0,
+   "width": 280,
+   "height": 150,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk5v2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6i2f"
+  },
+  "z": 8
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6j2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "type": "text",
+   "text": "Experimental study of inequality and unpredictability in an artificial cultural market",
+   "x": 1700,
+   "y": 190,
+   "width": 280,
+   "height": 190,
+   "dg": {
+    "node": "did:web:examples.records.example#3n25ohzpk5x2f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6j2f"
+  },
+  "z": 9
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6k2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk6c2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk6b2f",
+   "toEnd": "arrow",
+   "label": "Addresses",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk642f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6k2f"
+  },
+  "z": 10
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6l2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk6d2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk6b2f",
+   "toEnd": "arrow",
+   "label": "Addresses",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk652f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6l2f"
+  },
+  "z": 11
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6m2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk6e2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk6c2f",
+   "toEnd": "arrow",
+   "label": "Supports",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk662f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6m2f"
+  },
+  "z": 12
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6n2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk6e2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk6g2f",
+   "toEnd": "arrow",
+   "label": "Grounded in",
+   "id": "did:web:examples.records.example#3n25ohzpk6n2f"
+  },
+  "z": 13
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6o2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk6f2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk6d2f",
+   "toEnd": "arrow",
+   "label": "Supports",
+   "dg": {
+    "relation": "did:web:examples.records.example#3n25ohzpk672f"
+   },
+   "id": "did:web:examples.records.example#3n25ohzpk6o2f"
+  },
+  "z": 14
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6p2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk6f2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk6g2f",
+   "toEnd": "arrow",
+   "label": "Grounded in",
+   "id": "did:web:examples.records.example#3n25ohzpk6p2f"
+  },
+  "z": 15
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6q2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk6g2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk6h2f",
+   "toEnd": "arrow",
+   "label": "Follows",
+   "id": "did:web:examples.records.example#3n25ohzpk6q2f"
+  },
+  "z": 16
+ },
+ {
+  "v": 2,
+  "id": "did:web:examples.records.example#3n25ohzpk6r2f",
+  "kind": "canvas-item",
+  "space": "example-sociology",
+  "at": "2026-11-13T00:00:00.000Z",
+  "by": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "lab": "did:web:lab.examples.records.example",
+  "rev": 1,
+  "editedAt": "2026-11-13T00:00:00.000Z",
+  "editedBy": {
+   "id": "did:web:examples.records.example",
+   "name": "Example reader"
+  },
+  "canvas": "did:web:examples.records.example#3n25ohzpk6a2f",
+  "item": {
+   "fromNode": "did:web:examples.records.example#3n25ohzpk6g2f",
+   "toNode": "did:web:examples.records.example#3n25ohzpk6i2f",
+   "toEnd": "arrow",
+   "label": "Part of",
+   "id": "did:web:examples.records.example#3n25ohzpk6r2f"
+  },
+  "z": 17
+ }
+]

@@ -171,6 +171,18 @@ export const App = ({ connection }: { connection: Connection }) => {
     if (message.ref === ref) setReveal(message.unit);
     else setRef(message.ref);
   }), [on, ref]);
+  // A card was picked on a canvas: if its passage is in this paper, go to it.
+  const placedRef = useRef<{ shown: Placed[] }>({ shown: [] });
+  useEffect(() => on("pdf-follow", ({ unit }) => {
+    if (placedRef.current.shown.some((entry) => entry.mark.unit.id === unit)) setReveal(unit);
+  }), [on]);
+  // A passage that was gone to is marked for a moment, then let go.
+  const [flash, setFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flash) return;
+    const timer = window.setTimeout(() => setFlash(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [flash]);
 
   // Fit the page width to the frame, unless the person zoomed.
   useEffect(() => {
@@ -222,6 +234,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     }
     return { shown, missing };
   }, [loaded, marks]);
+  placedRef.current = placed;
 
   // Scroll to a unit's passage, asked for from the context panel or the list.
   useEffect(() => {
@@ -231,7 +244,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     const [page, boxes] = [...hit.boxes.entries()][0]!;
     const el = pageEls.current.get(page);
     if (el && scroller.current) scroller.current.scrollTo({ top: el.offsetTop + (boxes[0]?.y ?? 0) * scale - 80, behavior: "smooth" });
-    setActive(reveal);
+    setFlash(reveal);
     justRevealed.current = { unit: reveal, at: Date.now() };
     setReveal(null);
   }, [reveal, loaded, placed, scale]);
@@ -297,7 +310,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const pick = (mark: PdfMark) => {
     setActive(mark.unit.id);
     void call("focus.set", { node: mark.unit.id }).catch(report);
-    void call("canvas.highlight", { units: [mark.unit.id] }).catch(report);
+    void call("canvas.highlight", { units: [mark.unit.id], brief: true }).catch(report);
   };
 
   const open = (next: string) => {
@@ -446,6 +459,7 @@ export const App = ({ connection }: { connection: Connection }) => {
                 drawn={visible.has(index)}
                 marks={placed.shown.flatMap((entry) => (entry.boxes.get(index) ? [{ id: entry.mark.unit.id, base: entry.mark.unit.base, color: entry.mark.unit.color, boxes: entry.boxes.get(index)! }] : []))}
                 active={active}
+                flash={flash}
                 pending={cut && cut.page === index + 1 ? cut.boxes : null}
                 register={(el) => (el ? pageEls.current.set(index, el) : pageEls.current.delete(index))}
               />
@@ -463,6 +477,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         <CutPopup
           connection={connection}
           cut={cut}
+          own={doc?.paper?.canvas}
           onCancel={() => {
             setCut(null);
             document.getSelection()?.removeAllRanges();
@@ -512,6 +527,7 @@ const Page = ({
   drawn,
   marks,
   active,
+  flash,
   pending,
   register,
 }: {
@@ -522,6 +538,7 @@ const Page = ({
   drawn: boolean;
   marks: { id: string; base: string | undefined; color: string | undefined; boxes: Box[] }[];
   active: string | null;
+  flash: string | null;
   pending: Box[] | null;
   register: (el: HTMLDivElement | null) => void;
 }) => {
@@ -565,7 +582,7 @@ const Page = ({
       <div className="pdf-marks" aria-hidden="true">
         {marks.flatMap((mark) =>
           mark.boxes.map((b, i) => (
-            <span key={`${mark.id}-${i}`} className="pdf-mark" data-base={mark.base ?? "none"} data-active={mark.id === active ? "" : undefined} data-unit={mark.id} style={{ ...box(b), ...(mark.color ? ({ "--type": mark.color } as CSSProperties) : {}) }} />
+            <span key={`${mark.id}-${i}`} className="pdf-mark" data-base={mark.base ?? "none"} data-active={mark.id === active ? "" : undefined} data-flash={mark.id === flash ? "" : undefined} data-unit={mark.id} style={{ ...box(b), ...(mark.color ? ({ "--type": mark.color } as CSSProperties) : {}) }} />
           )),
         )}
         {pending?.map((b, i) => <span key={`pending-${i}`} className="pdf-mark pending" style={box(b)} />)}
@@ -634,12 +651,15 @@ const Chooser = ({
 const CutPopup = ({
   connection,
   cut,
+  own,
   onCancel,
   onSave,
   report,
 }: {
   connection: Connection;
   cut: Cut;
+  /** This file's own PDF canvas, which takes highlights from it. Any other PDF canvas does not. */
+  own?: string | undefined;
   onCancel: () => void;
   onSave: (choice: { title: string; type?: string; canvas: string | null; newCanvas?: string; label?: string }) => Promise<void>;
   report: (error: unknown) => void;
@@ -687,22 +707,33 @@ const CutPopup = ({
     return front ? [front, ...canvases.filter((c) => c.id !== beside)] : canvases;
   }, [canvases, beside]);
   const typeOf = (id: string | null) => types.find((t) => t.id === id);
+  /** A PDF canvas of some other paper: a highlight from this file can't go on it. */
+  const foreign = (c: CanvasSummary): boolean => c.kind === "paper" && c.id !== own;
 
   const save = async () => {
     if (saving || (target === "new" && !newName.trim())) return;
     setSaving(true);
     remembered.type = type;
     remembered.chosen = true;
-    const label = target === "new" ? newName.trim() : target === "none" ? undefined : canvases.find((c) => c.id === target)?.title;
+    let label = target === "new" ? newName.trim() : target === "none" ? undefined : canvases.find((c) => c.id === target)?.title;
     try {
+      // A PDF canvas stays as it was read: the highlight goes on a canvas of the person's own with the same cards.
+      let onto = target === "new" || target === "none" ? null : target;
+      const fixed = onto ? canvases.find((c) => c.id === onto && foreign(c)) : undefined;
+      if (fixed) {
+        const built = await call("canvas.buildOn", { id: fixed.id });
+        onto = built.id;
+        label = built.title;
+        await call("canvas.show", { id: built.id });
+      }
       await onSave({
         title,
         ...(type ? { type } : {}),
-        canvas: target === "new" || target === "none" ? null : target,
+        canvas: onto,
         ...(target === "new" ? { newCanvas: newName.trim() } : {}),
         ...(label ? { label } : {}),
       });
-      remembered.canvas = target === "new" ? null : target;
+      remembered.canvas = target === "new" ? null : fixed ? onto : target;
     } catch (error) {
       report(error);
       setSaving(false);
@@ -754,12 +785,15 @@ const CutPopup = ({
         <span>Save to</span>
         <select value={target} onChange={(event) => setTarget(event.target.value)} data-dg="cut-canvas">
           {ordered.map((c) => (
-            <option key={c.id} value={c.id}>{c.id === beside ? `${c.title} (open now)` : c.title}</option>
+            <option key={c.id} value={c.id}>{foreign(c) ? `Build on “${c.title}”${c.id === beside ? " (open now)" : ""}` : c.id === own ? `${c.title} (this paper's PDF canvas)` : c.id === beside ? `${c.title} (open now)` : c.title}</option>
           ))}
           <option value="new">New canvas…</option>
           <option value="none">No canvas, the graph only</option>
         </select>
       </label>
+      {canvases.some((c) => c.id === target && foreign(c)) ? (
+        <p className="cut-fixed" data-dg="cut-fixed">That is another paper's PDF canvas, which holds only what comes from that paper. This makes a canvas of your own with the same cards and puts the highlight there.</p>
+      ) : null}
       {target === "new" ? <input autoFocus placeholder="Canvas name" aria-label="New canvas name" value={newName} onChange={(event) => setNewName(event.target.value)} data-dg="cut-new-canvas" /> : null}
       <div className="cut-actions">
         <span className="cut-hint">Page {cut.page} · keeps the words as its quote</span>

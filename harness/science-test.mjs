@@ -113,7 +113,7 @@ if (wants("read")) {
   const from = await until(() => at("context", "text", '.ctx-head .fact[data-field="authors"]'));
   check("read.says-whose-claim-it-is", /Author\s*T\. L\. Carroll/.test(from ?? ""), from);
   const how = await at("context", "text", '[data-dg="ctx-paper"]');
-  check("read.says-how-it-got-here", /from a saved extraction, Carroll-2020-edge-of-chaos\.graph\.json/.test(how ?? ""), (how ?? "").slice(-200));
+  check("read.says-how-it-got-here", /from a saved extraction \(Carroll-2020-edge-of-chaos\.graph\.json\)/.test(how ?? ""), (how ?? "").slice(-200));
   const chain = await until(() => at("context", "text", '[data-dg="method-chain"]'));
   check("method.chain-has-run-methods-and-source", /Source/.test(chain ?? "") && /Run/.test(chain ?? "") && /8 methods the run followed/.test(chain ?? ""), (chain ?? "").slice(0, 200));
   const method = await at("context", "text", '[data-dg="method"]');
@@ -322,7 +322,7 @@ if (wants("library")) {
   await s("s.openLibrary()");
   await until(() => has("canvases", ".repo-list > li"));
   const text = (await at("canvases", "text", ".repo-list")) ?? "";
-  check("library.papers-are-from-a-pdf", (text.match(/From a PDF/g) ?? []).length >= 3 && /What makes a reservoir compute well\?\s*Workspace/.test(text), text.slice(0, 160));
+  check("library.papers-are-from-a-pdf", (text.match(/PDF canvas/g) ?? []).length >= 3 && /What makes a reservoir compute well\?\s*Canvas/.test(text) && /Draws on [^·]*Carroll 2020/.test(text), text.slice(0, 160));
   await shot("24-library");
 }
 

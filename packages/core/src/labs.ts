@@ -20,7 +20,7 @@ export const labFeature = (
     /** Shown in the base, because the panel that was open has just closed. */
     askBreadcrumb?: (paper: { id: string; title: string }) => void;
   },
-): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "paper.getFile" | "canvas.share"> & {
+): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
   canvasClosed: (args: { id: string }) => Promise<void>;
@@ -151,6 +151,18 @@ export const labFeature = (
       const saved = await context.host.saveFile(await services().paperFile(link, id));
       if (!saved.ok) throw new Error(saved.error.message);
       return saved.value;
+    },
+    "canvas.audience": async ({ id }) => {
+      const canvas = context.canvasOf(id);
+      if (!canvas) throw new Error("That canvas is gone.");
+      const lab = context.myLab();
+      const link = context.services ? await context.services.link().catch(() => null) : null;
+      const members = lab && link?.token ? await services().members(link).then((list) => list.map((member) => member.name)).catch(() => []) : [];
+      const me = context.me();
+      return {
+        workspace: canvas.shared && lab?.did === canvas.shared ? { kind: "lab" as const, id: lab.did, name: lab.name } : { kind: "own" as const, id: me.id, name: "Your workspace" },
+        ...(lab ? { lab: { name: lab.name, members } } : {}),
+      };
     },
     "canvas.share": async ({ id }) => {
       const lab = context.myLab();

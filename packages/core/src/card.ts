@@ -79,6 +79,7 @@ export const cardFacts = ({ graph, node, localSpace, spaceName, nameOf, labName,
         title: sourcePaper.filename && fileStem(sourcePaper.filename) !== sourcePaper.title ? `${sourcePaper.title} (${sourcePaper.filename})` : sourcePaper.title,
         how,
         ...(how === "auto" && paper?.model ? { by: paper.model } : {}),
+        ...(node.source?.asRead !== undefined && node.source.asRead !== node.title ? { reworded: true as const } : {}),
         paper: sourcePaper.id,
       }
     : sourceUnit
@@ -94,14 +95,14 @@ export const cardFacts = ({ graph, node, localSpace, spaceName, nameOf, labName,
   const lab = node.lab ? labName(node.lab) : undefined;
   const origin: CardFacts["origin"] =
     node.space === localSpace
-      ? { name: spaceName, kind: "here" }
+      ? { name: "Your workspace", kind: "here" }
       : lab
         ? { name: lab, kind: "lab" }
-        : { name: "Another workspace", kind: "elsewhere" };
+        : { name: "Someone else's workspace", kind: "elsewhere" };
 
   return {
     ...(source ? { source } : {}),
-    authors: sourceAuthors.length ? { names: sourceAuthors, role: "paper" } : { names: [nameOf(node.by)], role: "maker" },
+    authors: sourceAuthors.length ? { names: sourceAuthors, role: "paper" } : { names: node.facts?.creators?.length ? node.facts.creators.map(({ name }) => name) : [nameOf(node.by)], role: "maker" },
     origin,
     created: node.at,
     // A unit read from a paper is found by the paper's identifiers, after any of its own.

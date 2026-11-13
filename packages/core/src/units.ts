@@ -17,9 +17,11 @@ import {
   type Reaction,
 } from "@dg/contract/records.ts";
 import type { ExportTarget, Provenance, UnitSocial } from "@dg/contract/surface.ts";
+import type { HostRef } from "@dg/contract/records.ts";
+import { fillTemplate } from "./grammar.ts";
 import type { Context, Handlers } from "./context.ts";
 
-const WORKSPACE = "My workspace";
+const WORKSPACE = "My canvas";
 const LAB_CANVAS = "Lab canvas";
 
 const heightOf = (title: string): number => Math.max(64, 34 + 18 * Math.ceil(title.length / 34));
@@ -38,6 +40,7 @@ export const unitFeature = (
 ): Pick<Handlers, "units.export" | "folder.list" | "folder.create" | "unit.react" | "unit.note" | "unit.removeNote"> & {
   provenance: (node: NodeRecord) => Provenance;
   social: (unit: DgId) => UnitSocial;
+  giveAll: () => Promise<number>;
 } => {
   const folders = (): FolderRecord[] => context.documents("folder").filter((folder) => !folder.removed);
   const filed = (folder: DgId) => context.documents("folder-item").filter((item) => item.folder === folder && !item.removed);
@@ -45,19 +48,70 @@ export const unitFeature = (
   const paperOf = (node: NodeRecord) =>
     node.source ? context.documents("paper").find((paper) => paper.id === node.source!.paper) : undefined;
 
+  /** What the unit already says, then its type's template for the rest. */
+  const withTemplate = (node: NodeRecord, body: string): string => {
+    const type = context.typeOf(node.type);
+    if (!type?.template) return body;
+    const filled = fillTemplate(type.template, { title: node.title, type: type.label, author: node.by.name, date: node.at.slice(0, 10) });
+    return [body, filled].filter((part) => part.trim()).join("\n\n");
+  };
+
   /** An exported unit becomes a real note or page, and keeps the same id. */
   const giveText = async (node: NodeRecord): Promise<boolean> => {
     if (context.anchorOf(node.id)) return false;
     const format = context.typeOf(node.type)?.titleFormat;
     const made = await context.host.createText({
       title: formatTitle({ content: node.title, ...(format ? { format } : {}) }),
-      body: noteBody(node, paperOf(node)?.title),
+      body: withTemplate(node, noteBody(node, paperOf(node)?.title)),
       unit: node.id,
     });
     const ref = made.ok ? made.value.ref : made.error.code === "conflict" ? made.error.ref : undefined;
     if (!ref) throw new Error(made.ok ? "Couldn't make the note." : made.error.message);
     await context.put([createAnchor({ ...context.stamp(), node: node.id, ref })]);
     return true;
+  };
+
+  /**
+   * Every unit without a note gets one, so the base's own links and search
+   * reach it. A unit whose note a person deleted keeps its anchor and is left
+   * alone. Units read from a paper are filed under that paper's name.
+   */
+  const GIVE_BATCH = 100;
+  const giveAll = async (): Promise<number> => {
+    let made = 0;
+    let fresh: ReturnType<typeof createAnchor>[] = [];
+    const taken = new Set<HostRef>();
+    const flush = async (): Promise<void> => {
+      if (fresh.length === 0) return;
+      const batch = fresh;
+      fresh = [];
+      await context.put(batch);
+    };
+    for (const node of context.documents("node")) {
+      if (node.removed || context.anchorOf(node.id)) continue;
+      const format = context.typeOf(node.type)?.titleFormat;
+      const paper = paperOf(node);
+      const body = withTemplate(node, noteBody(node, paper?.title));
+      let ref: HostRef | undefined;
+      // Two units can say the same thing, and each still needs a note of its own.
+      for (const content of [node.title, `${node.title} ${node.id.slice(-6)}`]) {
+        const tried = await context.host.createText({ title: formatTitle({ content, ...(format ? { format } : {}) }), body, unit: node.id });
+        const found = tried.ok ? tried.value.ref : tried.error.code === "conflict" ? tried.error.ref : undefined;
+        if (!tried.ok && tried.error.code !== "conflict") break;
+        if (found && !taken.has(found) && (tried.ok || !context.anchoredAt(found))) {
+          ref = found;
+          break;
+        }
+      }
+      if (!ref) continue;
+      taken.add(ref);
+      if (paper) await context.host.fileInFolder({ ref, folder: paper.title });
+      fresh.push(createAnchor({ ...context.stamp(), node: node.id, ref }));
+      made += 1;
+      if (fresh.length >= GIVE_BATCH) await flush();
+    }
+    await flush();
+    return made;
   };
 
   const canvasNamed = async (title: string, fields: Parameters<Context["makeCanvas"]>[1], match: (canvas: CanvasRecord) => boolean): Promise<CanvasRecord> =>
@@ -166,6 +220,7 @@ export const unitFeature = (
               ...(paper.doi ? { doi: paper.doi } : {}),
               ...(node.source?.anchor ? { anchor: node.source.anchor } : {}),
               ...(node.source?.description ? { description: node.source.description } : {}),
+              ...(node.source?.asRead !== undefined && node.source.asRead !== node.title ? { asRead: node.source.asRead } : {}),
             },
           }
         : {}),
@@ -184,6 +239,7 @@ export const unitFeature = (
   return {
     provenance,
     social,
+    giveAll,
     "units.export": async ({ nodes: ids, target }) => {
       const nodes = ids.flatMap((id) => {
         const node = context.nodeOf(id);

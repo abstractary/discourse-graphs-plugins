@@ -799,8 +799,11 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     }
   };
 
+  const [pickedCard, setPickedCard] = useState<string | null>(null);
   const onSelectionChange = useCallback(
     ({ nodes: picked }: { nodes: Node[] }) => {
+      // One card picked by any means, such as the keyboard, is the card whose links show. None picked clears it.
+      setPickedCard((old) => (picked.length === 1 ? picked[0]!.id : picked.length === 0 ? null : old));
       const node = picked.length === 1 ? (picked[0]!.data as CardData).node : undefined;
       if (node) void call("focus.set", { node: node.id }).catch(report);
     },
@@ -822,14 +825,16 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
 
   // A picked card shows what it touches: its links and the cards at their other ends stay bright
   // and the rest steps back, for as long as it is the one picked.
+  // The click itself says which card, so the lit set moves with the click whatever the selection
+  // is doing at that moment: a second card held with a modifier, or a click that began as a nudge.
   const near = useMemo(() => {
     const picked = nodes.filter((node) => node.selected);
-    if (picked.length !== 1) return null;
-    const at = picked[0]!.id;
+    const at = pickedCard && nodes.some((node) => node.id === pickedCard) ? pickedCard : picked.length === 1 ? picked[0]!.id : null;
+    if (!at) return null;
     const links = edges.filter((edge) => edge.source === at || edge.target === at);
     if (links.length === 0) return null;
     return { cards: new Set([at, ...links.flatMap((edge) => [edge.source, edge.target])]), links: new Set(links.map((edge) => edge.id)) };
-  }, [nodes, edges]);
+  }, [nodes, edges, pickedCard]);
   const shownEdges = useMemo(
     () => (near ? edges.map((edge) => ({ ...edge, className: [edge.className, near.links.has(edge.id) ? "near" : "far"].filter(Boolean).join(" ") })) : edges),
     [edges, near],
@@ -1279,12 +1284,14 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
             onConnectEnd={onConnectEnd}
             onSelectionChange={onSelectionChange}
             onPaneClick={() => {
+              setPickedCard(null);
               closeMenus();
               setExportOpen(false);
               // A floating sidebar goes when the canvas is clicked. A pinned one stays.
               if (!holon.prefs.sidePinned) setSide(null);
             }}
             onNodeClick={(_, node) => {
+              setPickedCard(node.id);
               const summary = (node.data as CardData).node;
               // Picking a card shows where it came from: its passage in an open reader, and the Context panel.
               if (summary && !aiOn) {
@@ -1360,6 +1367,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
                 maskColor="color-mix(in srgb, var(--dg-page) 72%, transparent)"
                 maskStrokeColor="var(--dg-accent)"
                 maskStrokeWidth={6}
+                style={{ width: 168, height: 112 }}
               />
             )}
           </ReactFlow>

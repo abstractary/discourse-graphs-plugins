@@ -1131,7 +1131,7 @@ export type SurfaceMethods = {
   /** Opens a panel in the base's side area. */
   "panel.open": { params: { surface: "context" | "canvases" | "boundary" | "search" }; result: null };
   /** Opens a pop-up over the base. `find` is the quick finder. */
-  "dialog.open": { params: { surface: "upload" | "welcome" | "find" | "zotero" | "grammar"; /** For upload: a file the base already holds. */ id?: string }; result: null };
+  "dialog.open": { params: { surface: "upload" | "welcome" | "find" | "zotero" | "grammar" | "publish"; /** For upload: a file the base already holds. For zotero and publish: the canvas. */ id?: string }; result: null };
   "dialog.close": { params: Record<string, never>; result: null };
 
   "server.list": { params: Record<string, never>; result: ComputeServer[] };
@@ -1260,7 +1260,37 @@ export type SurfaceMethods = {
   "focus.get": { params: Record<string, never>; result: DgId | null };
   /** Selecting a card moves focus, so other surfaces can follow it. */
   "focus.set": { params: { id: DgId | null }; result: null };
+  /** The AT Protocol account this person publishes to, if one is connected. */
+  "publish.account": { params: Record<string, never>; result: PublishAccount };
+  /** Opens a session with an app password, which is used once and not kept. `host` is given only for a test network. */
+  "publish.connect": { params: { handle: string; password: string; host?: string }; result: PublishAccount };
+  "publish.disconnect": { params: Record<string, never>; result: PublishAccount };
+  /** What publishing a canvas's units would send, and what it would leave out. Sends nothing. */
+  "publish.preview": { params: { canvas: DgId }; result: PublishPreview };
+  /** Sends what the preview showed. Public, and seen by anyone, from the moment it returns. */
+  "publish.send": { params: { canvas: DgId }; result: PublishSent };
+  /** What this person has made public from here. */
+  "publish.list": { params: Record<string, never>; result: Published[] };
+  /** Takes records back out of the public repository. Copies others made of them are theirs. */
+  "publish.withdraw": { params: { ids: DgId[] }; result: Published[] };
 };
+
+export type PublishAccount = {
+  connected?: { handle: string; did: string; host: string };
+  /** False where the base has nowhere to keep a session. */
+  canConnect: boolean;
+  /** The stand-in names records go out under until the public names are agreed. */
+  names: string;
+};
+export type PublishRow = { id: DgId; title: string; kind: "unit" | "relation"; collection: string; state: "new" | "changed" | "same" };
+export type PublishPreview = {
+  account?: { handle: string; did: string };
+  rows: PublishRow[];
+  leftOut: { id: DgId; title: string; why: "not-yours" | "local-only" | "an-end-is-not-public" }[];
+  fractions: number;
+};
+export type Published = { id: DgId; title: string; uri: string; cid: string; at: string };
+export type PublishSent = { sent: number; unchanged: number; commits: number; published: Published[] };
 
 export type SurfaceMethod = keyof SurfaceMethods;
 

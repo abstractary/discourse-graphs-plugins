@@ -10,6 +10,7 @@ import "./search/search.css";
 import "./run/run.css";
 import "./profile/profile.css";
 import "./zotero/zotero.css";
+import "./publish/publish.css";
 import "./papers/papers.css";
 import "./grammar/grammar.css";
 import { App as Canvas } from "./canvas/App.tsx";
@@ -24,6 +25,7 @@ import { Find } from "./search/Find.tsx";
 import { App as Run } from "./run/App.tsx";
 import { App as ProfilePage } from "./profile/App.tsx";
 import { App as Zotero } from "./zotero/App.tsx";
+import { App as Publish } from "./publish/App.tsx";
 import { App as PaperMap } from "./papers/App.tsx";
 import { App as Grammar } from "./grammar/App.tsx";
 import { PeopleContext, type People } from "./shared/people.tsx";
@@ -32,7 +34,7 @@ import { connect } from "./shared/rpc.ts";
 void connect().then((connection) => {
   // A dialog's frame has the keyboard, so the base never hears Escape. The panel passes it on, unless
   // something inside (a menu, a field being edited) already used the key.
-  if (["upload", "welcome", "zotero", "grammar"].includes(connection.route.surface)) {
+  if (["upload", "welcome", "zotero", "grammar", "publish"].includes(connection.route.surface)) {
     window.addEventListener("keydown", (event) => {
       // Dropped: a key press has nowhere to say it failed. The dialog's own Close button does.
       if (event.key === "Escape" && !event.defaultPrevented) void connection.call("dialog.close", {}).catch(() => undefined);
@@ -65,6 +67,8 @@ void connect().then((connection) => {
       <Run connection={connection} />
     ) : connection.route.surface === "zotero" ? (
       <Zotero connection={connection} />
+    ) : connection.route.surface === "publish" ? (
+      <Publish connection={connection} />
     ) : connection.route.surface === "profile" ? (
       <ProfilePage connection={connection} />
     ) : connection.route.surface === "papers" ? (

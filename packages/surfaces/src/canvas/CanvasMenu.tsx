@@ -134,6 +134,11 @@ export const CanvasMenu = ({
           <button type="button" className="new" data-dg="from-zotero" onClick={() => { hide(); void call("dialog.open", { surface: "zotero", ...(current ? { id: current } : {}) }).catch(report); }}>
             <Icon name="zotero" /> From Zotero…
           </button>
+          {current ? (
+            <button type="button" className="new" data-dg="publish" onClick={() => { hide(); void call("dialog.open", { surface: "publish", id: current }).catch(report); }}>
+              <Icon name="open" /> Publish…
+            </button>
+          ) : null}
           <button type="button" className="new" data-dg="open-library" onClick={() => { hide(); void call("panel.open", { surface: "canvases" }).catch(report); }}>
             <Icon name="library" /> Open the Library
           </button>

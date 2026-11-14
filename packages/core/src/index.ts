@@ -75,6 +75,7 @@ import { methodFeature } from "./method.ts";
 import { similarFeature } from "./similar.ts";
 import { worksFeature } from "./works.ts";
 import { crateFeature } from "./crate.ts";
+import { publishFeature } from "./publish.ts";
 import { CHECK_WAYS } from "@dg/contract/surface.ts";
 import { checkFeature } from "./checks.ts";
 import { gatherFeature } from "./gather.ts";
@@ -905,6 +906,7 @@ export const createCore = async ({
   const search = searchFeature(context);
   const similar = similarFeature(context);
   const works = worksFeature(context);
+  const publishing = publishFeature(context, secrets ? { secrets } : {});
   const crates = crateFeature(context, {
     ...(secrets ? { secrets } : {}),
     // Who checked a unit, as a crate tells it. The marks come from the sign-off feature, which is set up below.
@@ -936,6 +938,7 @@ export const createCore = async ({
     ...gather.handlers,
     ...checks.handlers,
     ...wholes.handlers,
+    ...publishing.handlers,
     ...ai.handlers,
     ...methodFeature(context, { restsOn: similar.restsOn }).handlers,
     ...similar.handlers,

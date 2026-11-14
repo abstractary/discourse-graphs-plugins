@@ -1,0 +1,15 @@
+/* Publish: an account, what would be sent, and what is public already. */
+.publish { gap: 12px; max-height: 100vh; overflow-y: auto; }
+.publish h2 { margin: 0 0 4px; color: var(--dg-muted); font: 600 var(--tiny)/1.4 var(--dg-font); text-transform: uppercase; letter-spacing: 0.04em; }
+.publish-part { display: flex; flex-direction: column; gap: 6px; }
+.publish-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0; }
+.publish-link { padding: 0; border: 0; background: none; color: var(--dg-accent); text-decoration: underline; font-size: var(--small); }
+.publish-rows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); max-height: 240px; overflow-y: auto; }
+.publish-rows li { display: flex; align-items: baseline; gap: 8px; padding: 5px 8px; border-top: 1px solid var(--dg-line); }
+.publish-rows li:first-child { border-top: 0; }
+.publish-rows li[data-state="same"] { color: var(--dg-muted); }
+.publish-kind { flex: none; min-width: 64px; color: var(--dg-muted); font-size: var(--tiny); text-transform: uppercase; letter-spacing: 0.03em; }
+.publish-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.publish-out { color: var(--dg-muted); font-size: var(--small); }
+.publish-out ul { margin: 4px 0 0; padding-left: 18px; }
+.publish-warning { margin: 0; padding: 6px 8px; border: 1px solid var(--dg-line); border-left: 3px solid var(--dg-accent); border-radius: var(--dg-radius); font-size: var(--small); }

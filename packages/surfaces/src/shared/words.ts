@@ -3,6 +3,9 @@
  * to say the same number differently.
  */
 
+import type { HostErrorCode } from "@dg/contract/host.ts";
+import { CallError } from "./rpc.ts";
+
 /** "1 unit", "3 units". The plural is given, because English doesn't always add an s. */
 export const count = (n: number, one: string, many: string): string => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
@@ -16,3 +19,6 @@ export const sizeOf = (bytes: number | undefined): string =>
 
 /** What an error says, whatever was thrown. */
 export const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+/** Which kind of refusal a failed call was, when the core said. Anything else thrown has no code. */
+export const codeOf = (error: unknown): HostErrorCode | undefined => (error instanceof CallError ? error.code : undefined);

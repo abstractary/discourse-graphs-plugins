@@ -199,7 +199,7 @@ Types, boundaries, the dependency matrix, both unit suites, the simulation and t
 
 The audit lists everything. The largest:
 
-- `canvas/App.tsx` is down from 2,300 lines to 1,400, with its writer, add box, ink, tidy, clipboard, linking and menus in files of their own. The toolbar and the canvas menu are still in it.
+- `canvas/App.tsx` is down from 2,300 lines to 1,150. What is left in it places, pastes and adds cards and handles keys.
 - A unit is now reached through `unit.*` and the overview through `overview.*`. Other namespaces still mix `get`, `view` and `open` for a read, and one id parameter has several names. "holon" survives in identifiers and one record field.
 - Routes are declared once, in `contract/routes.ts`. The shapes that cross are still declared on both sides, and three of twenty disagree: the server's info, an invitation, and a unit sent with a question.
 - In the Obsidian plugin only the test hooks take the whole core, by a name that says so. Everything else, the walkthrough included, takes the contract's narrower seam.

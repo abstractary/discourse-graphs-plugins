@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { CanvasDiff, Crossing, Gap, HolonCanvas, HolonEvent, HolonPart, HolonRef, HolonView, Stance } from "@dg/contract/surface.ts";
-import { Icon, Mark, plain } from "./ui.tsx";
+import { Icon, Mark, Tabs, plain } from "./ui.tsx";
 
 /** Pieces the holon explorer, the boundary panel and the Library share. */
 
@@ -114,14 +114,12 @@ export const Boundary = ({
   ];
   return (
     <div className="hv-boundary-body">
-      <div className="hv-tabs" role="tablist">
-        {tabs.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} data-dg={`tab-${t.id}`} onClick={() => setTab(t.id)}>
-            {t.label}
-            {t.count ? <span className="hv-count">{t.count}</span> : null}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="hv-tabs"
+        tabs={tabs.map((t) => ({ id: t.id, label: t.label, dg: `tab-${t.id}`, extra: t.count ? <span className="hv-count">{t.count}</span> : null }))}
+        selected={tab}
+        onPick={setTab}
+      />
       <div className="hv-tabpanel" role="tabpanel">
         {tab === "parts" ? parts : null}
         {tab === "gaps" ? <Gaps gaps={gaps} onLight={onLight} onPick={onPick} titleOf={titleOf} /> : null}

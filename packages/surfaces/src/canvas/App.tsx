@@ -16,13 +16,12 @@ import {
 } from "@xyflow/react";
 import type { CanvasItem, CanvasRecord, NodeTypeRecord, TidyMode, WithoutId } from "@dg/contract/records.ts";
 import { PDF_CANVAS_FIXED } from "@dg/contract/surface.ts";
-import type { CanvasCommand, CanvasItemView, CanvasView, Credit, NodeSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
+import type { CanvasCommand, CanvasItemView, CanvasView, Credit, NodeSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import type { Place } from "../shared/place.ts";
-import { Icon, Mark, plain, type IconName } from "../shared/ui.tsx";
+import { Icon, Mark, plain } from "../shared/ui.tsx";
 import { scoreLabel, scoresFor } from "@dg/layout/centrality.ts";
 import { AiBar } from "./AiBar.tsx";
-import { Thumb } from "../shared/Thumb.tsx";
 import { ExportMenu } from "./ExportMenu.tsx";
 import { Legend } from "./Legend.tsx";
 import { MODES, arrange, leaningOf, measureOf, type Card, type RelationLink } from "@dg/layout/modes.ts";
@@ -43,15 +42,13 @@ import { RelationMenu, useLinking, type Linking } from "./linking.tsx";
 import { FieldsMenu, TypeMenu } from "./menus.tsx";
 import { TidyMenu, planTidy, useCrowding } from "./tidy.tsx";
 import { useArrivals } from "./useArrivals.ts";
-import { useBarKeys } from "./useBarKeys.ts";
+import { CanvasMenu, NameForm, useCanvasMenu } from "./CanvasMenu.tsx";
+import { Toolbar } from "./Toolbar.tsx";
 import { useClipboard } from "./useClipboard.ts";
 import { useDelete } from "./useDelete.ts";
 import { LinkAskDialog } from "./LinkAsk.tsx";
 import { clipOf, textOfClip, type Clip } from "./clipboard.ts";
-import { MOD } from "../shared/keys.ts";
 import { messageOf } from "../shared/words.ts";
-
-const MOD_KEY = MOD === "Ctrl" ? "Ctrl+" : MOD;
 
 /** Three columns fit the common 725 px frame beside a sidebar. */
 // Keeps a link's tooltip inside the frame.
@@ -76,8 +73,6 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
   const [exportOpen, setExportOpen] = useState(false);
   const flow = useReactFlow();
   const [canvases, setCanvases] = useState<CanvasRecord[]>([]);
-  /** Each canvas as a picture of itself, read when the canvas menu opens. */
-  const [pictures, setPictures] = useState<Record<string, RepositoryCanvas>>({});
   const [current, setCurrent] = useState<string | undefined>(route.id);
   const [view, setView] = useState<CanvasView | null>(null);
   const [nodes, setNodes] = useState<FlowNode[]>([]);
@@ -86,20 +81,8 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
   const [tool, setTool] = useState<"select" | "draw">("select");
   const [addAt, setAddAt] = useState<Anchor | null>(null);
   const [linking, setLinking] = useState<Linking | null>(null);
-  const [menu, setMenu] = useState(false);
-  /** Set while the menu asks whether to remove this canvas. */
-  const [removeAsk, setRemoveAsk] = useState(false);
-  useEffect(() => {
-    if (!menu) return;
-    void call("repository.canvases", {})
-      .then((list) => setPictures(Object.fromEntries(list.map((item) => [item.id, item]))))
-      .catch(() => {});
-  }, [menu, call]);
   const [moreOpen, setMoreOpen] = useState(false);
   const bar = useRef<HTMLElement>(null);
-  const moreButton = useRef<HTMLButtonElement>(null);
-  const [naming, setNaming] = useState(false);
-  const [canvasName, setCanvasName] = useState("");
   const [typeMenu, setTypeMenu] = useState<TypeMenu | null>(null);
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -149,6 +132,18 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     currentRef.current = id;
     setCurrent(id);
   }, []);
+  const canvasMenu = useCanvasMenu({
+    connection,
+    go: (id) => {
+      // A canvas on its own page moves by going to the other page.
+      if (route.pinned) {
+        void call("canvas.show", { id }).catch(report);
+        return;
+      }
+      switchTo(id);
+    },
+    report,
+  });
   const holon = useHolonCanvas({ connection, current, switchTo, report, notify: setNotice });
   const drawerData = useUnitsDrawer({ connection, current, report });
   /** The sidebar: closed, or open on one of its tabs. It reopens on the tab it was last on. */
@@ -225,7 +220,6 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
   const hasCanvas = canvases.length > 0;
   // Labels show while they fit, then icons, then a More menu, measured on this bar.
   const fit = useFit(bar, [hasCanvas, current, canvases, notice, aiOn]);
-  const barKeys = useBarKeys(bar);
   useEffect(() => {
     const box = area.current;
     if (!box) return undefined;
@@ -691,15 +685,14 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
 
   const closeMenus = useCallback(() => {
     setFieldsAt(null);
-    setMenu(false);
+    canvasMenu.close();
     setMoreOpen(false);
-    setNaming(false);
     links.close();
     setTypeMenu(null);
     related.close();
     setTidyAt(null);
     closeAdd();
-  }, [closeAdd, links.close, related.close]);
+  }, [closeAdd, links.close, related.close, canvasMenu.close]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -776,29 +769,6 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     });
   };
 
-  const switchCanvas = (id: string): void => {
-    setMenu(false);
-    // A canvas on its own page moves by going to the other page.
-    if (route.pinned) {
-      void call("canvas.show", { id }).catch(report);
-      return;
-    }
-    currentRef.current = id;
-    setCurrent(id);
-  };
-
-  const startCanvas = async (title: string): Promise<void> => {
-    const name = title.trim();
-    if (!name) return;
-    setNaming(false);
-    setCanvasName("");
-    try {
-      switchCanvas((await call("canvas.create", { title: name })).id);
-    } catch (error) {
-      report(error);
-    }
-  };
-
   const [pickedCard, setPickedCard] = useState<string | null>(null);
   const onSelectionChange = useCallback(
     ({ nodes: picked }: { nodes: Node[] }) => {
@@ -864,31 +834,12 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     return node.selected && summary ? [summary.id] : [];
   });
 
-  // Not a <form>: sandboxed frames block form submission without any error.
-  const nameInput = (
-    <div className="name-form">
-      <input
-        data-dg="canvas-name"
-        aria-label="Canvas name"
-        placeholder="Canvas name"
-        autoFocus
-        value={canvasName}
-        onChange={(event) => setCanvasName(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") void startCanvas(canvasName);
-          if (event.key === "Escape") setNaming(false);
-        }}
-      />
-      <button type="button" data-dg="canvas-create" onClick={() => void startCanvas(canvasName)}>Create</button>
-    </div>
-  );
-
   if (!hasCanvas) {
     return (
       <main className="empty">
         <h1>Start a canvas</h1>
         <p>Lay out questions, claims and evidence, and how they connect.</p>
-        {nameInput}
+        <NameForm value={canvasMenu.name} onChange={canvasMenu.setName} onCreate={() => void canvasMenu.start()} onCancel={() => canvasMenu.setNaming(false)} />
         {notice ? <p role="alert">{notice}</p> : null}
       </main>
     );
@@ -897,7 +848,6 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
   const title = canvases.find((canvas) => canvas.id === current)?.title ?? "Canvas";
   /** A PDF canvas stays as its paper was read. */
   const reading = view?.canvas.id === current ? view?.paper : undefined;
-  const fixedWhy = "A PDF canvas holds only what comes from its paper. Build on it to add your own.";
   const buildOn = (): void => {
     if (!current) return;
     void call("canvas.buildOn", { id: current })
@@ -916,222 +866,59 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       .then((pdf) => call("pdf.show", pdf ? { ref: pdf.ref } : {}))
       .catch(report);
   const modeLabel = MODES.find((entry) => entry.mode === mode)!.label;
-  /** The panels that work beside a canvas, opened from its bar. */
-  // Panels open beside the canvas. Context keeps its word longest, since no icon says "context".
-  const panelButtons: { dg: string; label: string; title: string; icon: IconName; keep?: boolean; open: () => void }[] = [
-    { dg: "open-search", label: "Search units", title: "Search units, in the sidebar", icon: "search", open: () => openSide("search") },
-    { dg: "open-context", label: "Context", title: "Open the context panel", icon: "context", keep: true, open: () => void call("panel.open", { surface: "context" }).catch(report) },
-    { dg: "open-pdf", label: "PDF", title: parentPdf ? `Read ${parentPdf.name}, the PDF most of these cards came from. Its title there lists the others` : "Read a PDF beside the canvas", icon: "pdf", open: openPdf },
-  ];
 
   return (
     <ActionsContext.Provider value={actions}>
       <div className="shell" ref={shell} data-side={side ? (holon.prefs.sidePinned ? "pinned" : "floating") : undefined}>
-        <header className="bar" ref={bar} data-fit={fit} role="toolbar" aria-label="Canvas" onKeyDown={barKeys.onKeyDown} onFocus={barKeys.onFocus}>
-          <button type="button" className="tool side-toggle" data-dg="side-toggle" aria-label="Library, search units and units to place" aria-expanded={side !== null} title="Library, search units and units to place" onClick={() => (side ? setSide(null) : openSide(lastSide.current))}>
-            <Icon name="sidebar" />
-          </button>
-          <div className="picker" data-fit-min="96">
-            <button
-              type="button"
-              className="canvas-button"
-              data-dg="canvas-menu"
-              aria-haspopup="menu"
-              aria-expanded={menu}
-              title={`${title}: canvases, export and more`}
-              onClick={() => {
-                setMenu((on_) => !on_);
-                setNaming(false);
-              }}
-            >
-              <span>{title}</span>
-              <Icon name="chevron" />
-            </button>
-          </div>
-          <div className="tool-group create" role="group" aria-label="Add">
-            <button
-              ref={addButton}
-              type="button"
-              className="tool"
-              data-dg="add-node"
-              aria-label={reading ? "Highlight in the PDF" : "Add unit"}
-              title={reading ? "Add a unit by highlighting it in this paper's PDF" : "Add unit · N"}
-              aria-expanded={reading ? undefined : adding}
-              onClick={() => (reading ? openPdf() : adding ? closeAdd() : openAdd())}
-            >
-              <Icon name={reading ? "pdf" : "plus"} />
-              <span className="tool-label">{reading ? "Highlight" : "Add unit"}</span>
-            </button>
-            {fit !== "more" ? (
-              <>
-                <button type="button" className="tool" data-dg="add-note" aria-label="Add sticky" disabled={Boolean(reading)} title={reading ? fixedWhy : "Add a sticky · T"} onClick={addNote}>
-                  <Icon name="note" />
-                  <span className="tool-label">Sticky</span>
-                </button>
-                <button
-                  type="button"
-                  className="tool"
-                  data-dg="draw"
-                  aria-label="Draw"
-                  disabled={Boolean(reading)}
-                  title={reading ? fixedWhy : "Draw · D"}
-                  aria-pressed={tool === "draw"}
-                  onClick={() => setTool((old) => (old === "draw" ? "select" : "draw"))}
-                >
-                  <Icon name="pen" />
-                  <span className="tool-label">Draw</span>
-                </button>
-              </>
-            ) : null}
-          </div>
-          <div className="tool-group split" role="group" aria-label="Tidy">
-            <button
-              type="button"
-              className="tool keep"
-              data-dg="tidy"
-              aria-label={`Tidy by ${modeLabel}`}
-              title={`Tidy by ${modeLabel} · L`}
-              onClick={() => tidyUp(mode)}
-            >
-              <Icon name="tidy" />
-              <span className="tool-label">
-                Tidy <span className="tool-mode">{modeLabel}</span>
-              </span>
-            </button>
-            <button
-              ref={tidyButton}
-              type="button"
-              className="tool caret"
-              data-dg="tidy-menu"
-              aria-label="Choose how to tidy"
-              title="Choose how to tidy"
-              aria-haspopup="menu"
-              aria-expanded={tidyAt !== null}
-              onClick={openTidyMenu}
-            >
-              <Icon name="chevron" />
-            </button>
-          </div>
-          <div className="tool-group" role="group" aria-label="Cards">
-            <button
-              ref={fieldsButton}
-              type="button"
-              className="tool"
-              data-dg="card-fields"
-              aria-label="What cards show"
-              title="Choose what every card shows"
-              aria-haspopup="menu"
-              aria-expanded={fieldsAt !== null}
-              onClick={openFieldsMenu}
-            >
-              <Icon name="card" />
-              <span className="tool-label">Cards</span>
-              <Icon name="chevron" />
-            </button>
-          </div>
-          <div className="status" role="status" data-fit-min="0">
-            <span data-dg="status-text">{notice || (crowded ? `${crowded} ${crowded === 1 ? "card now covers" : "cards now cover"} another` : "") || done?.label || ""}</span>
-            {!notice && crowded ? (
-              <button type="button" className="status-link" data-dg="tidy-after-fields" title={`Tidy by ${modeLabel} to make room`} onClick={() => { setCrowded(0); tidyUp(mode); }}>
-                Tidy
-              </button>
-            ) : null}
-            {!notice && !crowded && done?.remembered ? (
-              <button
-                type="button"
-                className="status-link"
-                data-dg="link-delete-ask-again"
-                title="Ask again each time a link is deleted"
-                onClick={() => {
-                  dismiss();
-                  void call("prefs.set", { linkDelete: "ask" }).then(() => setNotice("Delete will ask about links again")).catch(report);
-                }}
-              >
-                Ask next time
-              </button>
-            ) : null}
-          </div>
-          <div className="tool-group history" role="group" aria-label="History">
-            <button
-              type="button"
-              className="tool icon-only"
-              data-dg="undo"
-              aria-label={next.undo ? `Undo: ${next.undo}` : "Nothing to undo"}
-              title={next.undo ? `Undo: ${next.undo} · ${MOD_KEY}Z` : "Nothing to undo"}
-              disabled={!next.undo}
-              onClick={() => void undo()}
-            >
-              <Icon name="undo" />
-            </button>
-            <button
-              type="button"
-              className="tool icon-only"
-              data-dg="redo"
-              aria-label={next.redo ? `Redo: ${next.redo}` : "Nothing to redo"}
-              title={next.redo ? `Redo: ${next.redo} · ${MOD_KEY}⇧Z` : "Nothing to redo"}
-              disabled={!next.redo}
-              onClick={() => void redo()}
-            >
-              <Icon name="redo" />
-            </button>
-          </div>
-          <div className="tool-group panels" role="group" aria-label="Panels">
-            {fit !== "more" ? (
-              <button
-                type="button"
-                className="tool keep"
-                data-dg="ai"
-                aria-label="Ask AI"
-                title="Ask about this canvas"
-                aria-pressed={aiOn}
-                onClick={() => setAiOn((on_) => !on_)}
-              >
-                <Icon name="ai" />
-                <span className="tool-label">Ask AI</span>
-              </button>
-            ) : null}
-            {panelButtons
-              .filter((panel) => fit !== "more" || panel.dg !== "open-pdf")
-              .map((panel) => (
-                <button key={panel.dg} type="button" className={panel.keep ? "tool keep" : "tool"} data-dg={panel.dg} aria-label={panel.label} title={panel.title} onClick={panel.open}>
-                  <Icon name={panel.icon} />
-                  <span className="tool-label">{panel.label}</span>
-                </button>
-              ))}
-            {fit === "more" ? (
-              <button
-                ref={moreButton}
-                type="button"
-                className="tool icon-only"
-                data-dg="toolbar-more"
-                aria-label="More tools"
-                title="Note, Draw, Ask AI and PDF"
-                aria-haspopup="menu"
-                aria-expanded={moreOpen}
-                onClick={() => setMoreOpen((on_) => !on_)}
-              >
-                <Icon name="more" />
-              </button>
-            ) : null}
-          </div>
-        </header>
-        {moreOpen && fit === "more" ? (
-          <div className="popover menu more-menu" role="menu" aria-label="More tools">
-            <button type="button" role="menuitem" data-dg="add-note" onClick={() => { setMoreOpen(false); addNote(); }}>
-              <Icon name="note" /> Note <kbd>T</kbd>
-            </button>
-            <button type="button" role="menuitem" data-dg="draw" onClick={() => { setMoreOpen(false); setTool((old) => (old === "draw" ? "select" : "draw")); }}>
-              <Icon name="pen" /> Draw <kbd>D</kbd>
-            </button>
-            <hr />
-            <button type="button" role="menuitem" data-dg="ai" onClick={() => { setMoreOpen(false); setAiOn((on_) => !on_); }}>
-              <Icon name="ai" /> Ask AI
-            </button>
-            <button type="button" role="menuitem" data-dg="open-pdf" onClick={() => { setMoreOpen(false); openPdf(); }}>
-              <Icon name="pdf" /> {parentPdf ? "Read its PDF" : "Read a PDF"}
-            </button>
-          </div>
-        ) : null}
+        <Toolbar
+          refs={{ bar, add: addButton, tidy: tidyButton, fields: fieldsButton }}
+          state={{
+            fit,
+            title,
+            sideOpen: side !== null,
+            menuOpen: canvasMenu.open,
+            reading: Boolean(reading),
+            adding,
+            drawing: tool === "draw",
+            modeLabel,
+            tidyOpen: tidyAt !== null,
+            fieldsOpen: fieldsAt !== null,
+            aiOn,
+            moreOpen,
+            notice,
+            crowded,
+            done,
+            next,
+            parentPdf,
+          }}
+          actions={{
+            toggleSide: () => (side ? setSide(null) : openSide(lastSide.current)),
+            toggleCanvasMenu: canvasMenu.toggle,
+            openAdd,
+            closeAdd,
+            addNote,
+            toggleDraw: () => setTool((old) => (old === "draw" ? "select" : "draw")),
+            tidy: () => tidyUp(mode),
+            openTidyMenu,
+            openFieldsMenu,
+            tidyAfterFields: () => {
+              setCrowded(0);
+              tidyUp(mode);
+            },
+            askLinksAgain: () => {
+              dismiss();
+              void call("prefs.set", { linkDelete: "ask" }).then(() => setNotice("Delete will ask about links again")).catch(report);
+            },
+            undo: () => void undo(),
+            redo: () => void redo(),
+            toggleAi: () => setAiOn((on_) => !on_),
+            toggleMore: () => setMoreOpen((on_) => !on_),
+            closeMore: () => setMoreOpen(false),
+            openSearch: () => openSide("search"),
+            openContext: () => void call("panel.open", { surface: "context" }).catch(report),
+            openPdf,
+          }}
+        />
         {reading ? (
           <div className="fixed-strip" data-dg="pdf-canvas-fixed" data-asked={fixedAsk} role={fixedAsk ? "alert" : "note"}>
             <span className="repo-kind" data-kind="paper"><Icon name="pdf" /> PDF canvas</span>
@@ -1153,82 +940,8 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
           onOpen={(ref) => void holon.openInside(ref)}
           report={report}
         />
-        {menu ? (
-          <div className="popover canvas-menu">
-            <ul role="menu" aria-label="Canvases">
-              {canvases.map((canvas) => (
-                <li key={canvas.id}>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    data-dg={`canvas-${canvas.title}`}
-                    aria-current={canvas.id === current}
-                    onClick={() => switchCanvas(canvas.id)}
-                  >
-                    {pictures[canvas.id] ? <Thumb thumb={pictures[canvas.id]!.thumb} /> : <span className="thumb thumb-empty" aria-hidden="true" />}
-                    <span className="canvas-pick">
-                      <span className="canvas-pick-title">{canvas.title}</span>
-                      {pictures[canvas.id] ? (
-                        <span className="repo-kind" data-kind={pictures[canvas.id]!.kind}>
-                          <Icon name={pictures[canvas.id]!.kind === "paper" ? "pdf" : "canvas"} /> {pictures[canvas.id]!.kind === "paper" ? "PDF canvas" : "Canvas"}
-                          <span className="cvs-meta"> · {pictures[canvas.id]!.cards} {pictures[canvas.id]!.cards === 1 ? "card" : "cards"}</span>
-                        </span>
-                      ) : null}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {naming ? (
-              nameInput
-            ) : (
-              <>
-                <button type="button" className="new" data-dg="new-canvas" onClick={() => setNaming(true)}>
-                  <Icon name="plus" /> New canvas
-                </button>
-                <button type="button" className="new" data-dg="upload-paper" onClick={() => { setMenu(false); void call("dialog.open", { surface: "upload" }).catch(report); }}>
-                  <Icon name="export" /> Upload a paper
-                </button>
-                <button type="button" className="new" data-dg="from-zotero" onClick={() => { setMenu(false); void call("dialog.open", { surface: "zotero", ...(current ? { id: current } : {}) }).catch(report); }}>
-                  <Icon name="zotero" /> From Zotero…
-                </button>
-                <button type="button" className="new" data-dg="open-library" onClick={() => { setMenu(false); void call("panel.open", { surface: "canvases" }).catch(report); }}>
-                  <Icon name="library" /> Open the Library
-                </button>
-                <button type="button" className="new" data-dg="export" onClick={() => { setMenu(false); setExportOpen(true); }}>
-                  <Icon name="export" /> Export…
-                </button>
-                <button type="button" className="new" data-dg="open-grammar" onClick={() => { setMenu(false); void call("dialog.open", { surface: "grammar" }).catch(report); }}>
-                  <Icon name="card" /> Types and relations…
-                </button>
-                {current && view && !view.paper ? (
-                  removeAsk ? (
-                    <div className="remove-ask" data-dg="remove-canvas-ask">
-                      <span>Remove this canvas? Its units and their links stay.</span>
-                      <button type="button" onClick={() => setRemoveAsk(false)}>Keep it</button>
-                      <button
-                        type="button"
-                        data-dg="remove-canvas-yes"
-                        onClick={() => {
-                          setRemoveAsk(false);
-                          setMenu(false);
-                          void call("canvas.remove", { id: current })
-                            .then(() => call("panel.open", { surface: "canvases" }))
-                            .catch(report);
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <button type="button" className="new" data-dg="remove-canvas" onClick={() => setRemoveAsk(true)}>
-                      <Icon name="close" /> Remove this canvas…
-                    </button>
-                  )
-                ) : null}
-              </>
-            )}
-          </div>
+        {canvasMenu.open ? (
+          <CanvasMenu connection={connection} menu={canvasMenu} canvases={canvases} current={current} removable={Boolean(view && !view.paper)} onExport={() => setExportOpen(true)} report={report} />
         ) : null}
         {exportOpen && view ? (
           <ExportMenu

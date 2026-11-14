@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasSummary, DeviceView, LabView, PaperSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { PlaceContext, usePlace, type Place } from "../shared/place.ts";
-import { Icon, LibraryMark, Mark, Problem } from "../shared/ui.tsx";
+import { Icon, LibraryMark, Mark, Problem, Tabs } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
 import { Repository } from "./Repository.tsx";
 import { counted, messageOf } from "../shared/words.ts";
@@ -358,11 +358,14 @@ const Shelves = ({ connection }: { connection: Connection }) => {
   const props = { connection, report };
   return (
     <main className="cvs">
-      <nav className="segments" role="tablist" aria-label="Library">
-        {TABS.map(({ id, label }) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} data-dg={`library-${id}`} onClick={() => { setTab(id); setNotice(""); }}>{label}</button>
-        ))}
-      </nav>
+      <Tabs
+        as="nav"
+        className="segments"
+        aria-label="Library"
+        tabs={TABS.map(({ id, label }) => ({ id, label, dg: `library-${id}` }))}
+        selected={tab}
+        onPick={(id) => { setTab(id); setNotice(""); }}
+      />
       <Problem text={notice} />
       {tab === "canvases" ? <Repository {...props} /> : null}
       {tab === "papers" ? <Papers {...props} /> : null}

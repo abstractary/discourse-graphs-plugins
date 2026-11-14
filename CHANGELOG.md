@@ -18,7 +18,8 @@ Each entry has up to two lists. **For people using it** is what changed in what 
 - **A unit is reached through `unit.*`** where it was `node.*`, `unit.*` and `units.*`, and the overview through `overview.*` where it was `holon.*`. One read is `get` and many is `list`.
 - **Every route of the reference server is declared once,** in `packages/contract/src/routes.ts`. The client builds its addresses from it, the server takes a generated copy, the docs table is generated, and CI fails if either copy is stale.
 - **The walkthrough asks the core three named questions** where it used to read the whole graph, so only the test hooks take the whole core now.
-- **Fifty of the core's refusals carry their kind,** up from twenty-three.
+- **Fifty of the core's refusals carry their kind,** up from twenty-three, and a panel's failed call now carries the kind too. No panel acts on it yet.
+- **The canvas component is 1,148 lines,** with its toolbar and canvas menu in files of their own. Six tab bars are one component.
 - **The harness reports what the app said** when a call fails, where it used to report that the answer was not JSON.
 
 ## An MCP server that reads, and the refactor carried on (14 November 2026)

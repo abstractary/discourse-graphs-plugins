@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { UnitsAvailable } from "@dg/contract/surface.ts";
 import type { Place } from "../shared/place.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { Tabs } from "../shared/ui.tsx";
 import { Drawer } from "./Drawer.tsx";
 
 /**
@@ -55,14 +56,19 @@ export const Sidebar = ({
 }) => (
   <aside className="side" data-dg="side" data-pinned={pinned ? "" : undefined} aria-label="Library, search units and units to place">
     <header className="side-head">
-      <div className="side-tabs" role="tablist" aria-label="Sidebar">
-        {TABS.map(({ id, label, hint }) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} title={hint} data-dg={`side-tab-${id}`} onClick={() => onTab(id)}>
-            {label}
-            {id === "units" && units ? <span className="side-count">{Object.keys(units.units).length}</span> : null}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="side-tabs"
+        aria-label="Sidebar"
+        tabs={TABS.map(({ id, label, hint }) => ({
+          id,
+          label,
+          title: hint,
+          dg: `side-tab-${id}`,
+          extra: id === "units" && units ? <span className="side-count">{Object.keys(units.units).length}</span> : null,
+        }))}
+        selected={tab}
+        onPick={onTab}
+      />
       <button type="button" className="side-pin" aria-pressed={pinned} data-dg="side-pin" title={pinned ? "Let it float over the canvas again" : "Keep it open beside the canvas"} onClick={() => onPin(!pinned)}>
         {pinned ? "Unpin" : "Pin"}
       </button>

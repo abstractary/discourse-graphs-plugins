@@ -38,14 +38,13 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### Canvas ([#6](https://github.com/abstractary/discourse-graphs-plugins/issues/6))
 
-- [#19](https://github.com/abstractary/discourse-graphs-plugins/issues/19) Split the canvas component, starting with its writer · refactor · Refactor · partly done: the toolbar and canvas menu remain
-- [#23](https://github.com/abstractary/discourse-graphs-plugins/issues/23) Shared pieces for the panels, and panels that do not import each other · refactor · Refactor · partly done: tab bars, confirms and class prefixes remain
+- [#23](https://github.com/abstractary/discourse-graphs-plugins/issues/23) Shared pieces for the panels, and panels that do not import each other · refactor · Refactor · partly done: confirms, list rows and class prefixes remain
 
 ### Units, relations and grammar ([#7](https://github.com/abstractary/discourse-graphs-plugins/issues/7))
 
 - [#21](https://github.com/abstractary/discourse-graphs-plugins/issues/21) One name for one idea in the calls a panel makes · refactor · Refactor · partly done: units and the overview renamed; verbs and id names remain
 - [#27](https://github.com/abstractary/discourse-graphs-plugins/issues/27) Retire the old word for Overview and Boundary from the code · refactor · Refactor · partly done: the calls and the event; identifiers and a record field remain
-- [#28](https://github.com/abstractary/discourse-graphs-plugins/issues/28) Failures that keep their codes, and none that vanish · refactor · Refactor · partly done: panels do not act on the codes yet
+- [#28](https://github.com/abstractary/discourse-graphs-plugins/issues/28) Failures that keep their codes, and none that vanish · refactor · Refactor · partly done: the code reaches a panel; panels do not act on it, and about forty calls drop a failure
 
 ### Reading and papers ([#8](https://github.com/abstractary/discourse-graphs-plugins/issues/8))
 

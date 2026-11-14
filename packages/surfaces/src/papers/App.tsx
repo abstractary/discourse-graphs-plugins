@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BaseEdge, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useNodesInitialized, useReactFlow, type Edge, type EdgeProps, type Node, type NodeProps } from "@xyflow/react";
 import type { PaperMap, PaperMapLink, PaperMapPaper, PaperMapTie, PaperScope, PaperScopeChoice } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { LibraryMark, plain } from "../shared/ui.tsx";
+import { LibraryMark, Tabs, plain } from "../shared/ui.tsx";
 import { count } from "../shared/words.ts";
 
 /**
@@ -165,13 +165,18 @@ const Map = ({ connection }: { connection: Connection }) => {
     <main className="pm" data-dg="papers">
       <header className="pm-bar">
         <h1>Paper map</h1>
-        <div className="pm-scopes" role="tablist" aria-label="Whose work counts">
-          {map.scopes.map((choice) => (
-            <button key={keyOf(choice.scope)} type="button" role="tab" aria-selected={keyOf(choice.scope) === keyOf(map.scope)} title={choice.hint} data-dg={`pm-scope-${choice.scope.kind}`} onClick={() => { setPicked(null); setScope(choice.scope); }}>
-              {choice.label}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="pm-scopes"
+          aria-label="Whose work counts"
+          tabs={map.scopes.map((choice) => ({ id: keyOf(choice.scope), label: choice.label, title: choice.hint, dg: `pm-scope-${choice.scope.kind}` }))}
+          selected={keyOf(map.scope)}
+          onPick={(key) => {
+            const choice = map.scopes.find((entry) => keyOf(entry.scope) === key);
+            if (!choice) return;
+            setPicked(null);
+            setScope(choice.scope);
+          }}
+        />
         <p className="pm-sum" data-dg="pm-summary">
           {map.papers.length === 0
             ? "No papers here yet."

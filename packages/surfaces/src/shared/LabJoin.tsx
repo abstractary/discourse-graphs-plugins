@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ComputeServer } from "@dg/contract/services.ts";
 import type { LabView } from "@dg/contract/surface.ts";
 import type { Connection } from "./rpc.ts";
-import { Problem } from "./ui.tsx";
+import { Problem, Tabs } from "./ui.tsx";
 import { messageOf } from "./words.ts";
 
 /** Joining or starting a lab, used on first run and from the Library. */
@@ -59,10 +59,15 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
 
   return (
     <div className="stack">
-      <div className="segments" role="tablist">
-        <button type="button" role="tab" aria-selected={mode === "join"} data-dg="lab-mode-join" onClick={() => { setMode("join"); setText(""); setFound(""); }}>Join a lab</button>
-        <button type="button" role="tab" aria-selected={mode === "start"} data-dg="lab-mode-start" onClick={() => { setMode("start"); setText(""); setFound(""); }}>Start a lab</button>
-      </div>
+      <Tabs
+        className="segments"
+        tabs={[
+          { id: "join", label: "Join a lab", dg: "lab-mode-join" },
+          { id: "start", label: "Start a lab", dg: "lab-mode-start" },
+        ]}
+        selected={mode}
+        onPick={(id) => { setMode(id); setText(""); setFound(""); }}
+      />
       <label className="field">
         <span>{mode === "join" ? "Invitation or lab identifier" : "Lab name"}</span>
         <input

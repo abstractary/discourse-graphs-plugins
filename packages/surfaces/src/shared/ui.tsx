@@ -114,6 +114,39 @@ export const Highlighted = ({ text, query }: { text: string; query: string }) =>
   return <Marked text={shown} marks={words.length ? marksOf(shown, words) : []} />;
 };
 
+/** One tab of a `Tabs` bar. `dg` is its `data-dg`; `extra` follows the label inside the button, such as a count. */
+export type TabOf<Id extends string> = { id: Id; label: ReactNode; dg: string; title?: string | undefined; extra?: ReactNode };
+
+/**
+ * A row of tabs: a `role="tablist"` container holding one `role="tab"` button per entry, the chosen
+ * one marked with `aria-selected`. The container's tag, class and label are the caller's, so each
+ * panel keeps the markup and the selectors it had.
+ */
+export const Tabs = <Id extends string>({
+  as: Tag = "div",
+  className,
+  "aria-label": label,
+  tabs,
+  selected,
+  onPick,
+}: {
+  as?: "div" | "nav";
+  className: string;
+  "aria-label"?: string | undefined;
+  tabs: readonly TabOf<Id>[];
+  selected: Id;
+  onPick: (id: Id) => void;
+}) => (
+  <Tag className={className} role="tablist" aria-label={label}>
+    {tabs.map((tab) => (
+      <button key={tab.id} type="button" role="tab" aria-selected={tab.id === selected} title={tab.title} data-dg={tab.dg} onClick={() => onPick(tab.id)}>
+        {tab.label}
+        {tab.extra}
+      </button>
+    ))}
+  </Tag>
+);
+
 /** What went wrong, said where the person is looking. Nothing is drawn while there is nothing to say. */
 export const Problem = ({ text, dg }: { text: string; dg?: string | undefined }) =>
   text ? <p className="problem" role="alert" data-dg={dg}>{text}</p> : null;

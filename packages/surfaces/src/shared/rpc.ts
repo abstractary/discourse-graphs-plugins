@@ -1,10 +1,26 @@
-import type { Appearance, Skin } from "@dg/contract/host.ts";
+import type { Appearance, HostErrorCode, Skin } from "@dg/contract/host.ts";
+import type { HostRef } from "@dg/contract/records.ts";
 import type { SurfaceEvent, SurfaceMethod, SurfaceMethods } from "@dg/contract/surface.ts";
 
 export type Call = <M extends SurfaceMethod>(
   method: M,
   params: SurfaceMethods[M]["params"],
 ) => Promise<SurfaceMethods[M]["result"]>;
+
+/**
+ * What a refused call rejects with. `message` is the core's own sentence, as before; `code` says
+ * which kind of refusal it was, and `ref` names the unit collided with on a `conflict`. Its `name`
+ * stays "Error", so anything that prints one reads as it did.
+ */
+export class CallError extends Error {
+  readonly code: HostErrorCode | undefined;
+  readonly ref: HostRef | undefined;
+  constructor(message: string, code?: HostErrorCode, ref?: HostRef) {
+    super(message);
+    this.code = code;
+    this.ref = ref;
+  }
+}
 
 type EventName = SurfaceEvent["event"];
 type EventOf<E extends EventName> = Extract<SurfaceEvent, { event: E }>;
@@ -13,7 +29,7 @@ type Incoming = {
   id?: string;
   ok?: boolean;
   result?: unknown;
-  error?: { message: string };
+  error?: { message: string; code?: HostErrorCode; ref?: HostRef };
   event?: EventName;
 };
 
@@ -79,7 +95,7 @@ export const connect = (): Promise<Connection> =>
           const entry = waiting.get(message.id)!;
           waiting.delete(message.id);
           if (message.ok) entry.resolve(message.result as never);
-          else entry.reject(new Error(message.error?.message ?? "Failed"));
+          else entry.reject(new CallError(message.error?.message ?? "Failed", message.error?.code, message.error?.ref));
         }
       };
       if (data.test) installProbe();

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Profile, ProfileAudience, ProfileEvent, ProfileStats } from "@dg/contract/surface.ts";
 import { dayOf, initialsOf, Mark } from "../shared/people.tsx";
 import type { Connection } from "../shared/rpc.ts";
-import { plain } from "../shared/ui.tsx";
+import { Tabs, plain } from "../shared/ui.tsx";
 import { count } from "../shared/words.ts";
 
 /**
@@ -152,13 +152,13 @@ export const App = ({ connection }: { connection: Connection }) => {
         ) : null}
       </header>
 
-      <div className="profile-tabs" role="tablist" aria-label="Who can see this">
-        {profile.audiences.map((audience) => (
-          <button key={audience} type="button" role="tab" aria-selected={tab === audience} data-dg={`profile-tab-${audience}`} onClick={() => setTab(audience)}>
-            {TABS[audience].label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="profile-tabs"
+        aria-label="Who can see this"
+        tabs={profile.audiences.map((audience) => ({ id: audience, label: TABS[audience].label, dg: `profile-tab-${audience}` }))}
+        selected={tab}
+        onPick={setTab}
+      />
       <p className="profile-audience" data-dg="profile-audience">{TABS[tab].who}</p>
 
       <Stats stats={stats} />

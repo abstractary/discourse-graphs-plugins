@@ -78,10 +78,11 @@ try {
     await sleep(400);
     return (await summary()).versions - before;
   };
-  await moveBy(thought, 0, 170);
-  const claimWrites = await moveBy(claim, 190, -10);
+  // Cards show their facts now and are taller, so each is moved well clear of the others.
+  await moveBy(thought, 0, 330);
+  const claimWrites = await moveBy(claim, 340, -60);
   check("drag.one-record-per-move", claimWrites === 1, `${claimWrites} record(s)`);
-  await moveBy(evidence, -170, -20);
+  await moveBy(evidence, -340, -60);
 
   const before = await summary();
   await drag(centre(await at(handle(evidence, "right"))), centre(await at(handle(claim, "left"))));

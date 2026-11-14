@@ -112,7 +112,7 @@ export const worksFeature = (context: Context) => {
     "unit.identify": async ({ node: id, add, remove }) => {
       const node = context.nodeOf(id);
       if (!node) throw refuse("not-found", `No node ${id}`);
-      if (node.by.id !== context.me().id) throw new Error("Only whoever made a unit can change its identifiers.");
+      if (node.by.id !== context.me().id) throw refuse("read-only", "Only whoever made a unit can change its identifiers.");
       const fresh = (add ?? []).map((text) => {
         const found = typeof text === "string" ? parseIdentifier(text) : isIdentifier(text) ? text : null;
         if (!found) throw new Error(`"${String(text)}" isn't an identifier this reads. Paste a DOI, PMID link, arXiv id, ORCID iD, RRID or a web address.`);

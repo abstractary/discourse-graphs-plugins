@@ -77,6 +77,12 @@ export type CoreForAdapter = {
   answerBreadcrumb: (args: { paper: string; leave: boolean; remember?: boolean }) => Promise<void>;
   /** Takes back what a walkthrough made. Anything else stays. */
   removeExamples: (examples: Examples) => Promise<void>;
+  /** The newest unit with exactly this title, for a guide that made one and needs to find it again. */
+  unitTitled: (title: string) => DgId | null;
+  /** The text in this base that belongs to a unit, when it has one. */
+  textOfUnit: (id: DgId) => HostRef | null;
+  /** The relation standing from one unit to another, when there is one. */
+  relationBetween: (source: DgId, target: DgId) => DgId | null;
   /** Asks a surface where something is. Null when it isn't showing. */
   locate: (args: {
     surface: string;

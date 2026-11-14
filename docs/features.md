@@ -63,7 +63,6 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### Hosts ([#14](https://github.com/abstractary/discourse-graphs-plugins/issues/14))
 
-- [#26](https://github.com/abstractary/discourse-graphs-plugins/issues/26) Plugins use the seam the contract defines for them · refactor · Refactor · partly done: three callers still take the whole core
 - [#32](https://github.com/abstractary/discourse-graphs-plugins/issues/32) Decide: retire the Roam host, or bring it up to date · decision · Refactor
 - [#42](https://github.com/abstractary/discourse-graphs-plugins/issues/42) A Logseq host · feature · Collaboration
 

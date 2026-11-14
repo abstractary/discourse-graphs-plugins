@@ -68,7 +68,7 @@ import { canvasFeature, canvasHomes } from "./canvases.ts";
 import { captureFeature } from "./capture.ts";
 import { mirrorFeature } from "./mirror.ts";
 import { nodeFeature } from "./nodes.ts";
-import { codeOf, value } from "./refuse.ts";
+import { refuse, codeOf, value } from "./refuse.ts";
 import { labFeature } from "./labs.ts";
 import { aiFeature } from "./ai.ts";
 import { methodFeature } from "./method.ts";
@@ -453,7 +453,7 @@ export const createCore = async ({
 
   /** The person who sets up a lab is its custodian, so this is for the PI to run. */
   const createLabRecord = async (name: string): Promise<IdentityView> => {
-    if (documents("lab").some(({ space }) => space === localSpace)) throw new Error("This space already has a lab.");
+    if (documents("lab").some(({ space }) => space === localSpace)) throw refuse("conflict", "This space already has a lab.");
     const labIdentity = await createLabIdentity({ keys, custodian: identity });
     const lab = createLab({
       space: localSpace,
@@ -1087,6 +1087,12 @@ export const createCore = async ({
     command: (canvas, name) => {
       for (const port of ports) port.send({ event: "command", canvas, name });
     },
+    unitTitled: (title) =>
+      documents("node")
+        .filter((item) => !item.removed && item.title === title)
+        .sort((a, b) => b.at.localeCompare(a.at))[0]?.id ?? null,
+    textOfUnit: (id) => anchorsByNode.get(id)?.ref ?? null,
+    relationBetween: (source, target) => [...graph.relations.values()].find(({ record, state }) => state === "active" && record.source === source && record.target === target)?.record.id ?? null,
     unitTitle: (id) => nodeOf(id)?.title.replace(/\[\[([^\]]+)\]\]/g, "$1") ?? null,
     importNotebook: (args) => handlers["notebook.import"](args),
     savedExtraction: (args) => handlers["paper.saved"](args),

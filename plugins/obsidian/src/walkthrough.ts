@@ -37,8 +37,7 @@ export const walkthrough = async (plugin: DiscourseGraphsPlugin): Promise<void> 
 };
 
 export const walkthroughBase = async (plugin: DiscourseGraphsPlugin): Promise<WalkthroughBase> => {
-  // The walkthrough reads the graph to find what it made, which is more than the contract names for a plugin.
-  const core = await plugin.wiring.wholeCore();
+  const core = await plugin.ensureCore();
   const { workspace } = plugin.app;
   const host = plugin.adapter!.host;
   const editor = (): (Editor & { cm?: { coordsAtPos: (at: number) => { left: number; right: number; top: number; bottom: number } | null } }) | undefined =>

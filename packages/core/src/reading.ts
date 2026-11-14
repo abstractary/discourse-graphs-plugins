@@ -334,7 +334,7 @@ export const readingFeature = (context: Context) => {
     "pdf.cut": async ({ ref, exact, page, title, type, canvas, newCanvas, documentTitle }) => {
       const quote = normalizeQuote(exact);
       const name = title.trim() || quote;
-      if (!quote) throw new Error("Highlight some words first.");
+      if (!quote) throw refuse("no-target", "Highlight some words first.");
       const file = await fileOf(ref);
       const cid = await cidOf(ref);
       const fresh: DgRecord[] = [];

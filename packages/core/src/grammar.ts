@@ -125,7 +125,7 @@ export const grammarFeature = (context: Context) => {
     if (!held) return null;
     mustBeMine(held);
     const count = uses()[id] ?? 0;
-    if (count > 0) throw new Error(`${count} ${count === 1 ? "unit has" : "units have"} this type. Give ${count === 1 ? "it" : "them"} another type first.`);
+    if (count > 0) throw refuse("no-target", `${count} ${count === 1 ? "unit has" : "units have"} this type. Give ${count === 1 ? "it" : "them"} another type first.`);
     const left = nodeTypes().filter((type) => type.id !== id && type.base === held.base);
     if (held.base && left.length === 0 && ["question", "claim", "evidence", "source"].includes(held.base)) throw new Error(`This is the only ${held.base} type. An argument needs one.`);
     // Relation rules that named it no longer mean anything.
@@ -157,7 +157,7 @@ export const grammarFeature = (context: Context) => {
       return made;
     }
     const held = context.relationTypeOf(id);
-    if (!held) throw new Error("That relation isn't here any more.");
+    if (!held) throw refuse("not-found", "That relation isn't here any more.");
     mustBeMine(held);
     const next = revise({ record: held, changes: { base: undefined, color: undefined, ...fields } as never, by: context.me() });
     const clean = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined)) as RelationTypeRecord;
@@ -170,7 +170,7 @@ export const grammarFeature = (context: Context) => {
     if (!held) return null;
     mustBeMine(held);
     const count = uses()[id] ?? 0;
-    if (count > 0) throw new Error(`${count} ${count === 1 ? "link uses" : "links use"} this relation. Remove ${count === 1 ? "it" : "them"} first.`);
+    if (count > 0) throw refuse("no-target", `${count} ${count === 1 ? "link uses" : "links use"} this relation. Remove ${count === 1 ? "it" : "them"} first.`);
     await context.put([revise({ record: held, changes: { removed: true }, by: context.me() })]);
     return null;
   };

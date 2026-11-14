@@ -260,8 +260,8 @@ export const labFeature = (
     },
     "lab.invite": async ({ uses, days }) => {
       const link = await services().link();
-      if (!link?.token) throw new Error("Start or join a lab first.");
-      if (link.role !== "admin") throw new Error("Only the lab's PI can invite people.");
+      if (!link?.token) throw refuse("no-target", "Start or join a lab first.");
+      if (link.role !== "admin") throw refuse("read-only", "Only the lab's PI can invite people.");
       const made = await services().invite(link, { ...(uses ? { uses } : {}), ...(days ? { days } : {}) });
       return { invite: `${link.server}/join/${link.id}#${made.code}`, expiresAt: made.expiresAt, usesLeft: made.usesLeft };
     },
@@ -285,7 +285,7 @@ export const labFeature = (
       const link = await services().link();
       const lab = context.myLab();
       if (!link?.token || !lab) throw new Error("You're not in a lab.");
-      if (lab.custodian !== context.me().id) throw new Error("Only the lab's PI can remove a member.");
+      if (lab.custodian !== context.me().id) throw refuse("read-only", "Only the lab's PI can remove a member.");
       await services().removeMember(link, did);
       // Said in the lab's own records too, so every member's copy agrees on who is in.
       const membership = context.documents("membership").find((item) => item.member === did && item.lab === lab.did && !item.removed);
@@ -295,7 +295,7 @@ export const labFeature = (
     "lab.configure": async (changes) => {
       const lab = context.myLab();
       if (!lab) throw new Error("You're not in a lab.");
-      if (lab.custodian !== context.me().id) throw new Error("Only the lab's PI can change what the lab sets for everyone.");
+      if (lab.custodian !== context.me().id) throw refuse("read-only", "Only the lab's PI can change what the lab sets for everyone.");
       const next: Record<string, unknown> = { ...(lab.settings ?? {}) };
       for (const [key, value] of Object.entries(changes)) {
         if (value === null || value === undefined) delete next[key];
@@ -306,7 +306,7 @@ export const labFeature = (
     },
     "paper.getFile": async ({ id }) => {
       const link = await services().link();
-      if (!link?.token) throw new Error("Join a lab first.");
+      if (!link?.token) throw refuse("no-target", "Join a lab first.");
       const saved = await context.host.saveFile(await services().paperFile(link, id));
       if (!saved.ok) throw new Error(saved.error.message);
       return saved.value;
@@ -326,7 +326,7 @@ export const labFeature = (
     "canvas.share": async ({ id }) => {
       const lab = context.myLab();
       const canvas = context.canvasOf(id);
-      if (!lab) throw new Error("Join a lab first.");
+      if (!lab) throw refuse("no-target", "Join a lab first.");
       if (canvas) await context.put([revise({ record: canvas, changes: { shared: lab.did }, by: context.me() })]);
       return null;
     },

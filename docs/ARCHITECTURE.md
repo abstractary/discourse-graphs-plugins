@@ -202,7 +202,7 @@ The audit lists everything. The largest:
 - `canvas/App.tsx` is down from 2,300 lines to 1,400, with its writer, add box, ink, tidy, clipboard, linking and menus in files of their own. The toolbar and the canvas menu are still in it.
 - A unit is now reached through `unit.*` and the overview through `overview.*`. Other namespaces still mix `get`, `view` and `open` for a read, and one id parameter has several names. "holon" survives in identifiers and one record field.
 - Routes are declared once, in `contract/routes.ts`. The shapes that cross are still declared on both sides, and three of twenty disagree: the server's info, an invitation, and a unit sent with a question.
-- The Obsidian plugin's lab sync, walkthrough and test hooks still take the whole core where the rest of it takes the contract's narrower seam.
+- In the Obsidian plugin only the test hooks take the whole core, by a name that says so. Everything else, the walkthrough included, takes the contract's narrower seam.
 - The server has no rate limits. It now refuses anything without a record's shape.
 - The MCP server reads and does not yet propose, and a paper's text by page is not kept.
 - The newest record kinds have no AT Protocol lexicons.

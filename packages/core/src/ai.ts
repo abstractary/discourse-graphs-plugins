@@ -19,6 +19,7 @@ import {
 } from "@dg/contract/llm.ts";
 import type { AiStatus } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * Asking about a canvas. Three ways to an answer, tried in this order:
@@ -153,7 +154,7 @@ export const aiFeature = (
       return settings();
     },
     "ai.models": async ({ provider, baseUrl, key }): Promise<AiModel[]> => {
-      if (!llm) throw new Error("This base can't reach a model service from here.");
+      if (!llm) throw refuse("unavailable", "This base can't reach a model service from here.");
       const kept = await stored();
       const kind = provider ?? kept.provider;
       const secret = key?.trim() || (await keyOf(kind)) || undefined;

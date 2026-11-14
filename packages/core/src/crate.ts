@@ -511,7 +511,7 @@ export const crateFeature = (context: Context, { secrets, checksOf = () => [] }:
     const graph = context.graph();
     const canvasRecord = canvas ? context.canvasOf(canvas) : undefined;
     const start = asked?.length ? asked : canvas ? unitsOnCanvas(canvas) : [];
-    if (start.length === 0) throw new Error("There are no units to put in a crate. Add some to the canvas first.");
+    if (start.length === 0) throw refuse("no-target", "There are no units to put in a crate. Add some to the canvas first.");
     const nodes = withProvenance(graph, start);
     const records = nodes.flatMap((id) => (context.nodeOf(id) ? [context.nodeOf(id)!] : []));
     const papers = [...new Set(records.flatMap((node) => (node.source ? [node.source.paper] : [])))].flatMap((id) => {
@@ -798,7 +798,7 @@ export const crateFeature = (context: Context, { secrets, checksOf = () => [] }:
       const place = sandbox ? ZENODO.sandbox : ZENODO.live;
       if (!context.services) throw refuse("unavailable", `${place.name} can't be reached from here.`);
       const token = await secrets?.get(tokenId(sandbox));
-      if (!token) throw new Error(`Add a token for ${place.name} first.`);
+      if (!token) throw refuse("no-target", `Add a token for ${place.name} first.`);
       const gathered = await gather(params);
       // The draft comes first, because it reserves the DOI the crate then names as its own.
       const draft = await context.services.deposit.open({ server: place.server, token, metadata: toZenodo(gathered.described) });

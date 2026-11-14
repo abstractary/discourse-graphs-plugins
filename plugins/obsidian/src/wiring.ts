@@ -113,7 +113,7 @@ export const createWiring = ({
     },
   });
 
-  const wholeCore = async (): Promise<WholeCore> => {
+  const coreForTests = async (): Promise<WholeCore> => {
     coreReady ??= createCore({
       host: host(),
       keys: browserKeys(),
@@ -141,8 +141,9 @@ export const createWiring = ({
     labLink: () => services.link(),
     /** The core once it is made. Synchronous, for what draws before anyone has waited for it. */
     core: (): CoreForAdapter | undefined => core,
-    ensureCore: (): Promise<CoreForAdapter> => wholeCore(),
-    wholeCore,
+    ensureCore: (): Promise<CoreForAdapter> => coreForTests(),
+    /** Everything the core has, internals included. Only the test hooks ask for it. */
+    coreForTests,
     sync: () => sync,
   };
 };

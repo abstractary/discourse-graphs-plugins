@@ -316,12 +316,12 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       writeOutside: (record: DgRecord) => driver.writeRecordOutside({ record }),
       visible: (ref: string) => driver.isVisible({ ref }),
       usage: async () => {
-        const core = await plugin.wiring.wholeCore();
+        const core = await plugin.wiring.coreForTests();
         await core.flushUsage();
         return (await host.getLocal({ key: "usage" })) as unknown;
       },
       theme: () => (document.body.classList.contains("theme-dark") ? "dark" : "light"),
-      core: () => plugin.wiring.wholeCore(),
+      core: () => plugin.wiring.coreForTests(),
       existing: () => readExisting(plugin.app),
       hostCount: (selector: string) => document.querySelectorAll(selector).length,
       hostText: (selector: string) => document.querySelector(selector)?.textContent ?? null,
@@ -423,7 +423,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       fingerprint: async () =>
         fingerprint(await Promise.all(plugin.app.vault.getMarkdownFiles().map(async (file) => `${file.path}\n${await plugin.app.vault.read(file)}`))),
       importExisting: async (dryRun: boolean) =>
-        (await plugin.wiring.wholeCore()).importExisting({ existing: await readExisting(plugin.app), dryRun }),
+        (await plugin.wiring.coreForTests()).importExisting({ existing: await readExisting(plugin.app), dryRun }),
       call: async (method: SurfaceMethod, params: unknown) => {
         caller ??= surfaceCaller(await plugin.ensureCore());
         return caller(method, params);

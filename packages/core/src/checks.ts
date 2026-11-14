@@ -2,6 +2,7 @@ import { createEvaluation, revise, type DgId, type EvaluationRecord, type NodeRe
 import type { CheckState, CheckWay, UnitCheck } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { unitCid } from "./process.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * Sign-off. A person marks a unit as checked, or as needing work, and says how
@@ -84,7 +85,7 @@ export const checkFeature = (context: Context) => {
   const handlers: Pick<Handlers, "unit.check" | "unit.uncheck"> = {
     "unit.check": async ({ unit, verdict, way = "expertJudgment", note }) => {
       const node = context.nodeOf(unit);
-      if (!node || node.removed) throw new Error("That unit is gone.");
+      if (!node || node.removed) throw refuse("not-found", "That unit is gone.");
       const said = note?.replace(/\s+/g, " ").trim();
       if (verdict === "needsWork" && !said) throw new Error("Say what needs work, so its author knows what to change.");
       const me = context.me();
@@ -101,7 +102,7 @@ export const checkFeature = (context: Context) => {
     "unit.uncheck": async ({ id }) => {
       const record = context.documents("evaluation").find((item) => item.id === id);
       if (!record || record.removed) return record ? checksOf(record.target) : [];
-      if (record.by.id !== context.me().id) throw new Error("Only the person who made a mark can take it back.");
+      if (record.by.id !== context.me().id) throw refuse("read-only", "Only the person who made a mark can take it back.");
       await context.put([revise({ record, changes: { removed: true }, by: context.me() })]);
       return checksOf(record.target);
     },

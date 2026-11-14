@@ -118,7 +118,7 @@ export const unitFeature = (
     if (target.kind === "workspace") return canvasNamed(WORKSPACE, { personal: true }, (canvas) => canvas.personal === true);
     if (target.kind === "lab") {
       const lab = context.myLab();
-      if (!lab) throw new Error("Join a lab first.");
+      if (!lab) throw refuse("no-target", "Join a lab first.");
       return canvasNamed(LAB_CANVAS, { shared: lab.did }, (canvas) => canvas.shared === lab.did && !canvas.paper);
     }
     if (target.kind === "canvas") {
@@ -246,7 +246,7 @@ export const unitFeature = (
       for (const node of nodes) if (await giveText(node)) made += 1;
       if (target.kind === "folder" || target.kind === "new-folder") {
         const folder = target.kind === "folder" ? folders().find(({ id }) => id === target.id) : createFolder({ ...context.stamp(), title: target.title });
-        if (!folder) throw new Error("That folder is gone.");
+        if (!folder) throw refuse("not-found", "That folder is gone.");
         if (target.kind === "new-folder") await context.put([folder]);
         await fileAway(folder, nodes);
         return { folder: folder.id, made };

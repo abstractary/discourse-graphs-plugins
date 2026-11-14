@@ -397,7 +397,7 @@ export const methodFeature = (
         run: ["condition", "deviations"],
       };
       const keys = allowed[kind ?? ""];
-      if (!keys) throw new Error("Only a protocol, an experiment or a run has these fields.");
+      if (!keys) throw refuse("read-only", "Only a protocol, an experiment or a run has these fields.");
       const next: Record<string, unknown> = { ...(node.facts ?? {}) };
       for (const [key, item] of Object.entries(facts)) {
         if (!keys.includes(key as keyof UnitFacts)) throw new Error(`A ${kind} has no ${key}.`);

@@ -6,7 +6,7 @@ Each entry has up to two lists. **For people using it** is what changed in what 
 
 **For people using it**
 
-- **Picking a card shows what it touches.** Its links and the cards at their other ends stay bright and the rest steps back, for as long as that card is the one picked. Click the canvas or another card and it clears.
+- **Picking a card shows what it touches.** Its links and the cards at their other ends stay bright and the rest steps back, for as long as that card is the one picked. Click a lit neighbour and the light moves to it. Click the canvas and it clears.
 - **A small map of the canvas,** bottom right, with a frame for the part in view. Drag the frame to move, scroll on it to zoom. **Map** beside the zoom buttons hides it, and the choice is kept on this device.
 - **Fixed: a type is listed once in the search filter and the canvas drawer,** however many copies of it the vault holds. Each device and each paper's reading can bring its own copy of "Claim", and each used to get a line.
 - **The canvas sidebar's Library tab is the Library panel itself,** the same one in the right sidebar, with the open canvas marked. It used to be a separate list.
@@ -17,6 +17,8 @@ Each entry has up to two lists. **For people using it** is what changed in what 
 
 - **A unit is reached through `unit.*`** where it was `node.*`, `unit.*` and `units.*`, and the overview through `overview.*` where it was `holon.*`. One read is `get` and many is `list`.
 - **Every route of the reference server is declared once,** in `packages/contract/src/routes.ts`. The client builds its addresses from it, the server takes a generated copy, the docs table is generated, and CI fails if either copy is stale.
+- **The walkthrough asks the core three named questions** where it used to read the whole graph, so only the test hooks take the whole core now.
+- **Fifty of the core's refusals carry their kind,** up from twenty-three.
 - **The harness reports what the app said** when a call fails, where it used to report that the answer was not JSON.
 
 ## An MCP server that reads, and the refactor carried on (14 November 2026)

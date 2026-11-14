@@ -6,6 +6,7 @@ import type { Context, Handlers } from "./context.ts";
 import { baseOf } from "./process.ts";
 import { keyOfPaper, sameWork } from "./work.ts";
 import { readingOf, refusal } from "./locks.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * A reference library, read into the graph only when a person asks. Zotero
@@ -40,7 +41,7 @@ const titleOf = (mark: LibraryAnnotation): string => {
 
 export const libraryFeature = (context: Context) => {
   const services = () => {
-    if (!context.services?.zotero) throw new Error("Reading from Zotero needs the desktop app, and this base can't reach it.");
+    if (!context.services?.zotero) throw refuse("unavailable", "Reading from Zotero needs the desktop app, and this base can't reach it.");
     return context.services.zotero;
   };
   const nodes = (): NodeRecord[] => context.documents("node").filter((node) => !node.removed);

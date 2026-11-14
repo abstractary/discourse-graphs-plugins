@@ -77,13 +77,13 @@ try {
     await sleep(500);
     check("profile.public-is-counts-alone", !(await has("profile", '[data-dg="profile-history"]')) && (await has("profile", '[data-dg="profile-stats"]')) && /counts alone/.test((await at("profile", "text", '[data-dg="profile-audience"]')) ?? ""));
     await shot("03-profile-everyone");
-    // A history line leads to the unit it is about.
+    // A history line leads to the unit it is about, or, for a unit since removed, to Context saying it is gone.
     await click("profile", '[data-dg="profile-tab-private"]');
     await sleep(500);
     if (await has("profile", ".profile-unit")) {
       const title = await at("profile", "text", ".profile-unit span:last-child");
       await click("profile", ".profile-unit");
-      check("profile.a-line-leads-to-its-unit", await until(async () => (await at("context", "text", '[data-dg="ctx-title"]')) === title, 8000), `${title} / context says: ${await at("context", "text", '[data-dg="ctx-title"]')}`);
+      check("profile.a-line-leads-to-its-unit", await until(async () => (await at("context", "text", '[data-dg="ctx-title"]')) === title || /is gone/.test((await at("context", "text", '[data-dg="load-problem"]')) ?? ""), 8000), `${title} / context says: ${await at("context", "text", '[data-dg="ctx-title"]')}`);
     }
   }
 

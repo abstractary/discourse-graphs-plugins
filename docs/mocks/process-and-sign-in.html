@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Process mocks</title>
+<style>
+:root{--page:#fbfaf8;--panel:#fff;--ink:#1f1d1a;--muted:#6f6a62;--line:#e3dfd8;--accent:#6b4fd8;--dim:rgba(20,18,16,.42);
+--pro:#1f8a8a;--stp:#3b82a6;--run:#b0566f;--out:#5d8a4a;--exp:#8a6bd1;--evd:#3f78c4;--clm:#c98a1b;--que:#7a5fd0;--ok:#3f8f5a;--warn:#b7791f;--bad:#b94a48}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#1b1a18;--panel:#242321;--ink:#ece9e3;--muted:#a09a90;--line:#3a3834;--accent:#9d86ff;--dim:rgba(0,0,0,.6)}}
+:root[data-theme="dark"]{--page:#1b1a18;--panel:#242321;--ink:#ece9e3;--muted:#a09a90;--line:#3a3834;--accent:#9d86ff;--dim:rgba(0,0,0,.6)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
+header{padding:20px 16px 8px;max-width:1120px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px}
+header p{margin:0;color:var(--muted);max-width:70ch}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:12px 16px;max-width:1120px;margin:0 auto}
+nav button{font:inherit;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);cursor:pointer}
+nav button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+main{max-width:1120px;margin:0 auto;padding:0 16px 48px}
+.note{color:var(--muted);font-size:13px;margin:6px 0 12px;max-width:80ch}
+/* the argument canvas behind */
+.stage{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel);min-height:640px}
+.bar{display:flex;gap:14px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--muted);font-size:13px}
+.bar b{color:var(--ink)}
+.back{position:absolute;inset:38px 0 0 0;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px}
+.card{position:absolute;width:190px;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--c);border-radius:4px;background:var(--panel);font-size:12px}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;padding:1px 5px;border-radius:3px;color:#fff;background:var(--c);margin-bottom:4px}
+.scrim{position:absolute;inset:38px 0 0 0;background:var(--dim)}
+/* the page over the canvas */
+.page{position:absolute;inset:58px 28px 20px 28px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden}
+.crumb{display:flex;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid var(--line);color:var(--muted);font-size:12px}
+.crumb .x{margin-left:auto;border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer}
+.head{padding:14px 18px 8px}
+.head h2{margin:4px 0 6px;font-size:18px}
+.facts{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:12px}
+.facts b{color:var(--ink);font-weight:500}
+.btn{font:inherit;font-size:13px;padding:6px 12px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.body{flex:1;overflow:auto;padding:0 18px 18px}
+.flowbox{position:relative;border:1px solid var(--line);border-radius:10px;height:230px;margin:8px 0 14px;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:16px 16px;overflow:auto}
+.flowbox svg{position:absolute;inset:0;width:900px;height:230px}
+.flowbox svg path{fill:none;stroke:var(--muted);stroke-width:1.5}
+.flowbox svg text{fill:var(--muted);font-size:10px}
+/* process nodes: rounder than argument cards */
+.step{position:absolute;min-width:136px;max-width:160px;padding:8px 14px;border:1.5px solid var(--stp);border-radius:999px;background:var(--panel);font-size:12px;line-height:1.25;cursor:pointer}
+.step small{display:block;color:var(--muted);font-size:10px}
+.step.changed{border-style:dashed;border-color:var(--warn)}
+.step.done{border-color:var(--ok);background:color-mix(in oklch,var(--ok) 12%,var(--panel))}
+.step.dev{border-color:var(--warn);background:color-mix(in oklch,var(--warn) 14%,var(--panel))}
+.step.now{border-width:2.5px;border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in oklch,var(--accent) 18%,transparent)}
+.step.todo{opacity:.7}
+.tools{position:absolute;left:8px;top:8px;display:flex;gap:6px}
+.tools .btn{font-size:12px;padding:3px 9px;border-radius:999px}
+h3{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.rows{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.row{display:grid;grid-template-columns:28px 1fr 90px 150px;gap:8px;align-items:center;padding:7px 10px;border-top:1px solid var(--line);font-size:13px}
+.row:first-child{border-top:0}
+.row .n{color:var(--muted);font-variant-numeric:tabular-nums}
+.row .m{color:var(--muted);font-size:12px}
+.pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.pill.warn{border-color:var(--warn);color:var(--warn)}
+.pill.ok{border-color:var(--ok);color:var(--ok)}
+.split{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+@media (max-width:760px){.split{grid-template-columns:1fr}.page{inset:48px 8px 8px 8px}.row{grid-template-columns:24px 1fr 70px}.row>:nth-child(4){display:none}}
+.now-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.now-card h4{margin:0 0 4px;font-size:15px}
+.field{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.field input{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--page);color:var(--ink);width:100%}
+.drop{margin-top:8px;border:1.5px dashed var(--line);border-radius:8px;padding:12px;text-align:center;color:var(--muted);font-size:12px}
+.outs{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.out{width:118px;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:11px}
+.out div{height:64px;background:linear-gradient(135deg,color-mix(in oklch,var(--out) 35%,var(--panel)),var(--panel));display:flex;align-items:flex-end;gap:3px;padding:6px}
+.out div i{flex:1;background:var(--out);border-radius:2px 2px 0 0}
+.out span{display:block;padding:4px 6px;color:var(--muted)}
+/* sign-in */
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.screen{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:14px;min-height:250px;display:flex;flex-direction:column;gap:8px}
+.screen .k{font-size:11px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.screen h4{margin:0;font-size:15px}
+.screen p{margin:0;color:var(--muted);font-size:12.5px}
+.screen .btn{width:100%;text-align:center}
+.screen input{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--page);color:var(--ink);width:100%}
+.who{display:flex;align-items:center;gap:8px;font-size:13px}
+.who i{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700}
+.browser{border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px}
+.browser .url{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dummy{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;padding:1px 6px;border-radius:3px;background:color-mix(in oklch,var(--warn) 22%,var(--panel));color:var(--warn)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>The process side, as mock screens</h1>
+  <p>Drawings to ground <a href="../process.md">docs/process.md</a>. Nothing here is built. Names, values and the account are made up.</p>
+</header>
+<nav aria-label="Screens">
+  <button aria-pressed="true" data-tab="plan">1. A protocol opens over the canvas</button>
+  <button aria-pressed="false" data-tab="run">2. Carrying out a run</button>
+  <button aria-pressed="false" data-tab="signin">3. Log in with Bluesky</button>
+</nav>
+<main>
+
+<section id="plan">
+  <p class="note">Double-clicking the Protocol card opens a page over the argument canvas. Inside is the process canvas: rounder nodes, arrows that mean "then". Below it, the same steps as rows. A dashed node is a shared step that has changed since this protocol pinned it.</p>
+  <div class="stage">
+    <div class="bar"><b>Lysate clarity</b><span>Add unit</span><span>Sticky</span><span>Tidy Logic</span><span>Cards</span></div>
+    <div class="back">
+      <div class="card" style="--c:var(--que);left:40px;top:40px"><span class="tag">QUE</span><br>Does spin speed change lysate clarity?</div>
+      <div class="card" style="--c:var(--exp);left:40px;top:150px"><span class="tag">EXP</span><br>Spin speed against clarity, three speeds</div>
+      <div class="card" style="--c:var(--pro);left:270px;top:150px"><span class="tag">PRO</span><br>Clarify lysate by centrifugation</div>
+      <div class="card" style="--c:var(--evd);left:520px;top:60px"><span class="tag">EVD</span><br>At 16,000 g the supernatant is clear</div>
+      <div class="card" style="--c:var(--clm);left:760px;top:60px"><span class="tag">CLM</span><br>Higher speed gives a clearer lysate</div>
+    </div>
+    <div class="scrim"></div>
+    <div class="page" role="dialog" aria-label="Protocol">
+      <div class="crumb"><span>Spin speed against clarity</span>›<b style="color:var(--ink)">Clarify lysate by centrifugation</b><button class="x" aria-label="Close">×</button></div>
+      <div class="head">
+        <span class="tag" style="--c:var(--pro)">PRO</span>
+        <h2>Clarify lysate by centrifugation</h2>
+        <div class="facts"><span>Version <b>v3</b></span><span>Steps <b>5</b></span><span>Runs <b>4</b></span><span>By <b>Mira Osei</b></span><span style="margin-left:auto"><button class="btn primary">Start a run</button></span></div>
+      </div>
+      <div class="body">
+        <div class="flowbox">
+          <svg viewBox="0 0 900 230" aria-hidden="true">
+            <path d="M180 70 H215"/><path d="M375 70 H410"/><path d="M570 70 C600 70 590 40 625 40"/><path d="M570 70 C600 70 590 150 625 150"/><path d="M785 40 C820 40 800 190 700 190 H410"/>
+            <text x="578" y="38">if clear</text><text x="578" y="128">if cloudy</text>
+          </svg>
+          <div class="tools"><button class="btn">+ Add step</button><button class="btn">Tidy</button></div>
+          <div class="step" style="left:40px;top:50px">Lyse cells on ice<small>10 min</small></div>
+          <div class="step changed" style="left:215px;top:50px" title="Changed since this protocol pinned it">Pre-chill the rotor<small>shared · changed</small></div>
+          <div class="step" style="left:410px;top:50px">Spin<small>asks: speed, time</small></div>
+          <div class="step" style="left:625px;top:20px">Collect supernatant<small>2 min</small></div>
+          <div class="step" style="left:625px;top:130px">Spin again, 5 min<small>repeat up to 2</small></div>
+          <div class="step" style="left:270px;top:170px">Image a 10 µL drop<small>makes an output</small></div>
+        </div>
+        <h3>Steps</h3>
+        <div class="rows">
+          <div class="row"><span class="n">1</span><span>Lyse cells on ice</span><span class="m">10 min</span><span></span></div>
+          <div class="row"><span class="n">2</span><span>Pre-chill the rotor</span><span class="m">15 min</span><span><span class="pill warn">Step changed</span> <a href="#">See what changed</a></span></div>
+          <div class="row"><span class="n">3</span><span>Spin</span><span class="m">asks 2 values</span><span><span class="pill">used in 3 protocols</span></span></div>
+          <div class="row"><span class="n">4a</span><span>Collect supernatant</span><span class="m">2 min</span><span class="m">if clear</span></div>
+          <div class="row"><span class="n">4b</span><span>Spin again, 5 min</span><span class="m">5 min</span><span class="m">if cloudy</span></div>
+          <div class="row"><span class="n">5</span><span>Image a 10 µL drop</span><span class="m">3 min</span><span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="run" hidden>
+  <p class="note">The same page in run mode. The flow is the same picture, coloured by how this run is going. The current step is beside it, asking for what the step declares. A file dropped anywhere lands on the current step. Notebook outputs show as the notebook drew them.</p>
+  <div class="stage">
+    <div class="bar"><b>Lysate clarity</b><span>Add unit</span><span>Sticky</span><span>Tidy Logic</span><span>Cards</span></div>
+    <div class="back"></div><div class="scrim"></div>
+    <div class="page" role="dialog" aria-label="Run">
+      <div class="crumb"><span>Spin speed against clarity</span>›<span>Clarify lysate by centrifugation</span>›<b style="color:var(--ink)">Run, 14 Nov, 16,000 g</b><button class="x" aria-label="Close">×</button></div>
+      <div class="head">
+        <span class="tag" style="--c:var(--run)">RUN</span>
+        <h2>Run, 14 Nov, 16,000 g</h2>
+        <div class="facts"><span>Status <b>Running</b></span><span>Condition <b>16,000 g</b></span><span>Protocol <b>v3, pinned</b></span><span>Step <b>3 of 5</b></span><span style="margin-left:auto"><button class="btn">Pause</button> <button class="btn">End the run</button></span></div>
+      </div>
+      <div class="body">
+        <div class="flowbox" style="height:150px">
+          <svg viewBox="0 0 900 150" style="height:150px" aria-hidden="true"><path d="M180 60 H215"/><path d="M375 60 H410"/><path d="M570 60 H625"/><path d="M785 60 H805"/></svg>
+          <div class="step done" style="left:40px;top:40px">✓ Lyse cells on ice<small>10:02</small></div>
+          <div class="step dev" style="left:215px;top:40px">✓ Pre-chill the rotor<small>deviation · 10:20</small></div>
+          <div class="step now" style="left:410px;top:38px">Spin<small>now</small></div>
+          <div class="step todo" style="left:625px;top:40px">Collect supernatant<small>to do</small></div>
+        </div>
+        <div class="split">
+          <div class="now-card">
+            <span class="pill">Step 3</span>
+            <h4>Spin</h4>
+            <div class="field"><label>Speed</label><input value="16000" aria-label="Speed"> </div>
+            <div class="field"><label>Time</label><input placeholder="10 min (protocol)" aria-label="Time"></div>
+            <div class="field"><label>Something different?</label><input placeholder="Say what you did differently" aria-label="Deviation"></div>
+            <div class="drop">Drop a photo or file here. It becomes an output of this step.</div>
+            <p style="margin:10px 0 0;display:flex;gap:8px"><button class="btn primary">Done, next step</button><button class="btn">Skip</button><button class="btn">It failed</button></p>
+          </div>
+          <div>
+            <h3 style="margin-top:0">So far</h3>
+            <div class="rows">
+              <div class="row" style="grid-template-columns:28px 1fr 90px"><span class="n">1</span><span>Lyse cells on ice</span><span><span class="pill ok">Done</span></span></div>
+              <div class="row" style="grid-template-columns:28px 1fr 90px"><span class="n">2</span><span>Pre-chill the rotor<br><span class="m">"Rotor was at 8 °C, not 4 °C."</span></span><span><span class="pill warn">Deviation</span></span></div>
+            </div>
+            <h3>Outputs</h3>
+            <div class="outs">
+              <div class="out"><div><i style="height:30%"></i><i style="height:55%"></i><i style="height:85%"></i></div><span>Step 1 · plate read</span></div>
+              <div class="out"><div><i style="height:70%"></i><i style="height:40%"></i><i style="height:60%"></i><i style="height:20%"></i></div><span>Notebook · cell 7</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="signin" hidden>
+  <p class="note"><span class="dummy">DUMMY</span> Seven screens for "Log in with Bluesky". Design only: no account is contacted. Signing in gives an identity and publishes nothing.</p>
+  <div class="screens">
+    <div class="screen"><span class="k">1 · Welcome, in the app</span><h4>Who are you here?</h4><p>Your name goes on what you make.</p><input value="Mira Osei" aria-label="Name"><button class="btn">Use this name on this device</button><button class="btn primary">Log in with Bluesky</button><p>You can log in later from Library › You.</p></div>
+    <div class="screen"><span class="k">2 · Handle, in the app</span><h4>Your handle</h4><input value="mira.osei-lab.org" aria-label="Handle"><p>Discourse Graphs will know who you are. It will not post, follow or read your feed.</p><button class="btn primary">Continue in your browser</button></div>
+    <div class="screen"><span class="k">3 · Hand-off, in the browser</span><div class="browser"><div class="url">https://bsky.social/oauth/authorize?…</div>Sign in to your account<br><span style="color:var(--muted)">This page belongs to your account's host. Discourse Graphs never sees your password.</span></div><p>The app waits, and says "Finish in your browser".</p></div>
+    <div class="screen"><span class="k">4 · Consent, on the account's page</span><div class="browser"><div class="url">https://bsky.social/oauth/authorize?…</div><b>Discourse Graphs</b> wants to:<br>• Know your handle and DID<br><span style="color:var(--muted)">It is not asking to post or to read anything.</span></div><button class="btn primary">Allow</button><button class="btn">Deny</button></div>
+    <div class="screen"><span class="k">5 · Return, a Discourse Graphs web page</span><div class="browser"><div class="url">https://(a domain DG controls)/signed-in</div><div class="who"><i>MO</i>Signed in as @mira.osei-lab.org</div></div><button class="btn primary">Return to Obsidian</button><p>This page exists because sign-in cannot return straight to an obsidian:// address.</p></div>
+    <div class="screen"><span class="k">6 · Confirm, in the app</span><div class="who"><i>MO</i><span>@mira.osei-lab.org<br><span style="color:var(--muted);font-size:11px">did:plc:example…</span></span></div><p>This device already holds 212 units you made as "Mira Osei".</p><button class="btn primary">Sign this work as @mira.osei-lab.org from now on</button><button class="btn">Keep them apart</button><p>Work already shared with a lab stays under the name it was shared with.</p></div>
+    <div class="screen"><span class="k">7 · Signed in, Library › You</span><div class="who"><i>MO</i>@mira.osei-lab.org</div><p>This device: vouched for by your account, 14 Nov 2026.</p><p>Published from here: nothing.</p><button class="btn">Sign out on this device</button></div>
+  </div>
+</section>
+
+</main>
+<script>
+document.querySelectorAll("nav button").forEach((b)=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav button").forEach((o)=>o.setAttribute("aria-pressed",String(o===b)));
+  document.querySelectorAll("main section").forEach((s)=>{s.hidden=s.id!==b.dataset.tab;});
+}));
+</script>
+</body>
+</html>

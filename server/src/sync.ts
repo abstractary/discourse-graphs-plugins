@@ -1,8 +1,10 @@
 import { requireMember } from './auth.ts';
 import { ApiError } from './http.ts';
-import type { Context, Route } from './http.ts';
+import type { Context, Route, Sent } from './http.ts';
+import { at } from './routes.ts';
 import { canonical, hashOf } from './store.ts';
 import type { Store } from './store.ts';
+import type { PullRecordsResponse, PushRecordsRequest, PushRecordsResponse } from './wire.gen.ts';
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
@@ -22,11 +24,23 @@ function parseCount(value: string | null, name: string, fallback: number): numbe
   return Number(value);
 }
 
-async function pushRecords({ req, params, readJson }: Context, store: Store): Promise<unknown> {
+function looksLikeRecord(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const record = value as { id?: unknown; kind?: unknown; at?: unknown; by?: { id?: unknown } };
+  const text = (item: unknown): boolean => typeof item === 'string' && item.length > 0 && item.length < 2048;
+  return text(record.id) && text(record.kind) && text(record.at) && typeof record.by === 'object' && record.by !== null && text(record.by.id);
+}
+
+async function pushRecords({ req, params, readJson }: Context, store: Store): Promise<PushRecordsResponse> {
   requireMember(req, store, params.id);
-  const { records } = await readJson();
+  const { records }: Sent<PushRecordsRequest> = await readJson();
   if (!Array.isArray(records)) {
     throw new ApiError(400, 'bad-records', 'Send "records" as an array.');
+  }
+  // The server passes records along without reading them, but it only keeps what has a record's shape.
+  const odd = records.findIndex((record) => !looksLikeRecord(record));
+  if (odd !== -1) {
+    throw new ApiError(400, 'bad-record', `Item ${odd} isn't a record. Each needs "id", "kind", "at" and "by".`);
   }
   // Read after the await, so two pushes at once cannot overwrite each other.
   const log = readLog(store, params.id);
@@ -45,7 +59,7 @@ async function pushRecords({ req, params, readJson }: Context, store: Store): Pr
   return { stored, now: new Date().toISOString() };
 }
 
-function pullRecords({ req, params, query }: Context, store: Store): unknown {
+function pullRecords({ req, params, query }: Context, store: Store): PullRecordsResponse<unknown> {
   requireMember(req, store, params.id);
   const after = parseCount(query.get('after'), 'after', 0);
   const limit = Math.min(parseCount(query.get('limit'), 'limit', DEFAULT_LIMIT), MAX_LIMIT);
@@ -62,7 +76,7 @@ function pullRecords({ req, params, query }: Context, store: Store): unknown {
 
 export function syncRoutes(store: Store): Route[] {
   return [
-    { method: 'POST', path: '/v1/labs/:id/records', handler: (context) => pushRecords(context, store) },
-    { method: 'GET', path: '/v1/labs/:id/records', handler: (context) => pullRecords(context, store) },
+    { ...at('pushRecords'), handler: (context) => pushRecords(context, store) },
+    { ...at('pullRecords'), handler: (context) => pullRecords(context, store) },
   ];
 }

@@ -6,6 +6,7 @@ import type { Context, Handlers } from "./context.ts";
 import { baseOf } from "./process.ts";
 import { keyOfPaper, sameWork } from "./work.ts";
 import { readingOf, refusal } from "./locks.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 /**
  * A reference library, read into the graph only when a person asks. Zotero
@@ -40,7 +41,7 @@ const titleOf = (mark: LibraryAnnotation): string => {
 
 export const libraryFeature = (context: Context) => {
   const services = () => {
-    if (!context.services?.zotero) throw new Error("Reading from Zotero needs the desktop app, and this base can't reach it.");
+    if (!context.services?.zotero) throw refuse("unavailable", "Reading from Zotero needs the desktop app, and this base can't reach it.");
     return context.services.zotero;
   };
   const nodes = (): NodeRecord[] => context.documents("node").filter((node) => !node.removed);
@@ -63,13 +64,13 @@ export const libraryFeature = (context: Context) => {
   const typesHere = (): NodeTypeRecord[] => context.nodeTypes().filter((type) => type.base === "question" || type.base === "claim" || type.base === "evidence");
 
   let pending: string | undefined;
-  const handlers: Pick<Handlers, "zotero.status" | "zotero.groups" | "zotero.search" | "zotero.item" | "zotero.import" | "zotero.show" | "zotero.pending"> = {
+  const handlers: Pick<Handlers, "zotero.status" | "zotero.groups" | "zotero.search" | "zotero.get" | "zotero.import" | "zotero.show" | "zotero.pending"> = {
     "zotero.status": async () => services().status(),
     "zotero.groups": async () => (context.services?.zotero ? context.services.zotero.groups().catch(() => []) : []),
     "zotero.show": async ({ item, canvas }) => {
       pending = item;
       const opened = await context.host.openSurface({ route: { surface: "zotero", ...(canvas ? { id: canvas } : {}) }, placement: "dialog" });
-      if (!opened.ok) throw new Error(opened.error.message);
+      if (!opened.ok) throw refusalOf(opened.error);
       return null;
     },
     "zotero.pending": async () => {
@@ -84,7 +85,7 @@ export const libraryFeature = (context: Context) => {
         return { item, label: sourceLabel(item.authors.map(({ name }) => name), item.published, item.title), ...(held ? { held: held.id } : {}) };
       });
     },
-    "zotero.item": async ({ ref }): Promise<LibraryItemView> => {
+    "zotero.get": async ({ ref }): Promise<LibraryItemView> => {
       const [item, marks] = await Promise.all([services().item({ ref }), services().annotations({ ref })]);
       const held = sourceFor(item);
       const types = typesHere();

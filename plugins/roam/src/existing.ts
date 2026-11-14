@@ -1,5 +1,5 @@
 import { parseTitle } from "@dg/contract/records.ts";
-import type { ExistingGraph } from "@dg/core/migrate.ts";
+import type { ExistingGraph } from "@dg/core/index.ts";
 
 type RoamApi = {
   data: {

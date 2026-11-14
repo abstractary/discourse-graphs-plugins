@@ -73,6 +73,6 @@ Still open:
 
 **OBI and IAO.** Their IRIs are annotations, never keys.
 
-## Holons
+## Wholes
 
-Earlier drafts borrowed patterns from the W3C Holon Graph Community Group's draft. On 12 November 2026 the direction changed: the layers are finite (everyone, lab, person, canvas), a unit is a leaf, and views narrow by scope. Nothing in the ontology depended on the holon vocabulary, so nothing here changed.
+Earlier drafts borrowed patterns from the W3C Whole Graph Community Group's draft. On 12 November 2026 the direction changed: the layers are finite (everyone, lab, person, canvas), a unit is a leaf, and views narrow by scope. Nothing in the ontology depended on the whole vocabulary, so nothing here changed.

@@ -3,7 +3,9 @@
 // stopping, and what the Lab tab draws.
 //   npm run build:test, then: node harness/lab-real-test.mjs   (Obsidian open on the sandbox vault)
 // The sandbox person joins a throwaway lab run by a simulated PI, works in it, and is taken out again.
-// It skips if the sandbox is already in a lab, and puts the vault back as it found it.
+// It skips if the sandbox is already in a lab.
+// Leaves the vault in no lab, with its own unit taken back. The lab's units that reached the vault stay in its
+// records, put away with the lab: core has no call that forgets a lab's work.
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,10 +15,10 @@ import { openWorld } from "./vaults/world.ts";
 
 const RUN = String(Date.now()).slice(-5);
 const t = await session({ out: resolve("reports/lab-real"), reload: !process.env.DG_NO_RELOAD });
-const { s, check, note, until, shot, at, click, has, call } = t;
+const { s, check, note, until, shot, at, click, has, call, cleanup } = t;
 await s("s.test(true)");
 
-const before = await call("lab.view");
+const before = await call("lab.get");
 if (before.link || before.identity.lab) {
   note(`SKIP the sandbox is already in a lab (${before.link?.name ?? before.identity.lab?.name}). Leave it first, then run this again.`);
   await t.finish("lab-real");
@@ -47,13 +49,12 @@ const online = async (vault, work) => {
   }
 };
 const typeOf = async (who, base) => (await who("grammar.get", {})).nodeTypes.find((type) => type.base === base && !type.removed).id;
-const made = [];
 
 try {
   const lab = await online(mira, () => mira.call("lab.register", { server: world.server, name: `Real Lab ${RUN}` }));
   const forTomas = (await online(mira, () => mira.call("lab.invite", {}))).invite;
   await online(tomas, () => tomas.call("lab.acceptInvite", { invite: forTomas }));
-  const claim = await mira.call("node.create", { title: `Actin follows tension ${RUN}`, type: await typeOf(mira.call, "claim") });
+  const claim = await mira.call("unit.create", { title: `Actin follows tension ${RUN}`, type: await typeOf(mira.call, "claim") });
   const canvas = await mira.call("canvas.create", { title: `Real lab canvas ${RUN}` });
   await mira.call("canvas.write", { canvas: canvas.id, upserts: [{ z: 1, item: { type: "text", text: claim.title, x: 0, y: 0, width: 240, height: 90, dg: { node: claim.id } } }] });
   await mira.call("canvas.share", { id: canvas.id });
@@ -69,7 +70,7 @@ try {
   const arrived = await until(async () => (await call("canvas.list")).find((item) => item.id === canvas.id), 20000);
   check("sync.the-shared-canvas-arrives-by-itself", Boolean(arrived), arrived?.title);
   const view = await until(async () => {
-    const now = await call("lab.view");
+    const now = await call("lab.get");
     return now.identity.lab && now.settings.reach === "device" ? now : null;
   }, 15000);
   check("inherit.the-pis-settings-reach-obsidian", view?.settings.reach === "device" && view?.settings.servers?.[0]?.name === "Mira's workstation", q(view?.settings));
@@ -96,34 +97,34 @@ try {
   await shot("lab-tab-member");
 
   // The real person adds to the shared canvas. It reaches the simulated labmates, signed.
-  const mine = await call("node.create", { title: `From the real Obsidian ${RUN}`, type: grammar.nodeTypes.find((type) => type.base === "evidence" && !type.removed).id });
-  made.push(mine.id);
+  const mine = await call("unit.create", { title: `From the real Obsidian ${RUN}`, type: grammar.nodeTypes.find((type) => type.base === "evidence" && !type.removed).id });
+  cleanup("the unit made in Obsidian", () => call("unit.remove", { id: mine.id }));
   await call("canvas.write", { canvas: canvas.id, upserts: [{ z: 2, item: { type: "text", text: mine.title, x: 300, y: 0, width: 240, height: 90, dg: { node: mine.id } } }] });
   const reached = await until(async () => {
     await world.settle(["Mira", "Tomas"]);
-    return (await tomas.call("node.query", { text: mine.title, limit: 1 }))[0];
+    return (await tomas.call("unit.list", { text: mine.title, limit: 1 }))[0];
   }, 25000);
   check("sync.obsidians-work-reaches-the-others", reached?.title === mine.title, reached?.title);
   check("sync.and-is-credited-to-its-person", reached?.credit.name === joined.identity.name, q(reached?.credit));
-  const refused = (await online(tomas, () => tomas.call("lab.view", {}))).refused;
+  const refused = (await online(tomas, () => tomas.call("lab.get", {}))).refused;
   check("sign.obsidians-records-carry-a-signature-that-holds", refused === 0, `Tomas refused ${refused}`);
 
   // The plugin is turned off and on again in the middle of things, as an update does.
   await t.host.reload();
   await s("s.test(true)");
-  const again = await mira.call("node.create", { title: `Made while Obsidian restarted ${RUN}`, type: await typeOf(mira.call, "claim") });
+  const again = await mira.call("unit.create", { title: `Made while Obsidian restarted ${RUN}`, type: await typeOf(mira.call, "claim") });
   await mira.call("canvas.write", { canvas: canvas.id, upserts: [{ z: 3, item: { type: "text", text: again.title, x: 600, y: 0, width: 240, height: 90, dg: { node: again.id } } }] });
   await mira.sync();
-  const caught = await until(async () => (await call("node.query", { text: again.title, limit: 1 }))[0], 25000);
+  const caught = await until(async () => (await call("unit.list", { text: again.title, limit: 1 }))[0], 25000);
   check("restart.obsidian-catches-up-after-the-plugin-restarts", caught?.title === again.title, caught?.title);
-  check("restart.it-is-still-in-the-lab", Boolean((await call("lab.view")).link?.token));
+  check("restart.it-is-still-in-the-lab", Boolean((await call("lab.get")).link?.token));
 
   // The PI takes the real person out.
-  await call("node.remove", { id: mine.id }).catch(() => undefined);
+  await call("unit.remove", { id: mine.id }).catch(() => undefined);
   await sleep(4500);
-  await online(mira, () => mira.call("lab.remove", { did: joined.identity.did }));
+  await online(mira, () => mira.call("lab.remove", { id: joined.identity.did }));
   const out = await until(async () => {
-    const now = await call("lab.view");
+    const now = await call("lab.get");
     return now.removedFrom ? now : null;
   }, 25000);
   check("remove.obsidian-is-told", out?.removedFrom === `Real Lab ${RUN}` && !out?.link, q({ removedFrom: out?.removedFrom }));
@@ -142,13 +143,13 @@ try {
   check("remove.the-notice-goes-once-read", !(await has("canvases", '[data-dg="lab-removed"]')));
 } finally {
   clearInterval(tick);
-  for (const id of made) await call("node.remove", { id }).catch(() => undefined);
+  await cleanup.run();
   await call("lab.acknowledge").catch(() => undefined);
   await s("s.closeAll()").catch(() => undefined);
   await world.close();
   serverProcess.kill();
   rmSync(dataDir, { recursive: true, force: true });
 }
-const left = await call("lab.view");
+const left = await call("lab.get");
 check("after.the-vault-is-in-no-lab", !left.link && !left.identity.lab && !left.removedFrom, q({ link: Boolean(left.link), lab: left.identity.lab?.name }));
 await t.finish("lab-real");

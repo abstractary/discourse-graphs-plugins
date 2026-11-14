@@ -1,8 +1,10 @@
 import { requireAnyMember } from './auth.ts';
 import type { Config } from './config.ts';
 import { ApiError, isObject, logFailure, openNdjson, readLines } from './http.ts';
-import type { Context, Route } from './http.ts';
+import type { Context, Route, Sent } from './http.ts';
+import { ROUTES, at } from './routes.ts';
 import type { Store } from './store.ts';
+import type { AiUnit, AskLine, AskProvider, AskRequest, ServerInfo } from './wire.gen.ts';
 
 const ANTHROPIC_DEFAULT_MODEL = 'claude-sonnet-5-5';
 const OPENROUTER_DEFAULT_MODEL = 'anthropic/claude-sonnet-5.5';
@@ -26,7 +28,7 @@ const STOPWORDS = new Set([
   'should', 'will', 'there', 'their', 'they', 'them', 'than', 'then', 'into', 'about', 'any', 'all', 'our', 'its',
 ]);
 
-type Unit = { id: string; type?: string; title: string; description?: string; anchor?: string; paper?: unknown };
+type Unit = AiUnit;
 
 type AnthropicEvent = {
   type?: string;
@@ -44,7 +46,7 @@ type TextSource = (target: Target, model: string, prompt: string, signal: AbortS
 // A member's own model, called with their key for this one question. The key is
 // used and dropped: it is never stored, logged or echoed. The address is always
 // the provider's own, so a member can't point the server at another host.
-type OwnProvider = { kind: 'anthropic' | 'openai' | 'gemini'; model: string; key: string };
+type OwnProvider = AskProvider;
 const OWN_BASE_URLS = {
   openai: 'https://api.openai.com/v1',
   gemini: 'https://generativelanguage.googleapis.com/v1beta',
@@ -71,7 +73,7 @@ function parseProvider(value: unknown): OwnProvider | undefined {
   return { kind: value.kind as OwnProvider['kind'], model: (value.model as string).trim(), key: (value.key as string).trim() };
 }
 
-export function aiStatus(config: Config): { mode: 'model' | 'search-only'; model?: string } {
+export function aiStatus(config: Config): ServerInfo['ai'] {
   if (config.anthropicKey) return { mode: 'model', model: config.aiModel ?? ANTHROPIC_DEFAULT_MODEL };
   if (config.openRouterKey) return { mode: 'model', model: config.aiModel ?? OPENROUTER_DEFAULT_MODEL };
   return { mode: 'search-only' };
@@ -270,25 +272,25 @@ async function askModel(
   try {
     for await (const text of source(target, model, buildPrompt(question, units), stream.signal)) {
       answer += text;
-      stream.write({ type: 'delta', text });
+      stream.write({ type: 'delta', text } satisfies AskLine);
     }
   } catch (error) {
     if (error instanceof ApiError || stream.signal.aborted) throw error;
     throw new ApiError(502, 'model-unreachable', 'Could not reach the model service. Check the network, then try again.');
   }
-  stream.write({ type: 'result', answer, citations: citedIds(answer, units), mode: 'model', model });
+  stream.write({ type: 'result', answer, citations: citedIds(answer, units), mode: 'model', model } satisfies AskLine);
 }
 
 function askSearch(question: string, units: Unit[], stream: ReturnType<typeof openNdjson>): void {
   stream.write({ type: 'status', message: 'No model is connected. Searching the units.' });
   const { answer, citations } = searchAnswer(question, units);
-  stream.write({ type: 'delta', text: answer });
-  stream.write({ type: 'result', answer, citations, mode: 'search-only' });
+  stream.write({ type: 'delta', text: answer } satisfies AskLine);
+  stream.write({ type: 'result', answer, citations, mode: 'search-only' } satisfies AskLine);
 }
 
 async function ask({ req, res, readJson }: Context, config: Config, store: Store): Promise<void> {
   requireAnyMember(req, store);
-  const body = await readJson();
+  const body: Sent<AskRequest> = await readJson();
   const stream = openNdjson(res);
   try {
     if (typeof body.question !== 'string' || !body.question.trim()) {
@@ -303,14 +305,14 @@ async function ask({ req, res, readJson }: Context, config: Config, store: Store
     else askSearch(body.question, units, stream);
   } catch (error) {
     if (!stream.signal.aborted) {
-      if (!(error instanceof ApiError)) logFailure('POST /v1/ai/ask', error);
+      if (!(error instanceof ApiError)) logFailure(`POST ${ROUTES.ask.path}`, error);
       const message = error instanceof ApiError ? error.message : 'Something went wrong on the server. Try again.';
-      stream.write({ type: 'error', message });
+      stream.write({ type: 'error', message } satisfies AskLine);
     }
   }
   stream.end();
 }
 
 export function aiRoutes(config: Config, store: Store): Route[] {
-  return [{ method: 'POST', path: '/v1/ai/ask', handler: (context) => ask(context, config, store) }];
+  return [{ ...at('ask'), handler: (context) => ask(context, config, store) }];
 }

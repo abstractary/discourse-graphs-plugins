@@ -68,6 +68,22 @@ const requiredByKind: Record<RecordKind, string[]> = {
   decision: ["target", "decision"],
 };
 
+const validateLabSettings = (value: unknown): string[] => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return ["lab settings must be an object"];
+  const settings = value as Record<string, unknown>;
+  const problems: string[] = [];
+  const group = settings.zoteroGroup as { id?: unknown; name?: unknown } | undefined;
+  if (group !== undefined && !(typeof group === "object" && group !== null && isString(group.id) && isString(group.name))) problems.push("zoteroGroup needs id and name");
+  if (settings.servers !== undefined) {
+    const servers = settings.servers;
+    const fine = Array.isArray(servers) && servers.every((server) => typeof server === "object" && server !== null && isString((server as { name?: unknown }).name) && isString((server as { url?: unknown }).url));
+    if (!fine) problems.push("servers must be a list of name and url");
+  }
+  if (settings.compute !== undefined && !isString(settings.compute)) problems.push("compute must be text");
+  if (settings.reach !== undefined && !["device", "lab", "anywhere"].includes(settings.reach as string)) problems.push("reach must be device, lab or anywhere");
+  return problems;
+};
+
 /**
  * An empty array means valid. Unknown fields are allowed and must be kept.
  * So are records a newer client wrote, with a kind or format version this
@@ -129,6 +145,12 @@ export const validateRecord = (value: unknown): string[] => {
       problems.push("evaluation method is not one of the known methods");
     }
     if (record.targetCid !== undefined && !isCid(record.targetCid)) problems.push("targetCid must be a CID");
+  }
+  if (kind === "lab" && record.settings !== undefined) problems.push(...validateLabSettings(record.settings));
+  if (kind === "device") {
+    if (!["device", "agent"].includes(record.role as string)) problems.push("device role must be device or agent");
+    const vouch = record.vouch as { by?: unknown; sig?: unknown } | undefined;
+    if (vouch !== undefined && !(typeof vouch === "object" && vouch !== null && isString(vouch.by) && isString(vouch.sig))) problems.push("vouch needs by and sig");
   }
   // What signing and versions add. Each is optional, and each is text when present.
   for (const key of ["sig", "sigBy", "prev", "acceptedFrom", "replacedBy"] as const) {

@@ -1,6 +1,6 @@
 # Holon views and the canvas repository
 
-> **An earlier draft, kept for the record.** On 12 November 2026 the direction changed: a unit is a leaf and never opens as a graph of its own, and views narrow by scope (everyone, lab, person, canvas). The open-inside button, the open gestures and zoom-to-open described below are gone. What remains in the app is the line under the canvas bar, the Boundary panel, the Overview and the Library. In the app these no longer use the word "holon"; the code still does in file and method names.
+> **An earlier draft, kept for the record.** On 12 November 2026 the direction changed: a unit is a leaf and never opens as a graph of its own, and views narrow by scope (everyone, lab, person, canvas). The open-inside button, the open gestures and zoom-to-open described below are gone. What remains in the app is the line under the canvas bar, the Boundary panel, the Overview and the Library. Neither the app nor the code uses the word "holon" any more: the code says "overview" for the panel and its calls and "whole" for what a canvas is tied to. Older logs still carry `holon` on a canvas record and are read as `whole`.
 
 Claim–evidence graphs, seen the same way at every level. Draft, 11 November 2026.
 
@@ -24,7 +24,7 @@ A **holon** is a whole that is also a part.
 
 ## One view, every level
 
-`holon.view` returns the same shape for every level (`HolonView` in `packages/contract/src/surface.ts`).
+`overview.get` returns the same shape for every level (`HolonView` in `packages/contract/src/surface.ts`).
 
 **Parts:** the holon's children.
 - Each part shows its type, its gap flags, its privacy and who made it.
@@ -98,7 +98,7 @@ The holarchy lives in the plugin's own panels, not in a separate app.
 - A nested canvas is a JSON Canvas `file` node with `dg.canvas`. The DG canvas shows it as a card that opens in place, and Obsidian's own Canvas shows the same node as the embedded canvas.
 
 **Where the code sits:**
-- **Core:** `packages/core/src/holons.ts` holds holon focus, `holon.canvas`, `canvas.setHolon`, `canvas.highlight` and `prefs`.
+- **Core:** `packages/core/src/holons.ts` holds holon focus, `overview.canvas`, `canvas.setHolon`, `canvas.highlight` and `prefs`.
 - **Canvas tab:** `packages/surfaces/src/canvas/holons.tsx`.
 - **Boundary panel:** `packages/surfaces/src/boundary/`.
 - **Library repository:** `packages/surfaces/src/library/Repository.tsx`.

@@ -106,7 +106,7 @@ const overlaps = ({ cards }) => {
 };
 
 const paletteOf = async (side, id) => {
-  const view = await side.s(`s.call("canvas.open", { id: ${q(id)} })`);
+  const view = await side.s(`s.call("canvas.get", { id: ${q(id)} })`);
   const relationOf = Object.fromEntries(view.items.map(({ id: item, item: drawn }) => [item, drawn.dg?.relation]));
   const drawn = await side.s(`s.drawn()`);
   const kinds = {};
@@ -234,7 +234,7 @@ const solo = async (side) => {
   // Every card in view, so no click lands on a panel beside the canvas.
   await click("s", '[data-dg="fit"]');
   await sleep(600);
-  const view = await s(`s.call("canvas.open", { id: ${q(paper.canvas)} })`);
+  const view = await s(`s.call("canvas.get", { id: ${q(paper.canvas)} })`);
   const claims = Object.values(view.nodes).filter(({ typeLabel }) => typeLabel === "Claim").slice(0, 2);
   await click("s", `[data-dg="card-${claims[0].title}"]`);
   await side.host.input("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Shift", code: "ShiftLeft", windowsVirtualKeyCode: 16, modifiers: 8 });
@@ -259,7 +259,7 @@ const solo = async (side) => {
   }, 5000);
   check(`${name}.export.makes-real-text`, found?.length >= 1, q(found));
   check(`${name}.export.lands-in-the-base's-folder`, name === "obsidian" ? found?.some((path) => path.startsWith("Discourse Units/Prognosis/")) : (await s(`s.searchBase("Folder/Prognosis")`)).length === 1, q(found));
-  const unstaged = await s(`s.call("canvas.open", { id: ${q(paper.canvas)} })`);
+  const unstaged = await s(`s.call("canvas.get", { id: ${q(paper.canvas)} })`);
   check(`${name}.export.others-stay-on-the-canvas-only`, Object.values(unstaged.nodes).filter(({ hasText }) => hasText).length === 2);
 
   // Opening a unit says where it came from and where it lives.
@@ -287,7 +287,7 @@ const solo = async (side) => {
   side.exportMs = Date.now() - exportStarted;
   check(`${name}.export.reaches-the-workspace`, Boolean(workspace), `${workspace?.title} in ${side.exportMs} ms`);
   if (workspace) {
-    const held = await s(`s.call("canvas.open", { id: ${q(workspace.id)} })`);
+    const held = await s(`s.call("canvas.get", { id: ${q(workspace.id)} })`);
     check(`${name}.export.whole-paper-arrives`, Object.keys(held.nodes).length === expected.nodes.length, Object.keys(held.nodes).length);
     check(`${name}.export.links-come-along`, Object.keys(held.relations).length === expected.edges.length, Object.keys(held.relations).length);
   }
@@ -319,9 +319,9 @@ const lab = async (ana, ben) => {
   await ana.type("s.dialog", '[data-dg="lab-text"]', labName);
   await ana.click("s.dialog", '[data-dg="lab-go"]');
   await until(() => ana.s(`s.dialog.count('[data-dg="welcome-joined"]')`), 8000);
-  check("lab.start.makes-a-pi", (await ana.s(`s.call("lab.view", {})`)).link?.role === "admin");
+  check("lab.start.makes-a-pi", (await ana.s(`s.call("lab.get", {})`)).link?.role === "admin");
   await ana.click("s.dialog", '[data-dg="welcome-done"]');
-  const id = (await ana.s(`s.call("lab.view", {})`)).link.id;
+  const id = (await ana.s(`s.call("lab.get", {})`)).link.id;
 
   await ben.s("s.firstRun()");
   await until(() => ben.s(`s.dialog.count('[data-dg="lab-text"]')`), 8000);
@@ -345,7 +345,7 @@ const lab = async (ana, ben) => {
   const after = await ben.s(`s.call("ai.status", {})`);
   check("lab.join.token-brings-ai", after.ready === true, q(after));
   await ben.click("s.dialog", '[data-dg="welcome-done"]');
-  check("lab.members.both-listed", (await ana.s(`s.call("lab.view", {})`)).members.length === 2);
+  check("lab.members.both-listed", (await ana.s(`s.call("lab.get", {})`)).members.length === 2);
 
   // A paper goes to the lab, file and all.
   const mediators = graphOf(MEDIATORS);
@@ -358,7 +358,7 @@ const lab = async (ana, ben) => {
   await ana.click("s.dialog", '[data-dg="upload-go"]');
   await until(async () => !(await ana.dialogOpen()), 25000);
   const inRepo = await until(async () => {
-    const view = await ana.s(`s.call("lab.view", {})`);
+    const view = await ana.s(`s.call("lab.get", {})`);
     return view.papers.find(({ title }) => title.startsWith("Dysregulation")) ?? null;
   }, 8000);
   check("share.reaches-the-repository", Boolean(inRepo), q(inRepo)?.slice(0, 200));
@@ -395,12 +395,12 @@ const lab = async (ana, ben) => {
   await sleep(600);
 
   // Reactions and notes, compact on the card.
-  const view = await ben.s(`s.call("canvas.open", { id: ${q(inRepo.canvas)} })`);
+  const view = await ben.s(`s.call("canvas.get", { id: ${q(inRepo.canvas)} })`);
   const unit = Object.values(view.nodes).find(({ typeLabel }) => typeLabel === "Claim");
   await ben.hover("s", `[data-dg="card-${unit.title}"]`);
   await sleep(250);
   await ben.click("s", `[data-dg="react-disagree-${unit.title}"]`);
-  const mine = await until(async () => (await ben.s(`s.call("canvas.open", { id: ${q(inRepo.canvas)} })`)).social?.[unit.id]?.mine, 5000);
+  const mine = await until(async () => (await ben.s(`s.call("canvas.get", { id: ${q(inRepo.canvas)} })`)).social?.[unit.id]?.mine, 5000);
   check("reaction.is-recorded", mine === "disagree", mine);
   await ben.click("s", `[data-dg="card-${unit.title}"]`);
   await ben.s(`s.call("panel.open", { surface: "context" })`);
@@ -425,7 +425,7 @@ const lab = async (ana, ben) => {
   check("reaction.reaches-the-lab", Boolean(seen), await ana.s(`s.text('[data-dg="react-disagree-${unit.title}"]')`));
   check("note.shows-on-the-card", (await until(() => ana.s(`s.count('[data-dg="notes-${unit.title}"]')`), 4000)) === 1);
   await host_shot(ana, "reactions-on-card");
-  const opened = await ana.s(`s.call("node.view", { id: ${q(unit.id)} })`);
+  const opened = await ana.s(`s.call("unit.get", { id: ${q(unit.id)} })`);
   check("reaction.names-who", opened.social?.who.disagree?.[0] === ben.person || opened.social?.who.disagree?.[0]?.name === ben.person, q(opened.social?.who));
 
   // Leaving a breadcrumb is a choice made on closing.
@@ -433,15 +433,15 @@ const lab = async (ana, ben) => {
   const asked = await until(() => ben.s(`s.hostCount('[data-dg="breadcrumb"]')`), 6000);
   check("breadcrumb.asks-on-closing", asked === 1);
   await host_shot(ben, "breadcrumb");
-  check("breadcrumb.nothing-before-the-answer", (await ana.s(`s.call("lab.view", {})`)).papers.find(({ id: paperId }) => paperId === inRepo.id)?.breadcrumbs.length === 0);
+  check("breadcrumb.nothing-before-the-answer", (await ana.s(`s.call("lab.get", {})`)).papers.find(({ id: paperId }) => paperId === inRepo.id)?.breadcrumbs.length === 0);
   await ben.hostClick('[data-dg="breadcrumb-remember"]');
   await ben.hostClick('[data-dg="breadcrumb-leave"]');
   const crumb = await until(async () => {
-    const paper = (await ana.s(`s.call("lab.view", {})`)).papers.find(({ id: paperId }) => paperId === inRepo.id);
+    const paper = (await ana.s(`s.call("lab.get", {})`)).papers.find(({ id: paperId }) => paperId === inRepo.id);
     return paper?.breadcrumbs.length ? paper.breadcrumbs : null;
   }, 8000);
   check("breadcrumb.reaches-the-repository", crumb?.[0]?.name === ben.person, q(crumb));
-  check("breadcrumb.remembers-the-default", (await ben.s(`s.call("lab.view", {})`)).breadcrumbs === "always");
+  check("breadcrumb.remembers-the-default", (await ben.s(`s.call("lab.get", {})`)).breadcrumbs === "always");
   await ben.s(`s.open(${q(inRepo.canvas)})`);
   await sleep(1500);
   await ben.s("s.leaveCanvas()");
@@ -471,7 +471,7 @@ const lab = async (ana, ben) => {
   check("breadcrumb.asks-in-the-other-base", (await until(() => ana.s(`s.hostCount('[data-dg="breadcrumb"]')`), 5000)) === 1);
   await ana.hostClick('[data-dg="breadcrumb-skip"]');
   await sleep(600);
-  const skipped = (await ana.s(`s.call("lab.view", {})`)).papers.find(({ id: paperId }) => paperId === shareable.id);
+  const skipped = (await ana.s(`s.call("lab.get", {})`)).papers.find(({ id: paperId }) => paperId === shareable.id);
   check("breadcrumb.skipping-leaves-nothing", skipped?.breadcrumbs.length === 0, q(skipped?.breadcrumbs));
   await ana.s(`s.open(${q(inRepo.canvas)})`);
   await until(async () => (await countCards(ana)) >= mediators.nodes.length, 9000);

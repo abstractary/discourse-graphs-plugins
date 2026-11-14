@@ -1,9 +1,9 @@
+import { pathOf } from "@dg/contract/routes.ts";
 import { trimmedUrl as trimmed } from "@dg/contract/urls.ts";
 import { mergeIdentifiers, parseIdentifier, sameIdentifier } from "@dg/contract/scholarly.ts";
 import type {
   Identifier,
   Notification,
-  NotificationSummary,
   Signposts,
   WorkAuthor,
   WorkMetadata,
@@ -11,6 +11,7 @@ import type {
   WorkUpdate,
 } from "@dg/contract/scholarly.ts";
 import type { Services } from "@dg/contract/services.ts";
+import type { NotificationsResponse } from "@dg/contract/wire.ts";
 
 /**
  * Reads one published work from the open registries and its landing page, and
@@ -829,7 +830,7 @@ export const createScholarly = ({
   const notifications: Services["notifications"] = async ({ server, about }) => {
     let response: Response;
     try {
-      response = await send(`${trimmed(server)}/v1/notify/inbox${about ? `?about=${encodeURIComponent(about)}` : ""}`, {
+      response = await send(`${trimmed(server)}${pathOf("notifications")}${about ? `?about=${encodeURIComponent(about)}` : ""}`, {
         method: "GET",
         headers: { accept: "application/json" },
       });
@@ -840,7 +841,7 @@ export const createScholarly = ({
       const failed = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
       throw new Error(failed?.error?.message ?? `The server answered ${response.status}.`);
     }
-    return list(rec(await response.json()).notifications) as NotificationSummary[];
+    return list(rec(await response.json()).notifications) as NotificationsResponse<Notification>["notifications"];
   };
 
   return { lookupWork, signposts, sendNotification, notifications };

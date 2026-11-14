@@ -14,6 +14,7 @@ import {
 } from "@dg/contract/records.ts";
 import { STARTER_TEMPLATES, fillTemplate } from "@dg/contract/grammar.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 export { STARTER_TEMPLATES, fillTemplate };
 
@@ -73,7 +74,7 @@ export const grammarFeature = (context: Context) => {
   const mustBeMine = (held: { by: { id: string; name: string }; label: string }): void => {
     if (held.by.id === context.me().id) return;
     const name = context.documents("person").find((person) => person.did === held.by.id)?.name ?? held.by.name;
-    throw new Error(`${held.label} is part of the grammar your lab shares. Only ${name} can change it.`);
+    throw refuse("read-only", `${held.label} is part of the grammar your lab shares. Only ${name} can change it.`);
   };
 
   const uses = (): Record<DgId, number> => {
@@ -98,11 +99,11 @@ export const grammarFeature = (context: Context) => {
     const short = tidy(abbreviation)?.toUpperCase();
     if (short && !/^[A-Z0-9]{1,6}$/.test(short)) throw new Error("An abbreviation is up to six letters or digits.");
     const clash = nodeTypes().find((type) => type.id !== id && same(type.label, name));
-    if (clash) throw new Error(`There is already a type called ${clash.label}.`);
+    if (clash) throw refuse("conflict", `There is already a type called ${clash.label}.`);
     const mark = tidy(tag)?.replace(/^#+/, "").toLowerCase();
     if (mark && !/^[\p{L}\p{N}_/-]+$/u.test(mark)) throw new Error("A tag is one word: letters, digits, dashes and underscores.");
     const taken = mark ? nodeTypes().find((type) => type.id !== id && type.tag?.toLowerCase() === mark) : undefined;
-    if (taken) throw new Error(`${taken.label} already uses that tag.`);
+    if (taken) throw refuse("conflict", `${taken.label} already uses that tag.`);
     const fields = { label: name, base, ...(short ? { abbreviation: short } : {}), ...(checkedFormat(titleFormat, short) ? { titleFormat: checkedFormat(titleFormat, short)! } : {}), ...(tidy(color) ? { color: tidy(color)! } : {}), ...(template?.trim() ? { template } : {}), ...(mark ? { tag: mark } : {}) };
     if (!id) {
       const made = createNodeType({ ...context.stamp(), fields });
@@ -110,7 +111,7 @@ export const grammarFeature = (context: Context) => {
       return made;
     }
     const held = context.typeOf(id);
-    if (!held) throw new Error("That type isn't here any more.");
+    if (!held) throw refuse("not-found", "That type isn't here any more.");
     mustBeMine(held);
     // A cleared field is cleared, so the whole set is written.
     const next = revise({ record: held, changes: { abbreviation: undefined, titleFormat: undefined, color: undefined, template: undefined, tag: undefined, ...fields } as never, by: context.me() });
@@ -124,7 +125,7 @@ export const grammarFeature = (context: Context) => {
     if (!held) return null;
     mustBeMine(held);
     const count = uses()[id] ?? 0;
-    if (count > 0) throw new Error(`${count} ${count === 1 ? "unit has" : "units have"} this type. Give ${count === 1 ? "it" : "them"} another type first.`);
+    if (count > 0) throw refuse("no-target", `${count} ${count === 1 ? "unit has" : "units have"} this type. Give ${count === 1 ? "it" : "them"} another type first.`);
     const left = nodeTypes().filter((type) => type.id !== id && type.base === held.base);
     if (held.base && left.length === 0 && ["question", "claim", "evidence", "source"].includes(held.base)) throw new Error(`This is the only ${held.base} type. An argument needs one.`);
     // Relation rules that named it no longer mean anything.
@@ -142,7 +143,7 @@ export const grammarFeature = (context: Context) => {
     if (!name || !back) throw new Error("A relation needs its wording both ways, such as Supports and Supported by.");
     if (base && !(BASE_RELATION_TYPES as readonly string[]).includes(base)) throw new Error("That isn't a kind of relation.");
     const clash = relationTypes().find((type) => type.id !== id && (same(type.label, name) || same(type.complement, name) || same(type.label, back)));
-    if (clash) throw new Error(`${clash.label} already uses that wording.`);
+    if (clash) throw refuse("conflict", `${clash.label} already uses that wording.`);
     const known = new Set(nodeTypes().map((type) => type.id));
     const pairs: RelationRule[] = [];
     for (const rule of rules) {
@@ -156,7 +157,7 @@ export const grammarFeature = (context: Context) => {
       return made;
     }
     const held = context.relationTypeOf(id);
-    if (!held) throw new Error("That relation isn't here any more.");
+    if (!held) throw refuse("not-found", "That relation isn't here any more.");
     mustBeMine(held);
     const next = revise({ record: held, changes: { base: undefined, color: undefined, ...fields } as never, by: context.me() });
     const clean = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined)) as RelationTypeRecord;
@@ -169,7 +170,7 @@ export const grammarFeature = (context: Context) => {
     if (!held) return null;
     mustBeMine(held);
     const count = uses()[id] ?? 0;
-    if (count > 0) throw new Error(`${count} ${count === 1 ? "link uses" : "links use"} this relation. Remove ${count === 1 ? "it" : "them"} first.`);
+    if (count > 0) throw refuse("no-target", `${count} ${count === 1 ? "link uses" : "links use"} this relation. Remove ${count === 1 ? "it" : "them"} first.`);
     await context.put([revise({ record: held, changes: { removed: true }, by: context.me() })]);
     return null;
   };
@@ -241,7 +242,7 @@ export const grammarFeature = (context: Context) => {
       let binary = "";
       for (const byte of bytes) binary += String.fromCharCode(byte);
       const saved = await context.host.saveFile({ name: SCHEMA_FILE, mediaType: "application/json", dataBase64: btoa(binary) });
-      if (!saved.ok) throw new Error(saved.error.message);
+      if (!saved.ok) throw refusalOf(saved.error);
       return { where: saved.value.where, name: SCHEMA_FILE, nodeTypes: file.nodeTypes.length, relationTypes: file.relationTypes.length };
     },
 
@@ -256,7 +257,7 @@ export const grammarFeature = (context: Context) => {
 
     "grammar.import": async ({ ref }) => {
       const asset = await context.host.readAsset({ ref });
-      if (!asset.ok) throw new Error(asset.error.message);
+      if (!asset.ok) throw refusalOf(asset.error);
       let raw: unknown;
       try {
         raw = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(asset.value.dataUrl.split(",")[1] ?? ""), (char) => char.charCodeAt(0))));
@@ -319,10 +320,10 @@ export const grammarFeature = (context: Context) => {
 
     "table.open": async ({ type }) => {
       const held = context.typeOf(type);
-      if (!held) throw new Error("That type isn't here any more.");
-      if (!context.host.openTable) throw new Error("This base has no tables of its own.");
+      if (!held) throw refuse("not-found", "That type isn't here any more.");
+      if (!context.host.openTable) throw refuse("unavailable", "This base has no tables of its own.");
       const made = await context.host.openTable({ name: held.label, property: FACT_KEYS.type, value: held.label, columns: TABLE_COLUMNS.filter(({ only }) => !only || only === held.base).map(({ property, label }) => ({ property, label })) });
-      if (!made.ok) throw new Error(made.error.message);
+      if (!made.ok) throw refusalOf(made.error);
       return made.value;
     },
   };

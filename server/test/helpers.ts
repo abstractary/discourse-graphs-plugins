@@ -84,6 +84,15 @@ export async function readRequest(req: IncomingMessage): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+/** Something with a record's shape. The server keeps it without reading further. */
+export const rec = (name: string | number, more: Record<string, unknown> = {}): Record<string, unknown> => ({
+  id: `did:plc:admin/${name}`,
+  kind: 'node',
+  at: '2026-11-01T00:00:00.000Z',
+  by: { id: 'did:plc:admin', name: 'Admin' },
+  ...more,
+});
+
 export type LabFixture = { id: string; adminToken: string };
 
 export async function createLab(server: TestServer, name = 'Tension Lab'): Promise<LabFixture> {

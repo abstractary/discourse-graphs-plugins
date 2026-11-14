@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import type { NodeSummary } from "@dg/contract/surface.ts";
 import { marksOf, wordsOf, type TextMarks } from "@dg/contract/words.ts";
 
@@ -112,4 +112,85 @@ export const Highlighted = ({ text, query }: { text: string; query: string }) =>
   const shown = plain(text);
   const words = wordsOf(query);
   return <Marked text={shown} marks={words.length ? marksOf(shown, words) : []} />;
+};
+
+/** One tab of a `Tabs` bar. `dg` is its `data-dg`; `extra` follows the label inside the button, such as a count. */
+export type TabOf<Id extends string> = { id: Id; label: ReactNode; dg: string; title?: string | undefined; extra?: ReactNode };
+
+/**
+ * A row of tabs: a `role="tablist"` container holding one `role="tab"` button per entry, the chosen
+ * one marked with `aria-selected`. The container's tag, class and label are the caller's, so each
+ * panel keeps the markup and the selectors it had.
+ */
+export const Tabs = <Id extends string>({
+  as: Tag = "div",
+  className,
+  "aria-label": label,
+  tabs,
+  selected,
+  onPick,
+}: {
+  as?: "div" | "nav";
+  className: string;
+  "aria-label"?: string | undefined;
+  tabs: readonly TabOf<Id>[];
+  selected: Id;
+  onPick: (id: Id) => void;
+}) => (
+  <Tag className={className} role="tablist" aria-label={label}>
+    {tabs.map((tab) => (
+      <button key={tab.id} type="button" role="tab" aria-selected={tab.id === selected} title={tab.title} data-dg={tab.dg} onClick={() => onPick(tab.id)}>
+        {tab.label}
+        {tab.extra}
+      </button>
+    ))}
+  </Tag>
+);
+
+/** What went wrong, said where the person is looking. Nothing is drawn while there is nothing to say. */
+export const Problem = ({ text, dg, again }: { text: string; dg?: string | undefined; again?: (() => void) | undefined }) =>
+  text ? (
+    <p className="problem" role="alert" data-dg={dg}>
+      {text}
+      {again ? <>{" "}<button type="button" className="load-again" data-dg="problem-again" onClick={again}>Try again</button></> : null}
+    </p>
+  ) : null;
+
+/**
+ * Something asked for twice before it is done: the first press asks, the second does it, and
+ * "Keep it" backs out. Drawn inline, so the panel's own row or line holds it.
+ */
+export const TwoStep = ({
+  label,
+  question,
+  onYes,
+  dg,
+  dgYes = `${dg}-yes`,
+  yes = "Remove",
+  keep = "Keep it",
+  disabled,
+  buttonClass,
+  questionClass,
+}: {
+  label: ReactNode;
+  question: ReactNode;
+  onYes: () => void;
+  dg: string;
+  dgYes?: string | undefined;
+  yes?: string | undefined;
+  keep?: string | undefined;
+  disabled?: boolean | undefined;
+  buttonClass?: string | undefined;
+  questionClass?: string | undefined;
+}) => {
+  const [asking, setAsking] = useState(false);
+  return asking ? (
+    <>
+      <span className={questionClass}>{question}</span>{" "}
+      <button type="button" className={buttonClass} onClick={() => setAsking(false)}>{keep}</button>{" "}
+      <button type="button" className={buttonClass} data-dg={dgYes} disabled={disabled} onClick={onYes}>{yes}</button>
+    </>
+  ) : (
+    <button type="button" className={buttonClass} data-dg={dg} disabled={disabled} onClick={() => setAsking(true)}>{label}</button>
+  );
 };

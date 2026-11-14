@@ -1,38 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore, type Core } from "@dg/core/index.ts";
 import { BASE_WORDS, STARTER_TEMPLATES, fillTemplate } from "@dg/contract/grammar.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import { BASE_NODE_TYPES, type NodeRecord } from "@dg/contract/records.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import { makeCore, until } from "./support.ts";
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async (store = createMemoryStore()) => {
-  const { host } = createMemoryHost({ store });
+const setup = async () => {
   const files = new Map<string, string>();
   const tables: { name: string; property: string; value: string; columns: { property: string; label: string }[] }[] = [];
-  const base = {
-    ...host,
-    saveFile: async ({ name, dataBase64 }: { name: string; dataBase64: string }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }),
-    openTable: async (args: (typeof tables)[number]) => (tables.push(args), { ok: true as const, value: { where: `Discourse tables/${args.name}.base` } }),
-  };
-  const core: Core = await createCore({ host: base });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = { send: (message) => void ("id" in message && pending.get(message.id)?.(message)), onMessage: (handler) => ((listener = handler), () => {}) };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = `r${(next += 1)}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { core, call, store, host } = await makeCore({
+    wrap: (host) => ({
+      ...host,
+      saveFile: async ({ name, dataBase64 }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }),
+      openTable: async (args: (typeof tables)[number]) => (tables.push(args), { ok: true as const, value: { where: `Discourse tables/${args.name}.base` } }),
+    }),
+  });
   const put = async (name: string, body: string): Promise<string> => {
     const made = await host.writeAsset({ asset: { name, mime: "application/json", dataUrl: `data:application/json;base64,${btoa(body)}` } });
     assert.ok(made.ok);
@@ -75,7 +56,7 @@ test("a lab adds its own type on one of the nine kinds, changes it, and can't ma
 test("a type in use can't be removed, and one taken out of use is no longer offered", async () => {
   const { call, core } = await setup();
   const type = await call("grammar.saveNodeType", { label: "Hypothesis", base: "claim" });
-  const unit = await call("node.create", { title: "Load matters", type: type.id });
+  const unit = await call("unit.create", { title: "Load matters", type: type.id });
   assert.equal((await call("grammar.get", {})).uses?.[type.id], 1);
   await assert.rejects(call("grammar.removeNodeType", { id: type.id }), /1 unit has this type/);
 
@@ -103,9 +84,9 @@ test("a new relation says what it may join, and is then offered between those ty
   await assert.rejects(call("grammar.saveRelationType", { label: "Extends", complement: "", rules: [] }), /both ways/);
   await assert.rejects(call("grammar.saveRelationType", { label: "Extends", complement: "Extended by", rules: [{ source: "nope", target: typeOf("Claim").id }] }), /types that are in use/);
 
-  const first = await call("node.create", { title: "A rose", type: typeOf("Evidence").id });
-  const second = await call("node.create", { title: "A rose again", type: typeOf("Evidence").id });
-  const claim = await call("node.create", { title: "It rises", type: typeOf("Claim").id });
+  const first = await call("unit.create", { title: "A rose", type: typeOf("Evidence").id });
+  const second = await call("unit.create", { title: "A rose again", type: typeOf("Evidence").id });
+  const claim = await call("unit.create", { title: "It rises", type: typeOf("Claim").id });
   const between = await call("relation.options", { source: first.id, target: second.id });
   assert.ok(between.some((option) => option.label === "Replicates"));
   assert.ok(!(await call("relation.options", { source: first.id, target: claim.id })).some((option) => option.label === "Replicates"));
@@ -183,12 +164,12 @@ test("a new unit's note starts from its type's template, and carries the facts a
   const { nodeTypes } = await call("grammar.get", {});
   const claim = nodeTypes.find((type) => type.label === "Claim")!;
   await call("grammar.saveNodeType", { id: claim.id, label: "Claim", base: "claim", abbreviation: "CLM", template: "# {title}\n\nMade {date} by {author} as a {type}.\n\n## What it rests on\n" });
-  const unit = await call("node.create", { title: "Tension rises", type: claim.id });
-  await call("units.export", { nodes: [unit.id], target: { kind: "workspace" } });
+  const unit = await call("unit.create", { title: "Tension rises", type: claim.id });
+  await call("unit.export", { units: [unit.id], target: { kind: "workspace" } });
   const note = texts().find((text) => text.title === "CLM - Tension rises")!;
   assert.ok(note, texts().map((text) => text.title).join(" | "));
   assert.match(note.body ?? "", /# Tension rises\n\nMade \d{4}-\d{2}-\d{2} by Test Person as a Claim\.\n\n## What it rests on/);
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await until(() => ["dg-type", "dg-made", "dg-by"].every((key) => note.properties?.[key]), "the note to get its facts");
   assert.equal(note.properties?.["dg-type"], "Claim");
   assert.match(String(note.properties?.["dg-made"]), /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(note.properties?.["dg-by"], "Test Person");
@@ -202,7 +183,7 @@ test("a new unit's note starts from its type's template, and carries the facts a
 test("a canvas can be removed by its maker, and its units stay", async () => {
   const { call, core, texts } = await setup();
   const canvas = await call("canvas.create", { title: "Scratch" });
-  const unit = await call("node.create", { title: "Stays" });
+  const unit = await call("unit.create", { title: "Stays" });
   assert.ok(texts().some((text) => text.title.includes("Scratch")));
   await call("canvas.remove", { id: canvas.id });
   assert.ok(!(await call("canvas.list", {})).some((item) => item.id === canvas.id));
@@ -212,10 +193,10 @@ test("a canvas can be removed by its maker, and its units stay", async () => {
 
   // A unit goes the same way: off every canvas, its note to the trash, its record kept.
   const board = await call("canvas.create", { title: "Board" });
-  await call("units.export", { nodes: [unit.id], target: { kind: "canvas", id: board.id } });
-  assert.equal(Object.keys((await call("canvas.open", { id: board.id })).nodes).length, 1);
-  await call("node.remove", { id: unit.id });
+  await call("unit.export", { units: [unit.id], target: { kind: "canvas", id: board.id } });
+  assert.equal(Object.keys((await call("canvas.get", { id: board.id })).nodes).length, 1);
+  await call("unit.remove", { id: unit.id });
   assert.equal((core.graph().documents.get(unit.id) as NodeRecord).removed, true);
-  assert.equal(Object.keys((await call("canvas.open", { id: board.id })).nodes).length, 0);
+  assert.equal(Object.keys((await call("canvas.get", { id: board.id })).nodes).length, 0);
   assert.ok(!texts().some((text) => text.title.includes("Stays")));
 });

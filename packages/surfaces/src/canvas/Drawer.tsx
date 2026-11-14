@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { AvailableUnit, UnitsAvailable, UnitsSegment } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { DRAG_TYPE } from "../shared/drag.ts";
 import { Highlighted, Icon, Mark } from "../shared/ui.tsx";
 
 /**
@@ -11,7 +12,6 @@ import { Highlighted, Icon, Mark } from "../shared/ui.tsx";
  * whole group, in a clear spot, laid out together with its links.
  */
 
-export const DRAG_TYPE = "application/x-dg-units";
 const MIN_HEIGHT = 150;
 const KIND_WORD: Record<UnitsSegment["kind"], string> = { canvas: "Canvas", folder: "Folder", loose: "Loose" };
 
@@ -21,7 +21,7 @@ export const useUnitsDrawer = ({ connection, current, report }: { connection: Co
   const timer = useRef<number | undefined>(undefined);
   const load = useCallback(() => {
     if (!current) return setData(null);
-    void call("units.available", { canvas: current }).then(setData).catch(report);
+    void call("unit.available", { canvas: current }).then(setData).catch(report);
   }, [call, current, report]);
   useEffect(load, [load]);
   // A burst of writes, such as a placed group, reads once.
@@ -63,12 +63,13 @@ export const Drawer = ({
 
   const types = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const unit of Object.values(units)) if (unit.type && unit.typeLabel) seen.set(unit.type, unit.typeLabel);
+    for (const unit of Object.values(units)) // By name: several records can stand for one type, and a person picks the name.
+    for (const unit of Object.values(units)) if (unit.type && unit.typeLabel) seen.set(unit.typeLabel.toLowerCase(), unit.typeLabel);
     return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [units]);
   const needle = query.trim().toLowerCase();
   const shows = (unit: AvailableUnit | undefined): unit is AvailableUnit =>
-    Boolean(unit) && (!needle || unit!.title.toLowerCase().includes(needle)) && (!type || unit!.type === type);
+    Boolean(unit) && (!needle || unit!.title.toLowerCase().includes(needle)) && (!type || unit!.typeLabel?.toLowerCase() === type);
   const segments = (data?.segments ?? []).map((segment) => ({ ...segment, shown: segment.units.map((id) => units[id]).filter(shows) })).filter((segment) => segment.shown.length);
 
   const toggle = (id: string) => setSelected((old) => (old.includes(id) ? old.filter((other) => other !== id) : [...old, id]));
@@ -153,7 +154,7 @@ export const Drawer = ({
                     })}
                   >
                     <span className="drawer-caret" aria-hidden="true"><Icon name="chevron" /></span>
-                    <span className="chip" data-base={segment.kind === "canvas" ? (segment.holon ?? "canvas") : "none"}>{segment.kind === "canvas" && segment.holon ? `${KIND_WORD.canvas} · ${segment.holon}` : KIND_WORD[segment.kind]}</span>
+                    <span className="chip" data-base={segment.kind === "canvas" ? (segment.whole ?? "canvas") : "none"}>{segment.kind === "canvas" && segment.whole ? `${KIND_WORD.canvas} · ${segment.whole}` : KIND_WORD[segment.kind]}</span>
                     <span className="drawer-seg-title">{segment.title}</span>
                     <span className="drawer-seg-count">{segment.shown.length}</span>
                   </button>

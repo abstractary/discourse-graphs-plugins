@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasSummary, DeviceView, LabView, PaperSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, LibraryMark, Mark } from "../shared/ui.tsx";
+import { PlaceContext, usePlace, type Place } from "../shared/place.ts";
+import { Icon, LibraryMark, Mark, Problem, Tabs } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
 import { Repository } from "./Repository.tsx";
-import { counted } from "../shared/words.ts";
+import type { Report } from "../shared/load.tsx";
+import { counted, sayOf } from "../shared/words.ts";
 
 const DAY = 86_400_000;
 const CHECK_MS = 4000;
@@ -20,13 +22,14 @@ const whenEdited = (at: string): string => {
 
 type Tab = "canvases" | "papers" | "folders" | "lab";
 
-const Papers = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+const Papers = ({ connection, report }: { connection: Connection; report: Report }) => {
+  const place = usePlace();
   const { call, on } = connection;
   const [papers, setPapers] = useState<PaperSummary[] | null>(null);
   const [inLab, setInLab] = useState(false);
   const refresh = useCallback(() => {
-    void call("paper.list", {}).then(setPapers).catch(report);
-    void call("lab.view", {}).then((lab) => setInLab(Boolean(lab.link?.token))).catch(report);
+    void call("paper.list", {}).then(setPapers).catch((error: unknown) => report(error, refresh));
+    void call("lab.get", {}).then((lab) => setInLab(Boolean(lab.link?.token))).catch((error: unknown) => report(error, refresh));
   }, [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
@@ -36,13 +39,13 @@ const Papers = ({ connection, report }: { connection: Connection; report: (error
       <div className="cvs-bar">
         <button type="button" data-dg="library-upload" onClick={() => void call("dialog.open", { surface: "upload" }).catch(report)}><Icon name="plus" /> Upload a paper</button>
         <button type="button" data-dg="library-demo" onClick={() => void call("paper.loadDemo", {}).catch(report)}>Load demo papers</button>
-        {papers && papers.length > 1 ? <button type="button" data-dg="library-paper-map" title="Papers placed by how tied they are" onClick={() => void call("papers.show", {}).catch(report)}>Paper map</button> : null}
+        {papers && papers.length > 1 ? <button type="button" data-dg="library-paper-map" title="Papers placed by how tied they are" onClick={() => void call("paper.showMap", {}).catch(report)}>Paper map</button> : null}
       </div>
       {papers !== null && papers.length === 0 ? <p className="cvs-none">No papers yet. Upload one, and its claims and evidence get a canvas of their own.</p> : null}
       <ul className="cvs-list">
         {(papers ?? []).map((paper) => (
           <li key={paper.id}>
-            <button type="button" data-dg={`paper-open-${paper.title}`} onClick={() => void call("canvas.show", { id: paper.canvas }).catch(report)}>
+            <button type="button" data-dg={`paper-open-${paper.title}`} onClick={() => (place.go ? place.go(paper.canvas) : void call("canvas.show", { id: paper.canvas }).catch(report))}>
               <span className="cvs-title">{paper.title}<LibraryMark library={paper.library} /></span>
               <span className="cvs-meta">{counted(paper.units, "unit")}, {paper.model}, read {whenEdited(paper.at)}{paper.labPaper ? ", in the lab" : ""}</span>
             </button>
@@ -55,12 +58,12 @@ const Papers = ({ connection, report }: { connection: Connection; report: (error
   );
 };
 
-const Folders = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+const Folders = ({ connection, report }: { connection: Connection; report: Report }) => {
   const { call, on } = connection;
   const [folders, setFolders] = useState<{ id: string; title: string; units: number }[] | null>(null);
   const [name, setName] = useState("");
   const refresh = useCallback(() => {
-    void call("folder.list", {}).then(setFolders).catch(report);
+    void call("folder.list", {}).then(setFolders).catch((error: unknown) => report(error, refresh));
   }, [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
@@ -94,10 +97,10 @@ const Folders = ({ connection, report }: { connection: Connection; report: (erro
 };
 
 /** This person's own devices. A new one waits here until a trusted one lets it in. */
-const Devices = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+const Devices = ({ connection, report }: { connection: Connection; report: Report }) => {
   const { call, on } = connection;
   const [devices, setDevices] = useState<DeviceView[]>([]);
-  const refresh = useCallback(() => void call("device.list", {}).then(setDevices).catch(() => setDevices([])), [call]);
+  const refresh = useCallback(() => void call("device.list", {}).then(setDevices).catch((error: unknown) => (setDevices([]), report(error, refresh))), [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
   const others = devices.filter((device) => device.id !== "first" || devices.length > 1);
@@ -114,7 +117,7 @@ const Devices = ({ connection, report }: { connection: Connection; report: (erro
               <span className="cvs-title">{device.name}{device.here ? " (this one)" : ""}</span>
               <span className="cvs-meta" data-dg={`device-state-${device.fingerprint}`}>{device.state === "trusted" ? "Signs as you" : "Waiting to be let in"} · key ends {device.fingerprint}</span>
             </span>
-            {device.state === "waiting" && !device.here && here?.state === "trusted" ? <button type="button" data-dg={`device-approve-${device.fingerprint}`} onClick={() => void call("device.approve", { id: device.id }).then(setDevices).catch(report)}>Let it in</button> : null}
+            {device.state === "waiting" && !device.here && here?.state === "trusted" ? <button type="button" data-dg={`device-approve-${device.fingerprint}`} onClick={() => void call("device.accept", { id: device.id }).then(setDevices).catch(report)}>Let it in</button> : null}
             {device.id !== "first" && !device.here && here?.state === "trusted" ? <button type="button" data-dg={`device-remove-${device.fingerprint}`} onClick={() => void call("device.remove", { id: device.id }).then(setDevices).catch(report)}>Remove</button> : null}
           </li>
         ))}
@@ -132,13 +135,14 @@ const REACH: { value: Reach; label: string }[] = [
 ];
 
 /** What the PI sets once and every member inherits. Members read it. */
-const LabSettings = ({ connection, lab, onChange, report }: { connection: Connection; lab: LabView; onChange: (view: LabView) => void; report: (error: unknown) => void }) => {
+const LabSettings = ({ connection, lab, onChange, report }: { connection: Connection; lab: LabView; onChange: (view: LabView) => void; report: Report }) => {
   const { call } = connection;
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const { settings, custodian } = lab;
   useEffect(() => {
+    // Dropped: Zotero being closed is ordinary, and the lab's own group stays in the list without it.
     if (custodian) void call("zotero.groups", {}).then(setGroups).catch(() => setGroups([]));
   }, [call, custodian]);
   const set = (changes: LabChanges): void => void call("lab.configure", changes).then(onChange).catch(report);
@@ -200,14 +204,15 @@ const LabSettings = ({ connection, lab, onChange, report }: { connection: Connec
   );
 };
 
-const Lab = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+const Lab = ({ connection, report }: { connection: Connection; report: Report }) => {
+  const place = usePlace();
   const { call, on } = connection;
   const [lab, setLab] = useState<LabView | null>(null);
   const [saved, setSaved] = useState("");
   const [invite, setInvite] = useState("");
   const [removing, setRemoving] = useState("");
   const refresh = useCallback(() => {
-    void call("lab.view", {}).then(setLab).catch(report);
+    void call("lab.get", {}).then(setLab).catch((error: unknown) => report(error, refresh));
   }, [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
@@ -215,7 +220,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   const link = lab?.link;
   useEffect(() => {
     if (!link) return undefined;
-    const timer = window.setInterval(() => void call(link.pending ? "lab.check" : "lab.view", {}).then(setLab).catch(() => {}), CHECK_MS);
+    const timer = window.setInterval(() => void call(link.pending ? "lab.check" : "lab.get", {}).then(setLab).catch(() => {}), CHECK_MS); // Dropped: the next check, a few seconds on, asks again.
     return () => window.clearInterval(timer);
   }, [call, link]);
 
@@ -231,7 +236,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   if (link.pending) return <p className="cvs-none" data-dg="lab-pending">Your request to join {link.name} is with its PI.</p>;
 
   const decide = (requestId: string, decision: "accept" | "decline", tokenKind?: "personal" | "team"): void =>
-    void call("lab.decide", { requestId, decision, ...(tokenKind ? { tokenKind } : {}) }).then(setLab).catch(report);
+    void (decision === "accept" ? call("lab.accept", { id: requestId, ...(tokenKind ? { tokenKind } : {}) }) : call("lab.reject", { id: requestId })).then(setLab).catch(report);
 
   return (
     <div className="stack">
@@ -290,7 +295,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
               <span className="cvs-static"><span className="cvs-title">{member.name}</span>{member.role === "admin" ? <span className="cvs-meta">PI</span> : null}</span>
               {lab.custodian && member.role !== "admin" ? (
                 removing === member.did
-                  ? <button type="button" data-dg={`remove-confirm-${member.name}`} onClick={() => { setRemoving(""); void call("lab.remove", { did: member.did }).then(setLab).catch(report); }}>Remove {member.name}? They keep their own work.</button>
+                  ? <button type="button" data-dg={`remove-confirm-${member.name}`} onClick={() => { setRemoving(""); void call("lab.remove", { id: member.did }).then(setLab).catch(report); }}>Remove {member.name}? They keep their own work.</button>
                   : <button type="button" data-dg={`remove-${member.name}`} onClick={() => setRemoving(member.did)}>Remove</button>
               ) : null}
             </li>
@@ -307,7 +312,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
         <ul className="cvs-list" data-dg="lab-papers">
           {lab.papers.map((paper) => (
             <li key={paper.id}>
-              <button type="button" data-dg={`lab-paper-${paper.title}`} onClick={() => void call("canvas.show", { id: paper.canvas }).catch(report)}>
+              <button type="button" data-dg={`lab-paper-${paper.title}`} onClick={() => (place.go ? place.go(paper.canvas) : void call("canvas.show", { id: paper.canvas }).catch(report))}>
                 <span className="cvs-title">{paper.title}</span>
                 <span className="cvs-meta">Uploaded by {paper.uploadedBy.name}, extracted by {paper.extractedBy.name}{paper.hasFile ? ", file included" : ""}</span>
                 {paper.breadcrumbs.length > 0 ? <span className="cvs-meta" data-dg="lab-breadcrumbs">Read by {paper.breadcrumbs.map(({ name }) => name).join(", ")}</span> : null}
@@ -338,21 +343,32 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 /** Everything a person keeps, in one place, the same in each base. */
-export const App = ({ connection }: { connection: Connection }) => {
+export const App = ({ connection, place }: { connection: Connection; /** Set when the Library sits inside a canvas. */ place?: Place }) => (
+  <PlaceContext.Provider value={place ?? NOWHERE}>
+    <Shelves connection={connection} />
+  </PlaceContext.Provider>
+);
+
+const NOWHERE: Place = {};
+
+const Shelves = ({ connection }: { connection: Connection }) => {
   const [tab, setTab] = useState<Tab>("canvases");
-  const [notice, setNotice] = useState("");
-  const report = useCallback((error: unknown) => {
-    setNotice(error instanceof Error ? error.message : String(error));
+  const [notice, setNotice] = useState<{ text: string; again?: () => void } | null>(null);
+  const report = useCallback<Report>((error, again) => {
+    setNotice({ text: sayOf(error), ...(again ? { again } : {}) });
   }, []);
   const props = { connection, report };
   return (
     <main className="cvs">
-      <nav className="segments" role="tablist" aria-label="Library">
-        {TABS.map(({ id, label }) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} data-dg={`library-${id}`} onClick={() => { setTab(id); setNotice(""); }}>{label}</button>
-        ))}
-      </nav>
-      {notice ? <p className="problem" role="alert">{notice}</p> : null}
+      <Tabs
+        as="nav"
+        className="segments"
+        aria-label="Library"
+        tabs={TABS.map(({ id, label }) => ({ id, label, dg: `library-${id}` }))}
+        selected={tab}
+        onPick={(id) => { setTab(id); setNotice(null); }}
+      />
+      <Problem text={notice?.text ?? ""} again={notice?.again ? () => { setNotice(null); notice.again!(); } : undefined} />
       {tab === "canvases" ? <Repository {...props} /> : null}
       {tab === "papers" ? <Papers {...props} /> : null}
       {tab === "folders" ? <Folders {...props} /> : null}

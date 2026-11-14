@@ -1,14 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import type { NodeRecord } from "@dg/contract/records.ts";
 import { identifierCurie, identifierUrl, parseIdentifier } from "@dg/contract/scholarly.ts";
-import type { Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { suggestType } from "@dg/core/library.ts";
 import { createZotero } from "@dg/sync/zotero.ts";
+import { makeCore } from "./support.ts";
 
 const fixture = (name: string): unknown => JSON.parse(readFileSync(`test/fixtures/zotero/${name}.json`, "utf8"));
 const ITEMS = fixture("items") as { key: string }[];
@@ -32,38 +29,9 @@ const zoteroApp = (seen: Seen, mode: "on" | "off" | "closed" = "on"): typeof fet
     return new Response("Not found", { status: 404 });
   }) as typeof fetch;
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async (mode: "on" | "off" | "closed" = "on") => {
   const seen: Seen = [];
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  const services = { servers: async () => [], link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }), zotero: createZotero({ fetch: zoteroApp(seen, mode) }) } as unknown as Services;
-  const core = await createCore({ host, services, demoGraphs: [] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { core, call, host } = await makeCore({ services: { zotero: createZotero({ fetch: zoteroApp(seen, mode) }) }, demoGraphs: [] });
   return { core, call, seen, host };
 };
 
@@ -105,7 +73,7 @@ test("a search lists references, not their notes, with what names each one", asy
 
 test("an item shows its highlights in reading order, each with the type it would most likely be", async () => {
   const { call } = await setup();
-  const view = await call("zotero.item", { ref: REF });
+  const view = await call("zotero.get", { ref: REF });
   assert.deepEqual(view.item.attachments.map(({ key, mediaType }) => [key, mediaType]), [["PDFA0001", "application/pdf"]]);
   assert.deepEqual(view.annotations.map(({ key }) => key), ["ANNO0001", "ANNO0003", "ANNO0002", "ANNO0004"]);
   const byKey = new Map(view.annotations.map((mark) => [mark.key, mark]));
@@ -139,18 +107,18 @@ test("bringing in makes one source and the chosen highlights, and doing it again
   assert.equal(claim.facts?.provenance?.method, "authored", "a person marked it");
 
   // The card says where it was read and that a person read it; the panel can open the passage in Zotero.
-  const view = await call("node.view", { id: claim.id });
+  const view = await call("unit.get", { id: claim.id });
   assert.equal(view.node.card.source?.name, "Carroll 2020");
   assert.equal(view.node.card.source?.how, "manual");
   assert.deepEqual(view.node.card.authors, { names: ["Thomas L. Carroll"], role: "paper" });
   assert.ok(view.node.card.identifiers.some(({ scheme }) => scheme === "doi"));
   assert.deepEqual(view.provenance.library, { app: "zotero", open: "zotero://open-pdf/library/items/PDFA0001?page=6&annotation=ANNO0002", what: "passage", exact: claim.facts!.anchor!.exact, comment: "This cuts against the edge-of-chaos story" });
-  assert.equal((await call("node.view", { id: source.id })).provenance.library?.what, "item");
+  assert.equal((await call("unit.get", { id: source.id })).provenance.library?.what, "item");
 
   const again = await call("zotero.import", { ref: REF, annotations: [{ key: "ANNO0001" }, { key: "ANNO0002" }, { key: "ANNO0004" }] });
   assert.deepEqual([again.made, again.already, again.wasHere], [1, 2, true]);
   assert.equal(nodes().filter((node) => node.title === source.title).length, 1, "one source, however often it is brought in");
-  const item = await call("zotero.item", { ref: REF });
+  const item = await call("zotero.get", { ref: REF });
   assert.equal(item.held, source.id);
   assert.equal(item.annotations.filter((mark) => mark.held).length, 3);
 });
@@ -159,8 +127,8 @@ test("a source already in the graph by its DOI is the one a Zotero item joins", 
   const { call, core } = await setup();
   const types = await call("grammar.get", {});
   const sourceType = types.nodeTypes.find((type) => type.base === "source");
-  const mine = await call("node.create", { title: "Carroll's edge of chaos paper", ...(sourceType ? { type: sourceType.id } : {}) } as never);
-  await call("unit.identify", { node: mine.id, add: ["10.1063/5.0038163"] });
+  const mine = await call("unit.create", { title: "Carroll's edge of chaos paper", ...(sourceType ? { type: sourceType.id } : {}) } as never);
+  await call("unit.identify", { id: mine.id, add: ["10.1063/5.0038163"] });
   if (!sourceType) return;
   const made = await call("zotero.import", { ref: REF });
   assert.equal(made.source.id, mine.id);

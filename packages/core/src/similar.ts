@@ -3,6 +3,7 @@ import type { MethodView, SimilarUnit } from "@dg/contract/surface.ts";
 import { fold } from "@dg/contract/words.ts";
 import type { Context, Handlers } from "./context.ts";
 import { baseOf, evidenceChain, protocolCids } from "./process.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * Reading across papers: units elsewhere that say something close to this one,
@@ -30,10 +31,10 @@ export const similarFeature = (context: Context) => {
   // A unit's own sentence, and what the extraction said about it. The quoted passage is left out: its wording is the paper's, and adds more noise than signal.
   const textOf = (node: NodeRecord): string => [node.title, node.title, node.source?.description ?? ""].join(" ");
 
-  const all: Pick<Handlers, "node.similar"> & { restsOn: (claim: DgId) => Promise<MethodView["rests"]> } = {
-    "node.similar": async ({ id, limit = 6 }) => {
+  const all: Pick<Handlers, "unit.similar"> & { restsOn: (claim: DgId) => Promise<MethodView["rests"]> } = {
+    "unit.similar": async ({ id, limit = 6 }) => {
       const node = context.nodeOf(id);
-      if (!node) throw new Error("That unit isn't in this graph.");
+      if (!node) throw refuse("not-found", "That unit isn't in this graph.");
       const pool = live().filter((other) => ARGUABLE.has(base(other) ?? ""));
       const frequency = new Map<string, number>();
       const vectors = new Map<DgId, Map<string, number>>();

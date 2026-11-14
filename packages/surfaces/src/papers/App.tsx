@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BaseEdge, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProvider, useNodesInitialized, useReactFlow, type Edge, type EdgeProps, type Node, type NodeProps } from "@xyflow/react";
 import type { PaperMap, PaperMapLink, PaperMapPaper, PaperMapTie, PaperScope, PaperScopeChoice } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { LibraryMark, plain } from "../shared/ui.tsx";
-import { count } from "../shared/words.ts";
+import { LoadProblem, useLoad } from "../shared/load.tsx";
+import { LibraryMark, Problem, Tabs, plain } from "../shared/ui.tsx";
+import { count, sayOf } from "../shared/words.ts";
 
 /**
  * Papers placed by how far they have been worked into each other. Distance is
@@ -98,16 +99,18 @@ const Map = ({ connection }: { connection: Connection }) => {
   const [problem, setProblem] = useState("");
   const flow = useReactFlow();
 
-  const load = useCallback(() => {
-    void call("papers.map", { scope })
-      .then((next) => {
+  const report = useCallback((error: unknown) => setProblem(sayOf(error)), []);
+
+  const load = useCallback(
+    () =>
+      call("paper.map", { scope }).then((next) => {
         setMap(next);
         setProblem("");
-      })
-      .catch((error: Error) => setProblem(error.message));
-  }, [call, scope]);
-  useEffect(load, [load]);
-  useEffect(() => on("graph-changed", load), [on, load]);
+      }),
+    [call, scope],
+  );
+  const { failed, again } = useLoad(load, [load]);
+  useEffect(() => on("graph-changed", again), [on, again]);
 
   const shownKey = map ? `${keyOf(map.scope)}:${map.papers.length}:${map.ties.length}` : "";
   // The whole picture comes into view once its cards have a size, and again whenever the scope changes it.
@@ -146,7 +149,7 @@ const Map = ({ connection }: { connection: Connection }) => {
     [map, picked],
   );
 
-  if (problem) return <main className="pm"><p className="pm-none" role="alert">{problem}</p></main>;
+  if (failed !== undefined) return <main className="pm"><LoadProblem failed={failed} again={again} className="pm-none" /></main>;
   if (!map) return <main className="pm" aria-busy="true" />;
 
   const paperAt = new globalThis.Map(map.papers.map((paper) => [paper.id, paper]));
@@ -156,7 +159,7 @@ const Map = ({ connection }: { connection: Connection }) => {
   const tiesOf = paper ? map.ties.filter((item) => item.a === paper.id || item.b === paper.id) : [];
   const openUnit = (unit: PaperMapLink["from"]) => {
     const home = paperAt.get(unit.paper);
-    if (home) void call("canvas.reveal", { id: home.canvas, unit: unit.id }).catch((error: Error) => setProblem(error.message));
+    if (home) void call("canvas.reveal", { id: home.canvas, unit: unit.id }).catch(report);
   };
   const citing = (item: PaperMapTie): string | null =>
     !item.cites ? null : item.cites === "both" ? "Each cites the other." : `${paperAt.get(item.cites === "a-b" ? item.a : item.b)?.label} cites ${paperAt.get(item.cites === "a-b" ? item.b : item.a)?.label}.`;
@@ -165,18 +168,24 @@ const Map = ({ connection }: { connection: Connection }) => {
     <main className="pm" data-dg="papers">
       <header className="pm-bar">
         <h1>Paper map</h1>
-        <div className="pm-scopes" role="tablist" aria-label="Whose work counts">
-          {map.scopes.map((choice) => (
-            <button key={keyOf(choice.scope)} type="button" role="tab" aria-selected={keyOf(choice.scope) === keyOf(map.scope)} title={choice.hint} data-dg={`pm-scope-${choice.scope.kind}`} onClick={() => { setPicked(null); setScope(choice.scope); }}>
-              {choice.label}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="pm-scopes"
+          aria-label="Whose work counts"
+          tabs={map.scopes.map((choice) => ({ id: keyOf(choice.scope), label: choice.label, title: choice.hint, dg: `pm-scope-${choice.scope.kind}` }))}
+          selected={keyOf(map.scope)}
+          onPick={(key) => {
+            const choice = map.scopes.find((entry) => keyOf(entry.scope) === key);
+            if (!choice) return;
+            setPicked(null);
+            setScope(choice.scope);
+          }}
+        />
         <p className="pm-sum" data-dg="pm-summary">
           {map.papers.length === 0
             ? "No papers here yet."
             : `${count(map.papers.length, "paper", "papers")}, ${count(map.ties.length, "tie", "ties")}.${apart ? ` ${count(apart, "paper is", "papers are")} tied to nothing here.` : ""}`}
         </p>
+        <Problem text={problem} dg="pm-problem" />
       </header>
       {map.papers.length === 0 ? (
         <p className="pm-none" data-dg="pm-empty">Papers appear here once they are read. Open a PDF and choose Extract graph, then link units of different papers on a canvas.</p>
@@ -197,7 +206,7 @@ const Map = ({ connection }: { connection: Connection }) => {
               maxZoom={1.5}
               proOptions={{ hideAttribution: true }}
               onNodeClick={(_, node) => setPicked({ paper: node.id })}
-              onNodeDoubleClick={(_, node) => void call("canvas.show", { id: paperAt.get(node.id)!.canvas })}
+              onNodeDoubleClick={(_, node) => void call("canvas.show", { id: paperAt.get(node.id)!.canvas }).catch(report)}
               onEdgeClick={(_, edge) => setPicked({ tie: edge.id })}
               onPaneClick={() => setPicked(null)}
             />
@@ -222,7 +231,7 @@ const Map = ({ connection }: { connection: Connection }) => {
                 <h2>{paper.label}</h2>
                 <p className="pm-note">{plain(paper.title)}</p>
                 <p className="pm-say">{count(paper.units, "unit", "units")}, {paper.reaching} linked to another paper.</p>
-                <button type="button" className="pm-open" data-dg="pm-open" onClick={() => void call("canvas.show", { id: paper.canvas })}>Open its PDF canvas</button>
+                <button type="button" className="pm-open" data-dg="pm-open" onClick={() => void call("canvas.show", { id: paper.canvas }).catch(report)}>Open its PDF canvas</button>
                 {tiesOf.length ? (
                   <ul className="pm-ties">
                     {tiesOf.map((item) => {

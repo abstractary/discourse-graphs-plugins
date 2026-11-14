@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { CanvasRecord } from "@dg/contract/records.ts";
 import type { CanvasView, DepositSettings, ExportTarget, LabView } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { Problem } from "../shared/ui.tsx";
+import { sayOf } from "../shared/words.ts";
 
 type Destination = "workspace" | "lab" | "new-folder" | "crate" | `folder:${string}` | `canvas:${string}`;
 
@@ -47,12 +49,13 @@ export const ExportMenu = ({
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const fail = (error: unknown): void => setProblem(sayOf(error));
   useEffect(() => {
-    void call("folder.list", {}).then(setFolders);
-    void call("canvas.list", {}).then((list) => setCanvases(list.filter(({ id }) => id !== view.canvas.id)));
-    void call("lab.view", {}).then(setLab);
-    void call("crate.licenses", {}).then(setLicenses);
-    void call("deposit.settings", {}).then(setDeposit);
+    void call("folder.list", {}).then(setFolders).catch(fail);
+    void call("canvas.list", {}).then((list) => setCanvases(list.filter(({ id }) => id !== view.canvas.id))).catch(fail);
+    void call("lab.get", {}).then(setLab).catch(fail);
+    void call("crate.licenses", {}).then(setLicenses).catch(fail);
+    void call("deposit.settings", {}).then(setDeposit).catch(fail);
   }, [call, view.canvas.id]);
 
   const nodes = scope === "all" ? all : picked;
@@ -67,7 +70,7 @@ export const ExportMenu = ({
       setDeposit(await call("deposit.configure", { sandbox, token: value }));
       setToken("");
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      fail(error);
     }
   };
 
@@ -84,19 +87,20 @@ export const ExportMenu = ({
           // The draft stays on screen with its link: reviewing and publishing it happens on Zenodo, not here.
           setDraft({ page: made.page, where: made.where, ...(made.doi ? { doi: made.doi } : {}) });
           setBusy(false);
-          void call("deposit.settings", {}).then(setDeposit);
+          void call("deposit.settings", {}).then(setDeposit).catch(fail);
           return;
         }
         const made = await call("crate.export", { ...asked, format });
         onDone(`Saved ${made.name} to ${made.where}: ${packed(made)}`);
         return;
       }
-      const result = await call("units.export", { nodes, target: targetOf(destination, title.trim() || "New folder") });
+      const result = await call("unit.export", { units: nodes, target: targetOf(destination, title.trim() || "New folder") });
       onDone(`Exported ${nodes.length} ${nodes.length === 1 ? "unit" : "units"}${result.made > 0 ? `, ${result.made} new` : ""}`);
-      if (result.canvas) void call("canvas.show", { id: result.canvas });
+      // Dropped: the export is done and said, and this menu has closed. The new canvas is in the Library either way.
+      if (result.canvas) void call("canvas.show", { id: result.canvas }).catch(() => undefined);
     } catch (error) {
       setBusy(false);
-      setProblem(error instanceof Error ? error.message : String(error));
+      fail(error);
     }
   };
 
@@ -168,7 +172,7 @@ export const ExportMenu = ({
                     <button type="button" data-dg="zenodo-token-save" disabled={!token.trim()} onClick={() => void keepToken(token)}>Keep</button>
                   </div>
                   <p className="note">
-                    Make one on <button type="button" className="link" onClick={() => void call("link.open", { url: tokenPage })}>{place}</button> with only <code>deposit:write</code> ticked. That scope can add drafts and can't publish.
+                    Make one on <button type="button" className="link" onClick={() => void call("link.open", { url: tokenPage }).catch(fail)}>{place}</button> with only <code>deposit:write</code> ticked. That scope can add drafts and can't publish.
                   </p>
                 </>
               ) : (
@@ -196,11 +200,11 @@ export const ExportMenu = ({
           </p>
           <div className="row end">
             <button type="button" onClick={() => onDone(`Draft started on ${place}`)}>Done</button>
-            <button type="button" className="primary" data-dg="zenodo-open" onClick={() => void call("link.open", { url: draft.page })}>Review it on Zenodo</button>
+            <button type="button" className="primary" data-dg="zenodo-open" onClick={() => void call("link.open", { url: draft.page }).catch(fail)}>Review it on Zenodo</button>
           </div>
         </div>
       ) : null}
-      {problem ? <p className="problem" role="alert">{problem}</p> : null}
+      <Problem text={problem} />
       <div className="row end go">
         <button type="button" onClick={onClose}>Cancel</button>
         <button type="button" className="primary" data-dg="export-go" disabled={busy || nodes.length === 0 || Boolean(draft) || (toZenodo && !kept?.kept)} onClick={() => void go()}>{busy ? `Exporting ${nodes.length}` : toZenodo ? "Save and start draft" : destination === "crate" ? "Save crate" : "Export"}</button>

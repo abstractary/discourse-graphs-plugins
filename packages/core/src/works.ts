@@ -4,6 +4,7 @@ import { sameDoi, isIdentifier, mergeIdentifiers, parseIdentifier, sameIdentifie
 import type { WorkLookup, WorkView } from "@dg/contract/surface.ts";
 import { identifiersOf, paperIdentifiers } from "./card.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * Looks a published work up in the open registries and keeps what they say:
@@ -82,8 +83,8 @@ export const worksFeature = (context: Context) => {
   };
 
   const handlers: Pick<Handlers, "work.lookup" | "unit.identify"> = {
-    "work.lookup": async ({ unit }): Promise<WorkLookup> => {
-      if (!context.services) throw new Error("Looking a work up needs the network, and this base has none set up.");
+    "work.lookup": async ({ id: unit }): Promise<WorkLookup> => {
+      if (!context.services) throw refuse("unavailable", "Looking a work up needs the network, and this base has none set up.");
       const node = context.nodeOf(unit);
       const target = node ? targetOf(node) : undefined;
       if (!node || !target) throw new Error("This unit wasn't read from a paper, so there is nothing to look up.");
@@ -108,10 +109,10 @@ export const worksFeature = (context: Context) => {
       if (mine) await context.put([revise({ record: target.unit, changes: sourceChanges(target.unit, work), by })]);
       return { work, saved: mine, target: "unit", title };
     },
-    "unit.identify": async ({ node: id, add, remove }) => {
+    "unit.identify": async ({ id: id, add, remove }) => {
       const node = context.nodeOf(id);
-      if (!node) throw new Error(`No node ${id}`);
-      if (node.by.id !== context.me().id) throw new Error("Only whoever made a unit can change its identifiers.");
+      if (!node) throw refuse("not-found", `No node ${id}`);
+      if (node.by.id !== context.me().id) throw refuse("read-only", "Only whoever made a unit can change its identifiers.");
       const fresh = (add ?? []).map((text) => {
         const found = typeof text === "string" ? parseIdentifier(text) : isIdentifier(text) ? text : null;
         if (!found) throw new Error(`"${String(text)}" isn't an identifier this reads. Paste a DOI, PMID link, arXiv id, ORCID iD, RRID or a web address.`);

@@ -1,49 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
 import { layOut, tieStrength } from "@dg/core/papermap.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
-import type { ExtractionGraph, Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import type { ExtractionGraph } from "@dg/contract/services.ts";
+import { makeCore, type Call } from "./support.ts";
 
 const graphs: Record<string, ExtractionGraph> = {
   "lupus.pdf": JSON.parse(readFileSync("demo/papers/lupus-nephritis-prediction.graph.json", "utf8")),
   "sle.pdf": JSON.parse(readFileSync("demo/papers/preclinical-sle-mediators.graph.json", "utf8")),
 };
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
   let reading = "lupus.pdf";
-  const services = { servers: async () => [], extract: async () => graphs[reading], storeGraph: async () => {}, link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }) } as unknown as Services;
-  const core = await createCore({ host: host as never, services });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { call } = await makeCore({ services: { extract: async () => graphs[reading]! } });
   const read = async (name: string, bytes: string) => {
     reading = name;
     return call("paper.extract", { file: { name, mediaType: "application/pdf", dataBase64: bytes }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
@@ -52,7 +21,7 @@ const setup = async () => {
 };
 
 const unitsOn = async (call: Call, canvas: string, base: string) => {
-  const view = await call("canvas.open", { id: canvas });
+  const view = await call("canvas.get", { id: canvas });
   return Object.values(view.nodes).filter((node) => node.base === base);
 };
 
@@ -84,7 +53,7 @@ test("papers are tied by links people drew, in the scope where they drew them", 
   const lupus = await read("lupus.pdf", "AAAA");
   const sle = await read("sle.pdf", "BBBB");
 
-  const before = await call("papers.map", { scope: { kind: "everyone" } });
+  const before = await call("paper.map", { scope: { kind: "everyone" } });
   assert.equal(before.papers.length, 2);
   assert.equal(before.ties.filter((tie) => tie.supports + tie.opposes + tie.other > 0).length, 0, "reading two papers links nothing");
   assert.deepEqual(before.scopes.map(({ label }) => label), ["Only you", "Everyone"]);
@@ -93,13 +62,13 @@ test("papers are tied by links people drew, in the scope where they drew them", 
   const [claim] = await unitsOn(call, lupus.canvas, "claim");
   const evidence = await unitsOn(call, sle.canvas, "evidence");
   const mine = await call("canvas.create", { title: "Synthesis" });
-  await call("units.put", { canvas: mine.id, nodes: [claim!.id, evidence[0]!.id, evidence[1]!.id] });
+  await call("unit.put", { canvas: mine.id, units: [claim!.id, evidence[0]!.id, evidence[1]!.id] });
   const options = await call("relation.options", { source: evidence[0]!.id, target: claim!.id });
   const supports = options.find((option) => option.label === "Supports" && !option.flipped)!, opposes = options.find((option) => option.label === "Opposes" && !option.flipped)!;
   assert.ok(supports && opposes, `evidence can support and oppose a claim: ${options.map(({ label }) => label).join(", ")}`);
   await call("relation.assert", { source: evidence[0]!.id, target: claim!.id, type: supports.type, draw: true });
 
-  const after = await call("papers.map", { scope: { kind: "canvas", id: mine.id } });
+  const after = await call("paper.map", { scope: { kind: "canvas", id: mine.id } });
   assert.equal(after.scopes[0]!.label, "Synthesis");
   const tie = after.ties.find((item) => item.supports > 0)!;
   assert.ok(tie, "the link ties the two papers");
@@ -110,14 +79,14 @@ test("papers are tied by links people drew, in the scope where they drew them", 
 
   // A second link that disagrees makes the tie stronger and mixed.
   await call("relation.assert", { source: evidence[1]!.id, target: claim!.id, type: opposes.type, draw: true });
-  const mixed = (await call("papers.map", { scope: { kind: "canvas", id: mine.id } })).ties.find((item) => item.supports > 0)!;
+  const mixed = (await call("paper.map", { scope: { kind: "canvas", id: mine.id } })).ties.find((item) => item.supports > 0)!;
   assert.equal(mixed.stance, "mixed");
   assert.ok(mixed.strength > tie.strength);
 
   // The same papers in the person's own workspace, and across everything, show the tie too.
-  for (const kind of ["own", "everyone"] as const) assert.equal((await call("papers.map", { scope: { kind } })).ties.find((item) => item.supports > 0)?.stance, "mixed", kind);
+  for (const kind of ["own", "everyone"] as const) assert.equal((await call("paper.map", { scope: { kind } })).ties.find((item) => item.supports > 0)?.stance, "mixed", kind);
   // A canvas that holds only one paper shows it alone.
-  const alone = await call("papers.map", { scope: { kind: "canvas", id: lupus.canvas } });
+  const alone = await call("paper.map", { scope: { kind: "canvas", id: lupus.canvas } });
   assert.deepEqual(alone.papers.map(({ id }) => id), [lupus.id]);
   assert.equal(alone.ties.length, 0);
 });

@@ -7,8 +7,10 @@ import type { Reaction } from "@dg/contract/records.ts";
 import { CHECK_WAYS, type CheckWay, type UnitCheck } from "@dg/contract/surface.ts";
 import type { ContextEntry, NodeSummary, NodeView, RelationOption, SimilarUnit } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Chip, Icon, LibraryMark, plain, Mark } from "../shared/ui.tsx";
+import { Chip, Icon, LibraryMark, plain, Mark, TwoStep } from "../shared/ui.tsx";
 import { Method } from "./Method.tsx";
+import { LoadProblem, useLoad } from "../shared/load.tsx";
+import { codeOf, goneOf, sayOf } from "../shared/words.ts";
 
 type Group = { label: string; entries: ContextEntry[] };
 
@@ -41,7 +43,7 @@ const Relate = ({ connection, node, onDone, initial }: { connection: Connection;
     void call("relation.options", { source: node, target: initial.id }).then((found) => {
       setOptions(found);
       if (found.length === 0) setNotice("The grammar has no relation between these two.");
-    });
+    }).catch((error: unknown) => setNotice(sayOf(error)));
   }, [call, node, initial]);
 
   useEffect(() => {
@@ -49,22 +51,31 @@ const Relate = ({ connection, node, onDone, initial }: { connection: Connection;
       setResults([]);
       return;
     }
-    void call("node.query", { text: query, limit: 6 })
+    void call("unit.list", { text: query, limit: 6 })
       .then((found) => setResults(found.filter((item) => item.id !== node)))
-      .catch((error: Error) => setNotice(error.message));
+      .catch((error: unknown) => setNotice(sayOf(error)));
   }, [call, node, query]);
 
   const pick = async (other: NodeSummary): Promise<void> => {
     setPicked(other);
-    const found = await call("relation.options", { source: node, target: other.id });
-    setOptions(found);
-    if (found.length === 0) setNotice("The grammar has no relation between these two.");
+    try {
+      const found = await call("relation.options", { source: node, target: other.id });
+      setOptions(found);
+      if (found.length === 0) setNotice("The grammar has no relation between these two.");
+    } catch (error) {
+      setNotice(sayOf(error));
+    }
   };
 
   const assert = async (option: RelationOption): Promise<void> => {
     const [source, target] = option.flipped ? [picked!.id, node] : [node, picked!.id];
-    await call("relation.assert", { type: option.type, source, target, draw: true }).catch((error: Error) => setNotice(error.message));
-    onDone();
+    try {
+      await call("relation.assert", { type: option.type, source, target, draw: true });
+      onDone();
+    } catch (error) {
+      // The form stays open, so what went wrong can be read and another relation tried.
+      setNotice(sayOf(error));
+    }
   };
 
   return (
@@ -121,11 +132,12 @@ const Elsewhere = ({ connection, node, onWalk, onRelate }: { connection: Connect
   const { call, on } = connection;
   const [found, setFound] = useState<SimilarUnit[] | null>(null);
   const [looking, setLooking] = useState(false);
+  const [failed, setFailed] = useState<unknown>(undefined);
   const look = useCallback(() => {
     setLooking(true);
-    void call("node.similar", { id: node.id, limit: 6 })
-      .then(setFound)
-      .catch(() => setFound([]))
+    void call("unit.similar", { id: node.id, limit: 6 })
+      .then((next) => (setFound(next), setFailed(undefined)))
+      .catch(setFailed)
       .finally(() => setLooking(false));
   }, [call, node.id]);
   // Once open, it keeps up: a unit just related drops off the list.
@@ -133,6 +145,7 @@ const Elsewhere = ({ connection, node, onWalk, onRelate }: { connection: Connect
   return (
     <section className="ctx-group ctx-similar" data-dg="ctx-similar">
       <h2>Elsewhere {found ? <span>{found.length}</span> : null}</h2>
+      <LoadProblem failed={failed} again={look} className="ctx-notice" dg="ctx-similar-problem" />
       {found === null ? (
         <button type="button" className="ctx-link ctx-similar-find" data-dg="ctx-similar-find" disabled={looking} onClick={look}>
           {looking ? "Looking…" : node.paper ? "Find units like this in other papers" : "Find units like this in your papers"}
@@ -265,7 +278,7 @@ const Social = ({ view, call, report }: PanelProps) => {
   const unit = view.node.id;
   const add = (): void => {
     if (!text.trim()) return;
-    void call("unit.note", { unit, text: text.trim() }).catch(report);
+    void call("unit.note", { id: unit, text: text.trim() }).catch(report);
     setText("");
   };
   return (
@@ -279,7 +292,7 @@ const Social = ({ view, call, report }: PanelProps) => {
             data-dg={`ctx-react-${value}`}
             aria-pressed={social.mine === value}
             title={social.who[value].join(", ") || undefined}
-            onClick={() => void call("unit.react", { unit, value: social.mine === value ? null : value }).catch(report)}
+            onClick={() => void call("unit.react", { id: unit, value: social.mine === value ? null : value }).catch(report)}
           >
             {label}{social.who[value].length > 0 ? ` ${social.who[value].length}` : ""}
           </button>
@@ -323,7 +336,7 @@ const Checks = ({ unit, mine, checks, call, report }: { unit: string; mine: bool
   const [note, setNote] = useState("");
   const own = checks.find((check) => check.mine);
   const send = (verdict: "checked" | "needsWork"): void => {
-    void call("unit.check", { unit, verdict, way, ...(note.trim() ? { note } : {}) })
+    void call("unit.check", { id: unit, verdict, way, ...(note.trim() ? { note } : {}) })
       .then(() => (setOpen(null), setNote("")))
       .catch(report);
   };
@@ -373,18 +386,11 @@ const Checks = ({ unit, mine, checks, call, report }: { unit: string; mine: bool
 
 /** Taking back a unit you made. Asked for twice, since it leaves every canvas. */
 const RemoveUnit = ({ unit, call, report }: { unit: string; call: Connection["call"]; report: (error: Error) => void }) => {
-  const [asking, setAsking] = useState(false);
   return (
     <section className="ctx-group" data-dg="ctx-remove">
-      {asking ? (
-        <p className="ctx-line">
-          Remove this unit? It leaves every canvas and its note goes to the trash.{" "}
-          <button type="button" className="ctx-link" onClick={() => setAsking(false)}>Keep it</button>{" "}
-          <button type="button" className="ctx-link" data-dg="ctx-remove-yes" onClick={() => void call("node.remove", { id: unit }).catch(report)}>Remove</button>
-        </p>
-      ) : (
-        <button type="button" className="ctx-link" data-dg="ctx-remove-unit" onClick={() => setAsking(true)}>Remove this unit…</button>
-      )}
+      <p className="ctx-line">
+        <TwoStep label="Remove this unit…" question="Remove this unit? It leaves every canvas and its note goes to the trash." buttonClass="ctx-link" dg="ctx-remove-unit" dgYes="ctx-remove-yes" onYes={() => void call("unit.remove", { id: unit }).catch(report)} />
+      </p>
     </section>
   );
 };
@@ -398,6 +404,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [relating, setRelating] = useState(false);
   const [relateTo, setRelateTo] = useState<NodeSummary | undefined>(undefined);
   const [notice, setNotice] = useState("");
+  const [failed, setFailed] = useState<unknown>(undefined);
   const pinnedRef = useRef(pinned);
   pinnedRef.current = pinned;
   const focusRef = useRef(focus);
@@ -407,19 +414,24 @@ export const App = ({ connection }: { connection: Connection }) => {
     const id = focusRef.current;
     if (!id) {
       setView(null);
+      setFailed(undefined);
       return;
     }
     try {
-      const next = await call("node.view", { id });
-      if (focusRef.current === id) setView(next);
+      const next = await call("unit.get", { id });
+      if (focusRef.current !== id) return;
+      setView(next);
+      setFailed(undefined);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : String(error));
+      if (focusRef.current !== id) return;
+      // A unit that is gone leaves nothing true to show. Any other failure keeps what was read last, with the problem said above it.
+      if (codeOf(error) === "not-found") setView(null);
+      else setNotice(sayOf(error));
+      setFailed(error);
     }
   }, [call]);
 
-  useEffect(() => {
-    void call("focus.get", {}).then(setFocus);
-  }, [call]);
+  const started = useLoad(() => call("focus.get", {}).then(setFocus), [call]);
   useEffect(() => {
     setRelating(false);
     void load();
@@ -442,11 +454,23 @@ export const App = ({ connection }: { connection: Connection }) => {
   };
 
   const groups = useMemo(() => groupsOf(view?.context ?? []), [view]);
-  const report = (error: Error): void => setNotice(error.message);
+  const report = (error: unknown): void => setNotice(sayOf(error));
   const decide = (id: string, decision: "accepted" | "rejected"): void => {
-    void call("relation.decide", { id, decision }).catch(report);
+    void call(decision === "accepted" ? "relation.accept" : "relation.reject", { id }).catch(report);
   };
 
+  if (!view && (started.failed ?? failed) !== undefined) {
+    return (
+      <main className="ctx-empty" data-dg="ctx-problem">
+        <LoadProblem failed={started.failed ?? failed} again={started.failed !== undefined ? started.again : () => void load()} gone={goneOf("unit")} className="ctx-notice" />
+        {trail.length > 0 ? (
+          <p>
+            <button type="button" className="ctx-link" onClick={() => { setFocus(trail[trail.length - 1]!); setTrail((old) => old.slice(0, -1)); }}>Back to the unit before</button>
+          </p>
+        ) : null}
+      </main>
+    );
+  }
   if (!view) {
     return (
       <main className="ctx-empty">
@@ -516,7 +540,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         {view.provenance.paper?.asRead ? (
           <p className="ctx-line ctx-asread" data-dg="ctx-as-read">
             Reworded by a person. The model read it as: <q>{plain(view.provenance.paper.asRead)}</q>
-            <button type="button" className="ctx-link" data-dg="ctx-restore" onClick={() => void call("node.rename", { id: node.id, title: view.provenance.paper!.asRead! }).catch(report)}>Put the model's words back</button>
+            <button type="button" className="ctx-link" data-dg="ctx-restore" onClick={() => void call("unit.rename", { id: node.id, title: view.provenance.paper!.asRead! }).catch(report)}>Put the model's words back</button>
           </p>
         ) : null}
         <div className="ctx-actions">
@@ -525,7 +549,7 @@ export const App = ({ connection }: { connection: Connection }) => {
               <Icon name="open" /> Open text
             </button>
           ) : null}
-          <button type="button" data-dg="ctx-place" onClick={() => void call("canvas.place", { node: node.id }).catch(report)}>
+          <button type="button" data-dg="ctx-place" onClick={() => void call("canvas.place", { unit: node.id }).catch(report)}>
             <Icon name="canvas" /> Add to canvas
           </button>
           <button type="button" data-dg="ctx-relate" aria-expanded={relating} onClick={() => setRelating((on_) => !on_)}>

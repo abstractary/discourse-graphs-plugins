@@ -35,7 +35,7 @@ export const Work = ({ view, call, report }: { view: NodeView; call: Connection[
 
   const look = (): void => {
     setBusy(true);
-    void call("work.lookup", { unit: view.node.id })
+    void call("work.lookup", { id: view.node.id })
       .then(setLast)
       .catch(report)
       .finally(() => setBusy(false));
@@ -43,7 +43,7 @@ export const Work = ({ view, call, report }: { view: NodeView; call: Connection[
   const add = (): void => {
     const text = adding.trim();
     if (!text) return;
-    void call("unit.identify", { node: view.node.id, add: [text] })
+    void call("unit.identify", { id: view.node.id, add: [text] })
       .then(() => setAdding(""))
       .catch(report);
   };
@@ -143,7 +143,7 @@ export const Announcements = ({ unit, call }: { unit: string; call: Connection["
     let live = true;
     void call("notify.about", { unit })
       .then((found) => live && setHeld(found))
-      .catch(() => undefined);
+      .catch(() => undefined); // Dropped: this is an aside that is quiet when empty, and the lab's server may be out of reach.
     return () => {
       live = false;
     };

@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import type { ComputeServer } from "@dg/contract/services.ts";
 import type { LabView } from "@dg/contract/surface.ts";
 import type { Connection } from "./rpc.ts";
+import { Problem, Tabs } from "./ui.tsx";
+import { LoadProblem, useLoad } from "./load.tsx";
+import { sayOf } from "./words.ts";
 
 /** Joining or starting a lab, used on first run and from the Library. */
 export const LabJoin = ({ connection, onChange }: { connection: Connection; onChange: (view: LabView) => void }) => {
@@ -14,14 +17,16 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    void call("server.list", {}).then((list) => {
-      setServers(list);
-      setServer((list.find(({ kind }) => kind === "managed") ?? list[0])?.url ?? "");
-    });
-  }, [call]);
+  const listed = useLoad(
+    () =>
+      call("server.list", {}).then((list) => {
+        setServers(list);
+        setServer((list.find(({ kind }) => kind === "managed") ?? list[0])?.url ?? "");
+      }),
+    [call],
+  );
 
-  const report = (error: unknown): void => setNotice(error instanceof Error ? error.message : String(error));
+  const report = (error: unknown): void => setNotice(sayOf(error));
   // An invitation is one pasted line with the server, the lab and a code in it. An identifier is a few words.
   const invited = mode === "join" && /^https?:\/\/\S+\/join\/\S+#\S+$/.test(text.trim());
 
@@ -57,10 +62,15 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
 
   return (
     <div className="stack">
-      <div className="segments" role="tablist">
-        <button type="button" role="tab" aria-selected={mode === "join"} data-dg="lab-mode-join" onClick={() => { setMode("join"); setText(""); setFound(""); }}>Join a lab</button>
-        <button type="button" role="tab" aria-selected={mode === "start"} data-dg="lab-mode-start" onClick={() => { setMode("start"); setText(""); setFound(""); }}>Start a lab</button>
-      </div>
+      <Tabs
+        className="segments"
+        tabs={[
+          { id: "join", label: "Join a lab", dg: "lab-mode-join" },
+          { id: "start", label: "Start a lab", dg: "lab-mode-start" },
+        ]}
+        selected={mode}
+        onPick={(id) => { setMode(id); setText(""); setFound(""); }}
+      />
       <label className="field">
         <span>{mode === "join" ? "Invitation or lab identifier" : "Lab name"}</span>
         <input
@@ -90,7 +100,8 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
           ? "With an invitation you are in at once. With only the identifier, your lab's PI sees your request and accepts it."
           : "You become the lab's custodian, and you accept the people who ask to join."}
       </p>
-      {notice ? <p className="problem" role="alert">{notice}</p> : null}
+      <LoadProblem failed={listed.failed} again={listed.again} />
+      <Problem text={notice} />
       <button type="button" className="primary" data-dg="lab-go" disabled={busy || !text.trim()} onClick={() => void go()}>
         {invited ? "Join the lab" : mode === "join" ? "Ask to join" : "Start the lab"}
       </button>

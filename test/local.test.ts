@@ -24,6 +24,7 @@ const waitFor = async (check: () => Promise<boolean>, ms = 8000): Promise<void> 
   const end = Date.now() + ms;
   while (Date.now() < end) {
     if (await check().catch(() => false)) return;
+    // A real wait between looks: this asks another process, over the network, whether it is up yet.
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error("timed out");
@@ -40,7 +41,7 @@ test("the local app reads a vault's logs, sees another device's writes, and writ
   });
   await waitFor(async () => (await fetch(`http://127.0.0.1:${PORT}/about`)).ok);
 
-  const roots = await call("holon.roots", {});
+  const roots = await call("overview.list", {});
   assert.equal(roots.ok, true);
   const [root] = roots.result as { ref: { level: string; id: string }; title: string }[];
   assert.equal(root!.title, "Akamatsu Lab");
@@ -55,12 +56,12 @@ test("the local app reads a vault's logs, sees another device's writes, and writ
   const link = assertRelation({ ...stamp, type: addresses.id, source: claim.id, target: question.id });
   appendFileSync(join(vault, "discourse-graph/records/obsidian-device.jsonl"), `${JSON.stringify(claim)}\n${JSON.stringify(link)}\n`);
   await waitFor(async () => {
-    const view = await call("holon.view", { ref: { level: "question", id: question.id }, stance: "lab" });
+    const view = await call("overview.get", { ref: { level: "question", id: question.id }, stance: "lab" });
     return (view.result as { parts: unknown[] }).parts.length === 5;
   });
 
   // A release this app makes lands in its own device log, where Obsidian reads it.
-  const shelf = (await call("repository.canvases", {})).result as { id: string; title: string; nested: string[] }[];
+  const shelf = (await call("library.canvases", {})).result as { id: string; title: string; nested: string[] }[];
   const canvas = shelf.find((c) => c.title.startsWith("Issue exchange"))!;
   assert.equal(canvas.nested.length, 1);
   const release = await call("canvas.release", { id: canvas.id, name: "v1" });

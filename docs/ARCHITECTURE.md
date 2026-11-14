@@ -7,7 +7,8 @@ Discourse Graphs runs inside other tools. Obsidian, a folder of Markdown files, 
 | Base | State |
 |---|---|
 | Obsidian | The first base. Everything is built and tested here |
-| The local app | A small web app over the same vault, with no editor. It is also the shape the MCP server will take |
+| The local app | A small web app over the same vault, with no editor |
+| The MCP server | An agent's way to read the same vault, on stdio. It stands on the same vault module as the local app and runs the core in the role `agent` |
 | Roam | An adapter that still builds and passes the conformance suite. It has not kept up with what was built since, and the direction since 10 November is that Roam gets an exporter, not a host |
 | Logseq | Planned. No code yet |
 
@@ -58,7 +59,7 @@ Three seams hold it together, and each one is a file you can read:
 | `@dg/sync` | One file for each outside service | `@dg/contract` |
 | `@dg/native` | UI drawn in the base's own page | `@dg/contract`, `@dg/core` |
 | `@dg/surfaces` | React panels, one bundle, picked by route | `@dg/contract`, `@dg/layout` |
-| `plugins/*`, `local/` | Adapters and wiring | All of the above except `@dg/surfaces`, which arrives as built HTML |
+| `plugins/*`, `local/` | Adapters and wiring. A plugin imports from `@dg/core` only its entry file | All of the above except `@dg/surfaces`, which arrives as built HTML |
 | `server/` | Reference server | Nothing here, on purpose |
 
 `npm run check-boundaries` fails if any module reaches past this table. Core can't import React, the frames can't import a base's API, and only `@dg/sync` calls `fetch`. `npm run dsm` prints the same table as a design structure matrix made from the imports in the code, and fails on a cycle. Both run in CI.
@@ -96,12 +97,16 @@ export const thingFeature = (context: Context, deps: { /* what it needs that isn
 
 | Feature | File | Calls |
 |---|---|---|
-| Units: folders, reactions, notes, export | `units.ts` | `units.*`, `folder.*`, `unit.react`, `unit.note` |
+| A unit by itself: find, make, rename, retype, remove, view | `nodes.ts` | `unit.*` |
+| Capture from a note, and a renamed note renaming its unit | `capture.ts` | none: used by the base and by `unit.create` |
+| Canvases: list, open, write, build on | `canvases.ts` | `canvas.*` |
+| Relations mirrored into notes as link properties | `mirror.ts` | none: runs after every change |
+| Units: folders, reactions, notes, export | `units.ts` | `unit.*`, `folder.*`, `unit.react`, `unit.note` |
 | Relations | `relations.ts` | `relation.*` |
 | Grammar: types, templates, schema files, tables | `grammar.ts` | `grammar.*`, `table.open` |
-| Reading PDFs | `reading.ts` | `pdf.*`, `units.available`, `canvas.placeUnits` |
+| Reading PDFs | `reading.ts` | `pdf.*`, `unit.available`, `canvas.placeUnits` |
 | Papers and extraction | `papers.ts` | `paper.*` |
-| Paper map, similar units, search | `papermap.ts`, `similar.ts`, `search.ts` | `papers.*`, `node.similar`, `search.*` |
+| Paper map, similar units, search | `papermap.ts`, `similar.ts`, `search.ts` | `papers.*`, `unit.similar`, `search.*` |
 | Method, runs and notebooks | `method.ts`, `process.ts` | `process.*`, `run.*`, `notebook.*` |
 | Pictures, outputs, related units, candidates | `gather.ts` | `image.add`, `unit.image`, `candidate.*` |
 | Checks | `checks.ts` | `unit.check`, `unit.uncheck` |
@@ -113,11 +118,19 @@ export const thingFeature = (context: Context, deps: { /* what it needs that isn
 | Zotero | `library.ts` | `zotero.*` |
 | Published work, announcements, profiles | `works.ts`, `notify.ts`, `profile.ts` | `work.*`, `notify.*`, `profile.*` |
 | Crates and publishing | `crate.ts`, `rocrate.ts`, `mira.ts`, `datacite.ts`, `zenodo.ts` | `crate.*`, `deposit.*` |
-| Overview and Boundary | `holons.ts` | `holon.*` |
+| Overview and Boundary | `overview.ts` | `overview.*` |
 | What a panel asks of the base | `shell.ts` | `panel.*`, `dialog.*`, `link.open`, `server.*` |
 | Shared small conversions | `bytes.ts` | none |
+| Failures that keep their kind | `refuse.ts` | none |
 
-**Still in `index.ts`, and next to move:** the handlers for units themselves (`node.*`) and for canvases (`canvas.*`), with capture and the mirroring of links into notes. They read state the context doesn't offer yet: which note belongs to which unit, which canvas was last in front. Moving them means either widening the context or passing that state as deps. It is tracked.
+**What `index.ts` still does** is what only it can: read the log, hold the graph, sign what is written, set up this person's identity and lab, build the context, and wire the features together. It defines no call a panel makes apart from identity and focus.
+
+**How features reach each other.** Two ways, and no third:
+
+- **Deps**, when one feature needs another's function: the canvas feature is handed `social` from the units feature.
+- **Offers**, when a feature made early needs something from one made later, or when several need the same thing. A feature puts its part on `context.offers` as it is made (checks, preferences, "a note changed"), and others read it when called. A part not there yet reads as absent, so the order features are made in does not matter. `context.afterChange` is the same idea for "run this after every change".
+
+**Failures keep their kind.** A feature refuses with `refuse(code, message)` from `refuse.ts`, and what a base refused keeps the base's own code. A panel receives `not-found`, `read-only`, `conflict`, `no-target` or `unavailable` and can act on it. Anything thrown without a code arrives as `invalid`.
 
 **Rules every feature keeps:**
 
@@ -173,7 +186,8 @@ The simulation that keeps these honest is `node harness/four-vaults.ts`. The pla
 
 | Layer | How | Where |
 |---|---|---|
-| Records, core, layout, sync | Unit tests over the in-memory base. New ones start from `test/support.ts` | `test/` |
+| Records, core, layout, sync | Unit tests over the in-memory base, all from `test/support.ts`, waiting on the thing itself and not on the clock | `test/` |
+| The MCP server | Its tools over a core in memory, then a real MCP client over stdio against a vault on disk | `test/mcp.test.ts` |
 | Server | Unit and route tests with fake model servers | `server/test/` |
 | Several people at once | The real core, sync loop and server in one process, with seeded time, ids and keys | `harness/four-vaults.ts`, `npm run sim` |
 | An adapter | One conformance suite, run inside the real app | `packages/contract/src/conformance.ts` |
@@ -185,9 +199,12 @@ Types, boundaries, the dependency matrix, both unit suites, the simulation and t
 
 The audit lists everything. The largest:
 
-- `core/index.ts` still holds the unit and canvas handlers, and `canvas/App.tsx` is one component of 2,300 lines.
-- The calls a panel can make are named inconsistently: `node.*`, `unit.*` and `units.*` all reach a unit.
-- The client and the server each declare the shapes that cross between them.
-- Plugins import core's internals where the contract defines a narrower seam for them.
-- The server stores what it is sent without checking it is a record, and has no rate limits.
+- `canvas/App.tsx` is down from 2,300 lines to 1,150. What is left in it places, pastes and adds cards and handles keys.
+- Calls follow one scheme: a namespace to a noun, `get` for one and `list` for many, `show` for what changes the screen, `accept` and `reject` for a decision, and `id` for the subject of a call. The old word for the overview is gone from the code. A canvas tied to a question or claim names it in `whole`; a log written before 14 November 2026 says `holon`, and is read under the new name.
+- Routes and the shapes that cross them are declared once, in `contract/routes.ts` and `contract/wire.ts`. The server's stored-paper rows and its own graph type are not yet checked against them, and the root type check does not cover `server/`.
+- A panel's failed call is shown, or dropped with a line saying why. Panels act on `not-found`, `unavailable` and `read-only`. A failure from the base keeps the base's own kind. The core's refusals that carry no kind are bad input, which is what `invalid` means.
+- Class names are not prefixed by panel. The sticky note and the hint no longer share one; the PDF reader repeats the canvas's toolbar and popover styles.
+- In the Obsidian plugin only the test hooks take the whole core, by a name that says so. Everything else, the walkthrough included, takes the contract's narrower seam.
+- The server has no rate limits. It now refuses anything without a record's shape.
+- The MCP server reads and does not yet propose, and a paper's text by page is not kept.
 - The newest record kinds have no AT Protocol lexicons.

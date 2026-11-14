@@ -109,11 +109,13 @@ AI mode quotes the closest units word for word until a model is connected. To co
 
 ### What leaves your machine
 
-- With no server, nothing does.
-- Extraction sends the file to the server you pick.
-- A paper with a DOI has its extraction and DOI kept on the Discourse Graphs service. The file isn't kept. With no DOI, nothing is kept there.
-- Sharing with a lab sends what's on shared canvases, and the original file only if you say so.
-- Ask AI with your own key sends your question and the units on that canvas to the provider you chose: Anthropic (`api.anthropic.com`), an OpenAI-compatible address you set (such as `api.openai.com`, `openrouter.ai`, or a model server on your own computer), or Google Gemini (`generativelanguage.googleapis.com`). The key is kept in Obsidian's keychain and is sent only to that provider, or to your lab's server if you choose that route. You need your own account with the provider, which may charge you.
+With no lab joined, no model set up and no server chosen, nothing does. [docs/what-leaves-the-device.md](docs/what-leaves-the-device.md) is the full account, written from the code: one row for each destination, with what is sent, when, and whether it can be turned off. In short:
+
+- **A lab** is sent what is on the canvases shared with it, by itself, every few seconds. A paper's file goes only if you tick it.
+- **Extraction** sends the file to the server you pick. If the paper has a DOI, its graph and DOI then go to the Discourse Graphs service, without the file.
+- **Ask AI** sends your question and the canvas's units to the provider you chose, or to your lab's server. Your key goes to that provider, or to your lab's server if you choose that route. You need your own account with the provider, which may charge you.
+- **Look it up**, a Zenodo draft and an announcement each send only when you press the button.
+- **A lab's reach** can refuse a server or a provider outside the lab.
 - Reading a PDF or a Jupyter notebook sends nothing.
 
 ## How it's built

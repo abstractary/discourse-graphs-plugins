@@ -21,6 +21,9 @@ export type Context = {
   readJson: () => Promise<Record<string, unknown>>;
 };
 
+// A JSON body before it is checked: only the fields its wire shape names, each still unknown.
+export type Sent<Shape> = { [Field in keyof Shape]?: unknown };
+
 // A handler returns the JSON to send, or nothing if it wrote the response itself.
 export type Handler = (context: Context) => unknown;
 

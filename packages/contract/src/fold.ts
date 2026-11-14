@@ -120,6 +120,18 @@ const AGENT_MAY_SIGN: readonly string[] = ["node", "relation", "evaluation", "de
 const laterDecision = (a: DecisionRecord, b: DecisionRecord): DecisionRecord =>
   (compareStrings(a.at, b.at) || compareStrings(a.id, b.id)) >= 0 ? a : b;
 
+/**
+ * A canvas written before 14 November 2026 names what it is tied to as `holon`. The log keeps
+ * that record as it was signed; the graph reads it under today's name, and its next edit writes
+ * today's name.
+ */
+const inTodaysWords = (record: DocumentRecord): DocumentRecord => {
+  if (record.kind !== "canvas") return record;
+  const { holon, ...rest } = record as typeof record & { holon?: string };
+  if (holon === undefined) return record;
+  return { ...rest, ...(rest.whole === undefined ? { whole: holon } : {}) };
+};
+
 /** Turns any bag of records into one graph. The result ignores input order. */
 export const foldRecords = ({
   records,
@@ -179,7 +191,7 @@ export const foldRecords = ({
       if (record.kind === "node" || record.kind === "relation" || record.kind === "evaluation") proposed.push(record);
       continue;
     }
-    if (isDocument(record)) documents.set(record.id, record);
+    if (isDocument(record)) documents.set(record.id, inTodaysWords(record));
     else if (record.kind === "relation") relations.push(record);
     else if (record.kind === "retraction") retractions.push(record);
     else if (record.kind === "decision" && record.space === localSpace) {

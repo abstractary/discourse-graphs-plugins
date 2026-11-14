@@ -9,9 +9,10 @@ import type { Connection } from "../shared/rpc.ts";
 import { Highlighted, Icon, plain, LibraryMark } from "../shared/ui.tsx";
 
 type LibraryState = { on: boolean; wanted: boolean; reachable: boolean; files: number; problem?: string };
-import { useFit } from "../canvas/fit.ts";
+import { useFit } from "../shared/fit.ts";
 import { boxesFor, findQuote, foldText, type Box, type DocText, type TextPiece } from "./quote.ts";
-import { sizeOf } from "../shared/words.ts";
+import { LoadProblem } from "../shared/load.tsx";
+import { goneOf, sayOf, sizeOf } from "../shared/words.ts";
 
 /**
  * A PDF reader beside the canvas. Highlighting words offers to make them a
@@ -67,6 +68,9 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [marks, setMarks] = useState<PdfMark[]>([]);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState("");
+  // Why the file in `ref` didn't open, and a count that asks for it again.
+  const [unopened, setUnopened] = useState<unknown>(undefined);
+  const [openTurn, setOpenTurn] = useState(0);
   const [scale, setScale] = useState(1);
   const [fit, setFit] = useState(true);
   const [width, setWidth] = useState(0);
@@ -87,7 +91,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const barFit = useFit(bar, [loaded, ref, marks.length]);
   const pageEls = useRef(new Map<number, HTMLDivElement>());
 
-  const report = useCallback((error: unknown) => setProblem(error instanceof Error ? error.message : String(error)), []);
+  const report = useCallback((error: unknown) => setProblem(sayOf(error)), []);
   const say = useCallback((text: string, undo?: () => Promise<unknown>) => setNotice({ text, ...(undo ? { undo } : {}) }), []);
   useEffect(() => {
     if (!notice) return;
@@ -99,7 +103,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [library, setLibrary] = useState<LibraryState | null>(null);
   const refreshDocs = useCallback(() => {
     void call("pdf.list", {}).then(setDocs).catch(report);
-    void call("pdf.library", {}).then(setLibrary).catch(() => setLibrary(null));
+    void call("pdf.library", {}).then(setLibrary).catch(() => setLibrary(null)); // Dropped: with no word on the reference library, the vault's own PDFs are listed, which is what null means.
   }, [call, report]);
   useEffect(refreshDocs, [refreshDocs]);
 
@@ -109,11 +113,12 @@ export const App = ({ connection }: { connection: Connection }) => {
     let gone = false;
     setLoaded(null);
     setProblem("");
+    setUnopened(undefined);
     setCut(null);
     setActive(null);
     void (async () => {
       try {
-        const opened = await call("pdf.open", { ref });
+        const opened = await call("pdf.get", { ref });
         if (gone) return;
         setDoc(opened.document);
         setMarks(opened.marks);
@@ -133,13 +138,13 @@ export const App = ({ connection }: { connection: Connection }) => {
         setVisible(new Set([0, 1]));
         scroller.current?.scrollTo({ top: 0 });
       } catch (error) {
-        if (!gone) report(error);
+        if (!gone) setUnopened(error ?? new Error("Failed"));
       }
     })();
     return () => {
       gone = true;
     };
-  }, [ref, call, report]);
+  }, [ref, call, openTurn]);
   useEffect(() => () => loaded?.close(), [loaded]);
 
   /** Reads the whole paper into a graph: from the saved extraction beside it, or else by asking where to read it. */
@@ -165,7 +170,7 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   const rereadMarks = useCallback(() => {
     if (!ref) return;
-    void call("pdf.open", { ref, data: false }).then((opened) => {
+    void call("pdf.get", { ref, data: false }).then((opened) => {
       setDoc(opened.document);
       setMarks(opened.marks);
     }).catch(report);
@@ -316,7 +321,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   };
   const pick = (mark: PdfMark) => {
     setActive(mark.unit.id);
-    void call("focus.set", { node: mark.unit.id }).catch(report);
+    void call("focus.set", { id: mark.unit.id }).catch(report);
     void call("canvas.highlight", { units: [mark.unit.id], brief: true }).catch(report);
   };
 
@@ -467,7 +472,8 @@ export const App = ({ connection }: { connection: Connection }) => {
         onPointerLeave={() => setHover(null)}
         data-hovering={hover ? "" : undefined}
       >
-        {ref && !loaded && !problem ? <p className="pdf-wait">Opening…</p> : null}
+        {ref && !loaded && unopened === undefined ? <p className="pdf-wait">Opening…</p> : null}
+        {ref && !loaded ? <LoadProblem failed={unopened} again={() => setOpenTurn((n) => n + 1)} gone={goneOf("PDF")} className="pdf-wait" dg="pdf-unopened" /> : null}
         {loaded
           ? loaded.views.map((view, index) => (
               <Page
@@ -513,7 +519,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             setCut(null);
             document.getSelection()?.removeAllRanges();
             setActive(made.node.id);
-            say(`Saved as ${made.node.typeLabel ?? "a unit"}${choice.label ? ` on ${choice.label}` : " in the graph"}`, () => call("pdf.uncut", { node: made.node.id }));
+            say(`Saved as ${made.node.typeLabel ?? "a unit"}${choice.label ? ` on ${choice.label}` : " in the graph"}`, () => call("pdf.uncut", { id: made.node.id }));
           }}
           report={report}
         />
@@ -714,7 +720,7 @@ const CutPopup = ({
       setTypes(ordered);
       if (remembered.type === null && !remembered.chosen) setType(ordered.find((t) => t.base === "evidence")?.id ?? null);
     }).catch(report);
-    void Promise.all([call("canvas.summaries", {}), call("holon.focus.get", {}), call("canvas.last", {})]).then(([list, focus, last]) => {
+    void Promise.all([call("canvas.summaries", {}), call("overview.focus.get", {}), call("canvas.last", {})]).then(([list, focus, last]) => {
       setCanvases(list);
       const front = focus.canvas ?? last;
       setBeside(front);

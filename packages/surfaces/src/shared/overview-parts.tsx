@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from "react";
-import type { CanvasDiff, Crossing, Gap, HolonCanvas, HolonEvent, HolonPart, HolonRef, HolonView, Stance } from "@dg/contract/surface.ts";
-import { Icon, Mark, plain } from "../shared/ui.tsx";
+import type { CanvasDiff, Crossing, Gap, WholeCanvas, WholeEvent, WholePart, WholeRef, WholeView, Stance } from "@dg/contract/surface.ts";
+import { Icon, Mark, Tabs, plain } from "./ui.tsx";
 
-/** Pieces the holon explorer, the boundary panel and the Library share. */
+/** Pieces the whole explorer, the boundary panel and the Library share. */
 
 export const LEVEL_WORD: Record<string, string> = { lab: "Lab", question: "Question", claim: "Claim", evidence: "Evidence", output: "Output" };
 export const KIND_WORD: Record<string, string> = {
@@ -60,10 +60,10 @@ export const PartRow = ({
   onOpen,
   compact,
 }: {
-  part: HolonPart;
+  part: WholePart;
   lit: boolean;
   onPick: (u: string) => void;
-  onOpen: (r: HolonRef) => void;
+  onOpen: (r: WholeRef) => void;
   compact?: boolean;
 }) => (
   <li className="hv-part" data-lit={lit} data-compact={compact ?? false}>
@@ -94,10 +94,10 @@ export const Boundary = ({
   onOpen,
   parts,
 }: {
-  view: HolonView;
+  view: WholeView;
   onPick: (unit: string) => void;
   onLight: (units: string[]) => void;
-  onOpen: (ref: HolonRef) => void;
+  onOpen: (ref: WholeRef) => void;
   /** When given, a Parts tab comes first. */
   parts?: ReactNode;
 }) => {
@@ -114,14 +114,12 @@ export const Boundary = ({
   ];
   return (
     <div className="hv-boundary-body">
-      <div className="hv-tabs" role="tablist">
-        {tabs.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} data-dg={`tab-${t.id}`} onClick={() => setTab(t.id)}>
-            {t.label}
-            {t.count ? <span className="hv-count">{t.count}</span> : null}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="hv-tabs"
+        tabs={tabs.map((t) => ({ id: t.id, label: t.label, dg: `tab-${t.id}`, extra: t.count ? <span className="hv-count">{t.count}</span> : null }))}
+        selected={tab}
+        onPick={setTab}
+      />
       <div className="hv-tabpanel" role="tabpanel">
         {tab === "parts" ? parts : null}
         {tab === "gaps" ? <Gaps gaps={gaps} onLight={onLight} onPick={onPick} titleOf={titleOf} /> : null}
@@ -177,7 +175,7 @@ const Gaps = ({ gaps, onLight, onPick, titleOf }: { gaps: Gap[]; onLight: (u: st
   );
 };
 
-const Crossings = ({ crossings, onPick, onOpen }: { crossings: Crossing[]; onPick: (u: string) => void; onOpen: (r: HolonRef) => void }) => {
+const Crossings = ({ crossings, onPick, onOpen }: { crossings: Crossing[]; onPick: (u: string) => void; onOpen: (r: WholeRef) => void }) => {
   if (!crossings.length) return <p className="hv-muted">Nothing crosses its boundary.</p>;
   return (
     <>
@@ -205,7 +203,7 @@ const Crossings = ({ crossings, onPick, onOpen }: { crossings: Crossing[]; onPic
   );
 };
 
-export const History = ({ events, onPick }: { events: HolonEvent[]; onPick?: (u: string) => void }) =>
+export const History = ({ events, onPick }: { events: WholeEvent[]; onPick?: (u: string) => void }) =>
   events.length ? (
     <ol className="hv-history">
       {events.map((e, i) => (
@@ -221,7 +219,7 @@ export const History = ({ events, onPick }: { events: HolonEvent[]; onPick?: (u:
   );
 
 /** A small drawing of a canvas, for history and releases. */
-export const Preview = ({ canvas }: { canvas: HolonCanvas }) => {
+export const Preview = ({ canvas }: { canvas: WholeCanvas }) => {
   if (!canvas.cards.length) return <p className="hv-muted">Nothing on the canvas yet.</p>;
   const width = Math.max(...canvas.cards.map((c) => c.x + c.width)) + 20;
   const height = Math.max(...canvas.cards.map((c) => c.y + c.height)) + 20;

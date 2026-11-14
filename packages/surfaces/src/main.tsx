@@ -5,7 +5,7 @@ import "./shared/tokens.css";
 import "./canvas/canvas.css";
 import "./context/context.css";
 import "./library/library.css";
-import "./holon/holon.css";
+import "./overview/overview.css";
 import "./search/search.css";
 import "./run/run.css";
 import "./profile/profile.css";
@@ -15,7 +15,7 @@ import "./grammar/grammar.css";
 import { App as Canvas } from "./canvas/App.tsx";
 import { App as Context } from "./context/App.tsx";
 import { App as Library } from "./library/App.tsx";
-import { App as Holon } from "./holon/App.tsx";
+import { App as Overview } from "./overview/App.tsx";
 import { App as Boundary } from "./boundary/App.tsx";
 import { App as Upload } from "./upload/App.tsx";
 import { App as Welcome } from "./welcome/App.tsx";
@@ -34,13 +34,14 @@ void connect().then((connection) => {
   // something inside (a menu, a field being edited) already used the key.
   if (["upload", "welcome", "zotero", "grammar"].includes(connection.route.surface)) {
     window.addEventListener("keydown", (event) => {
+      // Dropped: a key press has nowhere to say it failed. The dialog's own Close button does.
       if (event.key === "Escape" && !event.defaultPrevented) void connection.call("dialog.close", {}).catch(() => undefined);
     });
   }
   // Initials anywhere, in any panel, lead to the same card and the same profile.
   const people: People = {
     card: (id) => connection.call("profile.card", { id }),
-    open: (id) => void connection.call("profile.show", { id }).catch(() => undefined),
+    open: (id) => connection.call("profile.show", { id }),
   };
   createRoot(document.getElementById("root")!).render(
     <PeopleContext.Provider value={people}>
@@ -48,8 +49,8 @@ void connect().then((connection) => {
       <Context connection={connection} />
     ) : connection.route.surface === "canvases" ? (
       <Library connection={connection} />
-    ) : connection.route.surface === "holon" ? (
-      <Holon connection={connection} />
+    ) : connection.route.surface === "overview" ? (
+      <Overview connection={connection} />
     ) : connection.route.surface === "boundary" ? (
       <Boundary connection={connection} />
     ) : connection.route.surface === "upload" ? (
@@ -72,7 +73,7 @@ void connect().then((connection) => {
       <Grammar connection={connection} />
     ) : (
       <ReactFlowProvider>
-        <Canvas connection={connection} />
+        <Canvas connection={connection} Search={Search} Library={Library} />
       </ReactFlowProvider>
     )}
     </PeopleContext.Provider>,

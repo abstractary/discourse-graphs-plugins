@@ -18,11 +18,12 @@ import {
   type PaperRecord,
 } from "@dg/contract/records.ts";
 import type { FileSummary } from "@dg/contract/host.ts";
-import type { HolonLevel, PdfDocument, PdfMark, Provenance, UnitsAvailable, UnitsSegment, PdfLibraryMark } from "@dg/contract/surface.ts";
+import type { WholeLevel, PdfDocument, PdfMark, Provenance, UnitsAvailable, UnitsSegment, PdfLibraryMark } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { cidOfBytes } from "./process.ts";
 import { mustBeOfPaper, readingOf, refusal } from "./locks.ts";
 import { paperOfWork, standsFor } from "./work.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 /**
  * Reading PDFs into the graph, and the units waiting to go on a canvas.
@@ -39,15 +40,15 @@ const CARD_WIDTH = 240;
 const COLUMN_GAP = 96;
 const ROW_GAP = 24;
 const LIST_TTL_MS = 4000;
-const HOLON_LEVELS = new Set(["question", "claim", "evidence", "output"]);
+const WHOLE_LEVELS = new Set(["question", "claim", "evidence", "output"]);
 
 const cardHeight = (title: string): number => 40 + 19 * Math.ceil(title.length / 30);
 /** Collapses what a PDF's line breaks and spacing add, so a quote matches however it was selected. */
 export const normalizeQuote = (text: string): string => text.normalize("NFKC").replace(/-\s*\n\s*/g, "").replace(/\s+/g, " ").trim();
 
-type Value<T> = { ok: true; value: T } | { ok: false; error: { message: string } };
+type Value<T> = { ok: true; value: T } | { ok: false; error: { message: string; code?: import("@dg/contract/host.ts").HostErrorCode; ref?: string } };
 const value = <T>(result: Value<T>): T => {
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok) throw refusalOf(result.error);
   return result.value;
 };
 
@@ -261,12 +262,12 @@ export const readingFeature = (context: Context) => {
     return cards;
   };
 
-  const holonLevelOf = (canvas: CanvasRecord): HolonLevel | undefined => {
-    if (!canvas.holon) return undefined;
-    const node = context.nodeOf(canvas.holon);
-    if (!node) return context.documents("lab").some((lab) => lab.did === canvas.holon) ? "lab" : undefined;
+  const wholeLevelOf = (canvas: CanvasRecord): WholeLevel | undefined => {
+    if (!canvas.whole) return undefined;
+    const node = context.nodeOf(canvas.whole);
+    if (!node) return context.documents("lab").some((lab) => lab.did === canvas.whole) ? "lab" : undefined;
     const base = baseOf(node);
-    return base && HOLON_LEVELS.has(base) ? (base as HolonLevel) : undefined;
+    return base && WHOLE_LEVELS.has(base) ? (base as WholeLevel) : undefined;
   };
 
   /** Relations that stand or wait for a decision, as a canvas draws them. Withdrawn and declined ones stay off. */
@@ -275,7 +276,7 @@ export const readingFeature = (context: Context) => {
 
   const handlers: Pick<
     Handlers,
-    "pdf.list" | "pdf.library" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "pdf.follow" | "canvas.pdf" | "units.available" | "canvas.placeUnits" | "units.put"
+    "pdf.list" | "pdf.library" | "pdf.get" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "pdf.follow" | "canvas.pdf" | "unit.available" | "canvas.placeUnits" | "unit.put"
   > = {
     "pdf.list": async () => {
       const all = (await files(true)).map(documentOf);
@@ -299,7 +300,7 @@ export const readingFeature = (context: Context) => {
       return { on: true, wanted: true, reachable: !libraryProblem, files: inLibrary.size, ...(libraryProblem ? { problem: libraryProblem } : {}), ...(context.host.readLocalFile ? {} : { problem: "Zotero's files can only be opened in the desktop app." }) };
     },
 
-    "pdf.open": async ({ ref, data = true }) => {
+    "pdf.get": async ({ ref, data = true }) => {
       const file = await fileOf(ref);
       let dataBase64 = "";
       if (data || !cids.has(ref)) {
@@ -333,7 +334,7 @@ export const readingFeature = (context: Context) => {
     "pdf.cut": async ({ ref, exact, page, title, type, canvas, newCanvas, documentTitle }) => {
       const quote = normalizeQuote(exact);
       const name = title.trim() || quote;
-      if (!quote) throw new Error("Highlight some words first.");
+      if (!quote) throw refuse("no-target", "Highlight some words first.");
       const file = await fileOf(ref);
       const cid = await cidOf(ref);
       const fresh: DgRecord[] = [];
@@ -373,7 +374,7 @@ export const readingFeature = (context: Context) => {
       fresh.push(node);
       let target = canvas;
       if (newCanvas?.trim()) target = (await context.makeCanvas(newCanvas.trim())).id;
-      if (target && !context.canvasOf(target)) throw new Error("That canvas is gone.");
+      if (target && !context.canvasOf(target)) throw refuse("not-found", "That canvas is gone.");
       // A PDF canvas takes a highlight only from its own paper's file.
       const reading = target ? readingOf(context.graph(), target) : undefined;
       if (reading && paperOf(file)?.id !== reading.id) throw refusal(reading);
@@ -387,7 +388,7 @@ export const readingFeature = (context: Context) => {
       return { node: context.summarize(context.nodeOf(node.id)!), canvas: target ?? null };
     },
 
-    "pdf.uncut": async ({ node: id }) => {
+    "pdf.uncut": async ({ id: id }) => {
       const node = context.nodeOf(id);
       if (!node) return null;
       const by = context.me();
@@ -410,7 +411,7 @@ export const readingFeature = (context: Context) => {
       return null;
     },
 
-    "units.available": async ({ canvas }) => {
+    "unit.available": async ({ canvas }) => {
       const here = cardsOn(canvas);
       const canvases = context
         .documents("canvas")
@@ -451,8 +452,8 @@ export const readingFeature = (context: Context) => {
       const segments: UnitsSegment[] = [];
       for (const other of canvases) {
         const held = ordered(cardsOn(other.id).keys());
-        const level = holonLevelOf(other);
-        if (held.length) segments.push({ kind: "canvas", id: other.id, title: other.title, ...(level ? { holon: level } : {}), units: held });
+        const level = wholeLevelOf(other);
+        if (held.length) segments.push({ kind: "canvas", id: other.id, title: other.title, ...(level ? { whole: level } : {}), units: held });
       }
       for (const folder of folders) {
         const held = ordered(filed.get(folder.id) ?? []);
@@ -474,7 +475,7 @@ export const readingFeature = (context: Context) => {
     },
 
     "canvas.placeUnits": async ({ canvas, places }) => {
-      if (!context.canvasOf(canvas)) throw new Error("That canvas is gone.");
+      if (!context.canvasOf(canvas)) throw refuse("not-found", "That canvas is gone.");
       mustBeOfPaper(context.graph(), canvas, places.map((place) => place.node));
       const cards = cardsOn(canvas);
       const stamp = context.stamp();
@@ -523,8 +524,8 @@ export const readingFeature = (context: Context) => {
     },
 
     // A column beside what's there. An open canvas then brings them to where the person is looking.
-    "units.put": async ({ canvas, nodes: ids }) => {
-      if (!context.canvasOf(canvas)) throw new Error("That canvas is gone.");
+    "unit.put": async ({ canvas, units: ids }) => {
+      if (!context.canvasOf(canvas)) throw refuse("not-found", "That canvas is gone.");
       mustBeOfPaper(context.graph(), canvas, ids);
       const cards = cardsOn(canvas);
       const wanted = [...new Set(ids)].filter((id) => context.nodeOf(id) && !context.nodeOf(id)!.removed);

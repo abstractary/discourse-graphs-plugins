@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { MethodChain, MethodStep, MethodView, NodeSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, plain } from "../shared/ui.tsx";
+import { LoadProblem } from "../shared/load.tsx";
+import { codeOf, sayOf } from "../shared/words.ts";
 
 const ROLE: Record<MethodStep["role"], string> = {
   question: "Question",
@@ -101,12 +103,16 @@ const Fields = ({ connection, unit, onSaved }: { connection: Connection; unit: N
 
   useEffect(() => {
     void (async () => {
+      try {
       if (base === "study") setChoices({ question: await unitsOf("question") });
       if (base === "run") {
         const [studies, protocols] = await Promise.all([unitsOf("study"), unitsOf("protocol")]);
         setChoices({ partOf: studies, follows: protocols });
-        const run = await call("process.run", { id: unit.id, previews: false });
+        const run = await call("run.get", { id: unit.id, previews: false });
         setPage({ condition: run.condition ?? "", deviations: run.deviations.join("\n"), partOf: run.study?.unit.id ?? "", follows: run.protocol?.id ?? "", conditions: (run.study?.conditions ?? []).join("\n") });
+      }
+      } catch (error) {
+        setProblem(sayOf(error));
       }
     })();
   }, [base, call, unit.id, unitsOf]);
@@ -118,10 +124,10 @@ const Fields = ({ connection, unit, onSaved }: { connection: Connection; unit: N
     setProblem("");
     try {
       if (base === "protocol") {
-        await call("process.setFacts", { id: unit.id, facts: { ...(has("steps") ? { steps: lines(page.steps!) } : {}), ...(has("materials") ? { materials: lines(page.materials!) } : {}), ...(has("version") ? { version: page.version!.trim() } : {}) } });
+        await call("method.setFacts", { id: unit.id, facts: { ...(has("steps") ? { steps: lines(page.steps!) } : {}), ...(has("materials") ? { materials: lines(page.materials!) } : {}), ...(has("version") ? { version: page.version!.trim() } : {}) } });
       } else if (base === "study") {
         const size = page.sampleSize?.trim();
-        await call("process.setFacts", {
+        await call("method.setFacts", {
           id: unit.id,
           facts: {
             ...(has("hypothesis") ? { hypothesis: page.hypothesis!.trim() } : {}),
@@ -132,7 +138,7 @@ const Fields = ({ connection, unit, onSaved }: { connection: Connection; unit: N
           ...(has("question") ? { links: { question: page.question || null } } : {}),
         });
       } else {
-        await call("process.setFacts", {
+        await call("method.setFacts", {
           id: unit.id,
           facts: { condition: page.condition?.trim() ?? "", deviations: lines(page.deviations ?? "") },
           links: { partOf: page.partOf || null, follows: page.follows || null },
@@ -140,7 +146,7 @@ const Fields = ({ connection, unit, onSaved }: { connection: Connection; unit: N
       }
       onSaved();
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(sayOf(error));
     }
   };
 
@@ -262,25 +268,36 @@ export const Method = ({ connection, node, onWalk }: { connection: Connection; n
   const [view, setView] = useState<MethodView | null>(null);
   const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState("");
+  const [failed, setFailed] = useState<unknown>(undefined);
 
   const load = useCallback(() => {
-    void call("process.method", { id: node.id })
-      .then(setView)
-      .catch(() => setView(null));
+    void call("method.get", { id: node.id })
+      .then((next) => (setView(next), setFailed(undefined)))
+      // A unit that is gone is the panel's to say, once. Anything else is said here, or the section would just be missing.
+      .catch((error: unknown) => (setView(null), setFailed(codeOf(error) === "not-found" ? undefined : error)));
   }, [call, node.id]);
   useEffect(() => {
     setView(null);
     setEditing(false);
     setNotice("");
+    setFailed(undefined);
     load();
   }, [load]);
   useEffect(() => on("graph-changed", load), [on, load]);
 
+  if (failed !== undefined) {
+    return (
+      <section className="ctx-group method" data-dg="method">
+        <h2>Method</h2>
+        <LoadProblem failed={failed} again={load} className="method-gap" dg="method-problem" />
+      </section>
+    );
+  }
   if (!view || view.unit.id !== node.id) return null;
   const process = ["protocol", "study", "run", "code", "output"].includes(node.base ?? "");
   const editable = Boolean(node.mine) && ["protocol", "study", "run"].includes(node.base ?? "");
   if (!process && view.chains.length === 0 && view.problems.length === 0 && !view.rests) return null;
-  const openRun = (id: string) => void call("run.show", { id }).catch((error: Error) => setNotice(error.message));
+  const openRun = (id: string) => void call("run.show", { id }).catch((error: unknown) => setNotice(sayOf(error)));
   const flags = view.flags ? flagsOf(view.flags) : [];
   const steps = view.chains.length;
 
@@ -324,7 +341,7 @@ export const Method = ({ connection, node, onWalk }: { connection: Connection; n
             type="button"
             data-dg="method-evidence"
             title="Makes evidence that rests on this output, pinned to its bytes, and offers it to the open canvas"
-            onClick={() => void call("evidence.fromOutput", { output: node.id }).then((made) => onWalk(made.id)).catch((error: Error) => setNotice(error.message))}
+            onClick={() => void call("evidence.fromOutput", { output: node.id }).then((made) => onWalk(made.id)).catch((error: unknown) => setNotice(sayOf(error)))}
           >
             <Icon name="plus" /> Make evidence from this
           </button>

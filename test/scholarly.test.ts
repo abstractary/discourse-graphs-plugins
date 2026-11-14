@@ -1,17 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore, type Core } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore, type MemoryStore } from "@dg/contract/memory-host.ts";
+import { createMemoryStore, type MemoryStore } from "@dg/contract/memory-host.ts";
 import type { ExtractionGraph, LabLink, Services } from "@dg/contract/services.ts";
 import type { DgRecord, JsonObject, NodeRecord, PaperRecord } from "@dg/contract/records.ts";
 import { CARD_FIELD_IDS, identifierCurie, identifierUrl, mergeIdentifiers, parseIdentifier, type Notification, type WorkMetadata } from "@dg/contract/scholarly.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { planCrateImport, readCrate, slugOf } from "@dg/core/crate.ts";
 import { toDataCite } from "@dg/core/datacite.ts";
 import { buildNotification, RELATIONSHIPS } from "@dg/core/notify.ts";
 import { PROCESS_RUN_CRATE } from "@dg/core/rocrate.ts";
 import { crc32, unzip, zip } from "@dg/core/zip.ts";
+import { makeCore, type Call, type Made } from "./support.ts";
 
 const demo = JSON.parse(readFileSync("demo/papers/lupus-nephritis-prediction.graph.json", "utf8")) as ExtractionGraph;
 const DOI = demo.paper?.doi ?? "10.1016/j.semarthrit.2018.02.012";
@@ -63,44 +62,21 @@ const services = (link: LabLink | null, sent: Sent): Services =>
     notifications: async () => [],
   }) as unknown as Services;
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async (link: LabLink | null = null, store: MemoryStore = createMemoryStore()): Promise<{ core: Core; call: Call; store: MemoryStore; sent: Sent; saved: () => Map<string, string> }> => {
-  const { host } = createMemoryHost({ store });
+const setup = async (link: LabLink | null = null, store: MemoryStore = createMemoryStore()): Promise<Made & { sent: Sent; saved: () => Map<string, string> }> => {
   const sent: Sent = { looked: [], notified: [] };
   const files = new Map<string, string>();
-  const keeping = { ...host, saveFile: async ({ name, dataBase64 }: { name: string; dataBase64: string }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }) };
-  const core = await createCore({ host: keeping, services: services(link, sent), demoGraphs: [{ filename: "demo.pdf", graph: demo }] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  return { core, call, store, sent, saved: () => files };
+  const made = await makeCore({
+    store,
+    wrap: (host) => ({ ...host, saveFile: async ({ name, dataBase64 }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }) }),
+    services: services(link, sent),
+    demoGraphs: [{ filename: "demo.pdf", graph: demo }],
+  });
+  return { ...made, sent, saved: () => files };
 };
 
 const extracted = async (call: Call) => {
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   return { paper, view, units: Object.values(view.nodes) };
 };
 
@@ -146,7 +122,7 @@ test("a card's facts say what it was read from, how, by whom, where and when", a
   assert.ok(claim.card.identifiers.some(({ scheme, value }) => scheme === "doi" && value === DOI.toLowerCase()), JSON.stringify(claim.card.identifiers));
 
   // A unit a person writes was read from nothing, and is credited to them.
-  const made = await call("node.create", { title: "My own claim" } as never);
+  const made = await call("unit.create", { title: "My own claim" } as never);
   assert.equal(made.card.source, undefined);
   assert.equal(made.card.authors.role, "maker");
   assert.deepEqual(made.card.identifiers, []);
@@ -163,23 +139,23 @@ test("the card fields a person shows are kept, in card order, and unknown ones a
 
 test("a person can add and take away a unit's identifiers", async () => {
   const { call } = await setup();
-  const made = await call("node.create", { title: "An antibody we used" } as never);
-  const added = await call("unit.identify", { node: made.id, add: ["RRID:AB_2313773", "https://doi.org/10.5281/zenodo.123"] });
+  const made = await call("unit.create", { title: "An antibody we used" } as never);
+  const added = await call("unit.identify", { id: made.id, add: ["RRID:AB_2313773", "https://doi.org/10.5281/zenodo.123"] });
   assert.deepEqual(added.card.identifiers.map(identifierCurie), ["doi:10.5281/zenodo.123", "RRID:AB_2313773"]);
-  const fewer = await call("unit.identify", { node: made.id, remove: [{ scheme: "doi", value: "10.5281/zenodo.123" }] });
+  const fewer = await call("unit.identify", { id: made.id, remove: [{ scheme: "doi", value: "10.5281/zenodo.123" }] });
   assert.deepEqual(fewer.card.identifiers.map(identifierCurie), ["RRID:AB_2313773"]);
-  await assert.rejects(call("unit.identify", { node: made.id, add: ["just some words"] }), /isn't an identifier/);
+  await assert.rejects(call("unit.identify", { id: made.id, add: ["just some words"] }), /isn't an identifier/);
 });
 
 test("looking a paper up keeps what the registries say, and sends only identifiers and the title", async () => {
   const { call, sent, core } = await setup();
   const { units, paper } = await extracted(call);
   const claim = units.find((unit) => unit.base === "claim")!;
-  const before = await call("node.view", { id: claim.id });
+  const before = await call("unit.get", { id: claim.id });
   assert.equal(before.provenance.work?.target, "paper");
   assert.equal(before.provenance.work?.standing, undefined);
 
-  const found = await call("work.lookup", { unit: claim.id });
+  const found = await call("work.lookup", { id: claim.id });
   assert.equal(found.saved, true);
   assert.deepEqual(Object.keys(sent.looked[0]!).sort(), ["identifiers", "title"]);
 
@@ -193,7 +169,7 @@ test("looking a paper up keeps what the registries say, and sends only identifie
   assert.notEqual(record.title, "A registry title");
   assert.deepEqual(record.identifiers?.map(({ scheme }) => scheme), ["pmid", "openalex"]);
 
-  const after = await call("node.view", { id: claim.id });
+  const after = await call("unit.get", { id: claim.id });
   assert.equal(after.node.card.retracted, true);
   assert.ok(after.node.card.identifiers.some(({ scheme }) => scheme === "pmid"));
   assert.equal(after.provenance.work?.standing?.citedBy, 12);
@@ -209,7 +185,7 @@ test("an announcement is drafted for reading, and only sent when asked", async (
   assert.equal(early.ready, false);
   assert.match((early as { why: string }).why, /Look the paper up first/);
 
-  await call("work.lookup", { unit: claim.id });
+  await call("work.lookup", { id: claim.id });
   const draft = await call("notify.draft", { unit: claim.id });
   assert.ok(draft.ready);
   assert.equal(sent.notified.length, 0, "drafting sends nothing");
@@ -261,7 +237,7 @@ test("a zip written here reads back, and the checksum matches the standard one",
 test("a canvas exports as an RO-Crate that says everything a crate reader expects", async () => {
   const { call, saved } = await setup();
   const { paper, units } = await extracted(call);
-  await call("work.lookup", { unit: units[0]!.id });
+  await call("work.lookup", { id: units[0]!.id });
   const made = await call("crate.export", { canvas: paper.canvas, license: "https://creativecommons.org/licenses/by/4.0/" });
   assert.equal(made.version, "https://w3id.org/ro/crate/1.3");
   assert.match(made.name, /\.crate\.zip$/);
@@ -346,14 +322,14 @@ test("a crate made here comes back whole in another space, and twice makes nothi
 
   const store = createMemoryStore();
   const second = await setup(null, store);
-  const { host } = createMemoryHost({ store });
+  const { host } = second;
   const kept = await host.writeAsset({ asset: { name: made.name, mime: "application/zip", dataUrl: `data:application/zip;base64,${archive}` } });
   assert.ok(kept.ok);
   const read = await second.call("crate.import", { ref: kept.value.ref });
   assert.equal(read.kind, "own");
   assert.equal(read.units, Object.keys(view.nodes).length);
   assert.equal(read.fresh, read.units);
-  const back = await second.call("canvas.open", { id: read.canvas! });
+  const back = await second.call("canvas.get", { id: read.canvas! });
   assert.deepEqual(Object.values(back.nodes).map(({ title }) => title).sort(), Object.values(view.nodes).map(({ title }) => title).sort());
   assert.equal(back.items.filter(({ item }) => "fromNode" in item).length, view.items.filter(({ item }) => "fromNode" in item).length);
   assert.equal((await second.call("crate.import", { ref: kept.value.ref })).fresh, 0);
@@ -396,8 +372,7 @@ const FOREIGN = {
 };
 
 test("another tool's run crate becomes a run with its code, inputs and outputs", async () => {
-  const { call, core, store } = await setup();
-  const { host } = createMemoryHost({ store });
+  const { call, core, store, host } = await setup();
   const json = btoa(JSON.stringify(FOREIGN));
   const kept = await host.writeAsset({ asset: { name: "ro-crate-metadata.json", mime: "application/json", dataUrl: `data:application/json;base64,${json}` } });
   assert.ok(kept.ok);
@@ -405,7 +380,7 @@ test("another tool's run crate becomes a run with its code, inputs and outputs",
   assert.equal(read.kind, "foreign");
   assert.equal(read.units, 6);
   assert.equal(read.fresh, 6);
-  const view = await call("canvas.open", { id: read.canvas! });
+  const view = await call("canvas.get", { id: read.canvas! });
   const byTitle = new Map(Object.values(view.nodes).map((node) => [node.title, node]));
   assert.deepEqual([...byTitle.values()].map(({ base }) => base).sort(), ["code", "output", "output", "output", "run", "source"]);
   const nodes = [...core.graph().documents.values()].filter((record): record is NodeRecord => record.kind === "node");
@@ -428,7 +403,7 @@ test("another tool's run crate becomes a run with its code, inputs and outputs",
   // The card says it arrived in a file.
   assert.equal(byTitle.get("Call variants")!.card.origin.kind, "here");
 
-  const method = await call("process.run", { id: run.id } as never).catch(() => null);
+  const method = await call("run.get", { id: run.id } as never).catch(() => null);
   assert.ok(method === null || typeof method === "object");
   assert.equal((await call("crate.import", { ref: kept.value.ref })).fresh, 0, "the same crate twice makes nothing new");
 });

@@ -1,58 +1,22 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import { createNode, type DgRecord } from "@dg/contract/records.ts";
-import type { ExtractionGraph, Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import type { ExtractionGraph } from "@dg/contract/services.ts";
 import { historyOf, statsOf } from "@dg/core/profile.ts";
+import { makeCore } from "./support.ts";
 
 const demo = JSON.parse(readFileSync("demo/papers/lupus-nephritis-prediction.graph.json", "utf8")) as ExtractionGraph;
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  const opened: unknown[] = [];
-  const watching = { ...host, openSurface: async (args: unknown) => (opened.push(args), { ok: true as const, value: null }) };
-  const services = { servers: async () => [], extract: async () => demo, storeGraph: async () => {}, link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }) } as unknown as Services;
-  const core = await createCore({ host: watching as never, services, demoGraphs: [{ filename: "demo.pdf", graph: demo }] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  return { core, call, opened };
-};
+const setup = () => makeCore({ watchSurfaces: true, services: { extract: async () => demo }, demoGraphs: [{ filename: "demo.pdf", graph: demo }] });
 
 test("a person sees all of their own work, told as a history", async () => {
   const { call } = await setup();
-  const claim = await call("node.create", { title: "Reservoirs need memory" } as never);
-  await call("node.rename", { id: claim.id, title: "Reservoirs need fading memory" });
+  const claim = await call("unit.create", { title: "Reservoirs need memory" } as never);
+  await call("unit.rename", { id: claim.id, title: "Reservoirs need fading memory" });
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
 
-  const profile = await call("profile.view", {});
+  const profile = await call("profile.get", {});
   assert.equal(profile.person.me, true);
   assert.deepEqual(profile.audiences, ["private", "lab", "public"]);
   const history = profile.private!.history;
@@ -77,8 +41,8 @@ test("a person sees all of their own work, told as a history", async () => {
 
 test("what everyone sees is counts alone", async () => {
   const { call } = await setup();
-  await call("node.create", { title: "A secret hypothesis about spectral radius" } as never);
-  const profile = await call("profile.view", {});
+  await call("unit.create", { title: "A secret hypothesis about spectral radius" } as never);
+  const profile = await call("profile.get", {});
   const said = JSON.stringify(profile.public);
   assert.equal(profile.public.written, 1);
   assert.ok(!/secret|spectral/i.test(said), said);
@@ -110,14 +74,14 @@ test("initials lead to a profile, and a note on a canvas says who wrote it", asy
   const { call, opened, core } = await setup();
   await call("profile.show", { id: "did:plc:someone" });
   assert.deepEqual(opened.at(-1), { route: { surface: "profile", id: "did:plc:someone" }, placement: "main" });
-  const unknown = await call("profile.view", { id: "did:plc:someone" });
+  const unknown = await call("profile.get", { id: "did:plc:someone" });
   assert.deepEqual(unknown.audiences, ["public"]);
   assert.equal(unknown.private, undefined);
   assert.equal(unknown.public.units, 0);
 
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
-  const view = await call("canvas.open", { id: paper.canvas });
-  const me = (await call("profile.view", {})).person.id;
+  const view = await call("canvas.get", { id: paper.canvas });
+  const me = (await call("profile.get", {})).person.id;
   assert.ok(view.items.length > 0);
   for (const item of view.items) {
     assert.equal(item.credit.id, me);

@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CanvasDiff, HolonCanvas, HolonEvent, ReleaseSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
+import type { CanvasDiff, WholeCanvas, WholeEvent, ReleaseSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { usePlace } from "../shared/place.ts";
 import { Icon, Mark } from "../shared/ui.tsx";
-import { DiffView, Flag, Preview, counted, when } from "../holon/parts.tsx";
+import { DiffView, Flag, Preview, counted, when } from "../shared/overview-parts.tsx";
+import { Thumb } from "../shared/Thumb.tsx";
+import { LoadProblem, useLoad, type Report } from "../shared/load.tsx";
+import { goneOf } from "../shared/words.ts";
 
 type Scope = "everyone" | "lab" | "mine";
 const SCOPES: { value: Scope; label: string; hint: string }[] = [
@@ -12,29 +16,6 @@ const SCOPES: { value: Scope; label: string; hint: string }[] = [
 ];
 
 /**
- * A canvas as a picture of itself: every card where it really sits, coloured
- * by its unit's type, with the links between them. Two canvases with the same
- * name look different, and a paper's canvas looks unlike a hand-built one.
- */
-export const Thumb = ({ thumb }: { thumb: RepositoryCanvas["thumb"] }) => {
-  if (thumb.cards.length === 0) return <span className="thumb thumb-empty" aria-hidden="true" />;
-  const pad = Math.max(thumb.width, thumb.height) * 0.04;
-  const centre = (card: RepositoryCanvas["thumb"]["cards"][number]) => [card.x + card.w / 2, card.y + card.h / 2] as const;
-  return (
-    <svg className="thumb" viewBox={`${-pad} ${-pad} ${thumb.width + pad * 2} ${thumb.height + pad * 2}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      {thumb.links.map(([from, to], position) => {
-        const [x1, y1] = centre(thumb.cards[from]!);
-        const [x2, y2] = centre(thumb.cards[to]!);
-        return <line key={position} x1={x1} y1={y1} x2={x2} y2={y2} vectorEffect="non-scaling-stroke" />;
-      })}
-      {thumb.cards.map((card, position) => (
-        <rect key={position} data-base={card.base} x={card.x} y={card.y} width={card.w} height={card.h} rx={Math.min(card.w, card.h) * 0.12} />
-      ))}
-    </svg>
-  );
-};
-
-/**
  * The Library's Canvases tab, grouped by the workspace each canvas lives in.
  * A row is a picture of the canvas's real graph, its title, whether it is a
  * PDF canvas or one people laid out, the papers it draws on and who did most
@@ -42,7 +23,7 @@ export const Thumb = ({ thumb }: { thumb: RepositoryCanvas["thumb"] }) => {
  * narrows the same list, from everyone's canvases to the lab's to your own.
  * A canvas's history, releases and forks open in place, so they fit a 300 px sidebar.
  */
-export const Repository = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+export const Repository = ({ connection, report }: { connection: Connection; report: Report }) => {
   const { call, on } = connection;
   const [canvases, setCanvases] = useState<RepositoryCanvas[] | null>(null);
   const [query, setQuery] = useState("");
@@ -55,7 +36,7 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
   const [name, setName] = useState("");
   const [version, setVersion] = useState(0);
 
-  const refresh = useCallback(() => void call("repository.canvases", {}).then(setCanvases).catch(report), [call, report]);
+  const refresh = useCallback(() => void call("library.canvases", {}).then(setCanvases).catch((error: unknown) => report(error, refresh)), [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", () => {
     refresh();
@@ -77,7 +58,8 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
   const inScope = (value: Scope): number => (canvases ?? []).filter((c) => value === "everyone" || c.mine || (value === "lab" && Boolean(c.lab))).length;
   const titleOf = (id: string) => canvases?.find((c) => c.id === id)?.title ?? "a canvas";
 
-  const show = (id: string) => void call("canvas.show", { id }).catch(report);
+  const place = usePlace();
+  const show = (id: string) => (place.go ? place.go(id) : void call("canvas.show", { id }).catch(report));
   /** One group per workspace: yours first, then your lab's, then anyone else's. */
   const groups = useMemo(() => {
     const rank = { own: 0, lab: 1, other: 2 } as const;
@@ -157,7 +139,7 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
         {held.map((c) => (
           <li key={c.id} data-open={open === c.id}>
             <div className="repo-row">
-              <button type="button" className="repo-main" data-dg={`canvases-open-${c.title}`} data-kind={c.kind} onClick={() => show(c.id)}>
+              <button type="button" className="repo-main" aria-current={c.id === place.current ? "page" : undefined} data-dg={`canvases-open-${c.title}`} data-kind={c.kind} onClick={() => show(c.id)}>
                 <Thumb thumb={c.thumb} />
                 <span className="repo-text">
                 <span className="cvs-title">{c.title}</span>
@@ -241,42 +223,55 @@ const Versions = ({
   connection: Connection;
   canvas: RepositoryCanvas;
   version: number;
-  report: (error: unknown) => void;
+  report: Report;
   onShow: (id: string) => void;
 }) => {
   const { call } = connection;
-  const [history, setHistory] = useState<{ events: HolonEvent[]; releases: ReleaseSummary[] } | null>(null);
+  const [history, setHistory] = useState<{ events: WholeEvent[]; releases: ReleaseSummary[] } | null>(null);
   const [at, setAt] = useState<number | null>(null);
-  const [snapshot, setSnapshot] = useState<HolonCanvas | null>(null);
+  const [snapshot, setSnapshot] = useState<WholeCanvas | null>(null);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [diff, setDiff] = useState<CanvasDiff | null>(null);
   const [from, setFrom] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  useEffect(() => {
-    void call("canvas.history", { id: canvas.id }).then((h) => {
-      setHistory(h);
-      setAt(h.events.length - 1);
-      setFrom(h.releases.at(-1)?.id ?? "");
-    }).catch(report);
-  }, [call, canvas.id, version, report]);
+  const read = useLoad(
+    () =>
+      call("canvas.history", { id: canvas.id }).then((h) => {
+        setHistory(h);
+        setAt(h.events.length - 1);
+        setFrom(h.releases.at(-1)?.id ?? "");
+      }),
+    [call, canvas.id, version],
+  );
   useEffect(() => {
     if (!history || at === null || !history.events[at]) return;
     void call("canvas.at", { id: canvas.id, at: history.events[at]!.at }).then(setSnapshot).catch(report);
   }, [call, canvas.id, history, at, report]);
-  if (!history) return <p className="cvs-meta repo-versions">Reading history…</p>;
+  if (!history) return read.failed !== undefined ? <LoadProblem failed={read.failed} again={read.again} gone={goneOf("canvas")} /> : <p className="cvs-meta repo-versions">Reading history…</p>;
   const release = async () => {
     if (!name.trim()) return;
-    const made = await call("canvas.release", { id: canvas.id, name: name.trim(), ...(note.trim() ? { note: note.trim() } : {}) });
-    setName("");
-    setNote("");
-    setMessage(`Released ${made.name}, pinning ${counted(made.units, "unit")}.`);
+    try {
+      const made = await call("canvas.release", { id: canvas.id, name: name.trim(), ...(note.trim() ? { note: note.trim() } : {}) });
+      setName("");
+      setNote("");
+      setMessage(`Released ${made.name}, pinning ${counted(made.units, "unit")}.`);
+    } catch (error) {
+      report(error);
+    }
   };
-  const fork = async (r: ReleaseSummary) => onShow((await call("canvas.fork", { release: r.id })).id);
+  const fork = async (r: ReleaseSummary) => {
+    try {
+      onShow((await call("canvas.fork", { release: r.id })).id);
+    } catch (error) {
+      report(error);
+    }
+  };
   const event = at !== null ? history.events[at] : undefined;
   return (
     <div className="repo-versions" data-dg="repo-versions">
       <h3>History</h3>
+      <LoadProblem failed={read.failed} again={read.again} gone={goneOf("canvas")} />
       {history.events.length > 1 ? (
         <>
           <input type="range" min={0} max={history.events.length - 1} value={at ?? 0} onChange={(e) => setAt(Number(e.target.value))} aria-label="Move through the canvas's history" />
@@ -313,7 +308,7 @@ const Versions = ({
             <select value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Compare from">
               {history.releases.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
-            <button type="button" disabled={!from} onClick={() => void call("canvas.diff", { canvas: canvas.id, from: from || "now", to: "now" }).then(setDiff).catch(report)} data-dg="diff">Compare</button>
+            <button type="button" disabled={!from} onClick={() => void call("canvas.diff", { id: canvas.id, from: from || "now", to: "now" }).then(setDiff).catch(report)} data-dg="diff">Compare</button>
           </div>
           {diff ? <DiffView diff={diff} /> : null}
         </>

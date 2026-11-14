@@ -21,7 +21,7 @@ Each finding says what was done. "Fixed" means changed in this pass and checked 
 | 11 | **Canvas actions are invisible to Obsidian's commands and hotkeys.** Add node, Tidy, Ask AI and Export exist only inside the frame, with fixed keys | They can't be rebound or found in the command palette | **Fixed 13 Nov.** Add a unit, Tidy, Fit, what cards show, Ask AI, Export, Undo and Redo are commands, offered while a canvas is in front |
 | 12 | **Three names for one thing:** "Open unit search", "Search units", "Unit search" | Small, but it reads as three features | **Fixed** for search: "Search units" everywhere. "Add to canvas" against "Put on {canvas}", and node against unit against card, are still mixed |
 | 13 | **The settings page was two dropdowns** that appeared late | Most choices could only be changed in passing, inside panels | **Fixed.** See below |
-| 14 | **A unit could open as a graph of its own,** three ways: a card button, a double-click and zooming in | It multiplied canvases nobody asked for. A unit is a leaf | **Fixed,** on your direction of 12 November. The button, both gestures, the gesture setting and "Open this note as a holon" are gone. A canvas card inside a canvas still opens |
+| 14 | **A unit could open as a graph of its own,** three ways: a card button, a double-click and zooming in | It multiplied canvases nobody asked for. A unit is a leaf | **Fixed,** on your direction of 12 November. The button, both gestures, the gesture setting and "Open this note as a whole" are gone. A canvas card inside a canvas still opens |
 | 15 | **The canvas picker was a list of titles** | Twenty canvases called "Tension map" look the same | **Fixed.** Each canvas is drawn as its real layout, with its title and whether it came from a PDF or is a workspace, in the Library and in the canvas-name menu |
 
 ## Found by using it: three papers, one session (12 November)
@@ -38,7 +38,7 @@ Three reservoir computing papers were read in through Extract graph, then used t
 | 21 | **A claim that rests on other claims showed no Method at all** | "A claim nothing supports yet" beside five supporting claims from three papers | **Fixed.** "Rests on" follows the claims down to evidence, runs and papers |
 | 22 | **A paper's units said "Made by" the person who imported them,** and its runs showed the import date as when they ran | Carroll's claim read as Dana Lee's, made today | **Fixed.** "Read from a paper by" its authors. Runs from a paper say "reported" and name the paper |
 | 23 | **A run's page listed one claim several times,** once for each piece of evidence that carried it there | A list of six that was really four | **Fixed** |
-| 24 | **Every canvas carried "Not part of the holarchy yet. Make it a holon's canvas"** | Jargon on every paper, against your direction on holons | **Fixed.** The line is gone. The same choice is in the Boundary menu |
+| 24 | **Every canvas carried "Not part of the holarchy yet. Make it a whole's canvas"** | Jargon on every paper, against your direction on wholes | **Fixed.** The line is gone. The same choice is in the Boundary menu |
 | 25 | **After Extract graph in the reader, the canvas opened over the reader** | The paper and its graph belong side by side | **Fixed.** A canvas opened while a reader is open goes beside it. Run pages reuse one tab |
 | 26 | **A paper's canvas opens at 70%, showing a corner of it,** and Fit on a 36-card paper lands near 20% | The first view is neither an overview nor readable. Tidy Logic leaves a tall graph with long method links | **Open.** Method cards (eight per run here) could fold into their run on a paper's canvas |
 | 27 | **Search marks small words** such as "of" on their own | Yellow noise in every result | **Open** |
@@ -65,7 +65,7 @@ Three reservoir computing papers were read in through Extract graph, then used t
 | 38 | **Notes on a canvas were unsigned** | Nobody could tell whose a sticky note was | **Fixed.** Each shows who wrote it and when |
 | 39 | **Initials did nothing** | A credit mark was a picture, not a way to the person | **Fixed.** Hover for a card, click for the profile |
 | 40 | **The date on a card had no time** | Two units made the same day couldn't be told apart in order | **Fixed** |
-| 41 | **"Holon" was still in menus, tab titles, tooltips and empty states** | "Holons", "Holon boundary", "This canvas isn't a holon's view yet" | **Fixed.** The tab is Overview, the panel is Boundary, and the sentences say question, claim and lab |
+| 41 | **"Whole" was still in menus, tab titles, tooltips and empty states** | "Wholes", "Whole boundary", "This canvas isn't a whole's view yet" | **Fixed.** The tab is Overview, the panel is Boundary, and the sentences say question, claim and lab |
 | 42 | **A profile's history can be long and has no filter** | 150 lines, newest first, by day | **Open.** A filter by kind of action, or by canvas, would help |
 | 43 | **In the profile, a relation reads "Said this supports"** with the two units under it | The sentence and its objects are split across lines | **Open** |
 | 44 | **The From Zotero dialog lists a picture as a greyed row** | It can't be brought in | **Open,** until figures have a home |
@@ -96,5 +96,5 @@ Still to add, as each feature lands: the folder for dropped PDFs (it is a consta
 ## How this was checked
 
 - `harness/guide-test.mjs`: 23 checks in real Obsidian covering the picker, the Library scopes, Method, Ask AI, runs and settings.
-- `harness/holons-test.mjs`: 12 of 12, rewritten for units as leaves.
+- `harness/overview-test.mjs`: 12 of 12, rewritten for units as leaves.
 - `harness/search-test.mjs`, `pdf-test.mjs`, `slice-test.mjs`: 28, 28 and 35, all passing after the changes.

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { NodeSummary, NotebookFile, NotebookImported, RunOutput, RunPage, SurfaceMethods } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Chip, Icon, plain } from "../shared/ui.tsx";
-import { sizeOf } from "../shared/words.ts";
+import { LoadProblem, useLoad } from "../shared/load.tsx";
+import { goneOf, sayOf, sizeOf } from "../shared/words.ts";
 
 const DRIFT = { changed: "edited since this run", missing: "not in this graph" };
 
@@ -58,20 +59,17 @@ const Output = ({ output, onOpen, onEvidence }: { output: RunOutput; onOpen: Ope
 const Page = ({ connection, id, onBack }: { connection: Connection; id: string; onBack: () => void }) => {
   const { call, on } = connection;
   const [page, setPage] = useState<RunPage | null>(null);
-  const [problem, setProblem] = useState("");
   const [cells, setCells] = useState(false);
   const [notice, setNotice] = useState("");
+  const report = (error: unknown): void => setNotice(sayOf(error));
 
-  const load = useCallback(() => {
-    void call("process.run", { id })
-      .then(setPage)
-      .catch((error: Error) => setProblem(error.message));
-  }, [call, id]);
-  useEffect(load, [load]);
-  useEffect(() => on("graph-changed", load), [on, load]);
+  const load = useCallback(() => call("run.get", { id }).then(setPage), [call, id]);
+  const { failed, again } = useLoad(load, [load]);
+  useEffect(() => on("graph-changed", again), [on, again]);
 
   const open: Open = (unit) => {
-    void call("focus.set", { node: unit });
+    void call("focus.set", { id: unit }).catch(report);
+    // Dropped: a base with nowhere to put the panel still moved the focus, which is what was asked.
     void call("panel.open", { surface: "context" }).catch(() => {});
   };
   const evidence = (output: string) =>
@@ -80,9 +78,9 @@ const Page = ({ connection, id, onBack }: { connection: Connection; id: string; 
         setNotice(`Made “${plain(made.title)}”. It is offered to the open canvas, and it's in the units drawer.`);
         open(made.id);
       })
-      .catch((error: Error) => setNotice(error.message));
+      .catch(report);
 
-  if (problem) return <main className="run"><p className="run-warn" role="alert">{problem}</p><button type="button" onClick={onBack}>All runs and notebooks</button></main>;
+  if (failed !== undefined) return <main className="run"><LoadProblem failed={failed} again={again} gone={goneOf("run")} className="run-warn" /><button type="button" onClick={onBack}>All runs and notebooks</button></main>;
   if (!page) return <main className="run" aria-busy="true" />;
   const { run, study, protocol } = page;
 
@@ -99,7 +97,7 @@ const Page = ({ connection, id, onBack }: { connection: Connection; id: string; 
         {page.agents.length ? <p className="run-meta">Carried out by {page.agents.map(who).join(", ")}</p> : null}
         <div className="run-actions">
           <button type="button" data-dg="run-context" onClick={() => open(run.id)}><Icon name="context" /> Show in Context</button>
-          <button type="button" data-dg="run-place" onClick={() => void call("canvas.place", { node: run.id })}><Icon name="canvas" /> Add to canvas</button>
+          <button type="button" data-dg="run-place" onClick={() => void call("canvas.place", { unit: run.id }).catch(report)}><Icon name="canvas" /> Add to canvas</button>
         </div>
         {page.problems.length ? (
           <ul className="run-problems" data-dg="run-problems">
@@ -137,7 +135,7 @@ const Page = ({ connection, id, onBack }: { connection: Connection; id: string; 
             <p className="run-meta">A paper reports this run, so its design is in the paper and not in this graph.</p>
             {page.reportedIn.source ? <Unit unit={page.reportedIn.source} onOpen={open} dg="run-source" /> : null}
             {page.reportedIn.paper ? (
-              <button type="button" className="run-act" data-dg="run-paper" onClick={() => void call("canvas.show", { id: page.reportedIn!.paper!.canvas })}>
+              <button type="button" className="run-act" data-dg="run-paper" onClick={() => void call("canvas.show", { id: page.reportedIn!.paper!.canvas }).catch(report)}>
                 <Icon name="canvas" /> Open {page.reportedIn.paper.label}'s canvas
               </button>
             ) : null}
@@ -275,12 +273,9 @@ const Chooser = ({ connection, onOpen }: { connection: Connection; onOpen: Open 
   const [said, setSaid] = useState<{ text: string; run?: string } | null>(null);
   const [text, setText] = useState(false);
 
-  const load = useCallback(() => {
-    void call("notebook.list", {}).then(setFiles).catch(() => setFiles([]));
-    void call("run.list", {}).then(setRuns).catch(() => {});
-  }, [call]);
-  useEffect(load, [load]);
-  useEffect(() => on("graph-changed", load), [on, load]);
+  const notebooks = useLoad(() => call("notebook.list", {}).then(setFiles), [call]);
+  const listed = useLoad(() => call("run.list", {}).then(setRuns), [call]);
+  useEffect(() => on("graph-changed", () => (notebooks.again(), listed.again())), [on, notebooks.again, listed.again]);
 
   const tell = (made: NotebookImported): string => {
     const outputs = `${made.outputs.length} ${made.outputs.length === 1 ? "output" : "outputs"}`;
@@ -295,7 +290,7 @@ const Chooser = ({ connection, onOpen }: { connection: Connection; onOpen: Open 
       const made = await call("notebook.import", { ref: file.ref, text });
       setSaid({ text: tell(made), run: made.run.id });
     } catch (error) {
-      setSaid({ text: error instanceof Error ? error.message : String(error) });
+      setSaid({ text: sayOf(error) });
     } finally {
       setBusy("");
     }
@@ -315,6 +310,7 @@ const Chooser = ({ connection, onOpen }: { connection: Connection; onOpen: Open 
             {said.text} {said.run ? <button type="button" className="run-inline" data-dg="notebook-open-run" onClick={() => onOpen(said.run!)}>Open the run</button> : null}
           </p>
         ) : null}
+        <LoadProblem failed={notebooks.failed} again={notebooks.again} className="run-warn" dg="notebooks-problem" />
         {files && files.length === 0 ? <p className="run-none">No .ipynb files here yet. Save or copy a notebook into this base, and it appears in this list.</p> : null}
         <ul className="run-files">
           {(files ?? []).map((file) => (
@@ -332,7 +328,8 @@ const Chooser = ({ connection, onOpen }: { connection: Connection; onOpen: Open 
       </section>
       <section className="run-section">
         <h2>Runs <span>{runs.length}</span></h2>
-        {runs.length === 0 ? <p className="run-none">No runs yet.</p> : null}
+        <LoadProblem failed={listed.failed} again={listed.again} className="run-warn" dg="runs-problem" />
+        {runs.length === 0 && listed.failed === undefined ? <p className="run-none">No runs yet.</p> : null}
         <ul className="run-list">
           {runs.map((item) => (
             <li key={item.run.id}>

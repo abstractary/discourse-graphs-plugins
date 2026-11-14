@@ -1,6 +1,8 @@
 import type { BaseNodeType, DgId, HostRef, NodeTypeRecord } from "./records.ts";
-import type { Result } from "./host.ts";
-import type { SurfacePort } from "./surface.ts";
+import type { HostInfo, Result } from "./host.ts";
+import type { AiModel, AiSettings } from "./llm.ts";
+import type { LibraryStatus } from "./scholarly.ts";
+import type { CanvasCommand, CrateImported, NotebookImported, Prefs, SurfaceMethods, SurfacePort } from "./surface.ts";
 
 export type CaptureRequest = {
   text: string;
@@ -30,6 +32,7 @@ export type Examples = {
 
 /** What the adapter's native UI calls. The panel is not involved in any of it. */
 export type CoreForAdapter = {
+  info: HostInfo;
   stop: () => void;
   nodeTypes: () => NodeTypeRecord[];
   capture: (request: CaptureRequest) => Promise<Result<Captured>>;
@@ -74,6 +77,12 @@ export type CoreForAdapter = {
   answerBreadcrumb: (args: { paper: string; leave: boolean; remember?: boolean }) => Promise<void>;
   /** Takes back what a walkthrough made. Anything else stays. */
   removeExamples: (examples: Examples) => Promise<void>;
+  /** The newest unit with exactly this title, for a guide that made one and needs to find it again. */
+  unitTitled: (title: string) => DgId | null;
+  /** The text in this base that belongs to a unit, when it has one. */
+  textOfUnit: (id: DgId) => HostRef | null;
+  /** The relation standing from one unit to another, when there is one. */
+  relationBetween: (source: DgId, target: DgId) => DgId | null;
   /** Asks a surface where something is. Null when it isn't showing. */
   locate: (args: {
     surface: string;
@@ -84,4 +93,34 @@ export type CoreForAdapter = {
     port: SurfacePort;
     onReport?: (report: unknown) => void;
   }) => () => void;
+  /** Passes on something the base's command palette or a hotkey asked of one canvas. */
+  command: (canvas: DgId, name: CanvasCommand) => void;
+  showCanvas: (id: DgId) => Promise<null>;
+  /** A unit's title, for a tab that shows one. */
+  unitTitle: (id: DgId) => string | null;
+  /** Reads a saved Jupyter notebook in the base into Code, a Run and its Outputs. */
+  importNotebook: (args: { ref: string; text?: boolean }) => Promise<NotebookImported>;
+  /** The saved extraction beside a paper's file, and reading the paper into a graph. */
+  savedExtraction: (args: SurfaceMethods["paper.saved"]["params"]) => Promise<SurfaceMethods["paper.saved"]["result"]>;
+  extractPaper: (args: SurfaceMethods["paper.extract"]["params"]) => Promise<SurfaceMethods["paper.extract"]["result"]>;
+  /** Reads a research crate the base holds into the graph. */
+  importCrate: (args: { ref: string }) => Promise<CrateImported>;
+  /**
+   * What a base's own settings screen reads and changes: a person's choices, the
+   * model setup, the usage log, and whether the reference library can be reached.
+   */
+  prefs: () => Promise<Prefs>;
+  setPrefs: (changes: Partial<Prefs>) => Promise<Prefs>;
+  badgesOn: () => boolean;
+  usageCount: () => number;
+  clearUsage: () => Promise<void>;
+  zoteroStatus: () => Promise<LibraryStatus>;
+  /** Whether the reference library is the PDF library, and how many PDFs it holds. */
+  pdfLibrary: () => Promise<{ on: boolean; wanted: boolean; reachable: boolean; files: number; problem?: string }>;
+  ai: {
+    settings: () => Promise<AiSettings>;
+    configure: (changes: SurfaceMethods["ai.configure"]["params"]) => Promise<AiSettings>;
+    models: (args: SurfaceMethods["ai.models"]["params"]) => Promise<AiModel[]>;
+    test: () => Promise<{ ok: boolean; message: string; model?: string }>;
+  };
 };

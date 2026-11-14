@@ -1,8 +1,10 @@
 import { ApiError, isObject } from './http.ts';
-import type { Context, Route } from './http.ts';
+import type { Context, Route, Sent } from './http.ts';
+import { at } from './routes.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
 import type { Graph } from './types.ts';
+import type { StoreGraphRequest, StoreGraphResponse } from './wire.gen.ts';
 
 const FILE_FIELDS = ['file', 'fileBase64', 'dataBase64'];
 
@@ -46,8 +48,8 @@ function summary({ doi, title, schema, model, storedAt, graph }: StoredGraph): R
   return { doi, title, schema, model, storedAt, nodes: graph.nodes.length, edges: graph.edges.length };
 }
 
-async function storeGraph({ readJson }: Context, store: Store): Promise<unknown> {
-  const body = await readJson();
+async function storeGraph({ readJson }: Context, store: Store): Promise<StoreGraphResponse> {
+  const body: Sent<StoreGraphRequest> = await readJson();
   const doi = normalizeDoi(body.doi);
   if (!doi) {
     throw new ApiError(400, 'no-doi', 'The graph store only keeps papers with a DOI. Send "doi", or keep this graph local.');
@@ -87,7 +89,7 @@ function listGraphs({ query }: Context, store: Store): unknown {
 
 export function graphRoutes(store: Store): Route[] {
   return [
-    { method: 'POST', path: '/v1/graphs', handler: (context) => storeGraph(context, store) },
-    { method: 'GET', path: '/v1/graphs', handler: (context) => listGraphs(context, store) },
+    { ...at('storeGraph'), handler: (context) => storeGraph(context, store) },
+    { ...at('listGraphs'), handler: (context) => listGraphs(context, store) },
   ];
 }

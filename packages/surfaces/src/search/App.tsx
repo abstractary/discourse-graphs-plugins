@@ -3,6 +3,7 @@ import type { ProposalGroup, ProposalItem, Candidate, NodeView, SearchCarry, Sea
 import type { Connection } from "../shared/rpc.ts";
 import { Highlighted, Icon, plain } from "../shared/ui.tsx";
 import { DRAG_TYPE, HitBody, MOD, useOpenCanvas, useSearch } from "./parts.tsx";
+import { sayOf } from "../shared/words.ts";
 
 /**
  * Unit search, in a side panel that stays while a person works. Results show
@@ -44,7 +45,7 @@ const Proposals = ({ call, on, say }: { call: Connection["call"]; on: Connection
   const [groups, setGroups] = useState<ProposalGroup[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const load = useCallback(() => void call("proposal.list", {}).then(setGroups).catch(() => setGroups([])), [call]);
+  const load = useCallback(() => void call("proposal.list", {}).then(setGroups).catch((error: unknown) => (setGroups([]), say(sayOf(error)))), [call, say]);
   useEffect(load, [load]);
   useEffect(() => on("graph-changed", load), [on, load]);
   const waiting = groups.map((group) => ({ ...group, items: group.items.filter((item) => item.state === "waiting") })).filter((group) => group.items.length > 0);
@@ -52,9 +53,9 @@ const Proposals = ({ call, on, say }: { call: Connection["call"]; on: Connection
   if (count === 0) return null;
   const decide = (ids: string[], decision: "accept" | "reject"): void => {
     setBusy(true);
-    void call("proposal.decide", { ids, decision })
+    void call(decision === "accept" ? "proposal.accept" : "proposal.reject", { ids })
       .then((next) => (setGroups(next), say(decision === "accept" ? `Accepted ${ids.length}. ${ids.length === 1 ? "It is" : "They are"} yours now.` : `Turned down ${ids.length}.`)))
-      .catch((error: Error) => (say(error.message), load()))
+      .catch((error: unknown) => (say(sayOf(error)), load()))
       .finally(() => setBusy(false));
   };
   return (
@@ -98,7 +99,7 @@ const Candidates = ({ call, on, say }: { call: Connection["call"]; on: Connectio
   const [list, setList] = useState<Candidate[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState("");
-  const load = useCallback(() => void call("candidate.list", {}).then((found) => setList(found.candidates)).catch(() => setList([])), [call]);
+  const load = useCallback(() => void call("candidate.list", {}).then((found) => setList(found.candidates)).catch((error: unknown) => (setList([]), say(sayOf(error)))), [call, say]);
   useEffect(load, [load]);
   useEffect(() => on("graph-changed", load), [on, load]);
   if (list.length === 0) return null;
@@ -124,7 +125,7 @@ const Candidates = ({ call, on, say }: { call: Connection["call"]; on: Connectio
                     setBusy(key);
                     void call("candidate.promote", { ref: item.ref, line: item.line, type: item.type, text: item.text })
                       .then((unit) => say(`Made ${item.typeLabel}: ${unit.title}`))
-                      .catch((error: Error) => say(error.message))
+                      .catch((error: unknown) => say(sayOf(error)))
                       .finally(() => (setBusy(""), load()));
                   }}
                 >
@@ -152,7 +153,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [preview, setPreview] = useState<NodeView | null>(null);
   const [notice, setNotice] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  const report = useCallback((error: unknown) => setNotice(error instanceof Error ? error.message : String(error)), []);
+  const report = useCallback((error: unknown) => setNotice(sayOf(error)), []);
 
   const carry = useCallback((query: SearchCarry) => {
     setText(query.text ?? "");
@@ -192,7 +193,8 @@ export const App = ({ connection }: { connection: Connection }) => {
   useEffect(() => {
     if (!shown) return setPreview(null);
     let live = true;
-    void call("node.view", { id: shown }).then((view) => live && setPreview(view)).catch(() => live && setPreview(null));
+    // Dropped: the preview closes. A hit that was just removed leaves the list on its next read.
+    void call("unit.get", { id: shown }).then((view) => live && setPreview(view)).catch(() => live && setPreview(null));
     return () => {
       live = false;
     };
@@ -200,16 +202,16 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   const open = (hit: SearchHit) => {
     if (hit.node.hasText) void call("base.reveal", { id: hit.node.id, placement: "main" }).catch(report);
-    else void call("focus.set", { node: hit.node.id }).then(() => call("panel.open", { surface: "context" })).catch(report);
+    else void call("focus.set", { id: hit.node.id }).then(() => call("panel.open", { surface: "context" })).catch(report);
   };
-  const context = (id: string) => void call("focus.set", { node: id }).then(() => call("panel.open", { surface: "context" })).catch(report);
+  const context = (id: string) => void call("focus.set", { id: id }).then(() => call("panel.open", { surface: "context" })).catch(report);
   const link = (id: string) =>
-    void call("node.insertLink", { id })
+    void call("unit.insertLink", { id })
       .then(() => setNotice("Linked at your cursor"))
-      .catch((error: Error) => setNotice(/cursor/i.test(error.message) ? "Click into a note first, then link." : error.message));
+      .catch((error: Error) => setNotice(/cursor/i.test(error.message) ? "Click into a note first, then link." : sayOf(error)));
   const put = (ids: string[]) => {
     if (!canvas) return;
-    void call("units.put", { canvas: canvas.id, nodes: ids })
+    void call("unit.put", { canvas: canvas.id, units: ids })
       .then(({ placed, already }) => {
         const where = canvas.title;
         if (placed.length && already.length) setNotice(`Put ${placed.length} on ${where}. ${already.length} already there.`);

@@ -34,6 +34,7 @@ import { baseOf, cidOfBytes, ensureProcessTypes, protocolCids, provenanceOf } fr
 import { CRATE_VERSIONS, LICENSE_CHOICES, cratePreview, crateReadme, toRoCrate, type CrateCheck, type CrateEntry, type CrateFile } from "./rocrate.ts";
 import { ZENODO, toZenodo } from "./zenodo.ts";
 import { unzip, zip } from "./zip.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 /**
  * Research crates in and out. Going out, a canvas or a set of units becomes
@@ -510,7 +511,7 @@ export const crateFeature = (context: Context, { secrets, checksOf = () => [] }:
     const graph = context.graph();
     const canvasRecord = canvas ? context.canvasOf(canvas) : undefined;
     const start = asked?.length ? asked : canvas ? unitsOnCanvas(canvas) : [];
-    if (start.length === 0) throw new Error("There are no units to put in a crate. Add some to the canvas first.");
+    if (start.length === 0) throw refuse("no-target", "There are no units to put in a crate. Add some to the canvas first.");
     const nodes = withProvenance(graph, start);
     const records = nodes.flatMap((id) => (context.nodeOf(id) ? [context.nodeOf(id)!] : []));
     const papers = [...new Set(records.flatMap((node) => (node.source ? [node.source.paper] : [])))].flatMap((id) => {
@@ -778,13 +779,13 @@ export const crateFeature = (context: Context, { secrets, checksOf = () => [] }:
     "crate.export": async (params): Promise<CrateExported> => {
       const { archive, fileName, mediaType, summary } = await pack(await gather(params), params);
       const saved = await context.host.saveFile({ name: fileName, mediaType, dataBase64: toBase64(archive) });
-      if (!saved.ok) throw new Error(saved.error.message);
+      if (!saved.ok) throw refusalOf(saved.error);
       return { where: saved.value.where, ...summary };
     },
 
     "deposit.settings": depositSettings,
     "deposit.configure": async ({ sandbox = false, token }) => {
-      if (!secrets) throw new Error("This base has nowhere to keep a token.");
+      if (!secrets) throw refuse("unavailable", "This base has nowhere to keep a token.");
       const value = token?.trim() || null;
       await secrets.set(tokenId(sandbox), value);
       const kept = await hints();
@@ -795,16 +796,16 @@ export const crateFeature = (context: Context, { secrets, checksOf = () => [] }:
     },
     "crate.deposit": async ({ sandbox = false, ...params }): Promise<CrateDeposited> => {
       const place = sandbox ? ZENODO.sandbox : ZENODO.live;
-      if (!context.services) throw new Error(`${place.name} can't be reached from here.`);
+      if (!context.services) throw refuse("unavailable", `${place.name} can't be reached from here.`);
       const token = await secrets?.get(tokenId(sandbox));
-      if (!token) throw new Error(`Add a token for ${place.name} first.`);
+      if (!token) throw refuse("no-target", `Add a token for ${place.name} first.`);
       const gathered = await gather(params);
       // The draft comes first, because it reserves the DOI the crate then names as its own.
       const draft = await context.services.deposit.open({ server: place.server, token, metadata: toZenodo(gathered.described) });
       const { archive, fileName, mediaType, summary } = await pack(gathered, { ...params, format: "zip" }, draft.doi);
       // A copy stays in the base whatever happens next, so a failed upload loses nothing.
       const saved = await context.host.saveFile({ name: fileName, mediaType, dataBase64: toBase64(archive) });
-      if (!saved.ok) throw new Error(saved.error.message);
+      if (!saved.ok) throw refusalOf(saved.error);
       await context.setLocal(DRAFTS_KEY, [{ name: gathered.name, page: draft.page, ...(draft.doi ? { doi: draft.doi } : {}), at: gathered.published, sandbox }, ...(await drafts())].slice(0, 50));
       await context.services.deposit.upload({ bucket: draft.bucket, token, name: fileName, bytes: archive });
       return { where: saved.value.where, ...summary, page: draft.page, ...(draft.doi ? { doi: draft.doi } : {}), sandbox };
@@ -812,7 +813,7 @@ export const crateFeature = (context: Context, { secrets, checksOf = () => [] }:
 
     "crate.import": async ({ ref }): Promise<CrateImported> => {
       const asset = await context.host.readAsset({ ref });
-      if (!asset.ok) throw new Error(asset.error.message);
+      if (!asset.ok) throw refusalOf(asset.error);
       const bytes = fromBase64(asset.value.dataUrl.split(",")[1] ?? "");
       const isJson = /\.json(ld)?$/i.test(asset.value.name);
       let entries: { path: string; bytes: Uint8Array }[] = [];

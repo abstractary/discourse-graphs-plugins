@@ -4,6 +4,7 @@ import { newestGraph, normalizeDoi } from './graphs.ts';
 import type { StoredGraph } from './graphs.ts';
 import { ApiError, isObject, publicBase } from './http.ts';
 import type { Context, Route } from './http.ts';
+import { ROUTES, at } from './routes.ts';
 import { INBOX_REL, inboxUrl } from './notify.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
@@ -59,7 +60,7 @@ function readAuthors(authors: unknown): Work['authors'] {
 function describeWork(entry: StoredGraph, base: string): Work {
   // Graphs stored by an older plugin may have no paper block at all.
   const paper = isObject(entry.graph.paper) ? entry.graph.paper : undefined;
-  const landing = `${base}/works/${encodeDoi(entry.doi)}`;
+  const landing = base + ROUTES.work.path.replace('*doi', encodeDoi(entry.doi));
   const license = typeof paper?.license === 'string' && paper.license.trim() ? paper.license.trim() : undefined;
   const models = Array.isArray(entry.graph.models) ? entry.graph.models.filter((model) => typeof model === 'string') : [];
   return {
@@ -280,7 +281,7 @@ function findWork(store: Store, path: string): { entry: StoredGraph; part?: stri
 function serveWork({ req, res, params }: Context, config: Config, store: Store): void {
   const found = findWork(store, params.doi);
   if (!found) {
-    throw new ApiError(404, 'not-found', 'No graph is stored for this DOI. List the stored ones with GET /v1/graphs.');
+    throw new ApiError(404, 'not-found', `No graph is stored for this DOI. List the stored ones with GET ${ROUTES.listGraphs.path}.`);
   }
   const work = describeWork(found.entry, publicBase(req, config.publicUrl));
   const toLinkset = linksetLink(work);
@@ -299,5 +300,5 @@ function serveWork({ req, res, params }: Context, config: Config, store: Store):
 }
 
 export function signpostingRoutes(config: Config, store: Store): Route[] {
-  return [{ method: 'GET', path: '/works/*doi', handler: (context) => serveWork(context, config, store) }];
+  return [{ ...at('work'), handler: (context) => serveWork(context, config, store) }];
 }

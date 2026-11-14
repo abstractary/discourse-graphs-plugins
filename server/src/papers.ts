@@ -1,14 +1,13 @@
 import type { ServerResponse } from 'node:http';
 import { requireMember } from './auth.ts';
 import { ApiError, decodeBase64, isObject, requirePerson, requireString } from './http.ts';
-import type { Context, Route } from './http.ts';
+import type { Context, Route, Sent } from './http.ts';
+import { at } from './routes.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
-import type { Person } from './types.ts';
+import type { Breadcrumb, LeaveBreadcrumbRequest, LeaveBreadcrumbResponse, UploadPaperRequest } from './wire.gen.ts';
 
 const PAPER_FIELDS = ['id', 'title', 'doi', 'filename', 'model', 'schema', 'server', 'canvas', 'uploadedBy', 'extractedBy'];
-
-type Breadcrumb = Person & { at: string };
 
 type StoredPaper = Record<string, unknown> & {
   id: string;
@@ -56,7 +55,7 @@ function sendFile(res: ServerResponse, file: Buffer, paper: StoredPaper): void {
 
 async function uploadPaper({ req, params, readJson }: Context, store: Store): Promise<unknown> {
   requireMember(req, store, params.id);
-  const body = await readJson();
+  const body: Sent<UploadPaperRequest> = await readJson();
   if (!isObject(body.paper)) throw new ApiError(400, 'no-paper', 'Send "paper" as an object with at least an id.');
   if (!isObject(body.graph)) throw new ApiError(400, 'no-graph', 'Send "graph" with the extraction graph for this paper.');
   const id = requireString(body.paper.id, 'id');
@@ -96,9 +95,10 @@ function getFile({ req, res, params }: Context, store: Store): void {
   sendFile(res, file, paper);
 }
 
-async function leaveBreadcrumb({ req, params, readJson }: Context, store: Store): Promise<unknown> {
+async function leaveBreadcrumb({ req, params, readJson }: Context, store: Store): Promise<LeaveBreadcrumbResponse> {
   requireMember(req, store, params.id);
-  const person = requirePerson((await readJson()).person);
+  const body: Sent<LeaveBreadcrumbRequest> = await readJson();
+  const person = requirePerson(body.person);
   const index = readIndex(store, params.id);
   const paper = paperOr404(index, params.paperId);
   paper.breadcrumbs = [
@@ -111,17 +111,16 @@ async function leaveBreadcrumb({ req, params, readJson }: Context, store: Store)
 
 export function paperRoutes(store: Store): Route[] {
   return [
-    { method: 'POST', path: '/v1/labs/:id/papers', handler: (context) => uploadPaper(context, store) },
+    { ...at('uploadPaper'), handler: (context) => uploadPaper(context, store) },
     {
-      method: 'GET',
-      path: '/v1/labs/:id/papers',
+      ...at('labPapers'),
       handler: ({ req, params }) => {
         requireMember(req, store, params.id);
         return { papers: readIndex(store, params.id).papers };
       },
     },
-    { method: 'GET', path: '/v1/labs/:id/papers/:paperId', handler: (context) => getPaper(context, store) },
-    { method: 'GET', path: '/v1/labs/:id/papers/:paperId/file', handler: (context) => getFile(context, store) },
-    { method: 'POST', path: '/v1/labs/:id/papers/:paperId/breadcrumbs', handler: (context) => leaveBreadcrumb(context, store) },
+    { ...at('getPaper'), handler: (context) => getPaper(context, store) },
+    { ...at('paperFile'), handler: (context) => getFile(context, store) },
+    { ...at('leaveBreadcrumb'), handler: (context) => leaveBreadcrumb(context, store) },
   ];
 }

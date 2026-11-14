@@ -54,7 +54,7 @@ A workspace other than your own or your lab's shows as "Another workspace". Reco
 
 ## Looking a work up
 
-**Look it up** asks the open registries about the paper behind a unit. Nothing is asked until you click. Only the paper's identifiers and title are sent, with no key, no email address and nothing about you.
+**Look it up** asks the open registries about the paper behind a unit. Nothing is asked until you click. Only the paper's identifiers are sent, or its title when it has none a registry knows, with no key, no email address and nothing about you.
 
 | Registry | Asked when | Gives |
 |---|---|---|
@@ -237,13 +237,12 @@ No real repository has been sent anything. The tests send to a stand-in, and the
 
 ## What leaves your device
 
-| You do this | This goes | To |
-|---|---|---|
-| Look a paper up | Its identifiers and title | doi.org, Crossref or DataCite, OpenAlex, PubMed, and the paper's own page |
-| Open an identifier | Nothing from the app. Your browser opens the link | Wherever it resolves |
-| Export a crate | Nothing. The archive is saved in your vault | — |
-| Announce a unit | Your name, your id, the unit's address and the paper's DOI | The inbox the paper's page names |
-| Import a crate | Nothing | — |
+[what-leaves-the-device.md](what-leaves-the-device.md) is the full account, for every part of the software. For what this page covers:
+
+- **Look it up** sends the paper's identifiers to doi.org, Crossref or DataCite, OpenAlex, PubMed and the paper's own page. The title goes to Crossref only when the paper has no identifier a registry knows.
+- **Exporting or importing a crate** sends nothing. **Also start a draft on Zenodo** sends the crate's description, the archive and your token to Zenodo.
+- **Announcing a unit** sends your name and id, your lab server's address, the unit's id and the paper's DOI to the inbox the paper's page names.
+- **In a lab,** the Context panel asks your lab's server what it has been told about the unit and its paper.
 
 ## How the parts depend on each other
 

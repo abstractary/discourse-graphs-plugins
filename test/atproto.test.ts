@@ -3,11 +3,10 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { Lexicons } from "@atproto/lexicon";
-import { createCore } from "@dg/core/index.ts";
 import { memoryKeys } from "@dg/core/identity.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import { assertRelation, createCanvas, createCanvasItem, revise } from "@dg/contract/records.ts";
 import { atUriOf, cidOf, toAtRecord, unitIdOf } from "@dg/contract/atproto.ts";
+import { makeCore } from "./support.ts";
 
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((name) => {
@@ -25,8 +24,7 @@ const lexicons = (): Lexicons => {
 };
 
 const setup = async () => {
-  const store = createMemoryStore();
-  const ready = await createCore({ host: createMemoryHost({ store }).host, keys: memoryKeys() });
+  const { store, core: ready } = await makeCore({ keys: memoryKeys() });
   return { store, ready };
 };
 

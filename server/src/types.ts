@@ -1,4 +1,4 @@
-export type Person = { did: string; name: string };
+export type { Person } from './wire.gen.ts';
 
 export type GraphNode = {
   id: string;

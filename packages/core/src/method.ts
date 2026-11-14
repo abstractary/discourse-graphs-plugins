@@ -21,6 +21,7 @@ import {
   type Pinned,
 } from "./process.ts";
 import { shapeProblems, type ShapeProblem } from "./shapes.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 /**
  * How a result was made, for the panels: the chain behind a unit, one run as
@@ -30,9 +31,9 @@ import { shapeProblems, type ShapeProblem } from "./shapes.ts";
  * bytes are still the ones recorded.
  */
 
-type Value<T> = { ok: true; value: T } | { ok: false; error: { message: string } };
+type Value<T> = { ok: true; value: T } | { ok: false; error: { message: string; code?: import("@dg/contract/host.ts").HostErrorCode; ref?: string } };
 const value = <T>(result: Value<T>): T => {
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok) throw refusalOf(result.error);
   return result.value;
 };
 
@@ -128,7 +129,7 @@ export const methodFeature = (
 
   const method = async (id: DgId): Promise<MethodView> => {
     const node = context.nodeOf(id);
-    if (!node) throw new Error("That unit isn't in this graph.");
+    if (!node) throw refuse("not-found", "That unit isn't in this graph.");
     const graph = context.graph();
     const cids = await protocolCids(graph);
     const kind = base(node);
@@ -361,12 +362,12 @@ export const methodFeature = (
   };
 
   const mine = (node: NodeRecord): void => {
-    if (node.by.id !== context.me().id) throw new Error(`Only ${node.by.name} can change this unit.`);
+    if (node.by.id !== context.me().id) throw refuse("read-only", `Only ${node.by.name} can change this unit.`);
   };
 
-  const handlers: Pick<Handlers, "process.method" | "process.run" | "run.show" | "run.list" | "process.setFacts" | "notebook.list" | "notebook.import" | "evidence.fromOutput"> = {
-    "process.method": ({ id }) => method(id),
-    "process.run": ({ id, previews = true }) => runPage(id, previews),
+  const handlers: Pick<Handlers, "method.get" | "run.get" | "run.show" | "run.list" | "method.setFacts" | "notebook.list" | "notebook.import" | "evidence.fromOutput"> = {
+    "method.get": ({ id }) => method(id),
+    "run.get": ({ id, previews = true }) => runPage(id, previews),
     "run.show": async ({ id }) => {
       value(await context.host.openSurface({ route: { surface: "run", ...(id ? { id } : {}) }, placement: "main" }));
       return null;
@@ -385,9 +386,9 @@ export const methodFeature = (
         }))
         .sort((a, b) => b.at.localeCompare(a.at)),
 
-    "process.setFacts": async ({ id, facts, links }) => {
+    "method.setFacts": async ({ id, facts, links }) => {
       const node = context.nodeOf(id);
-      if (!node) throw new Error("That unit isn't in this graph.");
+      if (!node) throw refuse("not-found", "That unit isn't in this graph.");
       mine(node);
       const kind = base(node);
       const allowed: Record<string, (keyof UnitFacts)[]> = {
@@ -396,7 +397,7 @@ export const methodFeature = (
         run: ["condition", "deviations"],
       };
       const keys = allowed[kind ?? ""];
-      if (!keys) throw new Error("Only a protocol, an experiment or a run has these fields.");
+      if (!keys) throw refuse("read-only", "Only a protocol, an experiment or a run has these fields.");
       const next: Record<string, unknown> = { ...(node.facts ?? {}) };
       for (const [key, item] of Object.entries(facts)) {
         if (!keys.includes(key as keyof UnitFacts)) throw new Error(`A ${kind} has no ${key}.`);

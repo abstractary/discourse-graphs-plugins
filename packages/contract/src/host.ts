@@ -103,9 +103,9 @@ export type Placement = "main" | "side" | "dialog";
 export type SurfaceName =
   | "canvas"
   | "canvases"
-  /** The holon explorer, for holons without a canvas yet. `id` is `<level>|<id>` or `unit|<id>`. */
-  | "holon"
-  /** A side panel with the boundary of whichever holon is in focus. */
+  /** The whole explorer, for wholes without a canvas yet. `id` is `<level>|<id>` or `unit|<id>`. */
+  | "overview"
+  /** A side panel with the boundary of whichever whole is in focus. */
   | "boundary"
   /** A PDF reader. `id` is the file's asset ref; none shows the choice of PDFs. */
   | "pdf"

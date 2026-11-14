@@ -19,6 +19,7 @@ import {
 } from "@dg/contract/llm.ts";
 import type { AiStatus } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * Asking about a canvas. Three ways to an answer, tried in this order:
@@ -140,7 +141,7 @@ export const aiFeature = (
       // A key for one address must not follow the settings to another.
       if (changes.provider && changes.provider !== kept.provider && !changes.model) next.model = provider.defaultModel;
       if (key !== undefined) {
-        if (!secrets) throw new Error("This base has nowhere to keep a key.");
+        if (!secrets) throw refuse("unavailable", "This base has nowhere to keep a key.");
         const clean = key?.trim() || null;
         await secrets.set(secretId(next.provider), clean);
         next.keyHints = { ...next.keyHints };
@@ -153,7 +154,7 @@ export const aiFeature = (
       return settings();
     },
     "ai.models": async ({ provider, baseUrl, key }): Promise<AiModel[]> => {
-      if (!llm) throw new Error("This base can't reach a model service from here.");
+      if (!llm) throw refuse("unavailable", "This base can't reach a model service from here.");
       const kept = await stored();
       const kind = provider ?? kept.provider;
       const secret = key?.trim() || (await keyOf(kind)) || undefined;

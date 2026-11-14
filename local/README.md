@@ -1,6 +1,6 @@
 # The local app
 
-The holon views and the canvas repository, over a vault's record log, in your browser. See `docs/HOLONS.md` for what the views show.
+The whole views and the canvas repository, over a vault's record log, in your browser. See `docs/WHOLES.md` for what the views show.
 
 ```
 npm run build:local
@@ -17,14 +17,14 @@ The app lays out the plugin's panels the way they sit in Obsidian:
 | Position | Panel |
 |---|---|
 | Left | The Library, whose Canvases tab is the repository |
-| Middle | A canvas, or the holon explorer, with the PDF reader beside it when it's open |
-| Right | The holon's boundary, the context panel, and unit search |
+| Middle | A canvas, or the whole explorer, with the PDF reader beside it when it's open |
+| Right | The whole's boundary, the context panel, and unit search |
 
 **Reading PDFs.** The PDF button opens the reader beside the canvas. It lists every PDF in the vault, papers first, and a dropped PDF is kept in `Paper files/`. See "Reading PDFs" in `docs/DESIGN.md`.
 
 **Finding units.** The Search tab searches titles, note text and PDF passages, with filters. ⌘K or Ctrl+K, or the search button, opens the quick finder. See "Search" in `docs/DESIGN.md`.
 
-**Opening holons.** A holon card opens into its own canvas in place, and the breadcrumb goes back up. See `docs/HOLONS.md`.
+**Opening wholes.** A whole card opens into its own canvas in place, and the breadcrumb goes back up. See `docs/WHOLES.md`.
 
 **In Obsidian.** The same panels are in the Obsidian plugin. The local app is for working beside Obsidian, or without it.
 
@@ -40,7 +40,9 @@ Point `--vault` at an Obsidian vault that has the Discourse Graphs plugin. The a
 - A nested canvas becomes a file node, so Obsidian shows it inside its parent.
 - The mirror is written from the log and never read back, so edit canvases in DG, not in the mirror.
 
-**Its own files.** Its device id and settings are in `discourse-graph/local-app.json`.
+**An agent can read the same vault.** `npm run mcp -- --vault <folder>` starts the MCP server on stdio. It only reads, and only the vault owner's own work until they pass `--widen`. See [docs/mcp.md](../docs/mcp.md).
+
+**Its own files.** Its device id and settings are kept outside the vault, beside its keys in `~/.discourse-graphs/local-app/`, so a tool that syncs the vault doesn't carry them to another computer.
 
 ## Identity
 

@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
+import { createMemoryStore } from "@dg/contract/memory-host.ts";
 import { createNode, type Author, type NodeRecord } from "@dg/contract/records.ts";
 import { isLibraryRef, isSharedLibraryRef } from "@dg/contract/scholarly.ts";
-import type { Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { inLibraryOf } from "@dg/core/card.ts";
 import { createZotero } from "@dg/sync/zotero.ts";
+import { makeCore } from "./support.ts";
 
 /**
  * Zotero as it really answers on its own computer, as read from Zotero 10.0.9 on 13 November 2026: the
@@ -48,34 +46,18 @@ const zoteroApp = (state: { open: boolean }): typeof fetch =>
     return new Response("Not found", { status: 404 });
   }) as typeof fetch;
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async () => {
   const state = { open: true };
   const store = createMemoryStore();
   store.outside.set(PATH, { name: "Carroll 2020.pdf", mime: "application/pdf", dataUrl: `data:application/pdf;base64,${btoa(BYTES)}` });
-  const { host, emit } = createMemoryHost({ store });
   const opened: string[] = [];
-  const base = { ...host, openSurface: async (args: { route: { surface: string } }) => (opened.push(args.route.surface), { ok: true as const, value: null }) };
-  const services = { servers: async () => [], link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }), zotero: createZotero({ fetch: zoteroApp(state) }) } as unknown as Services;
-  const core = await createCore({ host: base as never, services, demoGraphs: [] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = { send: (message) => void ("id" in message && pending.get(message.id)?.(message)), onMessage: (handler) => ((listener = handler), () => {}) };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = `r${(next += 1)}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  const nodes = (): NodeRecord[] => [...core.graph().documents.values()].filter((record): record is NodeRecord => record.kind === "node" && !record.removed);
-  return { core, call, store, host, emit, state, opened, nodes };
+  const made = await makeCore({
+    store,
+    wrap: (host) => ({ ...host, openSurface: async (args) => (opened.push(args.route.surface), { ok: true as const, value: null }) }),
+    services: { zotero: createZotero({ fetch: zoteroApp(state) }) },
+    demoGraphs: [],
+  });
+  return { ...made, state, opened };
 };
 
 test("a personal library read on its own computer is user 0, and still a library", async () => {
@@ -113,7 +95,7 @@ test("with Zotero as the PDF library, its PDFs are the list and are read where Z
   assert.equal(theirs.title, "Do reservoir computers work best at the edge of chaos?", "named for its reference, not its file");
   assert.deepEqual(theirs.library, { app: "zotero", open: "zotero://select/library/items/ABCD2345", what: "item", label: "Carroll 2020", item: ITEM_REF });
 
-  const opened = await call("pdf.open", { ref: FILE_REF });
+  const opened = await call("pdf.get", { ref: FILE_REF });
   assert.equal(atob(opened.dataBase64), BYTES, "the bytes are Zotero's own file");
   assert.equal(store.assets.size, 1, "and nothing was copied into the base");
   assert.equal(opened.libraryMarks?.length, 2, "the highlights made in Zotero are offered, not yet units");
@@ -143,7 +125,7 @@ test("a copy in the vault of a paper Zotero holds is the same work, listed once"
   const copy = await call("pdf.add", { name: "carroll-edge-of-chaos.pdf", dataBase64: btoa("%PDF-1.7 a different scan") });
   const cut = await call("pdf.cut", { ref: copy.ref, exact: "the largest entropy", page: 2, title: "The largest entropy did not give the lowest error", canvas: null });
   const sourceId = (core.graph().documents.get(cut.node.id) as NodeRecord).prov!.sourceDocument!;
-  await call("unit.identify", { node: sourceId, add: ["10.1063/5.0038163"] });
+  await call("unit.identify", { id: sourceId, add: ["10.1063/5.0038163"] });
   assert.equal((core.graph().documents.get(sourceId) as NodeRecord).facts?.doi, "10.1063/5.0038163");
 
   await call("prefs.set", { zoteroLibrary: true });
@@ -167,7 +149,7 @@ test("when Zotero is closed the list says so, and what the vault holds is still 
   assert.equal(status.reachable, false);
   assert.match(status.problem ?? "", /Zotero isn't answering/);
   assert.ok((await call("pdf.list", {})).some((doc) => doc.name === "Notes on tides.pdf"));
-  await assert.rejects(call("pdf.open", { ref: FILE_REF }), /Zotero isn't answering/);
+  await assert.rejects(call("pdf.get", { ref: FILE_REF }), /Zotero isn't answering/);
 });
 
 test("a personal library's address marks and opens only for the person whose unit carries it", async () => {
@@ -183,13 +165,13 @@ test("a personal library's address marks and opens only for the person whose uni
   assert.equal(inLibraryOf(personal, me, me.id, "zotero://open-pdf/library/items/PDFA0001?annotation=A")?.what, "passage");
 
   // In the graph: a teammate's source with the same personal address isn't taken for mine.
-  const { call, host, emit, core, nodes } = await setup();
+  const { call, host, emit, core, nodes, arrive } = await setup();
   const { nodeTypes } = await call("grammar.get", {});
   const theirs = createNode({ space: "lab", by: mate, title: "Some other paper in their library", type: nodeTypes.find((type) => type.base === "source")!.id, facts: { identifiers: personal } });
   await host.putRecords({ records: [theirs] });
   emit({ type: "records-changed" });
-  await new Promise((resolve) => setTimeout(resolve, 30));
-  assert.equal((await call("node.view", { id: theirs.id })).node.card.library, undefined);
+  await arrive(theirs);
+  assert.equal((await call("unit.get", { id: theirs.id })).node.card.library, undefined);
   const brought = await call("zotero.import", { ref: ITEM_REF });
   assert.notEqual(brought.source.id, theirs.id, "my item makes my own source");
   assert.equal(brought.wasHere, false);
@@ -207,10 +189,10 @@ test("the dialog can be opened at one reference, to bring in what was highlighte
   // Bringing one highlight in leaves the other still offered on the file.
   await call("prefs.set", { zoteroLibrary: true });
   await call("pdf.list", {});
-  const view = await call("zotero.item", { ref: ITEM_REF });
+  const view = await call("zotero.get", { ref: ITEM_REF });
   const first = view.annotations.find((mark) => mark.usable)!;
   await call("zotero.import", { ref: ITEM_REF, annotations: [{ key: first.key }] });
-  const reopened = await call("pdf.open", { ref: FILE_REF });
+  const reopened = await call("pdf.get", { ref: FILE_REF });
   assert.equal(reopened.libraryMarks?.length, 1);
   assert.equal(reopened.marks.length, 1, "the one brought in is now a unit, lit in the reader");
 });
@@ -228,7 +210,7 @@ test("a whole paper read from Zotero's file is that reference: its identifiers, 
   assert.ok(record.identifiers?.some((id) => id.scheme === "zotero" && id.value === ITEM_REF));
   assert.match(record.fileCid ?? "", /^bafkrei/, "pinned to the bytes of Zotero's file");
   assert.equal(store.assets.size, 0, "nothing was copied into the base");
-  const units = Object.values((await call("canvas.open", { id: paper.canvas })).nodes);
+  const units = Object.values((await call("canvas.get", { id: paper.canvas })).nodes);
   assert.ok(units.length > 5);
   assert.ok(units.every((unit) => unit.paper?.library?.app === "zotero"), "every unit read from it carries the mark");
   // The file's row now leads to the paper's canvas.

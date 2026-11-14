@@ -1,6 +1,6 @@
 import type { ExtractionGraph } from "@dg/contract/services.ts";
 import { installTestHooks } from "./testing.ts";
-import { browserKeys } from "@dg/core/identity.ts";
+import { browserKeys } from "@dg/core/index.ts";
 import { askForName, startCapture } from "@dg/native/capture-menu.ts";
 import { startBadges } from "./badges.ts";
 import { connectFrame } from "@dg/native/frame.ts";

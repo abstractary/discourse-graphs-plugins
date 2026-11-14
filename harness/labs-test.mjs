@@ -37,7 +37,7 @@ for (const side of sides) {
   await s(`s.core().then(async (core) => { await core.setName(${q(side.person)}); await core.createLab(${q(side.lab)}); })`);
   const grammar = await s(`s.call("grammar.get", {})`);
   side.type = grammar.nodeTypes.find((type) => type.base === "claim").id;
-  side.node = await s(`s.call("node.create", ${q({ title: side.title, type: side.type })})`);
+  side.node = await s(`s.call("unit.create", ${q({ title: side.title, type: side.type })})`);
   side.did = await s(`s.core().then((core) => core.identity().did)`);
   check(`${side.host.name}.own-work-credits-the-person`, side.node.credit.kind === "person" && side.node.credit.name === side.person, q(side.node.credit));
 }
@@ -52,7 +52,7 @@ await sleep(2500);
 for (const [mine, theirs] of [[sides[0], sides[1]], [sides[1], sides[0]]]) {
   const s = mine.host.slice;
   const name = mine.host.name;
-  const seen = await until(() => s(`s.call("node.query", ${q({ text: theirs.title, limit: 1 })}).then((list) => list[0] ?? null)`));
+  const seen = await until(() => s(`s.call("unit.list", ${q({ text: theirs.title, limit: 1 })}).then((list) => list[0] ?? null)`));
   check(`${name}.shared-work-arrives`, seen, seen?.title);
   check(`${name}.shared-work-credits-the-other-lab`, seen?.credit.kind === "lab" && seen?.credit.name === theirs.lab, q(seen?.credit));
 
@@ -77,7 +77,7 @@ for (const [mine, theirs] of [[sides[0], sides[1]], [sides[1], sides[0]]]) {
   mine.canvas = canvas.id;
 
   // The other lab reads as one group, not as a stranger's name.
-  const groups = await s(`s.call("canvas.open", ${q({ id: canvas.id })}).then((view) => Object.values(view.nodes).map((node) => node.credit.name).sort())`);
+  const groups = await s(`s.call("canvas.get", ${q({ id: canvas.id })}).then((view) => Object.values(view.nodes).map((node) => node.credit.name).sort())`);
   check(`${name}.people-mode-would-group-by-lab`, groups.includes(theirs.lab) && groups.includes(mine.person), q(groups));
   await s("s.closeAll()");
 }

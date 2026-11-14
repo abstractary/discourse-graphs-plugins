@@ -1,66 +1,84 @@
 import { useCallback, useEffect, useState } from "react";
-import type { HolonRef, HolonView, Stance } from "@dg/contract/surface.ts";
+import type { WholeRef, WholeView, Stance } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, plain } from "../shared/ui.tsx";
-import { BaseChip, Boundary, Flag, LEVEL_WORD, PartRow, StanceSwitch } from "../holon/parts.tsx";
+import { Icon, plain, Problem } from "../shared/ui.tsx";
+import { BaseChip, Boundary, Flag, LEVEL_WORD, PartRow, StanceSwitch } from "../shared/overview-parts.tsx";
+import { LoadProblem, useLoad } from "../shared/load.tsx";
+import { goneOf, sayOf } from "../shared/words.ts";
 
 /**
- * The boundary of whichever holon is in focus, beside the context panel: the
- * open canvas's holon, or the holon of the note being read. A unit picked here
- * moves the context panel to it and lights it on the canvas; a holon opened
+ * The boundary of whichever whole is in focus, beside the context panel: the
+ * open canvas's whole, or the whole of the note being read. A unit picked here
+ * moves the context panel to it and lights it on the canvas; a whole opened
  * here opens its canvas.
  */
 export const App = ({ connection, onShowCanvas }: { connection: Connection; onShowCanvas?: (id: string) => void }) => {
   const { call, on } = connection;
-  const [focus, setFocus] = useState<{ ref: HolonRef | null; canvas: string | null } | null>(null);
+  const [focus, setFocus] = useState<{ ref: WholeRef | null; canvas: string | null } | null>(null);
   const [stance, setStance] = useState<Stance>("lab");
-  const [view, setView] = useState<HolonView | null>(null);
+  const [view, setView] = useState<WholeView | null>(null);
   const [lit, setLit] = useState<string[]>([]);
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
 
-  useEffect(() => void call("holon.focus.get", {}).then(setFocus), [call]);
-  useEffect(() => on("holon-focus-changed", ({ ref, canvas }) => setFocus({ ref, canvas })), [on]);
+  const report = useCallback((error: unknown) => setNotice(sayOf(error)), []);
+  const focused = useLoad(() => call("overview.focus.get", {}).then(setFocus), [call]);
+  useEffect(() => on("overview-focus-changed", ({ ref, canvas }) => setFocus({ ref, canvas })), [on]);
   useEffect(() => on("graph-changed", () => setVersion((v) => v + 1)), [on]);
   useEffect(() => on("highlight", ({ units }) => setLit(units)), [on]);
   // The selected question, claim or evidence is what the panel is about. With none selected, it is the canvas's own.
-  const [picked, setPicked] = useState<HolonRef | null>(null);
+  const [picked, setPicked] = useState<WholeRef | null>(null);
   const follow = useCallback(
     (node: string | null) => {
       if (!node) return setPicked(null);
-      void call("holon.locate", { id: node }).then((ref) => setPicked(ref && ref.level !== "lab" ? ref : null)).catch(() => setPicked(null));
+      void call("overview.locate", { id: node }).then((ref) => setPicked(ref && ref.level !== "lab" ? ref : null)).catch(() => setPicked(null)); // Dropped: a selection that can't be placed leaves the panel on the canvas's own subject.
     },
     [call],
   );
-  useEffect(() => void call("focus.get", {}).then(follow).catch(() => undefined), [call, follow]);
+  useEffect(() => void call("focus.get", {}).then(follow).catch(() => undefined), [call, follow]); // Dropped: with no selection known, the panel is about the canvas, and the next selection is heard as an event.
   useEffect(() => on("focus-changed", ({ node }) => follow(node)), [on, follow]);
   const subject = picked ?? focus?.ref ?? null;
-  useEffect(() => {
+  const opened = useLoad(async () => {
     if (!subject) return setView(null);
-    void call("holon.view", { ref: subject, stance }).then(setView).catch((e: Error) => setNotice(e.message));
+    try {
+      setView(await call("overview.get", { ref: subject, stance }));
+    } catch (error) {
+      // What was shown is about something else by now, so it goes rather than sit under the problem.
+      setView(null);
+      throw error;
+    }
   }, [call, subject?.id, subject?.level, stance, version]);
 
   const pick = useCallback(
     (unit: string) => {
-      void call("focus.set", { node: unit }).catch(() => undefined);
-      void call("canvas.highlight", { units: [unit] }).catch(() => undefined);
+      void call("focus.set", { id: unit }).catch(report);
+      void call("canvas.highlight", { units: [unit] }).catch(() => undefined); // Dropped: lighting the card is a courtesy, and there may be no canvas open to light.
     },
-    [call],
+    [call, report],
   );
+  // Dropped: lighting cards is a courtesy, and there may be no canvas open to light.
   const light = useCallback((units: string[]) => void call("canvas.highlight", { units }).catch(() => undefined), [call]);
   const open = useCallback(
-    async (ref: HolonRef) => {
+    async (ref: WholeRef) => {
       try {
-        const { id } = await call("holon.canvas", { ref });
+        const { id } = await call("overview.canvas", { ref });
         if (onShowCanvas) onShowCanvas(id);
         else await call("canvas.show", { id });
       } catch (error) {
-        setNotice(error instanceof Error ? error.message : String(error));
+        report(error);
       }
     },
-    [call, onShowCanvas],
+    [call, onShowCanvas, report],
   );
 
+  const failed = focused.failed ?? opened.failed;
+  if (failed !== undefined) {
+    return (
+      <main className="bd bd-empty">
+        <LoadProblem failed={failed} again={focused.failed !== undefined ? focused.again : opened.again} gone={goneOf()} />
+      </main>
+    );
+  }
   if (!subject || !view) {
     return (
       <main className="bd bd-empty">
@@ -96,7 +114,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
             <button type="button" className="hv-link" onClick={() => light([])}>Clear highlight</button>
           ) : null}
         </div>
-        {notice ? <p className="problem" role="alert">{notice}</p> : null}
+        <Problem text={notice} />
       </header>
       <Boundary
         key={view.ref.id}

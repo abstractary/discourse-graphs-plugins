@@ -22,6 +22,25 @@ export type Handlers = {
 export type Stamp = { space: string; by: Author; lab?: string };
 
 /**
+ * What one feature lets the others use. A feature puts its part here when it is made, and whoever
+ * needs it reads it when called, so the order features are made in doesn't matter. A part that
+ * isn't there yet reads as absent.
+ */
+export type Offers = {
+  /** Sign-offs on a unit. */
+  checks?: {
+    stateOf: (unit: DgId) => import("@dg/contract/surface.ts").CheckState | undefined;
+    checksOf: (unit: DgId) => import("@dg/contract/surface.ts").UnitCheck[];
+    standing: (unit: DgId) => import("@dg/contract/records.ts").EvaluationRecord[];
+  };
+  prefs?: () => Promise<Prefs>;
+  /** The note of this unit or canvas came to the front. */
+  followNote?: (node: DgId) => unknown;
+  /** A text in the base changed, or went. */
+  textChanged?: (ref: HostRef, gone?: boolean) => void;
+};
+
+/**
  * What a feature gets from the core. Features add behavior without reaching into
  * each other, and only the core itself holds the graph.
  */
@@ -47,6 +66,14 @@ export type Context = {
   summarize: (node: NodeRecord) => NodeSummary;
   creditFor: (record: { by: Author; lab?: string }) => Credit;
   myLab: () => LabRecord | undefined;
+  /** The lab a record was made in. */
+  labOf: (record: { lab?: string }) => LabRecord | undefined;
+  /** A person's current name, so work done before they set one reads correctly too. */
+  nameOf: (author: Author) => string;
+  /** A relation type's label, as read from source to target. */
+  relationLabel: (type: DgId) => string;
+  /** Every text in this base that belongs to a unit or canvas. */
+  anchors: () => Iterable<AnchorRecord>;
   anchorOf: (node: DgId) => AnchorRecord | undefined;
   /** The unit or canvas a text in this base belongs to. */
   anchoredAt: (ref: HostRef) => DgId | undefined;
@@ -60,6 +87,9 @@ export type Context = {
    * A library's file is read where the library keeps it and never copied.
    */
   readFile: (ref: string) => Promise<Result<Asset>>;
+  offers: Offers;
+  /** Runs after every change to the graph, before panels are told. */
+  afterChange: (run: () => void) => void;
   getLocal: (key: string) => Promise<unknown>;
   setLocal: (key: string, value: unknown) => Promise<void>;
 };

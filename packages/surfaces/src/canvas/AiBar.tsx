@@ -4,6 +4,7 @@ import type { AiStatus, CanvasView } from "@dg/contract/surface.ts";
 import { AiSetup } from "../shared/AiSetup.tsx";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, plain } from "../shared/ui.tsx";
+import { TRY_AGAIN, canRetry, sayOf } from "../shared/words.ts";
 
 type Answer = { text: string; citations: string[]; mode?: "model" | "search-only"; model?: string; source?: "own" | "lab" | "none"; stopped?: boolean };
 
@@ -53,10 +54,12 @@ export const AiBar = ({
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
+  // The model service wasn't reachable, so the same question can be asked again as it stands.
+  const [retry, setRetry] = useState(false);
   const asking = useRef("");
   const input = useRef<HTMLInputElement>(null);
 
-  const refresh = useCallback(() => void call("ai.status", {}).then(setStatus), [call]);
+  const refresh = useCallback(() => void call("ai.status", {}).then(setStatus).catch((error: unknown) => setProblem(sayOf(error))), [call]);
   useEffect(() => {
     refresh();
     input.current?.focus();
@@ -79,6 +82,7 @@ export const AiBar = ({
     asking.current = requestId;
     setBusy(true);
     setProblem("");
+    setRetry(false);
     setAnswer({ text: "", citations: [] });
     try {
       const result = await call("ai.ask", { canvas: view.canvas.id, question: text, grounded, requestId });
@@ -92,7 +96,8 @@ export const AiBar = ({
       });
     } catch (error) {
       setAnswer(null);
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(sayOf(error));
+      setRetry(canRetry(error));
     } finally {
       setBusy(false);
     }
@@ -155,7 +160,7 @@ export const AiBar = ({
               ) : null}
             </>
           ) : null}
-          {problem ? <p className="ai-problem" role="alert" data-dg="ai-problem">{problem}</p> : null}
+          {problem ? <p className="ai-problem" role="alert" data-dg="ai-problem">{problem}{retry ? <>{" "}<button type="button" className="load-again" data-dg="ai-again" onClick={() => void ask()}>{TRY_AGAIN}</button></> : null}</p> : null}
           <div className="ai-ground" data-dg="ai-ground">
             {grounded.length > 0 ? (
               <>
@@ -179,7 +184,7 @@ export const AiBar = ({
               }}
             />
             {busy ? (
-              <button type="button" data-dg="ai-stop" onClick={() => void call("ai.cancel", { requestId: asking.current })}>Stop</button>
+              <button type="button" data-dg="ai-stop" onClick={() => void call("ai.cancel", { requestId: asking.current }).catch((error: unknown) => setProblem(sayOf(error)))}>Stop</button>
             ) : (
               <button type="button" className="primary" data-dg="ai-send" aria-label="Ask" disabled={!question.trim()} onClick={() => void ask()}>
                 <Icon name="ai" />

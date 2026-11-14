@@ -12,7 +12,7 @@ import type { Context, Handlers } from "./context.ts";
 export const proposalFeature = (
   context: Context,
   { createUnit }: { /** Makes a unit as the person would, with its note or page. */ createUnit: (args: { title: string; type?: DgId }) => Promise<{ id: DgId }> },
-): { handlers: Pick<Handlers, "proposal.list" | "proposal.decide"> } => {
+): { handlers: Pick<Handlers, "proposal.list" | "proposal.accept" | "proposal.reject"> } => {
   const sessionOf = (record: ProposalRecord): { session: string; agent: string } => {
     const ext = (record.ext ?? {}) as { session?: unknown; agent?: unknown };
     return { session: typeof ext.session === "string" ? ext.session : "Earlier", agent: typeof ext.agent === "string" ? ext.agent : "An agent" };
@@ -80,24 +80,27 @@ export const proposalFeature = (
     await context.put([decide({ ...stamp, target: record.id, decision: "accepted" })]);
   };
 
+  const settle = async (ids: DgId[], decision: "accept" | "reject"): Promise<ProposalGroup[]> => {
+    // Units first, so a relation or a check accepted with them finds what it is about.
+    const order = { node: 0, relation: 1, evaluation: 2 } as const;
+    const chosen = ids.flatMap((id) => {
+      const held = context.graph().proposals.get(id);
+      return held && !held.decision ? [held.record] : [];
+    }).sort((a, b) => order[a.kind] - order[b.kind]);
+    const problems: string[] = [];
+    for (const record of chosen) {
+      if (decision === "reject") await context.put([decide({ ...context.stamp(), target: record.id, decision: "rejected" })]);
+      else await accept(record).catch((error: Error) => void problems.push(error.message));
+    }
+    if (problems.length > 0) throw new Error(problems[0]!);
+    return list();
+  };
+
   return {
     handlers: {
       "proposal.list": list,
-      "proposal.decide": async ({ ids, decision }) => {
-        // Units first, so a relation or a check accepted with them finds what it is about.
-        const order = { node: 0, relation: 1, evaluation: 2 } as const;
-        const chosen = ids.flatMap((id) => {
-          const held = context.graph().proposals.get(id);
-          return held && !held.decision ? [held.record] : [];
-        }).sort((a, b) => order[a.kind] - order[b.kind]);
-        const problems: string[] = [];
-        for (const record of chosen) {
-          if (decision === "reject") await context.put([decide({ ...context.stamp(), target: record.id, decision: "rejected" })]);
-          else await accept(record).catch((error: Error) => void problems.push(error.message));
-        }
-        if (problems.length > 0) throw new Error(problems[0]!);
-        return list();
-      },
+      "proposal.accept": ({ ids }) => settle(ids, "accept"),
+      "proposal.reject": ({ ids }) => settle(ids, "reject"),
     },
   };
 };

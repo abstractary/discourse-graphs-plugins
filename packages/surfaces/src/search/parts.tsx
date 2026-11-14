@@ -4,14 +4,13 @@ import type { Connection } from "../shared/rpc.ts";
 import { Chip, Mark, Marked, LibraryMark } from "../shared/ui.tsx";
 
 export { Marked };
-import { DRAG_TYPE } from "../canvas/Drawer.tsx";
+import { DRAG_TYPE } from "../shared/drag.ts";
+import { ALT, MAC, MOD } from "../shared/keys.ts";
 
 /** What's shared by the search panel, the quick finder and the canvas's Add node box. */
 
 export { DRAG_TYPE };
-export const MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-export const MOD = MAC ? "⌘" : "Ctrl";
-export const ALT = MAC ? "⌥" : "Alt";
+export { ALT, MAC, MOD };
 
 const FIELD_WORD = { text: "Note", passage: "Passage" } as const;
 
@@ -84,10 +83,11 @@ export const useOpenCanvas = (connection: Connection) => {
       const found = list.find((entry) => entry.id === id);
       setCanvas(found ? { id: found.id, title: found.title } : null);
     };
-    void call("holon.focus.get", {}).then(({ canvas: id }) => titled(id));
-    return on("holon-focus-changed", ({ canvas: id }) => {
-      // A note opened elsewhere moves the holon in focus, but the canvas tab stays where it was.
-      if (id) void titled(id);
+    // Both dropped: when the open canvas can't be told, "Put on canvas" just isn't offered.
+    void call("overview.focus.get", {}).then(({ canvas: id }) => titled(id)).catch(() => setCanvas(null));
+    return on("overview-focus-changed", ({ canvas: id }) => {
+      // A note opened elsewhere moves the whole in focus, but the canvas tab stays where it was.
+      if (id) void titled(id).catch(() => setCanvas(null)); // Dropped, as above.
     });
   }, [call, on]);
   return canvas;

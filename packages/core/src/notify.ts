@@ -4,6 +4,7 @@ import type { NotifyDraft } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { iriOf } from "./jsonld.ts";
 import { baseOf } from "./process.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * COAR Notify: how a unit tells a paper's repository that it exists. The
@@ -113,12 +114,12 @@ export const notifyFeature = (context: Context) => {
   const handlers: Pick<Handlers, "notify.draft" | "notify.send" | "notify.about"> = {
     "notify.draft": async ({ unit }) => {
       const node = context.nodeOf(unit);
-      if (!node) throw new Error(`No node ${unit}`);
+      if (!node) throw refuse("not-found", `No node ${unit}`);
       return draft(node);
     },
     "notify.send": async ({ unit, id }) => {
       const node = context.nodeOf(unit);
-      if (!node || !context.services) throw new Error("There is nothing to send, or no network to send it on.");
+      if (!node || !context.services) throw refuse("unavailable", "There is nothing to send, or no network to send it on.");
       const made = await draft(node);
       if (!made.ready) throw new Error(made.why);
       // The person saw one notification; that one is sent, under the id they saw.

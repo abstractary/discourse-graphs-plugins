@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { BASE_WORDS, STARTER_TEMPLATES } from "@dg/contract/grammar.ts";
 import { BASE_NODE_TYPES, type BaseNodeType, type DgId, type NodeTypeRecord, type RelationRule, type RelationTypeRecord } from "@dg/contract/records.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { Problem, TwoStep } from "../shared/ui.tsx";
+import { LoadProblem, useLoad } from "../shared/load.tsx";
+import { codeOf, sayOf } from "../shared/words.ts";
 
 /**
  * Types and relations: a lab's own words for its units and for what joins
@@ -41,7 +44,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     setGrammar(next);
     return next;
   }, [call]);
-  useEffect(() => void load(), [load]);
+  const { failed, again } = useLoad(load, [load]);
 
   const act = async (work: () => Promise<string | void>): Promise<void> => {
     setBusy(true);
@@ -51,7 +54,9 @@ export const App = ({ connection }: { connection: Connection }) => {
       const message = await work();
       if (message) setSaid(message);
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(sayOf(error));
+      // Someone else removed what was being changed: the list is read again, and the form for it is put away.
+      if (codeOf(error) === "not-found") void load().then(() => setPicked(null), () => undefined);
     }
     setBusy(false);
   };
@@ -87,7 +92,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       return `Removed ${label}`;
     });
 
-  if (!grammar) return <main className="grammar" aria-busy="true" />;
+  if (!grammar) return failed !== undefined ? <main className="grammar"><LoadProblem failed={failed} again={again} /></main> : <main className="grammar" aria-busy="true" />;
   const labelOf = (id: DgId): string => grammar.nodeTypes.find((type) => type.id === id)?.label ?? "A type no longer in use";
   const uses = (id: DgId | undefined): number => (id ? (grammar.uses[id] ?? 0) : 0);
 
@@ -143,7 +148,7 @@ export const App = ({ connection }: { connection: Connection }) => {
           ) : (
             <p className="grammar-quiet">Choose a type or a relation to change it, or add one.</p>
           )}
-          {problem ? <p className="problem" role="alert" data-dg="grammar-problem">{problem}</p> : null}
+          <Problem text={problem} dg="grammar-problem" />
           {said ? <p className="grammar-said" role="status" data-dg="grammar-said">{said}</p> : null}
         </section>
       </div>
@@ -153,7 +158,7 @@ export const App = ({ connection }: { connection: Connection }) => {
           const made = await call("grammar.export", {});
           return `Saved ${made.name} to ${made.where}: ${made.nodeTypes} types and ${made.relationTypes} relations`;
         })}>Save as a schema file</button>
-        <button type="button" data-dg="grammar-import" disabled={busy} onClick={() => void call("grammar.files", {}).then(setFiles)}>Read a schema file…</button>
+        <button type="button" data-dg="grammar-import" disabled={busy} onClick={() => void act(async () => setFiles(await call("grammar.files", {})))}>Read a schema file…</button>
         {files ? (
           files.length === 0 ? (
             <span className="grammar-quiet">No schema file found. Put its .json file in this base first.</span>
@@ -180,7 +185,7 @@ export const App = ({ connection }: { connection: Connection }) => {
           )
         ) : null}
         <span className="grammar-spacer" />
-        <button type="button" onClick={() => void call("dialog.close", {})}>Done</button>
+        <button type="button" onClick={() => void call("dialog.close", {}).catch((error: unknown) => setProblem(sayOf(error)))}>Done</button>
       </footer>
     </main>
   );
@@ -189,7 +194,6 @@ export const App = ({ connection }: { connection: Connection }) => {
 // A panel is a sandboxed frame, where a form can't be submitted. So each form saves from its button's click.
 const TypeForm = ({ draft: start, used, tables, busy, onSave, onRemove, onTable }: { draft: TypeDraft; used: number; tables: boolean; busy: boolean; onSave: (draft: TypeDraft) => void; onRemove: (draft: TypeDraft) => void; onTable: (id: DgId) => void }) => {
   const [draft, setDraft] = useState(start);
-  const [asking, setAsking] = useState(false);
   const set = (changes: Partial<TypeDraft>): void => setDraft((old) => ({ ...old, ...changes }));
   const starter = STARTER_TEMPLATES[draft.base];
   const pattern = draft.titleFormat.trim() || (draft.abbreviation.trim() ? `${draft.abbreviation.trim().toUpperCase()} - {content}` : "{content}");
@@ -219,15 +223,7 @@ const TypeForm = ({ draft: start, used, tables, busy, onSave, onRemove, onTable 
       <div className="row end">
         {draft.id && tables ? <button type="button" data-dg="grammar-type-table" disabled={busy} onClick={() => onTable(draft.id!)}>Open its table</button> : null}
         {draft.id ? (
-          asking ? (
-            <>
-              <span className="grammar-quiet">Remove {start.label}?</span>
-              <button type="button" onClick={() => setAsking(false)}>Keep it</button>
-              <button type="button" data-dg="grammar-type-remove-yes" disabled={busy} onClick={() => onRemove(draft)}>Remove</button>
-            </>
-          ) : (
-            <button type="button" data-dg="grammar-type-remove" disabled={busy} onClick={() => setAsking(true)}>Remove…</button>
-          )
+          <TwoStep label="Remove…" question={<>Remove {start.label}?</>} questionClass="grammar-quiet" dg="grammar-type-remove" disabled={busy} onYes={() => onRemove(draft)} />
         ) : null}
         <button type="button" className="primary" data-dg="grammar-type-save" disabled={busy || !draft.label.trim()} onClick={() => onSave(draft)}>{draft.id ? "Save" : "Add type"}</button>
       </div>
@@ -239,7 +235,6 @@ const RelationForm = ({ draft: start, types, labelOf, used, busy, onSave, onRemo
   const [draft, setDraft] = useState(start);
   const [from, setFrom] = useState(types[0]?.id ?? "");
   const [to, setTo] = useState(types[0]?.id ?? "");
-  const [asking, setAsking] = useState(false);
   const has = draft.rules.some((rule) => rule.source === from && rule.target === to);
   return (
     <form className="grammar-form" data-dg="grammar-relation-form" onSubmit={(event) => event.preventDefault()}>
@@ -264,15 +259,7 @@ const RelationForm = ({ draft: start, types, labelOf, used, busy, onSave, onRemo
       </div>
       <div className="row end">
         {draft.id ? (
-          asking ? (
-            <>
-              <span className="grammar-quiet">Remove {start.label}?</span>
-              <button type="button" onClick={() => setAsking(false)}>Keep it</button>
-              <button type="button" data-dg="grammar-relation-remove-yes" disabled={busy} onClick={() => onRemove(draft)}>Remove</button>
-            </>
-          ) : (
-            <button type="button" data-dg="grammar-relation-remove" disabled={busy} onClick={() => setAsking(true)}>Remove…</button>
-          )
+          <TwoStep label="Remove…" question={<>Remove {start.label}?</>} questionClass="grammar-quiet" dg="grammar-relation-remove" disabled={busy} onYes={() => onRemove(draft)} />
         ) : null}
         {used > 0 ? <span className="grammar-quiet">{used} {used === 1 ? "link uses" : "links use"} it</span> : null}
         <button type="button" className="primary" data-dg="grammar-relation-save" disabled={busy || !draft.label.trim() || !draft.complement.trim()} onClick={() => onSave(draft)}>{draft.id ? "Save" : "Add relation"}</button>

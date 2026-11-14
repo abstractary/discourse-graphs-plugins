@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
-import type { SurfaceEvent, SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import { makeCore } from "./support.ts";
 
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const PNG2 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -18,37 +16,8 @@ const notebook = ({ png = PNG, source = "plot(df)" }: { png?: string; source?: s
   ],
 });
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  const core = await createCore({ host });
-  const pending = new Map<string, { resolve: (value: never) => void; reject: (error: Error) => void }>();
-  const events: SurfaceEvent[] = [];
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("event" in message) events.push(message as SurfaceEvent);
-      if ("id" in message) {
-        const reply = message as { ok?: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok === false) pending.get(message.id)?.reject(new Error(reply.error?.message));
-        else pending.get(message.id)?.resolve(reply.result as never);
-      }
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      pending.set(`m${next}`, { resolve: resolve as never, reject });
-      listener({ id: `m${next}`, method, params } as SurfaceMessage);
-    });
+  const { core, call, events, store, host } = await makeCore();
   const save = async (body: unknown, name = "intensity.ipynb"): Promise<string> => {
     const written = await host.writeAsset({ asset: { name, mime: "application/x-ipynb+json", dataUrl: `data:application/x-ipynb+json;base64,${Buffer.from(JSON.stringify(body)).toString("base64")}` } });
     if (!written.ok) throw new Error("no asset");
@@ -83,7 +52,7 @@ test("a run page shows what ran, the cell behind each output, and the figure onl
   const { call, save, replace } = await setup();
   const ref = await save(notebook());
   const { run, outputs, code } = await call("notebook.import", { ref });
-  const page = await call("process.run", { id: run.id });
+  const page = await call("run.get", { id: run.id });
   assert.deepEqual([page.status, page.startedAt, page.endedAt], ["completed", "2026-11-01T09:00:00Z", "2026-11-01T09:02:00Z"]);
   assert.deepEqual(page.environment, [{ name: "kernel", value: "python3" }, { name: "language", value: "python" }, { name: "languageVersion", value: "3.12.4" }]);
   assert.deepEqual([page.code[0]!.id, page.code[0]!.drift], [code.id, undefined]);
@@ -96,12 +65,12 @@ test("a run page shows what ran, the cell behind each output, and the figure onl
 
   // The notebook is rerun and saved: the page stops showing its figure as this run's output.
   replace(ref, notebook({ png: PNG2, source: "plot(df, log=True)" }));
-  const later = await call("process.run", { id: run.id });
+  const later = await call("run.get", { id: run.id });
   assert.deepEqual([later.outputs[0]!.preview, later.outputs[0]!.stale, later.notebook!.current], [undefined, true, false]);
   const rerun = await call("notebook.import", { ref });
   assert.deepEqual([rerun.known, rerun.revised, rerun.code.id === code.id, rerun.run.id === run.id], [false, true, true, false]);
   // The first run now pins a version of the code that has moved on.
-  const drifted = await call("process.run", { id: run.id });
+  const drifted = await call("run.get", { id: run.id });
   assert.equal(drifted.code[0]!.drift, "changed");
   assert.ok(drifted.problems.some((problem) => problem.rule === "run-code-drift"));
 });
@@ -116,10 +85,10 @@ test("evidence made from an output is pinned to its bytes, and a claim's method 
   const grammar = await call("grammar.get", {});
   const claimType = grammar.nodeTypes.find((type) => type.base === "claim")!;
   const supports = grammar.relationTypes.find((type) => type.base === "supports")!;
-  const claim = await call("node.create", { title: "Dose drives staining", type: claimType.id });
+  const claim = await call("unit.create", { title: "Dose drives staining", type: claimType.id });
   await call("relation.assert", { type: supports.id, source: evidence.id, target: claim.id });
 
-  const method = await call("process.method", { id: claim.id });
+  const method = await call("method.get", { id: claim.id });
   assert.equal(method.chains.length, 1);
   assert.deepEqual(method.chains[0]!.steps.map((step) => step.role), ["code", "run", "output", "evidence"]);
   assert.deepEqual(method.chains[0]!.steps.map((step) => step.id), [code.id, run.id, outputs[0]!.id, evidence.id]);
@@ -127,10 +96,10 @@ test("evidence made from an output is pinned to its bytes, and a claim's method 
   assert.deepEqual([method.flags!.singleRun, method.flags!.replicated, method.flags!.drift, method.flags!.runs], [true, false, false, 1]);
   assert.match(method.chains[0]!.steps[2]!.detail!, /figure, fig-intensity/);
 
-  const page = await call("process.run", { id: run.id, previews: false });
+  const page = await call("run.get", { id: run.id, previews: false });
   assert.deepEqual(page.outputs[0]!.evidence.map((item) => [item.unit.id, item.pinned, item.changed]), [[evidence.id, true, false]]);
   assert.deepEqual(page.claims.map((item) => [item.unit.id, item.stance]), [[claim.id, "supports"]]);
-  assert.equal((await call("process.method", { id: run.id })).chains.length, 1, "a run's own method lists the evidence resting on it");
+  assert.equal((await call("method.get", { id: run.id })).chains.length, 1, "a run's own method lists the evidence resting on it");
 });
 
 test("a protocol, an experiment and a run each take their own fields, and a run pins the protocol it follows", async () => {
@@ -138,27 +107,27 @@ test("a protocol, an experiment and a run each take their own fields, and a run 
   const { run } = await call("notebook.import", { ref: await save(notebook()) });
   const grammar = await call("grammar.get", {});
   const typeOf = (base: string) => grammar.nodeTypes.find((type) => type.base === base)!.id;
-  const question = await call("node.create", { title: "Does dose drive staining?", type: typeOf("question") });
-  const protocol = await call("node.create", { title: "Immunostaining", type: typeOf("protocol") });
-  const study = await call("node.create", { title: "Dose series", type: typeOf("study") });
+  const question = await call("unit.create", { title: "Does dose drive staining?", type: typeOf("question") });
+  const protocol = await call("unit.create", { title: "Immunostaining", type: typeOf("protocol") });
+  const study = await call("unit.create", { title: "Dose series", type: typeOf("study") });
 
-  await call("process.setFacts", { id: protocol.id, facts: { steps: ["Fix", "Stain", "Image"], materials: ["RRID:AB_2314866"], version: "2" } });
-  await call("process.setFacts", { id: study.id, facts: { design: "experimental", conditions: ["low", "high"], hypothesis: "High dose stains more." }, links: { question: question.id, protocols: [protocol.id] } });
-  await assert.rejects(call("process.setFacts", { id: study.id, facts: { deviations: ["x"] } }), /has no deviations/);
-  await assert.rejects(call("process.setFacts", { id: run.id, facts: {}, links: { partOf: protocol.id } }), /isn't a study/);
+  await call("method.setFacts", { id: protocol.id, facts: { steps: ["Fix", "Stain", "Image"], materials: ["RRID:AB_2314866"], version: "2" } });
+  await call("method.setFacts", { id: study.id, facts: { design: "experimental", conditions: ["low", "high"], hypothesis: "High dose stains more." }, links: { question: question.id, protocols: [protocol.id] } });
+  await assert.rejects(call("method.setFacts", { id: study.id, facts: { deviations: ["x"] } }), /has no deviations/);
+  await assert.rejects(call("method.setFacts", { id: run.id, facts: {}, links: { partOf: protocol.id } }), /isn't a study/);
 
-  const wrong = await call("process.setFacts", { id: run.id, facts: { condition: "medium", deviations: ["Imaged a day late."] }, links: { partOf: study.id, follows: protocol.id } });
+  const wrong = await call("method.setFacts", { id: run.id, facts: { condition: "medium", deviations: ["Imaged a day late."] }, links: { partOf: study.id, follows: protocol.id } });
   assert.ok(wrong.problems.some((problem) => problem.rule === "run-condition-unknown"));
-  const right = await call("process.setFacts", { id: run.id, facts: { condition: "high" } });
+  const right = await call("method.setFacts", { id: run.id, facts: { condition: "high" } });
   assert.deepEqual(right.problems, []);
 
-  const page = await call("process.run", { id: run.id, previews: false });
+  const page = await call("run.get", { id: run.id, previews: false });
   assert.deepEqual([page.study!.unit.id, page.study!.question!.id, page.study!.design, page.condition], [study.id, question.id, "experimental", "high"]);
   assert.deepEqual([page.protocol!.id, page.protocol!.steps, page.protocol!.drift, page.deviations], [protocol.id, ["Fix", "Stain", "Image"], undefined, ["Imaged a day late."]]);
 
   // Editing the protocol afterwards doesn't rewrite what the run followed. It shows as drift.
-  await call("process.setFacts", { id: protocol.id, facts: { steps: ["Fix", "Block", "Stain", "Image"] } });
-  const after = await call("process.run", { id: run.id, previews: false });
+  await call("method.setFacts", { id: protocol.id, facts: { steps: ["Fix", "Block", "Stain", "Image"] } });
+  const after = await call("run.get", { id: run.id, previews: false });
   assert.equal(after.protocol!.drift, "changed");
   assert.ok(after.problems.some((problem) => problem.rule === "run-protocol-drift"));
 });

@@ -38,7 +38,6 @@
 .row { display: flex; align-items: center; gap: 6px; }
 .row.end { justify-content: flex-end; }
 .row select { flex: 1; min-width: 0; }
-.note { margin: 0; color: var(--dg-muted); font-size: var(--small); }
 .problem { margin: 0; color: var(--opposes); font-size: var(--small); }
 button.primary { padding: 5px 14px; background: var(--dg-accent); color: var(--dg-page); border-radius: var(--dg-radius); }
 button.primary:disabled { opacity: 0.45; cursor: default; }
@@ -72,8 +71,8 @@ button.primary:disabled { opacity: 0.45; cursor: default; }
 .repo-list li[data-open="true"] { background: color-mix(in oklch, var(--dg-accent) 6%, transparent); }
 .repo-row { display: flex; align-items: flex-start; gap: 2px; }
 .repo-list .repo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px; text-align: left; }
-.repo-holon { display: flex; align-items: baseline; gap: 4px; font-size: var(--small); min-width: 0; }
-.repo-holon > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.repo-whole { display: flex; align-items: baseline; gap: 4px; font-size: var(--small); min-width: 0; }
+.repo-whole > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .repo-tags { display: flex; align-items: center; gap: 6px; font-size: var(--tiny); color: var(--dg-muted); }
 .repo-list .repo-toggle { flex: none; padding: 6px 4px; color: var(--dg-muted); }
 .repo-toggle[aria-expanded="true"] .icon { transform: rotate(180deg); }

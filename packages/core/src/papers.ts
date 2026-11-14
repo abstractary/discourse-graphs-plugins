@@ -25,6 +25,7 @@ import {
 import type { ExtractedEdge, ExtractedNode, ExtractionGraph } from "@dg/contract/services.ts";
 import type { PaperSummary, SavedExtraction } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 type TypeSpec = { label: string; abbreviation: string; base: BaseNodeType; lexicon?: string; color?: string };
 
@@ -385,7 +386,7 @@ export const paperFeature = (
   const shareToLab = async (paper: PaperRecord, file?: { dataBase64: string; mediaType: string }): Promise<PaperRecord> => {
     const link = await context.services?.link();
     const lab = context.myLab();
-    if (!link?.token || !lab) throw new Error("Join a lab first.");
+    if (!link?.token || !lab) throw refuse("no-target", "Join a lab first.");
     const me = { did: context.me().id, name: context.me().name };
     await context.services!.uploadPaper(link, {
       paper: {
@@ -461,10 +462,10 @@ export const paperFeature = (
       let file = picked;
       if (!file && ref) {
         const asset = await context.readFile(ref);
-        if (!asset.ok) throw new Error(asset.error.message);
+        if (!asset.ok) throw refusalOf(asset.error);
         file = { name: asset.value.name, mediaType: asset.value.mime, dataBase64: asset.value.dataUrl.split(",")[1] ?? "" };
       }
-      if (!file) throw new Error("Choose a paper first.");
+      if (!file) throw refuse("no-target", "Choose a paper first.");
       await withinReach(server);
       const name = file.name;
       let paper: PaperRecord;
@@ -472,7 +473,7 @@ export const paperFeature = (
 
       if (saved) {
         const found = saved === true ? await savedBeside(name, ref) : { name: saved.name, graph: parseExtraction(saved.name, saved.text) };
-        if (!found) throw new Error(`No saved extraction sits beside ${name}.`);
+        if (!found) throw refuse("not-found", `No saved extraction sits beside ${name}.`);
         graph = found.graph;
         const from = `Saved extraction (${found.name})`;
         const madeBy = graph.models?.[0] ?? "Unknown";
@@ -483,8 +484,8 @@ export const paperFeature = (
         if (picked) await keepFile(picked);
         paper = await importGraph(graph, { filename: name, model: madeBy, server: from, schema: schema ?? "mira", fileCid: await hashOf(file) });
       } else {
-        if (!context.services) throw new Error("No services are set up here.");
-        if (!server || !model || !schema) throw new Error("Choose a server, a model and a schema first.");
+        if (!context.services) throw refuse("unavailable", "No services are set up here.");
+        if (!server || !model || !schema) throw refuse("no-target", "Choose a server, a model and a schema first.");
         const servers = await context.services.servers();
         const serverName = servers.find(({ url }) => url === server)?.name ?? server;
         graph = await context.services.extract({
@@ -519,7 +520,7 @@ export const paperFeature = (
     },
     "paper.share": async ({ id }) => {
       const paper = context.documents("paper").find((item) => item.id === id);
-      if (!paper) throw new Error("No such paper.");
+      if (!paper) throw refuse("not-found", "No such paper.");
       return summary(await shareToLab(paper));
     },
   };

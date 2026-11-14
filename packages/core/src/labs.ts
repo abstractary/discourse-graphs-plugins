@@ -1,9 +1,10 @@
 import type { DgRecord, LabSettings, NodeRecord } from "@dg/contract/records.ts";
-import { clock, revise, staysLocal } from "@dg/contract/records.ts";
+import { clock, revise, staysLocal, validateRecord } from "@dg/contract/records.ts";
 import type { LabLink } from "@dg/contract/services.ts";
 import type { BreadcrumbDefault, IdentityView, LabView } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { checkSignatures, signerOf } from "./signing.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 const BREADCRUMB_KEY = "breadcrumb-default";
 
@@ -29,7 +30,7 @@ export const labFeature = (
   },
 ) => {
   const services = (): NonNullable<Context["services"]> => {
-    if (!context.services) throw new Error("No services are set up here.");
+    if (!context.services) throw refuse("unavailable", "No services are set up here.");
     return context.services;
   };
   const me = () => ({ did: context.me().id, name: context.me().name });
@@ -175,10 +176,13 @@ export const labFeature = (
     // A record that says a labmate wrote it has to carry that labmate's signature.
     const lab = context.myLab();
     const members = new Set(context.documents("membership").filter((item) => !lab || item.lab === lab.did).map((item) => item.member));
-    for (const record of records) if (record.kind === "membership") members.add(record.member);
+    for (const record of records) if (record?.kind === "membership" && typeof record.member === "string") members.add(record.member);
     const waiting = held;
     held = [];
-    const checked = await checkSignatures([...waiting, ...records], { persons: context.documents("person"), devices: context.documents("device"), members });
+    // Anything that isn't a well-formed record is left out before it can be read as one.
+    const sound = records.filter((record) => validateRecord(record).length === 0);
+    refused += records.length - sound.length;
+    const checked = await checkSignatures([...waiting, ...sound], { persons: context.documents("person"), devices: context.documents("device"), members });
     held = checked.held.slice(-5000);
     refused += checked.refused.length;
     for (const record of checked.refused) refusedBy.set(signerOf(record), (refusedBy.get(signerOf(record)) ?? 0) + 1);
@@ -202,7 +206,13 @@ export const labFeature = (
     }
   };
 
-  const all: Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "lab.acknowledge" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
+  const settle = async (requestId: string, decision: "accept" | "decline", tokenKind?: "personal" | "team"): Promise<LabView> => {
+    const link = await services().link();
+    if (!link) throw refuse("no-target", "You're not in a lab.");
+    await services().decide(link, { requestId, decision, ...(tokenKind ? { tokenKind } : {}) });
+    return view();
+  };
+  const all: Pick<Handlers, "lab.get" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.accept" | "lab.reject" | "lab.setBreadcrumbs" | "lab.acknowledge" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
   prepare: () => Promise<void>;
@@ -212,7 +222,7 @@ export const labFeature = (
     shareable,
     take,
     prepare,
-    "lab.view": view,
+    "lab.get": view,
     "lab.find": ({ server, id }) => services().findLab({ server, id }),
     "lab.register": async ({ server, name }) => {
       await createLabRecord(name);
@@ -237,12 +247,8 @@ export const labFeature = (
       }
       return view();
     },
-    "lab.decide": async ({ requestId, decision, tokenKind }) => {
-      const link = await services().link();
-      if (!link) throw new Error("You're not in a lab.");
-      await services().decide(link, { requestId, decision, ...(tokenKind ? { tokenKind } : {}) });
-      return view();
-    },
+    "lab.accept": ({ id, tokenKind }) => settle(id, "accept", tokenKind),
+    "lab.reject": ({ id }) => settle(id, "decline"),
     "lab.setBreadcrumbs": async ({ value }) => {
       await context.setLocal(BREADCRUMB_KEY, value);
       return view();
@@ -256,8 +262,8 @@ export const labFeature = (
     },
     "lab.invite": async ({ uses, days }) => {
       const link = await services().link();
-      if (!link?.token) throw new Error("Start or join a lab first.");
-      if (link.role !== "admin") throw new Error("Only the lab's PI can invite people.");
+      if (!link?.token) throw refuse("no-target", "Start or join a lab first.");
+      if (link.role !== "admin") throw refuse("read-only", "Only the lab's PI can invite people.");
       const made = await services().invite(link, { ...(uses ? { uses } : {}), ...(days ? { days } : {}) });
       return { invite: `${link.server}/join/${link.id}#${made.code}`, expiresAt: made.expiresAt, usesLeft: made.usesLeft };
     },
@@ -277,11 +283,11 @@ export const labFeature = (
       await joinLab(link.name).catch(() => {});
       return view();
     },
-    "lab.remove": async ({ did }) => {
+    "lab.remove": async ({ id: did }) => {
       const link = await services().link();
       const lab = context.myLab();
-      if (!link?.token || !lab) throw new Error("You're not in a lab.");
-      if (lab.custodian !== context.me().id) throw new Error("Only the lab's PI can remove a member.");
+      if (!link?.token || !lab) throw refuse("no-target", "You're not in a lab.");
+      if (lab.custodian !== context.me().id) throw refuse("read-only", "Only the lab's PI can remove a member.");
       await services().removeMember(link, did);
       // Said in the lab's own records too, so every member's copy agrees on who is in.
       const membership = context.documents("membership").find((item) => item.member === did && item.lab === lab.did && !item.removed);
@@ -290,8 +296,8 @@ export const labFeature = (
     },
     "lab.configure": async (changes) => {
       const lab = context.myLab();
-      if (!lab) throw new Error("You're not in a lab.");
-      if (lab.custodian !== context.me().id) throw new Error("Only the lab's PI can change what the lab sets for everyone.");
+      if (!lab) throw refuse("no-target", "You're not in a lab.");
+      if (lab.custodian !== context.me().id) throw refuse("read-only", "Only the lab's PI can change what the lab sets for everyone.");
       const next: Record<string, unknown> = { ...(lab.settings ?? {}) };
       for (const [key, value] of Object.entries(changes)) {
         if (value === null || value === undefined) delete next[key];
@@ -302,14 +308,14 @@ export const labFeature = (
     },
     "paper.getFile": async ({ id }) => {
       const link = await services().link();
-      if (!link?.token) throw new Error("Join a lab first.");
+      if (!link?.token) throw refuse("no-target", "Join a lab first.");
       const saved = await context.host.saveFile(await services().paperFile(link, id));
-      if (!saved.ok) throw new Error(saved.error.message);
+      if (!saved.ok) throw refusalOf(saved.error);
       return saved.value;
     },
     "canvas.audience": async ({ id }) => {
       const canvas = context.canvasOf(id);
-      if (!canvas) throw new Error("That canvas is gone.");
+      if (!canvas) throw refuse("not-found", "That canvas is gone.");
       const lab = context.myLab();
       const link = context.services ? await context.services.link().catch(() => null) : null;
       const members = lab && link?.token ? await services().members(link).then((list) => list.map((member) => member.name)).catch(() => []) : [];
@@ -322,7 +328,7 @@ export const labFeature = (
     "canvas.share": async ({ id }) => {
       const lab = context.myLab();
       const canvas = context.canvasOf(id);
-      if (!lab) throw new Error("Join a lab first.");
+      if (!lab) throw refuse("no-target", "Join a lab first.");
       if (canvas) await context.put([revise({ record: canvas, changes: { shared: lab.did }, by: context.me() })]);
       return null;
     },

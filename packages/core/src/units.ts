@@ -20,6 +20,7 @@ import type { ExportTarget, Provenance, UnitSocial } from "@dg/contract/surface.
 import type { HostRef } from "@dg/contract/records.ts";
 import { fillTemplate } from "./grammar.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refuse } from "./refuse.ts";
 
 const WORKSPACE = "My canvas";
 const LAB_CANVAS = "Lab canvas";
@@ -117,12 +118,12 @@ export const unitFeature = (
     if (target.kind === "workspace") return canvasNamed(WORKSPACE, { personal: true }, (canvas) => canvas.personal === true);
     if (target.kind === "lab") {
       const lab = context.myLab();
-      if (!lab) throw new Error("Join a lab first.");
+      if (!lab) throw refuse("no-target", "Join a lab first.");
       return canvasNamed(LAB_CANVAS, { shared: lab.did }, (canvas) => canvas.shared === lab.did && !canvas.paper);
     }
     if (target.kind === "canvas") {
       const canvas = context.canvasOf(target.id);
-      if (!canvas) throw new Error("That canvas is gone.");
+      if (!canvas) throw refuse("not-found", "That canvas is gone.");
       return canvas;
     }
     return null;
@@ -232,11 +233,11 @@ export const unitFeature = (
     };
   };
 
-  const all: Pick<Handlers, "units.export" | "folder.list" | "folder.create" | "unit.react" | "unit.note" | "unit.removeNote"> & { provenance: (node: NodeRecord) => Provenance; social: (unit: DgId) => UnitSocial; giveAll: () => Promise<number> } = {
+  const all: Pick<Handlers, "unit.export" | "folder.list" | "folder.create" | "unit.react" | "unit.note" | "unit.removeNote"> & { provenance: (node: NodeRecord) => Provenance; social: (unit: DgId) => UnitSocial; giveAll: () => Promise<number> } = {
     provenance,
     social,
     giveAll,
-    "units.export": async ({ nodes: ids, target }) => {
+    "unit.export": async ({ units: ids, target }) => {
       const nodes = ids.flatMap((id) => {
         const node = context.nodeOf(id);
         return node ? [node] : [];
@@ -245,7 +246,7 @@ export const unitFeature = (
       for (const node of nodes) if (await giveText(node)) made += 1;
       if (target.kind === "folder" || target.kind === "new-folder") {
         const folder = target.kind === "folder" ? folders().find(({ id }) => id === target.id) : createFolder({ ...context.stamp(), title: target.title });
-        if (!folder) throw new Error("That folder is gone.");
+        if (!folder) throw refuse("not-found", "That folder is gone.");
         if (target.kind === "new-folder") await context.put([folder]);
         await fileAway(folder, nodes);
         return { folder: folder.id, made };
@@ -260,13 +261,13 @@ export const unitFeature = (
       await context.put([folder]);
       return { id: folder.id, title, units: 0 };
     },
-    "unit.react": async ({ unit, value }) => {
+    "unit.react": async ({ id: unit, value }) => {
       if (value !== null && !REACTIONS.includes(value as Reaction)) throw new Error("Unknown reaction.");
       const mine = reactionOf(unit);
       await context.put([mine ? revise({ record: mine, changes: { value }, by: context.me() }) : createReaction({ ...context.stamp(), unit, value })]);
       return null;
     },
-    "unit.note": async ({ unit, text }) => {
+    "unit.note": async ({ id: unit, text }) => {
       await context.put([createUnitNote({ ...context.stamp(), unit, text })]);
       return null;
     },

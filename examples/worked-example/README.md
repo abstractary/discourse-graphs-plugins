@@ -55,6 +55,6 @@ Attribution to real people is by name and ORCID iD.
 
 | File | |
 |---|---|
-| `records.json` | 250 dg-contract records: 77 units, 26 relations, 3 canvases (97 items), 29 snapshots. Each canvas names its holon. The EVD 7 canvas sits inside the question's canvas |
+| `records.json` | 250 dg-contract records: 77 units, 26 relations, 3 canvases (97 items), 29 snapshots. Each canvas names its whole. The EVD 7 canvas sits inside the question's canvas |
 | `graph.jsonld` | The PROV-O JSON-LD view (`toProcessJsonLd`) |
 | `summary.json` | Support flags for each claim, and the shared-bytes check |

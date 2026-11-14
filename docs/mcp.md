@@ -24,11 +24,11 @@ The 80 writes, by what should happen to them:
 
 | Writes | Calls, for example | For an agent |
 |---|---|---|
-| Add to the argument | `node.create`, `relation.assert`, `pdf.cut`, `evidence.fromOutput`, `candidate.promote` | **Proposals.** This is the whole of what an agent may write |
+| Add to the argument | `unit.create`, `relation.assert`, `pdf.cut`, `evidence.fromOutput`, `candidate.promote` | **Proposals.** This is the whole of what an agent may write |
 | Say a unit holds up | `unit.check` | **A proposed check.** An agent's reading can be useful to the person who signs. It is never a sign-off |
-| Change someone's words or remove things | `node.rename`, `node.remove`, `relation.withdraw`, `canvas.remove` | Never. These are the author's |
-| Decide | `relation.decide`, `device.approve`, `lab.decide`, `lab.remove` | Never. Deciding is what the person is for |
-| Arrange | `canvas.write`, `canvas.setLayout`, `units.put` | Not in the first version. An arrangement is a person's reading of the argument |
+| Change someone's words or remove things | `unit.rename`, `unit.remove`, `relation.withdraw`, `canvas.remove` | Never. These are the author's |
+| Decide | `relation.accept`, `relation.reject`, `device.accept`, `lab.accept`, `lab.reject`, `lab.remove` | Never. Deciding is what the person is for |
+| Arrange | `canvas.write`, `canvas.setLayout`, `unit.put` | Not in the first version. An arrangement is a person's reading of the argument |
 | Send outward | `canvas.share`, `crate.export`, `crate.deposit`, `notify.send`, `paper.share` | Never. See "No way out" below |
 | Settings, labs, devices, grammar | `lab.configure`, `grammar.save…`, `ai.configure`, `prefs.set` | Never |
 | Run a model | `paper.extract`, `ai.ask` | Never. The agent is the model. The server never asks one to work for it |
@@ -70,10 +70,10 @@ The earlier design had sixteen. Current guidance, and our own reading of the job
 
 | Tool | Answers | Built from |
 |---|---|---|
-| `dg.search` | Units matching words, a type, a paper, a person, a time, an identifier (DOI, ORCID iD, RRID, a Zotero address), or a scope. The same ranking as the search panel | `search.query`, `node.query`, `profile.view` |
-| `dg.unit` | One unit and what is around it, to a depth: its words, type, who made it and when, identifiers, the passage it was read from, its relations with their state, its checks and whether they still hold, its method chain, its gaps, and whose shelf its paper is on | `node.view`, `process.method`, `unit.related` |
-| `dg.argument` | For a claim or a question: each chain of support and opposition down to evidence and runs, what is contested, and what is unchecked or has changed since it was checked | `holon.view`, `process.method`, checks |
-| `dg.canvas` | The canvases, or one canvas: its units and relations, compact, with its gaps | `canvas.list`, `canvas.open`, `canvas.summaries` |
+| `dg.search` | Units matching words, a type, a paper, a person, a time, an identifier (DOI, ORCID iD, RRID, a Zotero address), or a scope. The same ranking as the search panel | `search.query`, `unit.list`, `profile.get` |
+| `dg.unit` | One unit and what is around it, to a depth: its words, type, who made it and when, identifiers, the passage it was read from, its relations with their state, its checks and whether they still hold, its method chain, its gaps, and whose shelf its paper is on | `unit.get`, `method.get`, `unit.related` |
+| `dg.argument` | For a claim or a question: each chain of support and opposition down to evidence and runs, what is contested, and what is unchecked or has changed since it was checked | `overview.get`, `method.get`, checks |
+| `dg.canvas` | The canvases, or one canvas: its units and relations, compact, with its gaps | `canvas.list`, `canvas.get`, `canvas.summaries` |
 | `dg.paper` | The papers, or one paper's passages by page, each with an id to quote from. Says whose shelf the paper is on and whether its file can be read here | `paper.list`, `pdf.list`, new text service |
 | `dg.grammar` | The lab's types and relations, which pairs each relation may join, and the rules the gaps come from | `grammar.get`, the process shapes |
 
@@ -181,7 +181,7 @@ The sweeps didn't only produce tools. Each of these is a gap they exposed, and m
 
 ## Built so far
 
-On 13 November 2026 the groundwork went in. There is still no server and no tool.
+On 13 November 2026 the groundwork went in. On 14 November the server and its six read tools followed: see "The read tools, as built" below.
 
 | Change | State |
 |---|---|
@@ -192,6 +192,34 @@ On 13 November 2026 the groundwork went in. There is still no server and no tool
 | The agent itself | The core can be started in the role `agent`, which is how the server will run it. The simulation does this |
 
 The four-vault simulation has an agent for Mira and 14 expectations about it, all holding: nothing proposed is read as part of the argument or sent to the lab, a labmate refuses an agent's record however it arrives, the agent can't reword or remove her work, accepting gives her a unit, relation and check of her own, and a removed agent's proposals are no longer offered.
+
+## The read tools, as built
+
+```bash
+npm run mcp -- --vault /path/to/vault
+```
+
+A desktop client starts it with that command and speaks to it on stdio. No port is opened.
+
+| Flag | Says |
+|---|---|
+| `--vault` | Which vault. One server reads one vault |
+| `--name` | What the agent is called on the Lab tab and on what it proposes later |
+| `--widen` | The person lets this agent read what their lab shares. Without it, their own work only |
+| `--model-here` | The person says the agent's model runs on this computer. A lab whose reach is its members' computers or its own servers is read only to such a model |
+| `--keys` | Where the agent's key and id are kept. Outside the vault, in `~/.discourse-graphs/mcp` unless said |
+
+- **The tools are `dg_search`, `dg_unit`, `dg_argument`, `dg_canvas`, `dg_paper` and `dg_grammar`.** The underscore is a change from the names above: some clients accept only letters, digits, `_` and `-` in a tool's name.
+- **It reads as the vault's person.** It finds who the vault belongs to in the log, and refuses to start in a vault nobody has used. Its key is one more device of theirs with the role `agent`, written to a log of its own, and shows on the Lab tab waiting to be let in.
+- **It writes nothing else.** Every tool is marked read-only, and a test counts the graph before and after calling each.
+- **Every result that carries words says they are quoted material.** Each unit has an id and a `dg://unit/…` address. Nothing in the app opens that address yet.
+- **`dg_search` narrows by type, person, paper and date,** which the search panel cannot yet.
+- **`dg_paper` gives the passages already picked out of a paper,** with page where known. A paper's full text by page is change 4 and is not built.
+- **It uses the MCP project's TypeScript SDK** (1.32), which speaks whichever revision the client asks for. The server keeps no session and needs none.
+
+**Tested** in `test/mcp.test.ts`: the tools over a core in memory, the two reading rules (own work until widened; a lab's reach), and a real MCP client that starts the server over stdio against a vault on disk, lists the tools and calls them.
+
+**Not done:** the MCP project's conformance suite, the nine jobs scored against a model, a paper that tries to instruct the agent as a fixture, HTTP, and the resources and ready instructions listed under "Also offered".
 
 ## Build order
 

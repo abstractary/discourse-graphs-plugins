@@ -11,7 +11,7 @@ export const relationFeature = (
   context: Context,
   { options }: { /** The relations the grammar allows from one unit to another, in either direction. */ options: (source: DgId, target: DgId) => SurfaceMethods["relation.options"]["result"] },
 ) => {
-  const handlers: Pick<Handlers, "relation.options" | "relation.assert" | "relation.withdraw" | "relation.decide"> = {
+  const handlers: Pick<Handlers, "relation.options" | "relation.assert" | "relation.withdraw" | "relation.accept" | "relation.reject"> = {
     "relation.options": async ({ source, target }) => options(source, target),
     "relation.assert": async ({ type, source, target, draw }) => {
       const allowed = options(source, target).some(
@@ -52,8 +52,12 @@ export const relationFeature = (
       await context.put([retract({ ...context.stamp(), target: id, ...(reason ? { reason } : {}) })]);
       return null;
     },
-    "relation.decide": async ({ id, decision }) => {
-      await context.put([decide({ ...context.stamp(), target: id, decision })]);
+    "relation.accept": async ({ id }) => {
+      await context.put([decide({ ...context.stamp(), target: id, decision: "accepted" })]);
+      return null;
+    },
+    "relation.reject": async ({ id }) => {
+      await context.put([decide({ ...context.stamp(), target: id, decision: "rejected" })]);
       return null;
     },
   };

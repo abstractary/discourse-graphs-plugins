@@ -1,7 +1,7 @@
 import type { Examples } from "@dg/contract/core.ts";
-import type { HostRef, RelationRecord } from "@dg/contract/records.ts";
+import type { HostRef } from "@dg/contract/records.ts";
 import type { Skin } from "@dg/contract/host.ts";
-import type { Core } from "@dg/core/index.ts";
+import type { CoreForAdapter } from "@dg/contract/core.ts";
 import { captureChoices, closeCaptureMenu } from "./capture-menu.ts";
 
 /**
@@ -11,7 +11,7 @@ import { captureChoices, closeCaptureMenu } from "./capture-menu.ts";
  * The steps are the same in every base. Only the words and the places differ.
  */
 export type WalkthroughBase = {
-  core: Core;
+  core: CoreForAdapter;
   /** What this base calls things. */
   place: string;
   note: string;
@@ -204,14 +204,8 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
   let note: HostRef = "";
   let canvas = "";
   // The newest wins, in case an earlier walkthrough left one behind with its text gone.
-  const nodeTitled = (title: string): string | undefined =>
-    [...core.graph().documents.values()]
-      .filter((item) => item.kind === "node" && !item.removed && item.title === title)
-      .sort((a, b) => b.at.localeCompare(a.at))[0]?.id;
-  const refOfNode = (id: string | undefined): HostRef | undefined =>
-    id
-      ? ([...core.graph().documents.values()].find((item) => item.kind === "anchor" && item.node === id) as { ref: HostRef } | undefined)?.ref
-      : undefined;
+  const nodeTitled = (title: string): string | undefined => core.unitTitled(title) ?? undefined;
+  const refOfNode = (id: string | undefined): HostRef | undefined => (id ? (core.textOfUnit(id) ?? undefined) : undefined);
   // Judged from the note, because a node from an earlier walkthrough may already exist.
   const captured = async (sentence: string): Promise<boolean> =>
     (await base.readNote(note)).split("\n").some((line) => line.includes(sentence) && line.includes("[["));
@@ -222,8 +216,8 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
   };
   const isShowing = async (surface: string, selector: string): Promise<boolean> =>
     base.frame(surface) !== null && (await core.locate({ surface, selector })) !== null;
-  const relationBetween = (source: string | undefined, target: string | undefined): RelationRecord | undefined =>
-    [...core.graph().relations.values()].find(({ record, state }) => state === "active" && record.source === source && record.target === target)?.record;
+  const relationBetween = (source: string | undefined, target: string | undefined): string | undefined =>
+    source && target ? (core.relationBetween(source, target) ?? undefined) : undefined;
 
   const captureAs = (sentence: string, kind: string) => async (): Promise<void> => {
     closeCaptureMenu();
@@ -346,7 +340,7 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
       target: () => ({ surface: "canvas", selector: ".split" }),
       enter: async () => {
         const made = relationBetween(nodeTitled(SENTENCES.evidence), nodeTitled(SENTENCES.claim));
-        if (made && !examples.relations.includes(made.id)) examples.relations.push(made.id);
+        if (made && !examples.relations.includes(made)) examples.relations.push(made);
         await keep();
       },
     },

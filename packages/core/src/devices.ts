@@ -3,6 +3,7 @@ import type { DeviceView } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import type { KeyStore } from "./identity.ts";
 import { signingKeyOf, trustedKeys, vouchFor } from "./signing.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * A person's devices. The key their DID was made with stays on the device that
@@ -58,14 +59,14 @@ export const deviceFeature = (
     ];
   };
 
-  const handlers: Pick<Handlers, "device.list" | "device.approve" | "device.remove"> = {
+  const handlers: Pick<Handlers, "device.list" | "device.accept" | "device.remove"> = {
     "device.list": list,
-    "device.approve": async ({ id }) => {
+    "device.accept": async ({ id }) => {
       const device = context.documents("device").find((item) => item.id === id && item.by.id === did());
-      if (!device || device.removed) throw new Error("That device isn't asking any more.");
+      if (!device || device.removed) throw refuse("not-found", "That device isn't asking any more.");
       const by = await myKey();
       const pair = signing();
-      if (!pair || !by || !(await trusted())) throw new Error("Approve it from a device that is already trusted, such as the one you started on.");
+      if (!pair || !by || !(await trusted())) throw refuse("conflict", "Approve it from a device that is already trusted, such as the one you started on.");
       const vouch = await vouchFor({ did: did(), key: device.key, by, pair, keys });
       await context.put([revise({ record: device, changes: { vouch }, by: context.me() })]);
       return list();
@@ -73,7 +74,7 @@ export const deviceFeature = (
     "device.remove": async ({ id }) => {
       const device = context.documents("device").find((item) => item.id === id && item.by.id === did());
       if (!device) return list();
-      if (!(await trusted())) throw new Error("Remove it from a device that is already trusted.");
+      if (!(await trusted())) throw refuse("conflict", "Remove it from a device that is already trusted.");
       await context.put([revise({ record: device, changes: { removed: true }, by: context.me() })]);
       return list();
     },

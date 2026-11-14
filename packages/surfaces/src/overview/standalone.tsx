@@ -6,7 +6,7 @@ import "../shared/tokens.css";
 import "../canvas/canvas.css";
 import "../context/context.css";
 import "../library/library.css";
-import "./holon.css";
+import "./overview.css";
 import "../pdf/pdf.css";
 import "../run/run.css";
 import "../search/search.css";
@@ -26,21 +26,21 @@ import { Find } from "../search/Find.tsx";
 
 /**
  * The local app, laid out the way the panels sit in Obsidian: the Library on
- * the left, a canvas or the holon explorer in the middle, and the holon's
+ * the left, a canvas or the whole explorer in the middle, and the whole's
  * boundary and the context panel on the right. Each panel is the same surface
  * a base would frame, on its own connection; this shell does what a base does
  * when a panel asks to show a canvas or open a panel. A PDF opens beside the
  * canvas, as it does in Obsidian.
  */
 
-type Main = { kind: "canvas"; id?: string } | { kind: "holon"; id?: string } | { kind: "run"; id?: string };
+type Main = { kind: "canvas"; id?: string } | { kind: "overview"; id?: string } | { kind: "run"; id?: string };
 type Side = "boundary" | "context" | "search";
 
 const readMain = (): Main => {
   const [kind, ...rest] = decodeURIComponent(window.location.hash.replace(/^#\/?/, "")).split("/");
   const id = rest.join("/") || undefined;
   if (kind === "run") return { kind: "run", ...(id ? { id } : {}) };
-  return kind === "canvas" ? { kind: "canvas", ...(id ? { id } : {}) } : { kind: "holon", ...(id ? { id } : {}) };
+  return kind === "canvas" ? { kind: "canvas", ...(id ? { id } : {}) } : { kind: "overview", ...(id ? { id } : {}) };
 };
 const writeMain = (main: Main) => {
   window.location.hash = `#/${main.kind}${main.id ? `/${encodeURIComponent(main.id)}` : ""}`;
@@ -49,7 +49,7 @@ const writeMain = (main: Main) => {
 type Acts = {
   show: (id: string) => void;
   panel: (surface: string) => void;
-  reveal: (id: string) => void;
+  reveal: (id: string) => Promise<unknown>;
   read: (ref?: string) => void;
   find: (open: boolean) => void;
   run: (id?: string) => void;
@@ -95,9 +95,10 @@ const Shell = () => {
     panel: (surface: string) =>
       surface === "canvases" ? setLibrary(true) : setSide(surface === "context" ? "context" : surface === "search" ? "search" : "boundary"),
     // No notes here, so a unit opens as its context instead.
+    // A failure goes back to the panel that asked, which says so.
     reveal: (id: string) => {
-      void contextCall({ id });
       setSide("context");
+      return contextCall({ id });
     },
     read: (ref?: string) => setReading((old) => (old && old.ref === ref ? old : { ...(ref ? { ref } : {}), n: (old?.n ?? 0) + 1 })),
     run: (id?: string) => writeMain({ kind: "run", ...(id ? { id } : {}) }),
@@ -121,10 +122,10 @@ const Shell = () => {
   const searchConnection = useConnection({ surface: "search" }, act);
   const findConnection = useConnection({ surface: "find", ...(finding > 0 ? { id: String(finding) } : {}) }, act);
   const mainConnection = useConnection(
-    main.kind === "canvas" ? { surface: "canvas", ...(main.id ? { id: main.id } : {}) } : main.kind === "run" ? { surface: "run", ...(main.id ? { id: main.id } : {}) } : { surface: "holon", ...(main.id ? { id: main.id } : {}) },
+    main.kind === "canvas" ? { surface: "canvas", ...(main.id ? { id: main.id } : {}) } : main.kind === "run" ? { surface: "run", ...(main.id ? { id: main.id } : {}) } : { surface: "overview", ...(main.id ? { id: main.id } : {}) },
     act,
   );
-  const contextCall = ({ id }: { id: string }) => contextConnection.call("focus.set", { node: id });
+  const contextCall = ({ id }: { id: string }) => contextConnection.call("focus.set", { id: id });
   const readerConnection = useConnection({ surface: "pdf", ...(reading?.ref ? { id: reading.ref } : {}) }, act);
 
   return (
@@ -135,7 +136,7 @@ const Shell = () => {
         </button>
         <span className="hv-brand">Discourse Graphs</span>
         <nav className="hv-nav" aria-label="Main">
-          <button type="button" aria-pressed={main.kind === "holon"} onClick={() => writeMain({ kind: "holon" })} data-dg="ws-holons">Overview</button>
+          <button type="button" aria-pressed={main.kind === "overview"} onClick={() => writeMain({ kind: "overview" })} data-dg="ws-overview">Overview</button>
           <button type="button" aria-pressed={main.kind === "canvas"} onClick={() => writeMain({ kind: "canvas", ...(main.kind === "canvas" && main.id ? { id: main.id } : {}) })} data-dg="ws-canvas">Canvas</button>
           <button type="button" aria-pressed={main.kind === "run"} onClick={() => writeMain({ kind: "run" })} data-dg="ws-runs">Runs</button>
         </nav>
@@ -158,7 +159,7 @@ const Shell = () => {
         <main className="ws-main" data-reading={Boolean(reading)}>
           {main.kind === "canvas" ? (
             <ReactFlowProvider key={main.id ?? "last"}>
-              <Canvas connection={mainConnection} />
+              <Canvas connection={mainConnection} Search={Search} Library={Library} />
             </ReactFlowProvider>
           ) : main.kind === "run" ? (
             <div className="ws-scroll"><Run key={main.id ?? "all"} connection={mainConnection} /></div>

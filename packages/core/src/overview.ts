@@ -26,18 +26,18 @@ import {
 } from "@dg/contract/records.ts";
 import type {
   CanvasDiff,
-  CanvasHolon,
+  CanvasWhole,
   Credit,
   Crossing,
   Gap,
-  HolonCanvas,
-  HolonCanvasCard,
-  HolonEdge,
-  HolonEvent,
-  HolonLevel,
-  HolonPart,
-  HolonRef,
-  HolonView,
+  WholeCanvas,
+  WholeCanvasCard,
+  WholeEdge,
+  WholeEvent,
+  WholeLevel,
+  WholePart,
+  WholeRef,
+  WholeView,
   Prefs,
   Privacy,
   ReleaseSummary,
@@ -57,13 +57,13 @@ import { baseOf, claimSupport, evidenceChain, protocolCids, unitCid } from "./pr
  * Views only read: anything a person changes goes back as new records.
  */
 
-const LEVEL_OF: Record<string, HolonLevel> = { question: "question", claim: "claim", evidence: "evidence", output: "output" };
+const LEVEL_OF: Record<string, WholeLevel> = { question: "question", claim: "claim", evidence: "evidence", output: "output" };
 const ARGUMENTS = new Set(["supports", "opposes", "addresses", "informs"]);
 const SPACE = "space:";
 
 type Argument = { record: RelationRecord; base: string; state: "active" | "pending" };
 
-export type HolonInput = {
+export type WholeInput = {
   graph: FoldedGraph;
   records: DgRecord[];
   me: Author;
@@ -84,7 +84,7 @@ const cardHeight = (title: string, flags: number): number => 40 + 19 * Math.ceil
 /** Cards are 240 px wide in every base, so three columns fit a 725 px frame. */
 const CARD_WIDTH = 240;
 
-export const holonIndex = (input: HolonInput, stance: Stance = "lab") => {
+export const wholeIndex = (input: WholeInput, stance: Stance = "lab") => {
   const { graph, records, me, localSpace } = input;
   const nodes = [...graph.documents.values()].filter(
     (r): r is NodeRecord => r.kind === "node" && !r.removed && !graph.withdrawn.has(r.id),
@@ -141,7 +141,7 @@ export const holonIndex = (input: HolonInput, stance: Stance = "lab") => {
     typeOf(node)?.lexicon === "science.mira.request" ||
     [...graph.relations.values()].some(({ record }) => record.source === node.id && (graph.documents.get(record.type) as RelationTypeRecord | undefined)?.base === "requestTarget");
 
-  const children = (ref: HolonRef): NodeRecord[] => {
+  const children = (ref: WholeRef): NodeRecord[] => {
     const pick = (ids: DgId[]) => [...new Set(ids)].map((id) => nodeById.get(id)!).filter(Boolean);
     switch (ref.level) {
       case "lab":
@@ -157,13 +157,13 @@ export const holonIndex = (input: HolonInput, stance: Stance = "lab") => {
     }
   };
 
-  const refOf = (node: NodeRecord): HolonRef | undefined => {
+  const refOf = (node: NodeRecord): WholeRef | undefined => {
     const level = LEVEL_OF[base(node.id) ?? ""];
     return level ? { level, id: node.id } : undefined;
   };
 
-  const parents = (ref: HolonRef): { ref: HolonRef; title: string }[] => {
-    const holon = (n: NodeRecord) => ({ ref: refOf(n)!, title: n.title });
+  const parents = (ref: WholeRef): { ref: WholeRef; title: string }[] => {
+    const whole = (n: NodeRecord) => ({ ref: refOf(n)!, title: n.title });
     switch (ref.level) {
       case "question": {
         const node = nodeById.get(ref.id);
@@ -172,17 +172,17 @@ export const holonIndex = (input: HolonInput, stance: Stance = "lab") => {
         return [{ ref: { level: "lab", id: home }, title: rootTitle(home) }];
       }
       case "claim":
-        return outOf(ref.id, ["addresses"]).map((a) => holon(nodeById.get(a.record.target)!));
+        return outOf(ref.id, ["addresses"]).map((a) => whole(nodeById.get(a.record.target)!));
       case "evidence":
         return [...outOf(ref.id, ["supports", "opposes"]), ...outOf(ref.id, ["informs"])]
           .map((a) => nodeById.get(a.record.target)!)
           .filter((n) => refOf(n))
-          .map(holon);
+          .map(whole);
       case "output": {
         const output = nodeById.get(ref.id);
         return nodes
           .filter((n) => (n.prov?.observationBase ?? []).some((pin) => pin.uri === ref.id || (output?.facts?.cid && pin.cid === output.facts.cid)))
-          .map(holon);
+          .map(whole);
       }
       default:
         return [];
@@ -192,11 +192,11 @@ export const holonIndex = (input: HolonInput, stance: Stance = "lab") => {
   const rootTitle = (id: string): string =>
     id.startsWith(SPACE) ? (id.slice(SPACE.length) === localSpace ? "Your workspace" : "Someone else's workspace") : (labName(id) ?? id);
 
-  const titleOf = (ref: HolonRef): string => (ref.level === "lab" ? rootTitle(ref.id) : (nodeById.get(ref.id)?.title ?? ref.id));
+  const titleOf = (ref: WholeRef): string => (ref.level === "lab" ? rootTitle(ref.id) : (nodeById.get(ref.id)?.title ?? ref.id));
 
-  const pathTo = (ref: HolonRef): { ref: HolonRef; title: string }[] => {
-    const path: { ref: HolonRef; title: string }[] = [];
-    let current: HolonRef | undefined = ref;
+  const pathTo = (ref: WholeRef): { ref: WholeRef; title: string }[] => {
+    const path: { ref: WholeRef; title: string }[] = [];
+    let current: WholeRef | undefined = ref;
     const seen = new Set<string>();
     while (current && !seen.has(current.id)) {
       seen.add(current.id);
@@ -232,7 +232,7 @@ export const holonIndex = (input: HolonInput, stance: Stance = "lab") => {
     return [];
   };
 
-  const part = (node: NodeRecord): HolonPart => {
+  const part = (node: NodeRecord): WholePart => {
     const ref = refOf(node);
     return {
       id: node.id,
@@ -253,10 +253,10 @@ export const holonIndex = (input: HolonInput, stance: Stance = "lab") => {
   };
 };
 
-type Index = ReturnType<typeof holonIndex>;
+type Index = ReturnType<typeof wholeIndex>;
 
 /** What stands behind evidence or an output: the run, its study, protocol, code, and the source. */
-const behindOf = (input: HolonInput, index: Index, ref: HolonRef): NodeRecord[] => {
+const behindOf = (input: WholeInput, index: Index, ref: WholeRef): NodeRecord[] => {
   const ids: DgId[] = [];
   if (ref.level === "evidence") {
     const chain = evidenceChain(input.graph, ref.id, input.protocols);
@@ -284,8 +284,8 @@ const behindOf = (input: HolonInput, index: Index, ref: HolonRef): NodeRecord[] 
   return [...new Set(ids)].map((id) => index.nodeById.get(id)!).filter(Boolean);
 };
 
-const edgesAmong = (index: Index, ids: Set<DgId>): HolonEdge[] => {
-  const edges: HolonEdge[] = [];
+const edgesAmong = (index: Index, ids: Set<DgId>): WholeEdge[] => {
+  const edges: WholeEdge[] = [];
   for (const a of index.argumentsList) {
     if (ids.has(a.record.source) && ids.has(a.record.target)) {
       edges.push({ id: a.record.id, from: a.record.source, to: a.record.target, kind: a.base, state: a.state, by: a.record.by.name });
@@ -308,7 +308,7 @@ const edgesAmong = (index: Index, ids: Set<DgId>): HolonEdge[] => {
   return edges;
 };
 
-const gapsOf = (input: HolonInput, index: Index, ref: HolonRef, parts: NodeRecord[]): Gap[] => {
+const gapsOf = (input: WholeInput, index: Index, ref: WholeRef, parts: NodeRecord[]): Gap[] => {
   const gaps = new Map<string, Gap>();
   const add = (rule: string, severity: Gap["severity"], message: string, unit: DgId) => {
     const gap = gaps.get(rule) ?? { rule, severity, message, units: [] };
@@ -355,15 +355,15 @@ const gapsOf = (input: HolonInput, index: Index, ref: HolonRef, parts: NodeRecor
   return [...gaps.values()];
 };
 
-const crossingsOf = (index: Index, ref: HolonRef, parts: NodeRecord[], behind: NodeRecord[]): Crossing[] => {
+const crossingsOf = (index: Index, ref: WholeRef, parts: NodeRecord[], behind: NodeRecord[]): Crossing[] => {
   const crossings: Crossing[] = [];
-  const holonNode = index.nodeById.get(ref.id);
-  const home = ref.level === "lab" ? ref.id : holonNode ? index.homeOf(holonNode) : undefined;
+  const wholeNode = index.nodeById.get(ref.id);
+  const home = ref.level === "lab" ? ref.id : wholeNode ? index.homeOf(wholeNode) : undefined;
   const as = (n: NodeRecord) => ({ id: n.id, title: n.title, base: index.base(n.id) ?? "none" });
   for (const n of [...parts, ...behind]) {
     if (home && index.homeOf(n) !== home) crossings.push({ ...as(n), direction: "in", why: `From ${index.rootTitle(index.homeOf(n))}` });
   }
-  for (const n of [...(holonNode ? [holonNode] : []), ...parts]) {
+  for (const n of [...(wholeNode ? [wholeNode] : []), ...parts]) {
     const source = n.prov?.sourceDocument ? index.nodeById.get(n.prov.sourceDocument) : undefined;
     if (source && index.base(n.id) === "evidence") crossings.push({ ...as(n), direction: "in", why: `Reported in ${source.title}` });
   }
@@ -374,8 +374,8 @@ const crossingsOf = (index: Index, ref: HolonRef, parts: NodeRecord[], behind: N
       if (from) crossings.push({ ...as(from), direction: "in", why: `Proposed by ${a.record.by.name}, not yet counted` });
     }
   }
-  if (ref.level === "output" && holonNode?.facts?.cid) {
-    for (const twin of behind.filter((b) => b.id !== ref.id && b.facts?.cid === holonNode.facts!.cid)) {
+  if (ref.level === "output" && wholeNode?.facts?.cid) {
+    for (const twin of behind.filter((b) => b.id !== ref.id && b.facts?.cid === wholeNode.facts!.cid)) {
       crossings.push({ ...as(twin), direction: "in", why: "The same bytes, made by another run" });
     }
   }
@@ -387,10 +387,10 @@ const crossingsOf = (index: Index, ref: HolonRef, parts: NodeRecord[], behind: N
   return crossings;
 };
 
-/** A saved canvas for the holon, or one laid out in columns from the graph. */
-const canvasFor = (input: HolonInput, index: Index, ref: HolonRef, parts: NodeRecord[], behind: NodeRecord[], edges: HolonEdge[]): HolonCanvas => {
+/** A saved canvas for the whole, or one laid out in columns from the graph. */
+const canvasFor = (input: WholeInput, index: Index, ref: WholeRef, parts: NodeRecord[], behind: NodeRecord[], edges: WholeEdge[]): WholeCanvas => {
   const own = [...input.graph.documents.values()]
-    .filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed && r.holon === ref.id)
+    .filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed && r.whole === ref.id)
     .sort((a, b) => b.editedAt.localeCompare(a.editedAt));
   const others = own.slice(1).map((c) => ({ id: c.id, title: c.title }));
   if (own[0]) return { ...cardsOf(input.graph, own[0].id), others };
@@ -411,7 +411,7 @@ const canvasFor = (input: HolonInput, index: Index, ref: HolonRef, parts: NodeRe
               behind.filter((b) => ["run", "source", "output"].includes(index.base(b.id) ?? "")),
               behind.filter((b) => !["run", "source", "output"].includes(index.base(b.id) ?? "")),
             ];
-  const cards: HolonCanvasCard[] = [];
+  const cards: WholeCanvasCard[] = [];
   columns.forEach((column, x) => {
     let y = 0;
     for (const n of column.filter(Boolean)) {
@@ -428,10 +428,10 @@ const canvasFor = (input: HolonInput, index: Index, ref: HolonRef, parts: NodeRe
   return { id: null, title: `${index.titleOf(ref)}`, cards, links, others };
 };
 
-const cardsOf = (graph: FoldedGraph, canvasId: DgId): Omit<HolonCanvas, "others"> => {
+const cardsOf = (graph: FoldedGraph, canvasId: DgId): Omit<WholeCanvas, "others"> => {
   const canvas = graph.documents.get(canvasId) as CanvasRecord;
   const items = liveCanvasItems({ graph, canvas: canvasId }).map((r) => r.item);
-  const cards: HolonCanvasCard[] = items
+  const cards: WholeCanvasCard[] = items
     .filter((i): i is CanvasNode => !isCanvasEdge(i) && i.type !== "stroke" && (i as CanvasNode).type !== "group")
     .map((i) => ({
       id: i.id,
@@ -463,8 +463,8 @@ const describe = (record: DgRecord, index: Index): string => {
 
 const editedAt = (r: DgRecord): string => ("editedAt" in r ? r.editedAt : r.at);
 
-export const holonView = (input: HolonInput, ref: HolonRef, stance: Stance): HolonView => {
-  const index = holonIndex(input, stance);
+export const wholeView = (input: WholeInput, ref: WholeRef, stance: Stance): WholeView => {
+  const index = wholeIndex(input, stance);
   const parts = index.children(ref);
   const behind = behindOf(input, index, ref);
   const ids = new Set([...(ref.level === "lab" ? [] : [ref.id]), ...parts.map((p) => p.id), ...behind.map((b) => b.id)]);
@@ -477,14 +477,14 @@ export const holonView = (input: HolonInput, ref: HolonRef, stance: Stance): Hol
   const canvas = canvasFor(input, index, ref, parts, behind, edges);
   const canvasItems = canvas.id ? new Set(liveCanvasItems({ graph: input.graph, canvas: canvas.id }).map((r) => r.id)) : new Set<DgId>();
   const historyIds = new Set([...ids, ...relevant.map((a) => a.record.id), ...(canvas.id ? [canvas.id, ...canvasItems] : [])]);
-  const history: HolonEvent[] = input.records
+  const history: WholeEvent[] = input.records
     .filter((r) => historyIds.has(r.id) || (r.kind === "release" && r.canvas === canvas.id))
     .sort((a, b) => editedAt(b).localeCompare(editedAt(a)))
     .slice(0, 40)
     .map((r) => ({ at: editedAt(r), by: ("editedBy" in r ? r.editedBy : r.by).name, what: describe(r, index), ...(r.kind === "node" ? { unit: r.id } : {}) }));
   const crossings = crossingsOf(index, ref, parts, behind);
   const gaps = gapsOf(input, index, ref, parts);
-  const names: HolonView["names"] = {};
+  const names: WholeView["names"] = {};
   const cardUnits = canvasFor(input, index, ref, parts, behind, edgesAmong(index, ids)).cards.flatMap((c) => c.unit ?? []);
   for (const id of new Set([...gaps.flatMap((g) => g.units), ...crossings.map((c) => c.id), ...parts.map((p) => p.id), ...behind.map((b) => b.id), ...cardUnits])) {
     const n = index.nodeById.get(id);
@@ -525,9 +525,9 @@ export const holonView = (input: HolonInput, ref: HolonRef, stance: Stance): Hol
   };
 };
 
-/** The holon a unit opens as. Process units open as the first evidence they stand behind. */
-export const locateHolon = (input: HolonInput, id: DgId): HolonRef | null => {
-  const index = holonIndex(input);
+/** The whole a unit opens as. Process units open as the first evidence they stand behind. */
+export const locateWhole = (input: WholeInput, id: DgId): WholeRef | null => {
+  const index = wholeIndex(input);
   const node = index.nodeById.get(id);
   if (!node) return index.labs.some((l) => l.did === id) ? { level: "lab", id } : null;
   const own = index.refOf(node);
@@ -540,8 +540,8 @@ export const locateHolon = (input: HolonInput, id: DgId): HolonRef | null => {
   return null;
 };
 
-export const holonRoots = (input: HolonInput): { ref: HolonRef; title: string; holds: number }[] => {
-  const index = holonIndex(input);
+export const wholeRoots = (input: WholeInput): { ref: WholeRef; title: string; holds: number }[] => {
+  const index = wholeIndex(input);
   const homes = new Set(index.nodes.filter((n) => index.base(n.id) === "question").map(index.homeOf));
   return [...homes].map((id) => ({ ref: { level: "lab" as const, id }, title: index.rootTitle(id), holds: index.children({ level: "lab", id }).length }));
 };
@@ -550,8 +550,8 @@ const releaseSummary = (r: ReleaseRecord): ReleaseSummary => ({
   id: r.id, canvas: r.canvas, name: r.name, ...(r.note ? { note: r.note } : {}), at: r.at, by: r.by.name, units: r.units.length, published: Boolean(r.published),
 });
 
-export const repository = (input: HolonInput): RepositoryCanvas[] => {
-  const index = holonIndex(input);
+export const repository = (input: WholeInput): RepositoryCanvas[] => {
+  const index = wholeIndex(input);
   const canvases = [...input.graph.documents.values()].filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed);
   const papers = [...input.graph.documents.values()].filter((r): r is Extract<DgRecord, { kind: "paper" }> => r.kind === "paper" && !("removed" in r && r.removed));
   const releasesOf = (id: DgId) => index.releases.filter((r) => r.canvas === id).sort((a, b) => a.at.localeCompare(b.at));
@@ -627,12 +627,12 @@ export const repository = (input: HolonInput): RepositoryCanvas[] => {
       const releases = releasesOf(canvas.id);
       const forkSource = canvas.forkOf ? index.releases.find((r) => r.id === canvas.forkOf!.uri) : undefined;
       const sourceCanvas = forkSource ? (input.graph.documents.get(forkSource.canvas) as CanvasRecord | undefined) : undefined;
-      const holonNode = canvas.holon ? index.nodeById.get(canvas.holon) : undefined;
-      const holonRef = holonNode ? index.refOf(holonNode) : canvas.holon && index.labs.some((l) => l.did === canvas.holon) ? ({ level: "lab", id: canvas.holon } as HolonRef) : undefined;
+      const wholeNode = canvas.whole ? index.nodeById.get(canvas.whole) : undefined;
+      const wholeRef = wholeNode ? index.refOf(wholeNode) : canvas.whole && index.labs.some((l) => l.did === canvas.whole) ? ({ level: "lab", id: canvas.whole } as WholeRef) : undefined;
       return {
         id: canvas.id,
         title: canvas.title,
-        ...(holonRef ? { holon: { ref: holonRef, title: index.titleOf(holonRef) } } : {}),
+        ...(wholeRef ? { whole: { ref: wholeRef, title: index.titleOf(wholeRef) } } : {}),
         cards: items.filter((i) => !isCanvasEdge(i.item)).length,
         links: items.filter((i) => isCanvasEdge(i.item)).length,
         units: byBase,
@@ -663,15 +663,15 @@ export const repository = (input: HolonInput): RepositoryCanvas[] => {
 };
 
 /** The canvas as it stood at a moment: every record up to then, folded. */
-export const canvasAt = (input: HolonInput, id: DgId, at: string): HolonCanvas => {
+export const canvasAt = (input: WholeInput, id: DgId, at: string): WholeCanvas => {
   const upTo = input.records.filter((r) => editedAt(r) <= at);
   const graph = foldRecords({ records: upTo, localSpace: input.localSpace });
   if (!graph.documents.has(id)) return { id, title: "Not yet made", cards: [], links: [], others: [] };
   return { ...cardsOf(graph, id), others: [] };
 };
 
-export const canvasHistory = (input: HolonInput, id: DgId): { events: HolonEvent[]; releases: ReleaseSummary[] } => {
-  const index = holonIndex(input);
+export const canvasHistory = (input: WholeInput, id: DgId): { events: WholeEvent[]; releases: ReleaseSummary[] } => {
+  const index = wholeIndex(input);
   const events = input.records
     .filter((r) => r.id === id || (r.kind === "canvas-item" && r.canvas === id) || (r.kind === "release" && r.canvas === id))
     .sort((a, b) => editedAt(a).localeCompare(editedAt(b)))
@@ -682,7 +682,7 @@ export const canvasHistory = (input: HolonInput, id: DgId): { events: HolonEvent
 type Stamp = { space: string; by: Author; at?: string; lab?: string };
 
 /** Pins every card's unit and every item's revision, so the release stays fixed. */
-export const planRelease = async (input: HolonInput, id: DgId, name: string, note: string | undefined, stamp: Stamp): Promise<ReleaseRecord> => {
+export const planRelease = async (input: WholeInput, id: DgId, name: string, note: string | undefined, stamp: Stamp): Promise<ReleaseRecord> => {
   const items = liveCanvasItems({ graph: input.graph, canvas: id });
   const units = [...new Set(items.flatMap((i) => unitOn(i.item) ?? []))];
   const pins: Pin[] = [];
@@ -702,20 +702,20 @@ export const planRelease = async (input: HolonInput, id: DgId, name: string, not
 };
 
 /** The item versions a release names, read from the log. */
-const releasedItems = (input: HolonInput, release: ReleaseRecord): CanvasItemRecord[] =>
+const releasedItems = (input: WholeInput, release: ReleaseRecord): CanvasItemRecord[] =>
   release.items.flatMap(({ id, rev }) => {
     const found = input.records.find((r): r is CanvasItemRecord => r.kind === "canvas-item" && r.id === id && r.rev === rev);
     return found ? [found] : [];
   });
 
 /** A new canvas that starts from a release, keeping where every card was. */
-export const planFork = (input: HolonInput, releaseId: DgId, title: string | undefined, stamp: Stamp): DgRecord[] => {
+export const planFork = (input: WholeInput, releaseId: DgId, title: string | undefined, stamp: Stamp): DgRecord[] => {
   const release = input.graph.documents.get(releaseId) as ReleaseRecord;
   const source = input.graph.documents.get(release.canvas) as CanvasRecord;
   const canvas = createCanvas({
     ...stamp,
     title: title ?? `${source.title} (fork of ${release.name})`,
-    fields: { forkOf: { uri: release.id }, ...(source.holon ? { holon: source.holon } : {}) },
+    fields: { forkOf: { uri: release.id }, ...(source.whole ? { whole: source.whole } : {}) },
   });
   const items = releasedItems(input, release);
   const renamed = new Map<DgId, DgId>();
@@ -739,7 +739,7 @@ export const planFork = (input: HolonInput, releaseId: DgId, title: string | und
 
 type Side = { units: Map<DgId, string | undefined>; places: Map<DgId, string> };
 
-const sideOf = async (input: HolonInput, canvas: DgId, which: DgId | "now"): Promise<Side> => {
+const sideOf = async (input: WholeInput, canvas: DgId, which: DgId | "now"): Promise<Side> => {
   const units = new Map<DgId, string | undefined>();
   const places = new Map<DgId, string>();
   if (which === "now") {
@@ -761,7 +761,7 @@ const sideOf = async (input: HolonInput, canvas: DgId, which: DgId | "now"): Pro
   return { units, places };
 };
 
-export const diffCanvas = async (input: HolonInput, canvas: DgId, from: DgId | "now", to: DgId | "now"): Promise<CanvasDiff> => {
+export const diffCanvas = async (input: WholeInput, canvas: DgId, from: DgId | "now", to: DgId | "now"): Promise<CanvasDiff> => {
   const a = await sideOf(input, canvas, from);
   const b = await sideOf(input, canvas, to);
   const title = (unit: DgId) => (input.graph.documents.get(unit) as NodeRecord | undefined)?.title ?? unit;
@@ -776,11 +776,11 @@ export const diffCanvas = async (input: HolonInput, canvas: DgId, from: DgId | "
   };
 };
 
-/** Saves the laid-out canvas of a holon as an authored one. */
-export const planHolonCanvas = (input: HolonInput, ref: HolonRef, stamp: Stamp): DgRecord[] => {
-  const view = holonView(input, ref, "lab");
+/** Saves the laid-out canvas of a whole as an authored one. */
+export const planWholeCanvas = (input: WholeInput, ref: WholeRef, stamp: Stamp): DgRecord[] => {
+  const view = wholeView(input, ref, "lab");
   // Placed by a tool, so the canvas tab tidies it the first time it opens.
-  const canvas = createCanvas({ ...stamp, title: view.title, fields: { holon: ref.id, needsLayout: true } });
+  const canvas = createCanvas({ ...stamp, title: view.title, fields: { whole: ref.id, needsLayout: true } });
   const out: DgRecord[] = [canvas];
   const items = new Map<string, DgId>();
   let z = 1;
@@ -800,12 +800,12 @@ export const planHolonCanvas = (input: HolonInput, ref: HolonRef, stamp: Stamp):
 };
 
 /** Where a canvas sits in the holarchy, and what it could be tied to. */
-export const canvasHolon = (input: HolonInput, id: DgId): CanvasHolon => {
-  const index = holonIndex(input);
+export const canvasWhole = (input: WholeInput, id: DgId): CanvasWhole => {
+  const index = wholeIndex(input);
   const canvas = input.graph.documents.get(id) as CanvasRecord | undefined;
-  const holonId = canvas?.holon;
-  const node = holonId ? index.nodeById.get(holonId) : undefined;
-  const ref: HolonRef | null = node ? (index.refOf(node) ?? null) : holonId && index.labs.some((l) => l.did === holonId) ? { level: "lab", id: holonId } : null;
+  const wholeId = canvas?.whole;
+  const node = wholeId ? index.nodeById.get(wholeId) : undefined;
+  const ref: WholeRef | null = node ? (index.refOf(node) ?? null) : wholeId && index.labs.some((l) => l.did === wholeId) ? { level: "lab", id: wholeId } : null;
   const onCanvas = liveCanvasItems({ graph: input.graph, canvas: id }).flatMap((r) => unitOn(r.item) ?? []);
   const units = [...new Set(onCanvas)].flatMap((u) => {
     const n = index.nodeById.get(u);
@@ -818,13 +818,13 @@ export const canvasHolon = (input: HolonInput, id: DgId): CanvasHolon => {
   return { ref, path: ref ? index.pathTo(ref) : [], candidates: [...labs, ...units.map(({ ref: r, title }) => ({ ref: r, title }))] };
 };
 
-/** The holon's newest canvas, if it has one. */
-export const canvasOfHolon = (input: HolonInput, holon: string): DgId | null =>
+/** The whole's newest canvas, if it has one. */
+export const canvasOfWhole = (input: WholeInput, whole: string): DgId | null =>
   [...input.graph.documents.values()]
-    .filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed && r.holon === holon)
+    .filter((r): r is CanvasRecord => r.kind === "canvas" && !r.removed && r.whole === whole)
     .sort((a, b) => b.editedAt.localeCompare(a.editedAt))[0]?.id ?? null;
 
-export const DEFAULT_PREFS: Prefs = { linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: DEFAULT_CARD_FIELDS, sidePinned: false, zoteroLibrary: false };
+export const DEFAULT_PREFS: Prefs = { linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: DEFAULT_CARD_FIELDS, sidePinned: false, miniMap: true, zoteroLibrary: false };
 const PREFS_KEY = "prefs";
 
 const latest = (records: DgRecord[]): DgRecord[] => {
@@ -836,36 +836,36 @@ const latest = (records: DgRecord[]): DgRecord[] => {
   return [...winners.values()];
 };
 
-/** The holon handlers every base gets through its core, and the hooks core calls. */
-export const holonFeature = (context: Context) => {
-  const input = async (): Promise<HolonInput> => {
+/** The whole handlers every base gets through its core, and the hooks core calls. */
+export const overviewFeature = (context: Context) => {
+  const input = async (): Promise<WholeInput> => {
     const graph = context.graph();
     return { graph, records: context.records(), me: context.me(), localSpace: context.localSpace, protocols: await protocolCids(graph), credit: context.creditFor };
   };
-  // The holon in focus, which the boundary panel follows.
-  let focus: { ref: HolonRef | null; canvas: DgId | null } = { ref: null, canvas: null };
-  const setFocus = (next: { ref: HolonRef | null; canvas: DgId | null }) => {
+  // The whole in focus, which the boundary panel follows.
+  let focus: { ref: WholeRef | null; canvas: DgId | null } = { ref: null, canvas: null };
+  const setFocus = (next: { ref: WholeRef | null; canvas: DgId | null }) => {
     if (next.ref?.id === focus.ref?.id && next.ref?.level === focus.ref?.level && next.canvas === focus.canvas) return;
     focus = next;
-    context.send({ event: "holon-focus-changed", ...focus });
+    context.send({ event: "overview-focus-changed", ...focus });
   };
-  const focusCanvas = async (canvas: DgId) => setFocus({ ref: canvasHolon(await input(), canvas).ref, canvas });
-  /** A note was opened: its unit's holon comes into focus, unless it has none. */
+  const focusCanvas = async (canvas: DgId) => setFocus({ ref: canvasWhole(await input(), canvas).ref, canvas });
+  /** A note was opened: its unit's whole comes into focus, unless it has none. */
   const followNote = async (node: DgId) => {
-    const ref = locateHolon(await input(), node);
+    const ref = locateWhole(await input(), node);
     if (ref) setFocus({ ref, canvas: null });
   };
-  const holonCanvas = async (ref: HolonRef): Promise<{ id: DgId; made: boolean }> => {
-    const known = canvasOfHolon(await input(), ref.id);
+  const wholeCanvas = async (ref: WholeRef): Promise<{ id: DgId; made: boolean }> => {
+    const known = canvasOfWhole(await input(), ref.id);
     if (known) return { id: known, made: false };
-    const records = planHolonCanvas(await input(), ref, context.stamp());
+    const records = planWholeCanvas(await input(), ref, context.stamp());
     await context.put(records);
     return { id: records[0]!.id, made: true };
   };
   const prefs = async (): Promise<Prefs> => {
     const stored = await context.getLocal(PREFS_KEY);
     // A choice an earlier version stored and this one no longer offers is left behind.
-    const { holonGesture: _gone, ...known } = (stored && typeof stored === "object" ? stored : {}) as Partial<Prefs> & { holonGesture?: unknown };
+    const { wholeGesture: _gone, ...known } = (stored && typeof stored === "object" ? stored : {}) as Partial<Prefs> & { wholeGesture?: unknown };
     const kept = { ...DEFAULT_PREFS, ...known };
     // Only the fields this version knows, in the order cards show them.
     const fields = Array.isArray(kept.cardFields) ? kept.cardFields : DEFAULT_CARD_FIELDS;
@@ -880,25 +880,25 @@ export const holonFeature = (context: Context) => {
   };
   const handlers: Pick<
     Handlers,
-    | "holon.view" | "holon.locate" | "holon.roots" | "holon.focus.get" | "holon.focus.set" | "holon.ofCanvas" | "holon.canvas"
-    | "repository.canvases" | "canvas.at" | "canvas.history" | "canvas.saveHolon" | "canvas.release" | "canvas.fork" | "canvas.diff"
-    | "canvas.setHolon" | "canvas.highlight" | "prefs.get" | "prefs.set"
+    | "overview.get" | "overview.locate" | "overview.list" | "overview.focus.get" | "overview.focus.set" | "overview.ofCanvas" | "overview.canvas"
+    | "library.canvases" | "canvas.at" | "canvas.history" | "canvas.saveWhole" | "canvas.release" | "canvas.fork" | "canvas.diff"
+    | "canvas.setWhole" | "canvas.highlight" | "prefs.get" | "prefs.set"
   > = {
-    "holon.view": async ({ ref, stance }) => holonView(await input(), ref, stance),
-    "holon.roots": async () => holonRoots(await input()),
-    "holon.locate": async ({ id }) => locateHolon(await input(), id),
-    "holon.focus.get": async () => focus,
-    "holon.focus.set": async ({ canvas, ref }) => {
+    "overview.get": async ({ ref, stance }) => wholeView(await input(), ref, stance),
+    "overview.list": async () => wholeRoots(await input()),
+    "overview.locate": async ({ id }) => locateWhole(await input(), id),
+    "overview.focus.get": async () => focus,
+    "overview.focus.set": async ({ canvas, ref }) => {
       if (canvas) await focusCanvas(canvas);
       else if (ref) setFocus({ ref, canvas: null });
       return null;
     },
-    "holon.ofCanvas": async ({ id }) => canvasHolon(await input(), id),
-    "holon.canvas": async ({ ref }) => holonCanvas(ref),
-    "repository.canvases": async () => repository(await input()),
+    "overview.ofCanvas": async ({ id }) => canvasWhole(await input(), id),
+    "overview.canvas": async ({ ref }) => wholeCanvas(ref),
+    "library.canvases": async () => repository(await input()),
     "canvas.at": async ({ id, at }) => canvasAt(await input(), id, at),
     "canvas.history": async ({ id }) => canvasHistory(await input(), id),
-    "canvas.saveHolon": async ({ ref }) => ({ id: (await holonCanvas(ref)).id }),
+    "canvas.saveWhole": async ({ ref }) => ({ id: (await wholeCanvas(ref)).id }),
     "canvas.release": async ({ id, name, note }) => {
       const release = await planRelease(await input(), id, name, note, context.stamp());
       await context.put([release]);
@@ -909,12 +909,12 @@ export const holonFeature = (context: Context) => {
       await context.put(latest(records));
       return { id: records[0]!.id };
     },
-    "canvas.diff": async ({ canvas, from, to }) => diffCanvas(await input(), canvas, from, to),
-    "canvas.setHolon": async ({ id, holon }) => {
+    "canvas.diff": async ({ id: canvas, from, to }) => diffCanvas(await input(), canvas, from, to),
+    "canvas.setWhole": async ({ id, whole }) => {
       const canvas = context.graph().documents.get(id) as CanvasRecord | undefined;
       if (!canvas) return null;
-      const { holon: _old, ...rest } = canvas;
-      const changed = revise({ record: holon ? { ...canvas, holon } : (rest as CanvasRecord), changes: {}, by: context.me() });
+      const { whole: _old, ...rest } = canvas;
+      const changed = revise({ record: whole ? { ...canvas, whole } : (rest as CanvasRecord), changes: {}, by: context.me() });
       await context.put([changed]);
       if (focus.canvas === id) await focusCanvas(id);
       return null;
@@ -926,5 +926,7 @@ export const holonFeature = (context: Context) => {
     "prefs.get": async () => prefs(),
     "prefs.set": async (changes) => setPrefs(changes),
   };
-  return { handlers, followNote, focusCanvas, holonCanvas, prefs, setPrefs, locate: async (id: DgId) => locateHolon(await input(), id) };
+  context.offers.prefs = prefs;
+  context.offers.followNote = followNote;
+  return { handlers, followNote, focusCanvas, wholeCanvas, prefs, setPrefs, locate: async (id: DgId) => locateWhole(await input(), id) };
 };

@@ -136,6 +136,7 @@ const skinNow = (): Skin => {
 };
 
 const DEVICE_KEY = "discourse-graphs-device";
+const LOCAL_PREFIX = "discourse-graphs-local:";
 
 export const createObsidianHost = async ({
   app,
@@ -247,6 +248,25 @@ export const createObsidianHost = async ({
   }
   if (!data.personId) {
     data.personId = uuidv7();
+    await saveData();
+  }
+  // What is for this device only is kept on the device: the link to a lab with its token, a model key
+  // where there is no keychain, the clock's correction. The plugin's data file travels with the vault,
+  // so anything left in it from before is moved here and taken out of the file.
+  const readLocal = (key: string): Json | null => {
+    const kept = app.loadLocalStorage(`${LOCAL_PREFIX}${key}`) as string | null;
+    if (kept === null || kept === undefined) return null;
+    try {
+      return JSON.parse(kept) as Json;
+    } catch {
+      return null;
+    }
+  };
+  if (data.local) {
+    for (const [key, value] of Object.entries(data.local)) {
+      if (app.loadLocalStorage(`${LOCAL_PREFIX}${key}`) === null) app.saveLocalStorage(`${LOCAL_PREFIX}${key}`, JSON.stringify(value));
+    }
+    delete data.local;
     await saveData();
   }
   const deviceLog = `${RECORDS}/${deviceId}.jsonl`;
@@ -808,13 +828,11 @@ export const createObsidianHost = async ({
       return ok(null);
     },
 
-    getLocal: async ({ key }) => ok(data.local?.[key] ?? null),
-    setLocal: async ({ key, value }) =>
-      inOrder(async () => {
-        data = { ...data, local: { ...data.local, [key]: value } };
-        await saveData();
-        return ok(null);
-      }),
+    getLocal: async ({ key }) => ok(readLocal(key)),
+    setLocal: async ({ key, value }) => {
+      app.saveLocalStorage(`${LOCAL_PREFIX}${key}`, JSON.stringify(value));
+      return ok(null);
+    },
 
     subscribe: (listener) => {
       listeners.add(listener);

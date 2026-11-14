@@ -1,6 +1,6 @@
 # The MCP server: design
 
-A design, not yet built. It replaces section 3 of [llm-and-mcp-spec.md](llm-and-mcp-spec.md), which was written before labs had invitations, signed records, device keys and a reach setting. Written 13 November 2026.
+A design. Its groundwork is built and the server is not: see "Built so far". It replaces section 3 of [llm-and-mcp-spec.md](llm-and-mcp-spec.md), which was written before labs had invitations, signed records, device keys and a reach setting. Written 13 November 2026.
 
 It was reached by two sweeps. One went up from what the core can already do. The other came down from what people would ask an agent for. Where they met is the tool set. Where they didn't is a list of changes to the rest of the software, at the end.
 
@@ -112,7 +112,7 @@ One idea, where there are three half-ideas today.
 An agent is one more key that may sign for a person, like a second computer, with less it may do.
 
 - Installing the server makes a key for it. It shows on the Lab tab under **Your devices** as an agent waiting to be let in. The person presses **Let it in** on a device they already use. This is the flow that exists for a second computer today.
-- Its role is `agent`. The record kind for this already exists. **What an agent's key signs is only ever read as a proposal,** whatever the record says about itself. That rule is not built: see the changes below.
+- Its role is `agent`. The record kind for this already exists. **What an agent's key signs is only ever read as a proposal,** whatever the record says about itself. That rule is built: see "Built so far".
 - Removing it is the same press as removing a lost laptop. Its proposals stay as what was said. Nothing new from it is taken.
 - A lab's other members check its signature through the person's own, as they would a second computer's. They only ever receive what the person accepted, which is the person's.
 
@@ -178,6 +178,20 @@ The sweeps didn't only produce tools. Each of these is a gap they exposed, and m
 - **A protocol check** with the MCP project's own conformance suite, against the server on stdio and on HTTP.
 - **Whether a model picks the right tool** is measured, not assumed: the nine jobs above as tasks, scored on whether the right tools were called and how many calls it took. The tool list is changed until the jobs go through cleanly.
 - **A paper that tries to instruct the agent** is one of the fixtures.
+
+## Built so far
+
+On 13 November 2026 the groundwork went in. There is still no server and no tool.
+
+| Change | State |
+|---|---|
+| 2. A record says which key signed it | Built. `sigBy` is signed over, and a labmate's vault checks a record against the key it names |
+| 3. A key's role is enforced where records are read | Built, in the fold. An agent's key can sign only units, relations and checks. What it signs is set apart as a proposal. A version it signs of something a person wrote is never read. Its key can't let another device in, and a labmate's vault refuses anything it signed |
+| 1. One kind of proposal | Built for what agents write: units, relations and checks, with accept and turn down, one at a time or a conversation at once. Accepting makes the person's own record, which says where it began. **Not yet merged with** units staged by extraction or lines tagged as candidates, which keep their own lists |
+| 8. Review at volume | A first version, at the top of the Search panel: grouped by conversation, with both answers for the group. Built and bundled, not yet driven in real Obsidian, since nothing there can propose yet |
+| The agent itself | The core can be started in the role `agent`, which is how the server will run it. The simulation does this |
+
+The four-vault simulation has an agent for Mira and 14 expectations about it, all holding: nothing proposed is read as part of the argument or sent to the lab, a labmate refuses an agent's record however it arrives, the agent can't reword or remove her work, accepting gives her a unit, relation and check of her own, and a removed agent's proposals are no longer offered.
 
 ## Build order
 

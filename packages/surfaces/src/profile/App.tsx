@@ -3,6 +3,7 @@ import type { Profile, ProfileAudience, ProfileEvent, ProfileStats } from "@dg/c
 import { dayOf, initialsOf, Mark } from "../shared/people.tsx";
 import type { Connection } from "../shared/rpc.ts";
 import { plain } from "../shared/ui.tsx";
+import { count } from "../shared/words.ts";
 
 /**
  * A person's profile: who they are, what they have made, and a history of
@@ -12,7 +13,6 @@ import { plain } from "../shared/ui.tsx";
 
 type Tab = ProfileAudience | "public";
 
-const count = (n: number, one: string, many: string): string => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const timeOf = (at: string): string => new Date(at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
 const Stats = ({ stats }: { stats: ProfileStats }) => {

@@ -1,3 +1,4 @@
+import { fromBase64, stemOf } from "./bytes.ts";
 import { isLibraryRef, isSharedLibraryRef, mergeIdentifiers, sameDoi, sameIdentifier, type Identifier, type LibraryAnnotation, type LibraryFile, type PaperShelf } from "@dg/contract/scholarly.ts";
 import { citeAs, identifiersOf, selectLinkOf } from "./card.ts";
 import { suggestType } from "./library.ts";
@@ -41,8 +42,6 @@ const LIST_TTL_MS = 4000;
 const HOLON_LEVELS = new Set(["question", "claim", "evidence", "output"]);
 
 const cardHeight = (title: string): number => 40 + 19 * Math.ceil(title.length / 30);
-const stemOf = (name: string): string => name.replace(/\.[^.]+$/, "");
-const fromBase64 = (text: string): Uint8Array => Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
 /** Collapses what a PDF's line breaks and spacing add, so a quote matches however it was selected. */
 export const normalizeQuote = (text: string): string => text.normalize("NFKC").replace(/-\s*\n\s*/g, "").replace(/\s+/g, " ").trim();
 

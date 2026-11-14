@@ -12,7 +12,7 @@ npm run check-types
 npm test
 ```
 
-[docs/testing.md](docs/testing.md) covers the tests that run inside real Roam and Obsidian.
+[docs/testing.md](docs/testing.md) covers the tests that run inside real Obsidian. Work is tracked as issues under fourteen feature areas: see [docs/features.md](docs/features.md) before starting something new.
 
 ## Where things go
 

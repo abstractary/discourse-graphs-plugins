@@ -1,36 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore, type Core } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
-import type { NodeRecord } from "@dg/contract/records.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import { makeCore } from "./support.ts";
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  // In this base a kept file is read back by the ref it was kept under, as a vault reads one back by its path.
-  const core: Core = await createCore({ host });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  const events: SurfaceMessage[] = [];
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = { send: (message) => void ("id" in message ? pending.get(message.id)?.(message) : events.push(message)), onMessage: (handler) => ((listener = handler), () => {}) };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = `r${(next += 1)}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  const node = (id: string): NodeRecord => core.graph().documents.get(id) as NodeRecord;
-  return { core, call, store, host, node, events };
-};
+const setup = () => makeCore();
 
 // A 1x1 PNG.
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";

@@ -1,3 +1,4 @@
+import { idsOf, listOf } from "./bytes.ts";
 import type { BaseNodeType, JsonObject } from "@dg/contract/records.ts";
 
 /**
@@ -42,8 +43,6 @@ const SAME: [string, string][] = [
   ["describesActivity", "describesActivity"],
 ];
 
-const listOf = (value: unknown): unknown[] => (value === undefined || value === null ? [] : Array.isArray(value) ? value : [value]);
-const idsOf = (value: unknown): string[] => listOf(value).flatMap((item) => (item && typeof item === "object" && "@id" in item ? [String((item as JsonObject)["@id"])] : typeof item === "string" ? [item] : []));
 const ref = (id: string): JsonObject => ({ "@id": id });
 
 /**

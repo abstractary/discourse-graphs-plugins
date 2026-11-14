@@ -27,13 +27,7 @@ export const labFeature = (
     /** Shown in the base, because the panel that was open has just closed. */
     askBreadcrumb?: (paper: { id: string; title: string }) => void;
   },
-): Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "lab.acknowledge" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
-  shareable: () => DgRecord[];
-  take: (records: DgRecord[]) => Promise<void>;
-  prepare: () => Promise<void>;
-  canvasClosed: (args: { id: string }) => Promise<void>;
-  answerBreadcrumb: (args: { paper: string; leave: boolean; remember?: boolean }) => Promise<void>;
-} => {
+) => {
   const services = (): NonNullable<Context["services"]> => {
     if (!context.services) throw new Error("No services are set up here.");
     return context.services;
@@ -159,7 +153,9 @@ export const labFeature = (
       // A check is made to be seen: it says who stands behind a unit the lab shares.
       ...context.documents("evaluation").filter((check) => units.has(check.target)),
     ];
-    return records.filter((record) => !staysLocal(record));
+    // Nothing an agent signed is sent. What a person accepted from one is a record of their own.
+    const agents = new Set(context.documents("device").filter((device) => device.role === "agent").map((device) => device.key));
+    return records.filter((record) => !staysLocal(record) && !(record.sigBy !== undefined && agents.has(record.sigBy) && record.kind !== "device"));
   };
 
   /**
@@ -206,7 +202,13 @@ export const labFeature = (
     }
   };
 
-  return {
+  const all: Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "lab.acknowledge" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
+  shareable: () => DgRecord[];
+  take: (records: DgRecord[]) => Promise<void>;
+  prepare: () => Promise<void>;
+  canvasClosed: (args: { id: string }) => Promise<void>;
+  answerBreadcrumb: (args: { paper: string; leave: boolean; remember?: boolean }) => Promise<void>;
+} = {
     shareable,
     take,
     prepare,
@@ -345,4 +347,6 @@ export const labFeature = (
       if (remember) await context.setLocal(BREADCRUMB_KEY, leave ? "always" : "never");
     },
   };
+  const { shareable: _shareable, take: _take, prepare: _prepare, canvasClosed, answerBreadcrumb, ...handlers } = all;
+  return { handlers, shareable, take, prepare, canvasClosed, answerBreadcrumb };
 };

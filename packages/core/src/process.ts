@@ -105,11 +105,21 @@ export const ensureProcessTypes = ({
   return { types: Object.fromEntries(entries) as Record<keyof typeof PROCESS_TYPES, NodeTypeRecord>, created };
 };
 
-export const baseOf = (graph: FoldedGraph, node: NodeRecord | undefined): BaseNodeType | undefined => {
-  if (!node?.type) return undefined;
-  const type = graph.documents.get(node.type);
-  return type?.kind === "node-type" ? type.base : undefined;
+/**
+ * A unit's type as it is read now. A type that gave way to a lab's is read as the lab's, so a
+ * member's earlier units follow the lab's grammar. Every reader of a type goes through here.
+ */
+export const typeOfNode = (graph: FoldedGraph, node: Pick<NodeRecord, "type"> | undefined): NodeTypeRecord | undefined => {
+  let type = node?.type ? graph.documents.get(node.type) : undefined;
+  for (let hops = 0; hops < 4 && type?.kind === "node-type" && type.replacedBy; hops += 1) {
+    const next = graph.documents.get(type.replacedBy);
+    if (next?.kind !== "node-type") break;
+    type = next;
+  }
+  return type?.kind === "node-type" ? type : undefined;
 };
+
+export const baseOf = (graph: FoldedGraph, node: NodeRecord | undefined): BaseNodeType | undefined => typeOfNode(graph, node)?.base;
 
 const nodeIn = (graph: FoldedGraph, id: DgId | undefined): NodeRecord | undefined => {
   const record = id ? graph.documents.get(id) : undefined;

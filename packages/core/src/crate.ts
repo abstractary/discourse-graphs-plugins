@@ -1,3 +1,4 @@
+import { fromBase64, idsOf, listOf, toBase64 } from "./bytes.ts";
 import {
   assertRelation,
   buildCanvas,
@@ -45,12 +46,6 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const text = (value: string): Uint8Array => encoder.encode(value);
 
-const toBase64 = (bytes: Uint8Array): string => {
-  let binary = "";
-  for (let at = 0; at < bytes.length; at += 0x8000) binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
-  return btoa(binary);
-};
-const fromBase64 = (value: string): Uint8Array => Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 
 export const slugOf = (name: string): string =>
   name
@@ -131,8 +126,6 @@ export const recordsFor = (graph: FoldedGraph, nodes: DgId[], canvas?: DgId): Dg
 
 type Entity = JsonObject & { "@id": string };
 
-const listOf = (value: unknown): unknown[] => (value === undefined || value === null ? [] : Array.isArray(value) ? value : [value]);
-const idsOf = (value: unknown): string[] => listOf(value).flatMap((item) => (item && typeof item === "object" && "@id" in item ? [String((item as JsonObject)["@id"])] : typeof item === "string" ? [item] : []));
 const typesOf = (entity: JsonObject): string[] => listOf(entity["@type"]).map((type) => miraType(String(type)));
 const stringOf = (value: unknown): string | undefined => (typeof value === "string" && value.trim() ? value.trim() : typeof value === "number" ? String(value) : undefined);
 const timeOf = (value: unknown): string | undefined => {

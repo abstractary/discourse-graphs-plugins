@@ -1,3 +1,4 @@
+import { trimmedUrl as trimmed } from "@dg/contract/urls.ts";
 import type {
   ComputeServer,
   ExtractionGraph,
@@ -30,7 +31,6 @@ type Store = {
 
 type Request = { method?: string; body?: unknown; token?: string };
 
-const trimmed = (url: string): string => url.replace(/\/+$/, "");
 
 const headers = ({ body, token }: Request): Record<string, string> => ({
   ...(body === undefined ? {} : { "content-type": "application/json" }),
@@ -189,12 +189,16 @@ export const createServices = ({
     },
     removedFrom: async () => ((await store.get(REMOVED_KEY)) as string | null) ?? null,
     forgetRemoved: () => store.set(REMOVED_KEY, null),
-    pullRecords: (link, after) =>
-      json<{ records: DgRecord[]; next?: string; done: boolean; now?: string }>(
+    pullRecords: async (link, after) => {
+      const page = await json<{ records: DgRecord[]; next?: string | number; done: boolean; now?: string }>(
         link.server,
         labPath(link, `/records?limit=500${after ? `&after=${encodeURIComponent(after)}` : ""}`),
         { token: link.token! },
-      ),
+      );
+      // The server counts its place as a number. Here it is only ever handed back, so it is kept as text.
+      const { next, ...rest } = page;
+      return { ...rest, ...(next === undefined ? {} : { next: String(next) }) };
+    },
 
     uploadPaper: async (link, body) => {
       await json(link.server, labPath(link, "/papers"), { token: link.token!, body });

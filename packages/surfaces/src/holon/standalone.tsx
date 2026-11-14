@@ -135,7 +135,7 @@ const Shell = () => {
         </button>
         <span className="hv-brand">Discourse Graphs</span>
         <nav className="hv-nav" aria-label="Main">
-          <button type="button" aria-pressed={main.kind === "holon"} onClick={() => writeMain({ kind: "holon" })} data-dg="ws-holons">Holons</button>
+          <button type="button" aria-pressed={main.kind === "holon"} onClick={() => writeMain({ kind: "holon" })} data-dg="ws-holons">Overview</button>
           <button type="button" aria-pressed={main.kind === "canvas"} onClick={() => writeMain({ kind: "canvas", ...(main.kind === "canvas" && main.id ? { id: main.id } : {}) })} data-dg="ws-canvas">Canvas</button>
           <button type="button" aria-pressed={main.kind === "run"} onClick={() => writeMain({ kind: "run" })} data-dg="ws-runs">Runs</button>
         </nav>
@@ -171,7 +171,7 @@ const Shell = () => {
             </section>
           ) : null}
         </main>
-        <aside className="ws-right" aria-label={side === "boundary" ? "Holon boundary" : side === "search" ? "Unit search" : "Context"}>
+        <aside className="ws-right" aria-label={side === "boundary" ? "Boundary" : side === "search" ? "Unit search" : "Context"}>
           <div hidden={side !== "boundary"} className="ws-pane"><Boundary connection={boundaryConnection} onShowCanvas={act.show} /></div>
           <div hidden={side !== "context"} className="ws-pane"><Context connection={contextConnection} /></div>
           <div hidden={side !== "search"} className="ws-pane"><Search connection={searchConnection} /></div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Candidate, NodeView, SearchCarry, SearchField, SearchHit, SearchSort } from "@dg/contract/surface.ts";
+import type { ProposalGroup, ProposalItem, Candidate, NodeView, SearchCarry, SearchField, SearchHit, SearchSort } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Highlighted, Icon, plain } from "../shared/ui.tsx";
 import { DRAG_TYPE, HitBody, MOD, useOpenCanvas, useSearch } from "./parts.tsx";
@@ -32,6 +32,62 @@ const excerpt = (body: string | null): string => {
     .replace(/\s+/g, " ")
     .trim();
   return text.length > 320 ? `${text.slice(0, 320).replace(/\s+\S*$/, "")}…` : text;
+};
+
+const KIND_WORD: Record<ProposalItem["kind"], string> = { unit: "Unit", relation: "Relation", check: "Check" };
+
+/**
+ * What agents have proposed and nobody has answered. None of it is part of the argument. Each can be
+ * taken or turned down by itself, or a whole conversation at once. Shown only when something waits.
+ */
+const Proposals = ({ call, on, say }: { call: Connection["call"]; on: Connection["on"]; say: (message: string) => void }) => {
+  const [groups, setGroups] = useState<ProposalGroup[]>([]);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => void call("proposal.list", {}).then(setGroups).catch(() => setGroups([])), [call]);
+  useEffect(load, [load]);
+  useEffect(() => on("graph-changed", load), [on, load]);
+  const waiting = groups.map((group) => ({ ...group, items: group.items.filter((item) => item.state === "waiting") })).filter((group) => group.items.length > 0);
+  const count = waiting.reduce((sum, group) => sum + group.items.length, 0);
+  if (count === 0) return null;
+  const decide = (ids: string[], decision: "accept" | "reject"): void => {
+    setBusy(true);
+    void call("proposal.decide", { ids, decision })
+      .then((next) => (setGroups(next), say(decision === "accept" ? `Accepted ${ids.length}. ${ids.length === 1 ? "It is" : "They are"} yours now.` : `Turned down ${ids.length}.`)))
+      .catch((error: Error) => (say(error.message), load()))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <section className="srch-candidates srch-proposals" data-dg="proposals">
+      <button type="button" className="srch-candidates-head" aria-expanded={open} data-dg="proposals-toggle" onClick={() => (setOpen(!open), load())}>
+        {count} {count === 1 ? "proposal" : "proposals"} from {waiting.length === 1 ? waiting[0]!.agent : "your agents"} {count === 1 ? "waits" : "wait"} for you
+        <Icon name="chevron" />
+      </button>
+      {open ? waiting.map((group) => (
+        <div key={`${group.agent}:${group.session}`} data-dg={`proposal-group-${group.session}`}>
+          <div className="srch-proposal-head">
+            <span><strong>{group.session}</strong> · {group.agent}</span>
+            <span>
+              <button type="button" disabled={busy} data-dg="proposal-accept-all" onClick={() => decide(group.items.map((item) => item.id), "accept")}>Accept all {group.items.length}</button>
+              <button type="button" disabled={busy} data-dg="proposal-reject-all" onClick={() => decide(group.items.map((item) => item.id), "reject")}>Turn all down</button>
+            </span>
+          </div>
+          <ul>
+            {group.items.map((item) => (
+              <li key={item.id}>
+                <span className="srch-candidate-text"><span className="srch-proposal-kind">{item.typeLabel ?? KIND_WORD[item.kind]}</span> {item.text}</span>
+                <span className="srch-candidate-from">{item.restsOn ?? (item.kind === "unit" ? "Rests on nothing quoted" : "")}</span>
+                <span className="srch-proposal-acts">
+                  <button type="button" disabled={busy} data-dg={`proposal-accept-${item.text}`} onClick={() => decide([item.id], "accept")}>Accept</button>
+                  <button type="button" disabled={busy} data-dg={`proposal-reject-${item.text}`} onClick={() => decide([item.id], "reject")}>Turn down</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )) : null}
+    </section>
+  );
 };
 
 /**
@@ -259,6 +315,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         </p>
       ) : null}
 
+      <Proposals call={call} on={on} say={setNotice} />
       <Candidates call={call} on={on} say={setNotice} />
 
       {picked.length > 1 ? (

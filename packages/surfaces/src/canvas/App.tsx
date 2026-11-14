@@ -1996,7 +1996,7 @@ export const App = ({ connection }: { connection: Connection }) => {
           </div>
         ) : null}
         {addAt ? (
-          <div className="popover add-popover" role="dialog" aria-label="Add a node" style={addAt}>
+          <div className="popover add-popover" role="dialog" aria-label="Add a unit" style={addAt}>
             <input
               autoFocus
               data-dg="node-search"
@@ -2172,7 +2172,7 @@ export const App = ({ connection }: { connection: Connection }) => {
           {view && view.items.length === 0 ? (
             <div className="start">
               <strong>Start with a question or claim</strong>
-              <span>Press <kbd>N</kbd> to add a node, then drag from its edge to connect the next.</span>
+              <span>Press <kbd>N</kbd> to add a unit, then drag from its edge to connect the next.</span>
             </div>
           ) : null}
           {tool === "draw" ? (

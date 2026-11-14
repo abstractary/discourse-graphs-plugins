@@ -1,7 +1,7 @@
 <h1 align="center">Discourse Graphs plugins</h1>
 
 <p align="center">
-  One core, one canvas and one set of panels, running inside Roam and Obsidian.<br>
+  One core, one canvas and one set of panels, built for Obsidian first, behind one host contract.<br>
   Your data stays in your notes. Sync, AI, your Zotero library and the scholarly record are there when you ask for them.
 </p>
 
@@ -13,7 +13,7 @@
 </p>
 
 > [!IMPORTANT]
-> **This is a demo.** It was built to show the Discourse Graphs team one way the plugins could be structured. It isn't a release, it isn't a replacement for the [current plugins](https://github.com/DiscourseGraphs/discourse-graph), and it covers about 40% of what they do. Use a throwaway vault or graph.
+> **This is a demo.** It was built to show the Discourse Graphs team one way the plugins could be structured. It isn't a release, it isn't a replacement for the [current plugins](https://github.com/DiscourseGraphs/discourse-graph), and it covers 59% of what they do. Use a throwaway vault.
 
 <p align="center">
   <img src="docs/media/paper-canvas.png" alt="A paper's claims and evidence on a canvas in Obsidian" width="49%">
@@ -42,7 +42,7 @@
 
 **Ask your canvas.** Press AI and start typing. Click cards to ground the answer in just those units.
 
-**Tidy that understands arguments.** Nine arrangements, from logical dependency and debate to timeline, people and centrality, with link colors that stay the same across all of them.
+**Tidy that understands arguments.** Ten arrangements, from logical dependency and debate to timeline, people and centrality, with link colors that stay the same across all of them.
 
 <table>
   <tr>
@@ -156,13 +156,13 @@ The boundaries are checked: `npm run check-boundaries` fails if core imports Rea
 
 | Level | Checks | Covers |
 |---|---:|---|
-| Unit | 330 | Records, core, papers, labs, layout, sync, cards, lookups, crates, profiles, Zotero |
-| Server | 104 | Every route, with fake model servers |
-| Conformance | 36 in each app | One host contract, run inside real Obsidian and real Roam |
+| Unit | 393 | Records, core, papers, labs, layout, sync, cards, lookups, crates, profiles, Zotero |
+| Server | 121 | Every route, with fake model servers |
+| Conformance | 37 in each app | One host contract, run inside real Obsidian and real Roam |
 | Real-app suites | 183 in Obsidian, 184 in Roam | Canvas, capture, badges, Tidy, walkthrough, real data |
 | Across both apps | 124 | Upload, export, provenance, labs, sync, reactions, breadcrumbs, AI |
 
-The unit and server counts are from 13 November 2026. That day eight suites also ran in real Obsidian, 219 checks in all: reading three papers, the PDF reader, search, cards and lookups, crates, profiles and Zotero. All passed except one search check, linking a found unit at the cursor, which fails on some runs and passes on others. The other rows are from the first version, and Roam has not been run since.
+A simulation of four people and their devices also runs in CI, 135 expectations in all (`npm run sim`). The unit and server counts are from 13 November 2026. That day eight suites also ran in real Obsidian, 219 checks in all: reading three papers, the PDF reader, search, cards and lookups, crates, profiles and Zotero. All passed except one search check, linking a found unit at the cursor, which fails on some runs and passes on others. The other rows are from the first version, and Roam has not been run since.
 
 The real-app suites use real mouse and keyboard input inside real Obsidian and Roam. [docs/testing.md](docs/testing.md) explains how to run them.
 
@@ -178,10 +178,11 @@ Because both plugins share one core, a skill written once works in both. [docs/a
 
 ## Known limits
 
-- It covers about 40% of what today's plugins do. Queries, for example, aren't here. [docs/COMPARISON.md](docs/COMPARISON.md) has the full picture, row by row.
+- **Roam has fallen behind.** Its adapter builds and passes conformance, and has none of what was built since the first version. Whether to retire it is [an open decision](https://github.com/abstractary/discourse-graphs-plugins/issues/32).
+- It covers 59% of what today's plugins do. Queries, for example, aren't here. [docs/COMPARISON.md](docs/COMPARISON.md) has the full picture, row by row.
 - The server is a reference for the API, not something to host. It has no TLS, rate limits or way to revoke a token.
 - MIRA and real AI models were only tested against fake servers.
-- Zotero was only tested against a stand-in built from its documentation. No real Zotero library has been read.
+- Zotero has been read from a real library. Its highlights and groups were only tested against a stand-in.
 - No real repository inbox, Zenodo deposit or lab notebook has been tried with the crates and announcements.
 - A public profile isn't published anywhere. The counts stay on your device.
 - Tests ran on macOS, in Obsidian 1.15 and an offline graph in Roam Desktop.
@@ -197,7 +198,9 @@ Because both plugins share one core, a skill written once works in both. [docs/a
 | [Information architecture](docs/information-architecture.md) | The objects, the one name each has, which frame is about which, where papers live across workspaces, and what is built |
 | [Zotero](docs/zotero.md) | What the existing Zotero plugins teach, the design for a long-lived integration, what is built and what to check first |
 | [LLM and MCP spec](docs/llm-and-mcp-spec.md) | Own-key AI as built, and the design for Jupyter |
-| [MCP server design](docs/mcp.md) | Ten tools reached from what the core offers and what people ask for. Every write is a proposal. Not built |
+| [Feature map](docs/features.md) | The fourteen feature areas, where each stands, and the issues that track them |
+| [Audit, November 2026](docs/audit-2026-11.md) | The investigation before the refactor: what to keep, what to end, every finding |
+| [MCP server design](docs/mcp.md) | Ten tools reached from what the core offers and what people ask for. Every write is a proposal. Groundwork built, server not |
 | [Four vaults](docs/four-vaults.md) | A simulation of people sharing a lab, what it found, how labs, signing and devices work now, and the research behind it |
 | [Tooling](docs/tooling.md) | Open-source tools for contracts, tests and upkeep, with a first five to adopt. Nothing adopted yet |
 | [Interface audit](docs/ui-audit.md) | What was found in the Obsidian interface, what was fixed and what is open |
@@ -208,6 +211,8 @@ Because both plugins share one core, a skill written once works in both. [docs/a
 | [Comparison](docs/COMPARISON.md) | How this measures up against today's plugins |
 | [Canvas engines](docs/CANVAS-ENGINES.md) | Why React Flow |
 | [Testing](docs/testing.md) | Every suite, and how to run it |
+
+[docs/README.md](docs/README.md) says which pages are kept current and which are dated notes.
 
 ## Contributing
 

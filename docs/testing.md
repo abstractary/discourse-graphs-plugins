@@ -92,7 +92,7 @@ The scripts drive Obsidian through its command line tool, which is in `/Applicat
 | `capture-test.mjs` | Making a unit from a selection or page | `node harness/capture-test.mjs obsidian` |
 | `badge-test.mjs` | Link badges in the editor | `node harness/badge-test.mjs obsidian` |
 | `tidy-test.mjs` | Tidy on a tangled canvas | `node harness/tidy-test.mjs obsidian` |
-| `modes-test.mjs` | The nine Tidy arrangements | `node harness/modes-test.mjs obsidian` |
+| `modes-test.mjs` | The ten Tidy arrangements | `node harness/modes-test.mjs obsidian` |
 | `walkthrough-test.mjs` | The guided walkthrough, every step | `node harness/walkthrough-test.mjs obsidian` |
 | `real-test.mjs` | Published MATSUlab data, after seeding with `harness/matsulab.mjs` | `node harness/real-test.mjs obsidian` |
 | `labs-test.mjs` | Two labs, one in each base | `node harness/labs-test.mjs` |

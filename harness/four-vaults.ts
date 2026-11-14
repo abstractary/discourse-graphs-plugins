@@ -2,6 +2,7 @@
 //   node harness/four-vaults.ts            the scripted story, then a random walk
 //   node harness/four-vaults.ts --seed 7   the same, with another walk
 //   node harness/four-vaults.ts --steps 400
+//   node harness/four-vaults.ts --strict   fails if any expectation breaks, for CI
 // Nothing leaves this process. The report goes to reports/four-vaults.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
@@ -11,7 +12,7 @@ import { signRecord } from "@dg/core/signing.ts";
 import type { DgId } from "@dg/contract/records.ts";
 import { chance, GROUP_FILE, LAB_GROUP, openWorld, ZOTERO_FILE, zoteroWith, type Vault, type World } from "./vaults/world.ts";
 
-const { values: flags } = parseArgs({ options: { seed: { type: "string", default: "1" }, steps: { type: "string", default: "200" } } });
+const { values: flags } = parseArgs({ options: { seed: { type: "string", default: "1" }, steps: { type: "string", default: "200" }, strict: { type: "boolean", default: false } } });
 const SEED = Number(flags.seed);
 const STEPS = Number(flags.steps);
 
@@ -447,6 +448,76 @@ await stage("6c. Mira opens her vault on a second computer", async () => {
   expect("intent", "what it wrote while it was trusted still stands", (await tomas.call("canvas.open", { id: shared })).nodes[early.id]?.title === "A claim Mira made on her laptop");
 });
 
+await stage("6d. Mira lets an agent read her vault and propose", async () => {
+  const agent = await world.openDevice("Mira", "Reading agent", { role: "agent" });
+  await world.fileSync(agent, mira);
+  const asking = (await mira.call("device.list", {})).find((device) => device.role === "agent");
+  expect("integrity", "the agent shows among Mira's devices, as an agent, waiting", asking?.state === "waiting" && asking.name === "Reading agent", JSON.stringify(asking));
+  await mira.call("device.approve", { id: asking!.id });
+  await world.fileSync(mira, agent);
+
+  agent.core.setSession("Reading Carroll 2020");
+  const found = await unit(agent, "AGENT An echo state network keeps its capacity near N", "claim");
+  const backing = await unit(agent, "AGENT Capacity stayed within two percent of N across gains", "evidence");
+  const supports = await relationOf(agent, "supports");
+  await agent.call("relation.assert", { type: supports, source: backing.id, target: found.id });
+  const toReal = await agent.call("relation.assert", { type: await relationOf(agent, "addresses"), source: found.id, target: ids.question! });
+  await agent.call("unit.check", { unit: ids.question!, verdict: "needsWork", note: "AGENT The question doesn't say which membrane" });
+  // It acts under Mira's name, so nothing in the app stops it trying to change her work.
+  await agent.call("node.rename", { id: ids.claim!, title: "AGENT rewrote Mira's claim" }).catch(() => undefined);
+  await agent.call("node.remove", { id: ids.question! }).catch(() => undefined);
+  const before = await digest(mira, shared);
+  await world.fileSync(agent, mira);
+
+  const claim = await mira.call("node.view", { id: ids.claim! });
+  expect("integrity", "an agent can't reword or remove what Mira wrote", !claim.node.title.includes("AGENT") && (await mira.call("node.view", { id: ids.question! }).then(() => true, () => false)), claim.node.title);
+  expect("integrity", "nothing an agent proposed is read as part of the argument", (await mira.call("node.query", { text: "AGENT", limit: 5 })).length === 0 && canonicalJson(await digest(mira, shared)) === canonicalJson(before) && ((await mira.call("node.view", { id: ids.question! })).checks ?? []).length === 0);
+  const waiting = await mira.call("proposal.list", {});
+  const group = waiting[0];
+  expect("intent", "Mira sees what it proposed as one conversation: two units, two relations and a check", waiting.length === 1 && group?.agent === "Reading agent" && group.session === "Reading Carroll 2020" && group.items.map((item) => item.kind).join() === "unit,unit,relation,relation,check" && group.items.every((item) => item.state === "waiting"), JSON.stringify(group?.items.map((item) => `${item.kind}:${item.state}`)));
+  await world.settle(LAB);
+  expect("privacy", "none of it is sent to the lab", !sentText(mira).includes("AGENT") && !holds(tomas, "AGENT"));
+
+  // Someone sends an agent's record to the lab by hand, with Mira's own token.
+  const token = (await online(mira, () => mira.call("lab.view", {}))).link!.token!;
+  const raw = agent.records().find((record) => record.id === found.id)!;
+  await fetch(`${world.server}/v1/labs/${labId}/records`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ records: [raw] }) });
+  await world.settle(LAB);
+  expect("integrity", "a labmate's vault refuses an agent's record however it arrives", !holds(tomas, "AGENT An echo") && !holds(ines, "AGENT An echo"));
+
+  // A relation can't be taken before the units it joins.
+  const early = await mira.call("proposal.decide", { ids: [toReal.id], decision: "accept" }).then(() => "", (error: Error) => error.message);
+  expect("intent", "Mira is told to accept a unit before a relation that rests on it", early.includes("Accept the units") && early.includes("AGENT An echo"), early || "it was accepted");
+  const all = group!.items.map((item) => item.id);
+  const after = await mira.call("proposal.decide", { ids: all, decision: "accept" });
+  expect("intent", "accepting the conversation takes all five", after[0]!.items.every((item) => item.state === "accepted"), JSON.stringify(after[0]!.items.map((item) => item.state)));
+  const mine = (await mira.call("node.query", { text: "AGENT An echo", limit: 2 }))[0];
+  expect("intent", "an accepted unit is Mira's own, and says where it began", mine?.credit.name === "Mira" && mine.mine === true && (mira.core.graph().documents.get(mine.id) as { acceptedFrom?: string }).acceptedFrom === found.id, JSON.stringify(mine?.credit));
+  const question = await mira.call("node.view", { id: ids.question! });
+  expect("intent", "an accepted check is Mira's check, with the agent's reasons", question.checks?.length === 1 && question.checks[0]!.mine && question.checks[0]!.verdict === "needsWork" && /which membrane/.test(question.checks[0]!.note ?? ""), JSON.stringify(question.checks));
+  const joined = [...mira.core.graph().relations.values()].filter(({ record, state }) => state === "active" && record.acceptedFrom && record.source === mine?.id);
+  expect("intent", "an accepted relation joins Mira's units, not the agent's", joined.length === 1 && joined[0]!.record.target === ids.question, `${joined.length} relations`);
+  await mira.call("unit.uncheck", { id: question.checks![0]!.id });
+
+  // What she accepted can be shared like anything else of hers.
+  await card(mira, shared, mine!, 960, 300);
+  await world.settle(LAB);
+  expect("intent", "what Mira accepted and put on a shared canvas reaches Tomas as hers", (await tomas.call("canvas.open", { id: shared })).nodes[mine!.id]?.credit.name === "Mira");
+
+  // One more, turned down. Then the agent is taken out.
+  agent.core.setSession("A second look");
+  await unit(agent, "AGENT A weaker claim Mira won't want", "claim");
+  await world.fileSync(agent, mira);
+  const second = (await mira.call("proposal.list", {})).find((item) => item.session === "A second look")!;
+  await mira.call("proposal.decide", { ids: second.items.map((item) => item.id), decision: "reject" });
+  expect("intent", "what Mira turns down is marked so, and stays out", (await mira.call("proposal.list", {})).find((item) => item.session === "A second look")!.items[0]!.state === "rejected" && (await mira.call("node.query", { text: "weaker claim", limit: 2 })).length === 0);
+  await mira.call("device.remove", { id: asking!.id });
+  agent.core.setSession("After it was removed");
+  await unit(agent, "AGENT Proposed after the agent was taken out", "claim");
+  await world.fileSync(agent, mira);
+  expect("integrity", "what a removed agent proposes is no longer offered", !(await mira.call("proposal.list", {})).some((item) => item.session === "After it was removed"));
+});
+
 await stage("7. Ines checks Mira's claim", async () => {
   await ines.call("unit.check", { unit: ids.claim!, verdict: "checked", way: "dataReanalyzed", note: "Reran the fits" });
   await world.settle(LAB);
@@ -737,4 +808,5 @@ mkdirSync("reports/four-vaults", { recursive: true });
 writeFileSync("reports/four-vaults/report.md", `${lines.join("\n")}\n`);
 writeFileSync("reports/four-vaults/report.json", JSON.stringify({ seed: SEED, steps: STEPS, held: probes.length - failed.length, total: probes.length, probes }, null, 1));
 console.log(`\n=== four vaults: ${probes.length - failed.length} of ${probes.length} held. Report: reports/four-vaults/report.md`);
-process.exit(0);
+// With --strict, as in CI, a broken expectation fails the run. Without it, the report is the point.
+process.exit(flags.strict && failed.length > 0 ? 1 : 0);

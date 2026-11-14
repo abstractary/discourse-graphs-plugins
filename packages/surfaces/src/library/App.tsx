@@ -4,6 +4,7 @@ import type { Connection } from "../shared/rpc.ts";
 import { Icon, LibraryMark, Mark } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
 import { Repository } from "./Repository.tsx";
+import { counted } from "../shared/words.ts";
 
 const DAY = 86_400_000;
 const CHECK_MS = 4000;
@@ -16,7 +17,6 @@ const whenEdited = (at: string): string => {
   return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" }).format(Date.parse(at));
 };
 
-const counted = (count: number, word: string): string => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 type Tab = "canvases" | "papers" | "folders" | "lab";
 
@@ -153,7 +153,7 @@ const LabSettings = ({ connection, lab, onChange, report }: { connection: Connec
       <section data-dg="lab-settings">
         <h3>Set by the lab</h3>
         <ul className="cvs-list">
-          <li><span className="cvs-static"><span className="cvs-title">Papers</span><span className="cvs-meta" data-dg="lab-shelf">{shelf ? `The Zotero group ${shelf.name}` : "The lab's paper repository, below"}</span></span></li>
+          <li><span className="cvs-static"><span className="cvs-title">Papers</span><span className="cvs-meta" data-dg="lab-shelf">{shelf ? `The Zotero group ${shelf.name}` : "Papers shared with the lab, below"}</span></span></li>
           <li><span className="cvs-static"><span className="cvs-title">Where papers may be read by a model</span><span className="cvs-meta" data-dg="lab-reach">{REACH.find((item) => item.value === reach)!.label}</span></span></li>
           {servers.map((server) => (
             <li key={server.url}><span className="cvs-static"><span className="cvs-title">{server.name}</span><span className="cvs-meta">{server.url}{settings.compute === server.url ? " · the lab's first choice" : ""}</span></span></li>
@@ -170,7 +170,7 @@ const LabSettings = ({ connection, lab, onChange, report }: { connection: Connec
       <label className="field">
         <span>The lab's shelf of papers</span>
         <select data-dg="lab-shelf" value={shelf?.id ?? ""} onChange={(event) => set({ zoteroGroup: choices.find((group) => group.id === event.target.value) ?? null })}>
-          <option value="">The lab's paper repository, with no Zotero</option>
+          <option value="">Papers shared with the lab here, with no Zotero</option>
           {choices.map((group) => <option key={group.id} value={group.id}>Zotero group: {group.name}</option>)}
         </select>
       </label>
@@ -301,7 +301,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
       <LabSettings connection={connection} lab={lab} onChange={setLab} report={report} />
 
       <section>
-        <h3>Paper repository</h3>
+        <h3>The lab's shelf</h3>
         {lab.papers.length === 0 ? <p className="cvs-none">No papers shared yet.</p> : null}
         {saved ? <p className="note" role="status" data-dg="lab-file-saved">{saved}</p> : null}
         <ul className="cvs-list" data-dg="lab-papers">

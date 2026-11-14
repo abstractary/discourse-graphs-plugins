@@ -141,3 +141,23 @@ test("a card from before versions were linked can still be taken off", () => {
     assert.equal((foldRecords({ records, localSpace: "s" }).documents.get(made.id) as { removed?: boolean }).removed, true);
   }
 });
+
+test("what an agent's key signs is a proposal, and never changes what a person wrote", () => {
+  const AGENT = "did:key:zAgentKey";
+  const device = { ...createDevice({ space: "s", by: mira, key: AGENT, name: "Reading agent", role: "agent", at: at(0) }), sigBy: AGENT } as DgRecord;
+  const hers = createNode({ space: "s", by: mira, title: "Mira's claim", at: at(1) });
+  const proposed = { ...createNode({ space: "s", by: mira, title: "The agent's claim", at: at(2) }), sigBy: AGENT } as DgRecord;
+  const reworded = { ...revise({ record: hers, changes: { title: "The agent rewrote it" }, by: mira, at: at(3) }), sigBy: AGENT } as DgRecord;
+  const removed = { ...revise({ record: hers, changes: { removed: true }, by: mira, at: at(4) }), sigBy: AGENT } as DgRecord;
+  const itsOwn = { ...revise({ record: proposed as NodeRecord, changes: { title: "The agent's claim, tightened" }, by: mira, at: at(5) }), sigBy: AGENT } as DgRecord;
+  const lab = { v: 2, id: "did:plc:mira#3eeeeeeeeeeee", kind: "lab", space: "s", at: at(0), by: mira, rev: 1, editedAt: at(0), editedBy: mira, name: "L", did: "did:plc:lab", custodian: mira.id, custodianKey: "k", plc: [], sigBy: AGENT } as unknown as DgRecord;
+
+  const graph = foldRecords({ records: [device, hers, proposed, reworded, removed, itsOwn, lab], localSpace: "s" });
+  const mine = graph.documents.get(hers.id) as NodeRecord;
+  assert.deepEqual([mine.title, mine.removed], ["Mira's claim", undefined], "her unit is as she left it");
+  assert.equal(graph.documents.has(proposed.id), false, "the proposal is not part of the graph");
+  assert.equal((graph.proposals.get(proposed.id)!.record as NodeRecord).title, "The agent's claim, tightened", "an agent may change what it proposed itself");
+  assert.equal(graph.documents.has(lab.id), false, "and it can't make a lab, or anything but units, relations and checks");
+  // The agent, reading the same vault, sees what it proposed in place.
+  assert.ok(foldRecords({ records: [device, hers, proposed], localSpace: "s", ownKey: AGENT }).documents.has(proposed.id));
+});

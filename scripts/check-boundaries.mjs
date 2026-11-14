@@ -45,7 +45,7 @@ for (const [module, allowed] of Object.entries(ALLOWED)) {
   }
   for (const file of files) {
     const text = readFileSync(file, "utf8");
-    for (const [, specifier] of text.matchAll(/(?:from|import)\s*\(?\s*"([^"]+)"/g)) {
+    for (const [, specifier] of text.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)) {
       const scope = /^@dg\/[a-z-]+/.exec(specifier)?.[0];
       if (scope && !allowed.includes(scope)) problems.push(`${file} imports ${scope}, which ${module} may not use`);
       if ((FORBIDDEN[module] ?? []).some((name) => specifier === name || specifier.startsWith(`${name}/`))) {

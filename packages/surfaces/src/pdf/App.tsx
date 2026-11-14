@@ -11,6 +11,7 @@ import { Highlighted, Icon, plain, LibraryMark } from "../shared/ui.tsx";
 type LibraryState = { on: boolean; wanted: boolean; reachable: boolean; files: number; problem?: string };
 import { useFit } from "../canvas/fit.ts";
 import { boxesFor, findQuote, foldText, type Box, type DocText, type TextPiece } from "./quote.ts";
+import { sizeOf } from "../shared/words.ts";
 
 /**
  * A PDF reader beside the canvas. Highlighting words offers to make them a
@@ -51,7 +52,6 @@ const readFile = (file: File): Promise<string> =>
     reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
     reader.readAsDataURL(file);
   });
-const sizeOf = (bytes?: number): string => (bytes === undefined ? "" : bytes > 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1000))} KB`);
 /** A PDF rectangle in the page's own top-left space. */
 const toView = (view: PageViewport, [x1, y1, x2, y2]: [number, number, number, number]): [number, number, number, number] => {
   const [a, b] = view.convertToViewportPoint(x1, y1) as [number, number];

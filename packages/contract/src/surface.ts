@@ -373,6 +373,11 @@ export type LabView = {
 
 export type BreadcrumbDefault = "ask" | "always" | "never";
 
+/** One thing an agent proposed: a unit, a relation or a check. `restsOn` is the passage a unit quotes, or a check's reasons. */
+export type ProposalItem = { id: DgId; kind: "unit" | "relation" | "check"; text: string; typeLabel?: string; restsOn?: string; state: "waiting" | "accepted" | "rejected"; at: string };
+/** What one agent proposed in one conversation, to be taken or turned down together or one at a time. */
+export type ProposalGroup = { session: string; agent: string; at: string; items: ProposalItem[] };
+
 /**
  * One of a person's own devices, or an agent of theirs. `waiting` has asked to sign as them and no
  * trusted device has said yes. `here` is the device being used.
@@ -934,7 +939,6 @@ export type SurfaceMethods = {
     result: null;
   };
   "canvas.list": { params: Record<string, never>; result: CanvasRecord[] };
-  /** Every canvas with what a person needs to recognize it. */
   /** One holon, drawn the same way at every level. */
   "holon.view": { params: { ref: HolonRef; stance: Stance }; result: HolonView };
   /** The holon in focus: the active canvas's holon, or the holon of the note being read. */
@@ -946,7 +950,6 @@ export type SurfaceMethods = {
   "holon.canvas": { params: { ref: HolonRef }; result: { id: DgId; made: boolean } };
   /** Ties a canvas to a holon, so it becomes that holon's view. */
   "canvas.setHolon": { params: { id: DgId; holon: string | null }; result: null };
-  /** Lights these units on whatever canvas shows them, from any panel. */
   /** Marks units on the open canvases. `brief` lets the mark go by itself after a moment, for pointing something out. */
   "canvas.highlight": { params: { units: DgId[]; brief?: boolean }; result: null };
   "prefs.get": { params: Record<string, never>; result: Prefs };
@@ -966,6 +969,7 @@ export type SurfaceMethods = {
   "canvas.fork": { params: { release: DgId; title?: string }; result: { id: DgId } };
   /** `now` stands for the live canvas. */
   "canvas.diff": { params: { canvas: DgId; from: DgId | "now"; to: DgId | "now" }; result: CanvasDiff };
+  /** Every canvas with what a person needs to recognize it. */
   "canvas.summaries": { params: Record<string, never>; result: CanvasSummary[] };
   /** Goes to a canvas in the base, in the base's own way. */
   "canvas.show": { params: { id: DgId }; result: null };
@@ -1019,9 +1023,9 @@ export type SurfaceMethods = {
   "pdf.cut": { params: PdfCut; result: { node: NodeSummary; canvas: DgId | null } };
   /** Takes back a unit just made from a highlight, and its card. */
   "pdf.uncut": { params: { node: DgId }; result: null };
-  /** Opens the reader beside the canvas, at a unit's passage if given. With no file, it offers the choice of PDFs. */
   /** The PDF most of a canvas's cards were read from, when the file is here: its own paper's for a PDF canvas. */
   "canvas.pdf": { params: { id: DgId }; result: { ref: string; name: string } | null };
+  /** Opens the reader beside the canvas, at a unit's passage if given. With no file, it offers the choice of PDFs. */
   "pdf.show": { params: { ref?: string; unit?: DgId }; result: null };
   /** A reader that is already open and holds this unit's passage scrolls to it and marks it for a moment. Opens nothing. */
   "pdf.follow": { params: { unit: DgId }; result: null };
@@ -1178,7 +1182,10 @@ export type SurfaceMethods = {
   "lab.check": { params: Record<string, never>; result: LabView };
   "lab.decide": { params: { requestId: string; decision: "accept" | "decline"; tokenKind?: "personal" | "team" }; result: LabView };
   "lab.setBreadcrumbs": { params: { value: BreadcrumbDefault }; result: LabView };
-  /** Makes an invitation to hand to someone. `invite` is the one line they paste to join. */
+  /** What agents have proposed, newest conversation first. Nothing in it is part of the argument yet. */
+  "proposal.list": { params: Record<string, never>; result: ProposalGroup[] };
+  /** Accepting makes a record of the person's own that says which proposal it began as. Turning down records only that. */
+  "proposal.decide": { params: { ids: DgId[]; decision: "accept" | "reject" }; result: ProposalGroup[] };
   /** This person's devices: the first, and each that has asked to sign as them. */
   "device.list": { params: Record<string, never>; result: DeviceView[] };
   /** Lets a waiting device sign as this person. Only works on a device that is already trusted. */
@@ -1186,6 +1193,7 @@ export type SurfaceMethods = {
   "device.remove": { params: { id: DgId }; result: DeviceView[] };
   /** The person has read that they were removed from a lab. The notice goes. */
   "lab.acknowledge": { params: Record<string, never>; result: LabView };
+  /** Makes an invitation to hand to someone. `invite` is the one line they paste to join. */
   "lab.invite": { params: { uses?: number; days?: number }; result: { invite: string; expiresAt: string; usesLeft: number } };
   "lab.revokeInvite": { params: { id: string }; result: LabView };
   /** Joins a lab with an invitation, at once. */

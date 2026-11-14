@@ -1,3 +1,4 @@
+import { isThisComputer } from "@dg/contract/urls.ts";
 import { liveCanvasItems } from "@dg/contract/records.ts";
 import {
   AI_SYSTEM_PROMPT,
@@ -40,7 +41,7 @@ type AiHandlers = Pick<Handlers, "ai.status" | "ai.ask" | "ai.cancel" | "ai.sett
 export const aiFeature = (
   context: Context,
   { llm, secrets }: { llm?: Llm; secrets?: SecretStore },
-): AiHandlers & { settings: () => Promise<AiSettings> } => {
+) => {
   const running = new Map<string, AbortController>();
 
   const stored = async (): Promise<Stored> => {
@@ -104,7 +105,7 @@ export const aiFeature = (
     const mine = await own();
     const canSetUp = Boolean(llm && secrets);
     if (mine) {
-      const local = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(mine.baseUrl ?? "");
+      const local = isThisComputer(mine.baseUrl ?? "");
       return { ready: true, mode: "model", model: mine.model, source: "own", provider: mine.provider, route: mine.route, ...(local ? { local } : {}), canSetUp };
     }
     const link = await labLink();
@@ -125,7 +126,7 @@ export const aiFeature = (
     };
   };
 
-  return {
+  const all: AiHandlers & { settings: () => Promise<AiSettings> } = {
     settings,
     "ai.status": status,
     "ai.settings": settings,
@@ -189,7 +190,7 @@ export const aiFeature = (
 
       // A lab's reach covers questions too: the units sent with one are its unpublished work.
       const reach = context.myLab()?.settings?.reach ?? (context.myLab() ? "lab" : "anywhere");
-      const local = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/.test(mine?.baseUrl ?? "");
+      const local = isThisComputer(mine?.baseUrl ?? "");
       if (mine?.route === "device" && reach !== "anywhere" && !local) {
         throw new Error(`${context.myLab()!.name} keeps its work ${reach === "device" ? "on your own computer" : "inside the lab"}. Ask with a model on this computer${reach === "lab" ? ", or with the lab's" : ""}.`);
       }
@@ -233,4 +234,6 @@ export const aiFeature = (
       return { ...quoted, mode: "search-only", source: "none" };
     },
   };
+  const { settings: _settings, ...handlers } = all;
+  return { handlers, settings };
 };

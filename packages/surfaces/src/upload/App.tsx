@@ -3,6 +3,7 @@ import type { ComputeServer, ServerOption } from "@dg/contract/services.ts";
 import type { LabView, SavedExtraction } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon } from "../shared/ui.tsx";
+import { sizeOf } from "../shared/words.ts";
 
 const ACCEPTED = ".pdf,.doc,.docx,.md,.txt,.json,.jsonld";
 const isSaved = (name: string): boolean => /\.(json|jsonld)$/i.test(name);
@@ -31,7 +32,6 @@ const readFile = (file: File): Promise<Picked> =>
     reader.readAsDataURL(file);
   });
 
-const sizeOf = (bytes: number): string => (bytes > 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} MB` : `${Math.round(bytes / 1000)} KB`);
 
 const KIND_LABELS: Record<string, string> = { local: "On your network", managed: "Discourse Graphs", custom: "Your own cloud" };
 
@@ -312,7 +312,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         <fieldset className="choices">
           <label>
             <input type="checkbox" data-dg="upload-share" checked={share} onChange={(event) => setShare(event.target.checked)} />
-            Add to {lab!.link!.name}'s paper repository
+            Add to {lab!.link!.name}'s shelf
           </label>
           {share && hasBytes ? (
             <label className="indent">

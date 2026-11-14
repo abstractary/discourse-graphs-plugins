@@ -1,3 +1,5 @@
+import { isThisComputer } from "@dg/contract/urls.ts";
+import { fromBase64, stemOf, textOfDataUrl } from "./bytes.ts";
 import { inLibraryOf, paperIdentifiers } from "./card.ts";
 import { isLibraryRef, mergeIdentifiers } from "@dg/contract/scholarly.ts";
 import { cidOfBytes } from "./process.ts";
@@ -56,9 +58,6 @@ const heightOf = (title: string): number => Math.max(64, 34 + 18 * Math.ceil(tit
 
 const spec = (type: string): TypeSpec => NODE_TYPES[type] ?? { label: type, abbreviation: type.slice(0, 3).toUpperCase(), base: "claim" };
 
-const stemOf = (name: string): string => name.replace(/\.[^.]+$/, "");
-const fromBase64 = (text: string): Uint8Array => Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
-const textOfDataUrl = (dataUrl: string): string => new TextDecoder().decode(fromBase64(dataUrl.split(",")[1] ?? ""));
 const bareDoi = (text: string | undefined): string | undefined => normalDoi(text);
 
 const surname = (name: string): string => name.trim().split(/\s+/).pop() ?? name;
@@ -274,11 +273,8 @@ export const planPaper = (context: Context, graph: ExtractionGraph, meta: PaperM
 
 export const paperFeature = (
   context: Context,
-  demoGraphs: { filename: string; graph: ExtractionGraph }[],
-): Pick<Handlers, "paper.extract" | "paper.saved" | "paper.importGraph" | "paper.loadDemo" | "paper.list" | "paper.share"> & {
-  summary: (paper: PaperRecord) => PaperSummary;
-  graphOf: (paper: PaperRecord) => ExtractionGraph;
-} => {
+  { demoGraphs }: { /** Saved extractions anyone can load to try things out. */ demoGraphs: { filename: string; graph: ExtractionGraph }[] },
+) => {
   const papers = (): PaperRecord[] => context.documents("paper");
 
   const unitsOf = (paper: PaperRecord) =>
@@ -424,14 +420,14 @@ export const paperFeature = (
     const reach = lab?.settings?.reach ?? "lab";
     if (!server || !lab || reach === "anywhere") return;
     const at = server.replace(/\/+$/, "");
-    if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(at)) return;
+    if (isThisComputer(at)) return;
     const link = context.services ? await context.services.link().catch(() => null) : null;
     const labs = [link?.server, ...(lab.settings?.servers ?? []).map(({ url }) => url)].filter(Boolean).map((url) => url!.replace(/\/+$/, ""));
     if (reach === "lab" && labs.includes(at)) return;
     throw new Error(reach === "device" ? `${lab.name} keeps papers on your own computer. Read this one with "This computer".` : `${lab.name} keeps papers inside the lab. Read this one on this computer or on one of the lab's servers.`);
   };
 
-  return {
+  const all: Pick<Handlers, "paper.extract" | "paper.saved" | "paper.importGraph" | "paper.loadDemo" | "paper.list" | "paper.share"> & { summary: (paper: PaperRecord) => PaperSummary; graphOf: (paper: PaperRecord) => ExtractionGraph } = {
     summary,
     graphOf,
     "paper.list": async () => papers().map(summary).sort((a, b) => b.at.localeCompare(a.at)),
@@ -527,4 +523,6 @@ export const paperFeature = (
       return summary(await shareToLab(paper));
     },
   };
+  const { summary: _summary, graphOf: _graphOf, ...handlers } = all;
+  return { handlers, summary, graphOf };
 };

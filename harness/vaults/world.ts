@@ -67,7 +67,7 @@ export type World = {
   /** The world's one clock. Nothing in a run reads the real time, so the same seed gives the same records. */
   time: { ms: number };
   /** Another device of someone already here: same vault, its own keys and its own link to the lab. */
-  openDevice: (of: string, name: string) => Promise<Vault>;
+  openDevice: (of: string, name: string, as?: { role: "agent" }) => Promise<Vault>;
   /** Carries each device's log to the other, as a file-sync tool would, with whatever it does on the way. */
   fileSync: (a: Vault, b: Vault, fault?: SyncFault) => Promise<{ skipped: number }>;
   vaults: Vault[];
@@ -196,7 +196,7 @@ const offline = (): never => {
 
 type Setup = { time: { ms: number }; skew: { ms: number }; random: () => number; server: () => string };
 
-const openVault = async ({ name, setup, zotero, from }: { name: string; setup: Setup; zotero?: (store: MemoryStore) => Zotero; from?: MemoryStore }): Promise<Vault> => {
+const openVault = async ({ name, setup, zotero, from, role }: { name: string; setup: Setup; zotero?: (store: MemoryStore) => Zotero; from?: MemoryStore; role?: "device" | "agent" }): Promise<Vault> => {
   const store = createMemoryStore();
   if (from) {
     // The same vault on another device: its files arrive before the app first starts there.
@@ -250,7 +250,7 @@ const openVault = async ({ name, setup, zotero, from }: { name: string; setup: S
     outside: door,
     store: { get: async (key) => kept.get(key) ?? null, set: async (key, value) => void kept.set(key, value) },
   });
-  const core = await onItsClock(() => createCore({ host: base as never, services, keys, demoGraphs: [] }));
+  const core = await onItsClock(() => createCore({ host: base as never, services, keys, demoGraphs: [], ...(role === "agent" ? { role, agentName: name } : {}) }));
 
   const pending = new Map<string, (message: SurfaceMessage) => void>();
   let listener: (message: SurfaceMessage) => void = () => {};
@@ -380,9 +380,9 @@ export const openWorld = async (people: { name: string; zotero?: (store: MemoryS
     vaults,
     vault,
     settle,
-    openDevice: async (of, name) => {
+    openDevice: async (of, name, as) => {
       const first = vault(of);
-      const device = await openVault({ name, setup, from: first.store });
+      const device = await openVault({ name, setup, from: first.store, ...(as ? { role: as.role } : {}) });
       vaults.push(device);
       return device;
     },

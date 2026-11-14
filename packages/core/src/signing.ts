@@ -1,3 +1,4 @@
+import { fromBase64Url } from "./bytes.ts";
 import * as dagCbor from "@ipld/dag-cbor";
 import { p256 } from "@noble/curves/p256";
 import { sha256 as hash } from "@noble/hashes/sha256";
@@ -16,7 +17,6 @@ import { signBytes, toBase64Url, type KeyStore } from "./identity.ts";
  * So a person's own record is enough to check their signature: nothing is looked up anywhere.
  */
 
-const fromBase64Url = (text: string): Uint8Array => Uint8Array.from(atob(text.replace(/-/g, "+").replace(/_/g, "/")), (char) => char.charCodeAt(0));
 
 /** What is signed: the record as every replica writes it, without the signature itself. */
 const signedBytes = (record: DgRecord): Uint8Array => {
@@ -27,10 +27,11 @@ const signedBytes = (record: DgRecord): Uint8Array => {
 /** Whose signature a version carries: whoever edited it last, or whoever made it. */
 export const signerOf = (record: DgRecord): string => (isDocument(record) ? record.editedBy.id : record.by.id);
 
-export const signRecord = async <R extends DgRecord>(record: R, pair: CryptoKeyPair, keys?: Pick<KeyStore, "sign">): Promise<R> => ({
-  ...record,
-  sig: toBase64Url(await signBytes(keys, pair, signedBytes(record))),
-});
+export const signRecord = async <R extends DgRecord>(record: R, pair: CryptoKeyPair, keys?: Pick<KeyStore, "sign">, sigBy?: string): Promise<R> => {
+  // Which key signs is part of what is signed, so a record can't be passed off as another key's.
+  const named = sigBy ? { ...record, sigBy } : record;
+  return { ...named, sig: toBase64Url(await signBytes(keys, pair, signedBytes(named))) };
+};
 
 /** The public key inside a `did:key` for P-256, as the compressed point. */
 const pointOf = (didKey: string): Uint8Array | null => {
@@ -98,6 +99,8 @@ export const trustedKeys = async (person: Pick<PersonRecord, "did" | "plc">, dev
     found = false;
     for (const device of waiting) {
       if (trusted.includes(device.key) || !trusted.includes(device.vouch!.by)) continue;
+      // An agent's key speaks for nobody else: it can't let another device in.
+      if (devices.some((other) => other.key === device.vouch!.by && other.role === "agent")) continue;
       if (!verifyBytes(vouchBytes(person.did!, device.key), device.vouch!.sig, device.vouch!.by)) continue;
       trusted.push(device.key);
       found = true;
@@ -129,13 +132,18 @@ export const checkSignatures = async (
   const kept: DgRecord[] = [];
   const refused: DgRecord[] = [];
   const held: DgRecord[] = [];
+  const agents = new Set(devices.filter((device) => device.role === "agent").map((device) => device.key));
   for (const record of incoming) {
     const writer = signerOf(record);
     const theirs = keys.get(writer);
-    if (!theirs) (known.members?.has(writer) ? held : kept).push(record);
+    // What an agent proposed stays with its person. It never arrives from a lab as anything.
+    if (record.sigBy !== undefined && agents.has(record.sigBy) && record.kind !== "device") refused.push(record);
+    else if (!theirs) (known.members?.has(writer) ? held : kept).push(record);
     // A device asking to be let in is signed with its own key, which nobody trusts yet. It says only that someone asked.
     else if (record.kind === "device" && !record.vouch && verifyRecord(record, record.key)) kept.push(record);
-    else (theirs.some((key) => verifyRecord(record, key)) ? kept : refused).push(record);
+    // A record that names its key must verify with that key. One that doesn't is tried against the person's own devices, never an agent's.
+    else if (record.sigBy !== undefined) (theirs.includes(record.sigBy) && verifyRecord(record, record.sigBy) ? kept : refused).push(record);
+    else (theirs.some((key) => !agents.has(key) && verifyRecord(record, key)) ? kept : refused).push(record);
   }
   return { kept, refused, held };
 };

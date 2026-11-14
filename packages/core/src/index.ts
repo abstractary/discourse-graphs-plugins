@@ -76,6 +76,10 @@ import {
   type Identity,
   type KeyStore,
 } from "./identity.ts";
+import { deviceFeature } from "./devices.ts";
+import { relationFeature } from "./relations.ts";
+import { shellFeature } from "./shell.ts";
+import { proposalFeature } from "./proposals.ts";
 import { signerOf, signingKeyOf, signRecord, trustedKeys, vouchFor } from "./signing.ts";
 import { planAtImport, planImport, type ExistingGraph, type ImportReport } from "./migrate.ts";
 import type { Context, Handlers } from "./context.ts";
@@ -134,10 +138,11 @@ export type Core = CoreForAdapter & {
   /** What sync sends to the lab, and where it hands back what arrived. */
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
+  /** For an agent: the conversation it is in, so its proposals can be answered together. */
+  setSession: (name: string) => void;
   /** Signs what this person wrote before signing existed, so it can be shared. */
   prepare: () => Promise<void>;
   serverTime: (now: string) => void;
-  /** A holon's own canvas, made from its laid-out view if it has none. */
   /** The base says which canvas is in front, so the boundary panel can follow it. */
   focusCanvas: (id: DgId) => Promise<void>;
   /** Whether the reference library can be reached, for the base's own settings screen. */
@@ -182,7 +187,16 @@ export const createCore = async ({
   secrets,
   demoGraphs = [],
   askBreadcrumb,
+  role = "device",
+  agentName,
 }: {
+  /**
+   * `agent` is for a server acting for a person at an agent's request. It has a key of its own, and
+   * everything that key signs is read as a proposal by every other reader of the vault.
+   */
+  role?: "device" | "agent";
+  /** What the person will see the agent called, such as the client's name. */
+  agentName?: string;
   /** Calls a model provider with a person's own key. Without it, the lab's model or quoted units answer. */
   llm?: Llm;
   /** Where a key is kept, such as the system keychain. */
@@ -237,6 +251,8 @@ export const createCore = async ({
   const missingText = new Set<HostRef>();
   let { appearance, skin } = info;
   let focused: DgId | null = null;
+  // Set for an agent once its key is known: it reads what it proposed in place.
+  let ownKey: string | undefined;
   let graph: FoldedGraph = foldRecords({ records, localSpace });
   let anchorsByRef = new Map<HostRef, AnchorRecord>();
   let anchorsByNode = new Map<DgId, AnchorRecord>();
@@ -293,13 +309,13 @@ export const createCore = async ({
       changed = true;
     }
     if (!changed) return false;
-    graph = foldRecords({ records, localSpace, ...(trustedLab ? { trustedLab } : {}) });
+    graph = foldRecords({ records, localSpace, ...(trustedLab ? { trustedLab } : {}), ...(ownKey ? { ownKey } : {}) });
     const joined = [...graph.documents.values()].find(
       (record) => record.kind === "membership" && record.member === me.id,
     ) as { lab: string } | undefined;
     if (joined && joined.lab !== trustedLab) {
       trustedLab = joined.lab;
-      graph = foldRecords({ records, localSpace, trustedLab });
+      graph = foldRecords({ records, localSpace, trustedLab, ...(ownKey ? { ownKey } : {}) });
     }
     putAway();
     anchorsByRef = new Map();
@@ -343,11 +359,19 @@ export const createCore = async ({
   let clockOffset = 0;
   let clockFloor = 0;
   // This device's signing key, once its person is known. What this person writes is signed on its way in.
-  let signer: { did: string; pair: CryptoKeyPair } | null = null;
+  let signer: { did: string; pair: CryptoKeyPair; key?: string } | null = null;
+  // The conversation an agent is in, so what it proposes can be answered together.
+  let session = "";
   const signed = async (fresh: DgRecord[]): Promise<DgRecord[]> => {
     const by = signer;
     if (!by) return fresh;
-    return Promise.all(fresh.map((record) => (!record.sig && signerOf(record) === by.did ? signRecord(record, by.pair, keys) : record)));
+    return Promise.all(
+      fresh.map((record) => {
+        if (record.sig || signerOf(record) !== by.did) return record;
+        const marked = role === "agent" && record.kind !== "device" ? { ...record, ext: { ...(record.ext ?? {}), agent: agentName ?? "An agent", ...(session ? { session } : {}) } } : record;
+        return signRecord(marked, by.pair, keys, by.key);
+      }),
+    );
   };
   const put = async (fresh: DgRecord[]): Promise<void> => {
     clock.offsetMs = clockOffset;
@@ -401,8 +425,21 @@ export const createCore = async ({
       pair = await makeKeys(keys);
       await keys.put(`device:${identity.did}`, pair);
     }
-    if (!first) deviceKey = await didKeyFor(pair);
-    signer = { did: identity.did, pair };
+    // An agent never signs with the key the person's DID was made with, even on the device that holds it.
+    if (!first || role === "agent") {
+      if (first) {
+        pair = (await keys.get(`agent:${identity.did}`)) ?? (await makeKeys(keys));
+        await keys.put(`agent:${identity.did}`, pair);
+      }
+      deviceKey = await didKeyFor(pair);
+    }
+    const person = documents("person").find((item) => item.did === identity.did);
+    const key = deviceKey ?? (person ? ((await signingKeyOf(person)) ?? undefined) : undefined);
+    signer = { did: identity.did, pair, ...(key ? { key } : {}) };
+    if (role === "agent") {
+      ownKey = deviceKey ?? undefined;
+      graph = foldRecords({ records, localSpace, ...(ownKey ? { ownKey } : {}) });
+    }
   }
   me = {
     id: identity.did,
@@ -410,7 +447,7 @@ export const createCore = async ({
   };
   // A device other than the first says so in the log, so a trusted device can vouch for it.
   if (deviceKey && !documents("device").some((device) => device.key === deviceKey)) {
-    await put([createDevice({ space: localSpace, by: me, key: deviceKey, name: `${info.host} ${deviceKey.slice(-4)}` })]);
+    await put([createDevice({ space: localSpace, by: me, key: deviceKey, name: role === "agent" ? (agentName ?? "An agent") : `${info.host} ${deviceKey.slice(-4)}`, role })]);
   }
 
   const myLab = (): LabRecord | undefined => {
@@ -511,6 +548,8 @@ export const createCore = async ({
    * carries it is read as the lab's from then on. A type only the member has stays theirs.
    */
   const adoptLabGrammar = async (): Promise<void> => {
+    // The grammar is the person's to settle. An agent only reads it.
+    if (role === "agent") return;
     const lab = myLab();
     if (!lab) {
       // Out of the lab again: the person's own types come back into use. Units made with the lab's keep reading by them.
@@ -1116,7 +1155,8 @@ export const createCore = async ({
       await baseHost.setLocal({ key, value: stored as never });
     },
   };
-  const { summary: paperSummary, graphOf: _graphOf, ...paperHandlers } = paperFeature(context, demoGraphs);
+  const papers = paperFeature(context, { demoGraphs });
+  const paperSummary = papers.summary;
   const units = unitFeature(context);
   if (info.textForEveryUnit) {
     let giving: Promise<void> = Promise.resolve();
@@ -1132,8 +1172,7 @@ export const createCore = async ({
     };
     giveNotes();
   }
-  const { provenance: _provenance, social: _social, ...unitHandlers } = units;
-  const { shareable, take, prepare, canvasClosed, answerBreadcrumb, ...labHandlers } = labFeature(context, {
+  const labs = labFeature(context, {
     identity: identityView,
     createLabRecord,
     joinLab,
@@ -1155,68 +1194,22 @@ export const createCore = async ({
     clock.offsetMs = clockOffset;
   };
 
-  /** The key this device signs with, as others name it. */
-  const myKey = async (): Promise<string | null> => {
-    if (deviceKey) return deviceKey;
-    const person = documents("person").find((item) => item.did === identity.did);
-    return person ? signingKeyOf(person) : null;
-  };
-  /** Whether labmates will take what this device signs: it is the first device, or one of this person's trusted devices vouched for it. */
-  const trusted = async (): Promise<boolean> => {
-    if (!deviceKey) return true;
-    const person = documents("person").find((item) => item.did === identity.did);
-    return person ? (await trustedKeys(person, documents("device"))).includes(deviceKey) : false;
-  };
-  const deviceList = async (): Promise<DeviceView[]> => {
-    const person = documents("person").find((item) => item.did === identity.did);
-    const keysOf = person ? await trustedKeys(person, documents("device")) : [];
-    const mine = documents("device").filter((device) => device.by.id === identity.did);
-    return [
-      { id: "first", name: "The device you started on", role: "device", here: !deviceKey, state: "trusted", fingerprint: (keysOf[0] ?? "").slice(-8) },
-      ...mine.map((device): DeviceView => ({
-        id: device.id,
-        name: device.name,
-        role: device.role,
-        here: device.key === deviceKey,
-        state: device.removed ? "removed" : keysOf.includes(device.key) ? "trusted" : "waiting",
-        fingerprint: device.key.slice(-8),
-        at: device.at,
-      })),
-    ];
-  };
-  const deviceHandlers: Pick<Handlers, "device.list" | "device.approve" | "device.remove"> = {
-    "device.list": deviceList,
-    "device.approve": async ({ id }) => {
-      const device = documents("device").find((item) => item.id === id && item.by.id === identity.did);
-      if (!device || device.removed) throw new Error("That device isn't asking any more.");
-      const by = await myKey();
-      if (!signer || !by || !(await trusted())) throw new Error("Approve it from a device that is already trusted, such as the one you started on.");
-      const vouch = await vouchFor({ did: identity.did, key: device.key, by, pair: signer.pair, keys });
-      await put([revise({ record: device, changes: { vouch }, by: me })]);
-      return deviceList();
-    },
-    "device.remove": async ({ id }) => {
-      const device = documents("device").find((item) => item.id === id && item.by.id === identity.did);
-      if (!device) return deviceList();
-      if (!(await trusted())) throw new Error("Remove it from a device that is already trusted.");
-      await put([revise({ record: device, changes: { removed: true }, by: me })]);
-      return deviceList();
-    },
-  };
+  const devices = deviceFeature(context, { did: () => identity.did, deviceKey, signing: () => signer?.pair ?? null, keys });
+  const trusted = devices.trusted;
 
   const onSharedCanvas = (node: DgId): boolean =>
     documents("canvas-item").some(
       (item) => !item.removed && (item.item as { dg?: { node?: DgId } }).dg?.node === node && canvasOf(item.canvas)?.shared !== undefined,
     );
 
-  const { settings: _aiSettings, ...aiHandlers } = aiFeature(context, { ...(llm ? { llm } : {}), ...(secrets ? { secrets } : {}) });
+  const ai = aiFeature(context, { ...(llm ? { llm } : {}), ...(secrets ? { secrets } : {}) });
 
   const holons = holonFeature(context);
   holonHooks = holons;
   const reading = readingFeature(context);
   const search = searchFeature(context);
   searchHooks = search;
-  const { restsOn, ...similarHandlers } = similarFeature(context);
+  const similar = similarFeature(context);
   const works = worksFeature(context);
   const crates = crateFeature(context, {
     ...(secrets ? { secrets } : {}),
@@ -1231,7 +1224,7 @@ export const createCore = async ({
     },
   });
   const announcing = notifyFeature(context);
-  const profiles = profileFeature(context, { shareable });
+  const profiles = profileFeature(context, { shareable: labs.shareable });
   const library = libraryFeature(context);
   const grammar = grammarFeature(context);
   const checks = checkFeature(context);
@@ -1242,13 +1235,14 @@ export const createCore = async ({
 
   const handlers: Handlers = {
     ...grammar.handlers,
-    ...deviceHandlers,
+    ...devices.handlers,
+    ...proposalFeature(context, { createUnit: (args) => handlers["node.create"](args) }).handlers,
     ...gather.handlers,
     ...checks.handlers,
     ...holons.handlers,
-    ...aiHandlers,
-    ...methodFeature(context, restsOn),
-    ...similarHandlers,
+    ...ai.handlers,
+    ...methodFeature(context, { restsOn: similar.restsOn }).handlers,
+    ...similar.handlers,
     ...works.handlers,
     ...crates.handlers,
     ...announcing.handlers,
@@ -1257,9 +1251,9 @@ export const createCore = async ({
     ...library.handlers,
     ...reading.handlers,
     ...search.handlers,
-    ...paperHandlers,
-    ...unitHandlers,
-    ...labHandlers,
+    ...papers.handlers,
+    ...units.handlers,
+    ...labs.handlers,
     "node.query": async ({ text, types, limit }) => {
       const needle = text?.toLowerCase();
       return documents("node")
@@ -1394,50 +1388,7 @@ export const createCore = async ({
         ...(onSharedCanvas(id) ? { social: units.social(id) } : {}),
       };
     },
-    "relation.options": async ({ source, target }) => relationOptions(source, target),
-    "relation.assert": async ({ type, source, target, draw }) => {
-      const allowed = relationOptions(source, target).some(
-        (option) => option.type === type && !option.flipped,
-      );
-      if (!allowed) throw new Error("The grammar doesn't allow this relation.");
-      const existing = [...graph.relations.values()].find(
-        ({ record, state }) =>
-          record.type === type &&
-          record.source === source &&
-          record.target === target &&
-          (state === "active" || state === "pending"),
-      );
-      const relation = existing?.record ?? assertRelation({ ...stamp, type, source, target });
-      // Stated away from a canvas, it's drawn on each canvas the person works on that holds both units.
-      const edges: DgRecord[] = [];
-      if (draw) {
-        for (const canvas of documents("canvas")) {
-          // The person's own canvases, and the ones their lab shares, which they also work on.
-          const lab = myLab()?.did;
-          if (canvas.removed || (canvas.by.id !== me.id && !(lab && canvas.shared === lab))) continue;
-          // A PDF canvas shows it only when both ends are its own paper's units.
-          const reading = readingOf(graph, canvas.id);
-          if (reading && ![source, target].every((unit) => { const node = nodeOf(unit); return node && ofPaper(graph, node, reading); })) continue;
-          const live = liveCanvasItems({ graph, canvas: canvas.id });
-          const cardOf = (unit: DgId) => live.find((item) => (item.item as { dg?: { node?: DgId } }).dg?.node === unit)?.id;
-          const [fromNode, toNode] = [cardOf(source), cardOf(target)];
-          if (!fromNode || !toNode) continue;
-          if (live.some((item) => (item.item as { dg?: { relation?: DgId } }).dg?.relation === relation.id)) continue;
-          const z = Math.max(0, ...live.map((item) => item.z)) + 1;
-          edges.push(createCanvasItem({ ...stamp, canvas: canvas.id, item: { fromNode, toNode, dg: { relation: relation.id } } as never, z }));
-        }
-      }
-      if (!existing || edges.length) await put([...(existing ? [] : [relation]), ...edges]);
-      return existing ? relation : { ...relation, made: true as const };
-    },
-    "relation.withdraw": async ({ id, reason }) => {
-      await put([retract({ ...stamp, target: id, ...(reason ? { reason } : {}) })]);
-      return null;
-    },
-    "relation.decide": async ({ id, decision }) => {
-      await put([decide({ ...stamp, target: id, decision })]);
-      return null;
-    },
+    ...relationFeature(context, { options: relationOptions }).handlers,
     "canvas.list": async () => documents("canvas").filter((canvas) => !canvas.removed),
     "canvas.summaries": async () =>
       documents("canvas")
@@ -1584,41 +1535,7 @@ export const createCore = async ({
         }),
       };
     },
-    "panel.open": async ({ surface }) => {
-      value(await host.openSurface({ route: { surface }, placement: "side" }));
-      return null;
-    },
-    "dialog.open": async ({ surface, id }) => {
-      value(await host.openSurface({ route: { surface, ...(id ? { id } : {}) }, placement: "dialog" }));
-      return null;
-    },
-    "dialog.close": async () => {
-      value(await host.closeDialog());
-      return null;
-    },
-    // A member's own servers, then the ones their lab offers everyone.
-    "server.list": async () => {
-      const own = services ? await services.servers() : [];
-      const offered = (myLab()?.settings?.servers ?? []).filter((server) => !own.some((mine) => mine.url === server.url));
-      return [...own, ...offered.map((server) => ({ id: `lab:${server.url}`, name: server.name, url: server.url, kind: "lab" as const }))];
-    },
-    "server.add": async (server) => {
-      if (!services) throw new Error("No services are set up here.");
-      return services.addServer(server);
-    },
-    "server.remove": async ({ id }) => {
-      await services?.removeServer(id);
-      return null;
-    },
-    "server.check": async ({ url }) => {
-      if (!services) throw new Error("No services are set up here.");
-      return services.check(url);
-    },
-    "server.options": async ({ url }) => {
-      if (!services) throw new Error("No services are set up here.");
-      const [models, schemas] = await Promise.all([services.models(url), services.schemas(url)]);
-      return { models, schemas };
-    },
+    ...shellFeature(context).handlers,
     "identity.get": async () => identityView(),
     "lab.create": async ({ name }) => createLabRecord(name),
     "lab.join": async () => joinLab(),
@@ -1629,25 +1546,6 @@ export const createCore = async ({
     "focus.get": async () => focused,
     "focus.set": async ({ node }) => {
       moveFocus(node);
-      return null;
-    },
-    "grammar.get": async () => ({
-      nodeTypes: oldestByLabel(documents("node-type")),
-      relationTypes: oldestByLabel(documents("relation-type")),
-      uses: grammar.uses(),
-      tables: Boolean(host.openTable),
-    }),
-    "link.open": async ({ url }) => {
-      // A panel is sandboxed, so the base opens links for it. Nothing but a web address gets through.
-      // A reference library's own links open its desktop app at an item or a passage.
-      if (!/^(https?:\/\/|zotero:\/\/(select|open-pdf)\/)[^\s]+$/i.test(url)) throw new Error("That isn't a web address.");
-      value(await host.openLink({ url }));
-      return null;
-    },
-    "base.reveal": async ({ id, placement }) => {
-      const anchor = anchorsByNode.get(id);
-      if (!anchor) throw new Error("This node has no text in this space.");
-      value(await host.reveal({ ref: anchor.ref, placement }));
       return null;
     },
   };
@@ -1763,10 +1661,13 @@ export const createCore = async ({
     usualCanvas,
     focusedNode: () => focused,
     setName,
-    shareable,
-    take,
-    prepare,
+    shareable: labs.shareable,
+    take: labs.take,
+    prepare: labs.prepare,
     serverTime,
+    setSession: (name: string) => {
+      session = name;
+    },
     focusCanvas: (id) => holons.focusCanvas(id),
     zoteroStatus: async () => (services?.zotero ? services.zotero.status() : { ok: false, app: "zotero", problem: "This base can't reach Zotero." }),
     pdfLibrary: () => handlers["pdf.library"]({}),
@@ -1788,8 +1689,8 @@ export const createCore = async ({
     },
     prefs: () => holons.prefs(),
     setPrefs: (changes) => holons.setPrefs(changes),
-    canvasClosed,
-    answerBreadcrumb,
+    canvasClosed: labs.canvasClosed,
+    answerBreadcrumb: labs.answerBreadcrumb,
     personName: () => me.name,
     removeExamples,
     locate,

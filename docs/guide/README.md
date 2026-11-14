@@ -146,7 +146,7 @@ A canvas is where you build an argument. Cards are units. Lines are relations, d
 
 Labels drop away as the pane narrows, and the icons stay.
 
-**Tidy** has nine arrangements. Six lay the argument out: Logic, For and against, Timeline, Kinds, People and Focus. Three rank the cards: Most connected, Bridges and Load-bearing.
+**Tidy** has ten arrangements. Seven lay the argument out: Logic, For and against, Timeline, Kinds, People, Papers and Focus. Three rank the cards: Most connected, Bridges and Load-bearing.
 
 **The line under the bar** says where the canvas sits (its lab, and the question it is about) and opens the Boundary panel. The Boundary panel is about the question, claim or evidence you have selected, and says so at its head. With nothing selected it is about the question the canvas is tied to, if any.
 

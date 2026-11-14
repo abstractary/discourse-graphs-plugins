@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Credit, ProfileCard } from "@dg/contract/surface.ts";
+import { count } from "./words.ts";
 
 /**
  * A person, wherever their initials show: hover for a small card about them,
@@ -27,7 +28,6 @@ export const dayOf = (at: string): string => {
   return Number.isNaN(date.getTime()) ? at : date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 };
 
-const count = (n: number, one: string, many: string): string => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
 const HoverCard = ({ card, at }: { card: ProfileCard | null; at: DOMRect }) => {
   // Kept on screen: below the initials where there is room, otherwise above.

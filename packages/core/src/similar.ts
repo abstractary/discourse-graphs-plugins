@@ -24,13 +24,13 @@ export const termsOf = (text: string): string[] =>
     .filter((word) => word.length > 2 && !STOP.has(word) && !/^\d+$/.test(word))
     .map((word) => (word.length > 5 ? word.replace(/(ies|ing|ed|es|s)$/, "") : word));
 
-export const similarFeature = (context: Context): Pick<Handlers, "node.similar"> & { restsOn: (claim: DgId) => Promise<MethodView["rests"]> } => {
+export const similarFeature = (context: Context) => {
   const live = (): NodeRecord[] => context.documents("node").filter((node) => !node.removed);
   const base = (node: NodeRecord | undefined) => baseOf(context.graph(), node);
   // A unit's own sentence, and what the extraction said about it. The quoted passage is left out: its wording is the paper's, and adds more noise than signal.
   const textOf = (node: NodeRecord): string => [node.title, node.title, node.source?.description ?? ""].join(" ");
 
-  return {
+  const all: Pick<Handlers, "node.similar"> & { restsOn: (claim: DgId) => Promise<MethodView["rests"]> } = {
     "node.similar": async ({ id, limit = 6 }) => {
       const node = context.nodeOf(id);
       if (!node) throw new Error("That unit isn't in this graph.");
@@ -142,4 +142,6 @@ export const similarFeature = (context: Context): Pick<Handlers, "node.similar">
       return { claims: claims.size, evidence: evidence.size, runs: runs.size, opposing, own, papers: [...papers.values()].sort((a, b) => b.units - a.units) };
     },
   };
+  const { restsOn, ...handlers } = all;
+  return { handlers, restsOn };
 };

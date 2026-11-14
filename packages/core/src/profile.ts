@@ -169,12 +169,12 @@ export const statsOf = ({ graph, person, shared, localSpace, now = Date.now() }:
   };
 };
 
-export const profileFeature = (context: Context, hooks: { shareable: () => DgRecord[] }) => {
+export const profileFeature = (context: Context, { shareable }: { /** What this person shares with their lab, to tell lab-visible work from private. */ shareable: () => DgRecord[] }) => {
   const input = (person: string): ProfileInput => ({
     records: context.records(),
     graph: context.graph(),
     person,
-    shared: new Set(hooks.shareable().map(({ id }) => id)),
+    shared: new Set(shareable().map(({ id }) => id)),
     localSpace: context.localSpace,
   });
   const people = () => context.documents("person");

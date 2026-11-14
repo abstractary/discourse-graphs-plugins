@@ -1,3 +1,4 @@
+import { trimmedUrl as trimmed } from "@dg/contract/urls.ts";
 import { mergeIdentifiers, parseIdentifier, sameIdentifier } from "@dg/contract/scholarly.ts";
 import type {
   Identifier,
@@ -74,7 +75,6 @@ const compact = <T extends object>(value: T): T =>
 const idOf = (ids: Identifier[], scheme: Identifier["scheme"]): string | undefined => ids.find((id) => id.scheme === scheme)?.value;
 const doiPath = (doi: string): string => doi.split("/").map(encodeURIComponent).join("/");
 const noTags = (text: string | undefined): string | undefined => str(text?.replace(/<[^>]+>/g, "").replace(/\s+/g, " "));
-const trimmed = (url: string): string => url.replace(/\/+$/, "");
 
 /** An error whose message is already in plain words, safe to show as it is. */
 const problem = (message: string): Error => Object.assign(new Error(message), { plain: true });

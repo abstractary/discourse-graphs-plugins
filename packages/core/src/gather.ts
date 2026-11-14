@@ -1,3 +1,4 @@
+import { fromBase64 as bytesOf } from "./bytes.ts";
 import { createAnchor, createNode, formatTitle, type DgId, type NodeRecord } from "@dg/contract/records.ts";
 import type { Candidate, RelatedUnit } from "@dg/contract/surface.ts";
 import { fillTemplate } from "@dg/contract/grammar.ts";
@@ -17,7 +18,6 @@ const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp
 export const IMAGE_CARD = { width: 280, height: 250 };
 const CARD = { width: 260, height: 96 };
 
-const bytesOf = (base64: string): Uint8Array => Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
 type Place = (args: { canvas: DgId; places: { node: DgId; x: number; y: number; width: number; height: number }[] }) => Promise<{ ids: DgId[] }>;
 

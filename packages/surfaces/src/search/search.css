@@ -71,3 +71,10 @@
 .find-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 4px 0; border-top: 1px solid var(--dg-line); color: var(--dg-muted); font-size: var(--tiny); }
 .find-keys kbd { font: 600 var(--tiny)/1 var(--dg-font); }
 .find-all { margin-left: auto; padding: 2px 6px; color: var(--dg-accent); font-size: var(--tiny); }
+
+/* What agents proposed. A conversation's worth sits under one line with both answers for the lot. */
+.srch-proposal-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px 2px; font-size: var(--small); }
+.srch-proposal-head button, .srch-proposal-acts button { font-size: var(--small); margin-left: 6px; white-space: nowrap; }
+.srch-proposal-kind { color: var(--dg-muted); font-size: var(--tiny); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 4px; }
+.srch-proposals li .srch-proposal-acts { grid-column: 2; grid-row: 1 / span 2; display: flex; }
+

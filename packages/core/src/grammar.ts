@@ -222,7 +222,14 @@ export const grammarFeature = (context: Context) => {
     throw new Error("This file isn't a Discourse Graphs schema.");
   };
 
-  const handlers: Pick<Handlers, "grammar.saveNodeType" | "grammar.removeNodeType" | "grammar.saveRelationType" | "grammar.removeRelationType" | "grammar.export" | "grammar.files" | "grammar.import" | "table.open"> = {
+  const handlers: Pick<Handlers, "grammar.get" | "grammar.saveNodeType" | "grammar.removeNodeType" | "grammar.saveRelationType" | "grammar.removeRelationType" | "grammar.export" | "grammar.files" | "grammar.import" | "table.open"> = {
+    // One of each label, the lab's own first: what a person picks from.
+    "grammar.get": async () => ({
+      nodeTypes: context.nodeTypes(),
+      relationTypes: context.relationTypes(),
+      uses: uses(),
+      tables: Boolean(context.host.openTable),
+    }),
     "grammar.saveNodeType": saveNodeType,
     "grammar.removeNodeType": removeNodeType,
     "grammar.saveRelationType": saveRelationType,

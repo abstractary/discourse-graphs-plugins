@@ -37,11 +37,7 @@ const noteBody = (node: NodeRecord, paperTitle: string | undefined): string =>
 
 export const unitFeature = (
   context: Context,
-): Pick<Handlers, "units.export" | "folder.list" | "folder.create" | "unit.react" | "unit.note" | "unit.removeNote"> & {
-  provenance: (node: NodeRecord) => Provenance;
-  social: (unit: DgId) => UnitSocial;
-  giveAll: () => Promise<number>;
-} => {
+) => {
   const folders = (): FolderRecord[] => context.documents("folder").filter((folder) => !folder.removed);
   const filed = (folder: DgId) => context.documents("folder-item").filter((item) => item.folder === folder && !item.removed);
 
@@ -236,7 +232,7 @@ export const unitFeature = (
     };
   };
 
-  return {
+  const all: Pick<Handlers, "units.export" | "folder.list" | "folder.create" | "unit.react" | "unit.note" | "unit.removeNote"> & { provenance: (node: NodeRecord) => Provenance; social: (unit: DgId) => UnitSocial; giveAll: () => Promise<number> } = {
     provenance,
     social,
     giveAll,
@@ -280,4 +276,6 @@ export const unitFeature = (
       return null;
     },
   };
+  const { provenance: _provenance, social: _social, giveAll: _giveAll, ...handlers } = all;
+  return { handlers, provenance, social, giveAll };
 };

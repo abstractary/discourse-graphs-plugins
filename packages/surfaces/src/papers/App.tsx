@@ -3,6 +3,7 @@ import { BaseEdge, EdgeLabelRenderer, Handle, Position, ReactFlow, ReactFlowProv
 import type { PaperMap, PaperMapLink, PaperMapPaper, PaperMapTie, PaperScope, PaperScopeChoice } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { LibraryMark, plain } from "../shared/ui.tsx";
+import { count } from "../shared/words.ts";
 
 /**
  * Papers placed by how far they have been worked into each other. Distance is
@@ -16,7 +17,6 @@ type Picked = { paper: string } | { tie: string } | null;
 
 const keyOf = (scope: PaperScope): string => ("id" in scope ? `${scope.kind}:${scope.id}` : scope.kind);
 const tieKey = (tie: { a: string; b: string }): string => `${tie.a}|${tie.b}`;
-const count = (n: number, one: string, many: string): string => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
 /** What a tie amounts to, in a few words. */
 const sayTie = (tie: PaperMapTie): string =>

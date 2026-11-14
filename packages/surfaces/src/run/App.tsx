@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { NodeSummary, NotebookFile, NotebookImported, RunOutput, RunPage, SurfaceMethods } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Chip, Icon, plain } from "../shared/ui.tsx";
+import { sizeOf } from "../shared/words.ts";
 
 const DRIFT = { changed: "edited since this run", missing: "not in this graph" };
 
@@ -15,7 +16,7 @@ const span = (start?: string, end?: string): string => {
   const took = seconds < 90 ? `${seconds} s` : seconds < 5400 ? `${Math.round(seconds / 60)} min` : `${(seconds / 3600).toFixed(1)} h`;
   return `${day}, ${time}, took ${took}`;
 };
-const bytes = (size?: number): string => (size === undefined ? "" : size < 1024 ? `${size} B` : size < 1048576 ? `${(size / 1024).toFixed(0)} KB` : `${(size / 1048576).toFixed(1)} MB`);
+const bytes = sizeOf;
 const who = (agent: string): string => (agent.startsWith("https://orcid.org/") ? `ORCID ${agent.slice(18)}` : agent);
 
 type Open = (id: string) => void;

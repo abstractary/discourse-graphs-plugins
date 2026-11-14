@@ -1,3 +1,4 @@
+import { isThisComputer, trimmedUrl as trimmed } from "@dg/contract/urls.ts";
 import { AiError, providerOf, type AiCall, type AiModel, type Llm } from "@dg/contract/llm.ts";
 
 /**
@@ -17,7 +18,6 @@ const MAX_TOKENS = 16000;
 const ANTHROPIC_FALLBACK = /^claude-(fable-5-[12]|opus-5(-5)?|sonnet-5-5)$/;
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
-const trimmed = (url: string): string => url.replace(/\/+$/, "");
 const baseOf = (call: Omit<AiCall, "model">): string => trimmed(call.baseUrl?.trim() || providerOf(call.provider).baseUrl);
 const hostOf = (url: string): string => {
   try {
@@ -95,7 +95,7 @@ export const createLlm = ({
       response = await send(url, init);
     } catch (error) {
       if (init.signal?.aborted) throw new AiError("stopped", "Stopped.");
-      const local = /^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(where);
+      const local = isThisComputer(where);
       throw new AiError(
         "unreachable",
         local

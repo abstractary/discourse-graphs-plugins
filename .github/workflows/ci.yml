@@ -20,8 +20,12 @@ jobs:
       - run: npm ci
       - run: npm run check-types
       - run: npm run check-boundaries
+      # Prints the dependency matrix and fails on a cycle between modules.
+      - run: npm run dsm
       - run: npm test
       - run: npm run test:server
+      # Several people, each with a vault, around one lab server, all in this process.
+      - run: npm run sim
       - run: npm run build
 
   ontology:

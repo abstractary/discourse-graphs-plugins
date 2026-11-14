@@ -1,3 +1,4 @@
+import { fromBase64, textOfDataUrl as textOf } from "./bytes.ts";
 import { createNode, revise, type DgId, type DgRecord, type NodeRecord, type Pin, type RelationTypeRecord, type UnitFacts } from "@dg/contract/records.ts";
 import type { MethodChain, MethodProblem, MethodStep, MethodView, NotebookFile, NotebookImported, RunCell, RunOutput, RunPage } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
@@ -35,8 +36,6 @@ const value = <T>(result: Value<T>): T => {
   return result.value;
 };
 
-const fromBase64 = (text: string): Uint8Array => Uint8Array.from(atob(text), (char) => char.charCodeAt(0));
-const textOf = (dataUrl: string): string => new TextDecoder().decode(fromBase64(dataUrl.split(",")[1] ?? ""));
 const joined = (text: string | string[] | undefined): string => (Array.isArray(text) ? text.join("") : (text ?? ""));
 const short = (cid: string | undefined): string | undefined => (cid ? `${cid.slice(0, 6)}…${cid.slice(-6)}` : undefined);
 const day = (stamp: string | undefined): string | undefined => stamp?.slice(0, 10);
@@ -44,8 +43,8 @@ const shown = (item: unknown): string => (typeof item === "string" ? item : JSON
 
 export const methodFeature = (
   context: Context,
-  restsOn?: (claim: DgId) => Promise<MethodView["rests"]>,
-): Pick<Handlers, "process.method" | "process.run" | "run.show" | "run.list" | "process.setFacts" | "notebook.list" | "notebook.import" | "evidence.fromOutput"> => {
+  { restsOn }: { /** What a claim rests on across papers, from the similar-units feature. */ restsOn?: (claim: DgId) => Promise<MethodView["rests"]> } = {},
+) => {
   const summary = (id: DgId | undefined) => {
     const node = id ? context.nodeOf(id) : undefined;
     return node && !node.removed ? context.summarize(node) : undefined;
@@ -365,7 +364,7 @@ export const methodFeature = (
     if (node.by.id !== context.me().id) throw new Error(`Only ${node.by.name} can change this unit.`);
   };
 
-  return {
+  const handlers: Pick<Handlers, "process.method" | "process.run" | "run.show" | "run.list" | "process.setFacts" | "notebook.list" | "notebook.import" | "evidence.fromOutput"> = {
     "process.method": ({ id }) => method(id),
     "process.run": ({ id, previews = true }) => runPage(id, previews),
     "run.show": async ({ id }) => {
@@ -512,4 +511,5 @@ export const methodFeature = (
       return made;
     },
   };
+  return { handlers };
 };

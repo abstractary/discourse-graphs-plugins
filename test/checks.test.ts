@@ -1,35 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import { createEvaluation, type Author, type EvaluationRecord } from "@dg/contract/records.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { unitCid } from "@dg/core/process.ts";
+import { makeCore } from "./support.ts";
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async () => {
-  const store = createMemoryStore();
-  const { host, emit } = createMemoryHost({ store });
-  const core = await createCore({ host });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = { send: (message) => void ("id" in message && pending.get(message.id)?.(message)), onMessage: (handler) => ((listener = handler), () => {}) };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = `r${(next += 1)}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
-  return { core, call, store, settle, host, emit };
-};
+const setup = () => makeCore();
 
 test("a unit is signed by its author, and the mark holds only for the version it was made on", async () => {
   const { call, core, settle } = await setup();

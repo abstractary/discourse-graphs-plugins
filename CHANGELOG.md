@@ -1,5 +1,27 @@
 # Changelog
 
+## Refactor and tracking (13 November 2026)
+
+Nothing a person sees changed, apart from four fixes.
+
+- **Fixed: values meant for one device no longer travel with a synced vault.** In Obsidian the link to a lab and the device's id are kept on the device, and moved there from the plugin's data file.
+- **Fixed: a revised record no longer carries the old signature's key name.**
+- **Fixed: the server tells two copies of a record apart by content, however the keys are ordered.**
+- **Fixed: the boundary check reads imports in either quote style,** so it covers the server.
+- **The core's features share one shape.** Devices, relations and the screen plumbing moved out of the entry file into features of their own. The unit and canvas handlers are still there.
+- **The contract's records file is five files:** what a record is, JSON, titles, validation and the fold.
+- **Unit tests have one set-up,** used by the newest files. CI now runs the dependency matrix and the simulation.
+- **[docs/audit-2026-11.md](docs/audit-2026-11.md)** records the investigation, and **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** the code as it stands.
+- **Work is tracked in GitHub** as fourteen topic issues, one to a feature area, with each piece of work a sub-issue. [docs/features.md](docs/features.md) is the same map in the repository.
+
+## Groundwork for agents (13 November 2026)
+
+- **A record names the key that signed it.** The name is signed over, and a labmate's vault checks the record against that key.
+- **A key can have the role `agent`.** What it signs is only ever a proposal: a unit, a relation or a check, set apart from the graph. It can't change or remove what a person wrote, can't let another device in, and nothing it signed is sent to a lab or taken in from one.
+- **Proposals can be accepted or turned down,** one at a time or a conversation at once, from the top of the Search panel. Accepting makes a record of your own that says which proposal it began as.
+- **The core can run as an agent,** which is how the MCP server will use it. There is no server yet.
+- **In the simulation** an agent reads Mira's vault and proposes. 135 of 135 expectations hold.
+
 ## MCP design, walkthrough and guide (13 November 2026)
 
 - **[docs/mcp.md](docs/mcp.md): the MCP server's design.** Reached by going up from the core's 161 calls and down from nine things people would ask an agent. Ten tools: six read, three propose, one follows up. Every write is a proposal that lands in the person's own space. An agent is a device key with the role `agent`. Nine changes to the rest of the software are listed. Not built.

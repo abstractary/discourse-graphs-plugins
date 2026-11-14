@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { HolonRef, HolonView, Stance } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, plain } from "../shared/ui.tsx";
-import { BaseChip, Boundary, Flag, LEVEL_WORD, PartRow, StanceSwitch } from "../holon/parts.tsx";
+import { Icon, plain, Problem } from "../shared/ui.tsx";
+import { BaseChip, Boundary, Flag, LEVEL_WORD, PartRow, StanceSwitch } from "../shared/holon-parts.tsx";
+import { messageOf } from "../shared/words.ts";
 
 /**
  * The boundary of whichever holon is in focus, beside the context panel: the
@@ -55,7 +56,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
         if (onShowCanvas) onShowCanvas(id);
         else await call("canvas.show", { id });
       } catch (error) {
-        setNotice(error instanceof Error ? error.message : String(error));
+        setNotice(messageOf(error));
       }
     },
     [call, onShowCanvas],
@@ -96,7 +97,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
             <button type="button" className="hv-link" onClick={() => light([])}>Clear highlight</button>
           ) : null}
         </div>
-        {notice ? <p className="problem" role="alert">{notice}</p> : null}
+        <Problem text={notice} />
       </header>
       <Boundary
         key={view.ref.id}

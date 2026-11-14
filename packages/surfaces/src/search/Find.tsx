@@ -3,6 +3,7 @@ import type { SearchHit } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon } from "../shared/ui.tsx";
 import { ALT, HitBody, MOD, useOpenCanvas, useSearch } from "./parts.tsx";
+import { messageOf } from "../shared/words.ts";
 
 /**
  * The quick finder: type a few words, then open the unit, link it at the
@@ -28,7 +29,7 @@ export const Find = ({ connection }: { connection: Connection }) => {
     pointer.current = at;
     if (moved) setActive(index);
   };
-  const report = useCallback((error: unknown) => setNotice(error instanceof Error ? error.message : String(error)), []);
+  const report = useCallback((error: unknown) => setNotice(messageOf(error)), []);
   const query = useMemo(() => ({ text, limit: LIMIT }), [text]);
   const results = useSearch(connection, query, report, 40);
   const canvas = useOpenCanvas(connection);

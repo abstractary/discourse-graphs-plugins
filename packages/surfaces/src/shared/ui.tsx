@@ -113,3 +113,7 @@ export const Highlighted = ({ text, query }: { text: string; query: string }) =>
   const words = wordsOf(query);
   return <Marked text={shown} marks={words.length ? marksOf(shown, words) : []} />;
 };
+
+/** What went wrong, said where the person is looking. Nothing is drawn while there is nothing to say. */
+export const Problem = ({ text, dg }: { text: string; dg?: string | undefined }) =>
+  text ? <p className="problem" role="alert" data-dg={dg}>{text}</p> : null;

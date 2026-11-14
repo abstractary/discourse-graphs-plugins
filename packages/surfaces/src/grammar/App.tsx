@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { BASE_WORDS, STARTER_TEMPLATES } from "@dg/contract/grammar.ts";
 import { BASE_NODE_TYPES, type BaseNodeType, type DgId, type NodeTypeRecord, type RelationRule, type RelationTypeRecord } from "@dg/contract/records.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { Problem } from "../shared/ui.tsx";
+import { messageOf } from "../shared/words.ts";
 
 /**
  * Types and relations: a lab's own words for its units and for what joins
@@ -51,7 +53,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       const message = await work();
       if (message) setSaid(message);
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
     }
     setBusy(false);
   };
@@ -143,7 +145,7 @@ export const App = ({ connection }: { connection: Connection }) => {
           ) : (
             <p className="grammar-quiet">Choose a type or a relation to change it, or add one.</p>
           )}
-          {problem ? <p className="problem" role="alert" data-dg="grammar-problem">{problem}</p> : null}
+          <Problem text={problem} dg="grammar-problem" />
           {said ? <p className="grammar-said" role="status" data-dg="grammar-said">{said}</p> : null}
         </section>
       </div>

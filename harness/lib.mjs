@@ -152,6 +152,11 @@ export const tools = (host, { wait: { timeout: patience = 20000, every = 350, st
     for (const unit of await call("node.query", { text: title, limit: 50 })) if (unit.title === title) await removeUnit(unit.id);
   };
 
+  /** Takes back a plain page a test hook wrote, found by its title: the first page whose title holds these words. */
+  const removePage = async (title) => {
+    const ref = await s(`s.findRef(${q(title)})`);
+    if (ref) await s(`s.removeOutside(${q(ref)})`);
+  };
   /** A unit made through core, taken back when the run cleans up. */
   const makeUnit = async (params) => {
     const unit = await call("node.create", params);
@@ -165,7 +170,7 @@ export const tools = (host, { wait: { timeout: patience = 20000, every = 350, st
     return canvas;
   };
 
-  return { host, s, results, check, note, until, mouse, clickAt, drag, at, has, settled, click, where, clickIn, inPage, type, typeKeys, typeChar, key, press, call, cleanup, removeUnit, removeTitled, makeUnit, makeCanvas };
+  return { host, s, results, check, note, until, mouse, clickAt, drag, at, has, settled, click, where, clickIn, inPage, type, typeKeys, typeChar, key, press, call, cleanup, removeUnit, removeTitled, removePage, makeUnit, makeCanvas };
 };
 
 /**

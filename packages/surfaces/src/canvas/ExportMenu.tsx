@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { CanvasRecord } from "@dg/contract/records.ts";
 import type { CanvasView, DepositSettings, ExportTarget, LabView } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { Problem } from "../shared/ui.tsx";
+import { messageOf } from "../shared/words.ts";
 
 type Destination = "workspace" | "lab" | "new-folder" | "crate" | `folder:${string}` | `canvas:${string}`;
 
@@ -67,7 +69,7 @@ export const ExportMenu = ({
       setDeposit(await call("deposit.configure", { sandbox, token: value }));
       setToken("");
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
     }
   };
 
@@ -96,7 +98,7 @@ export const ExportMenu = ({
       if (result.canvas) void call("canvas.show", { id: result.canvas });
     } catch (error) {
       setBusy(false);
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
     }
   };
 
@@ -200,7 +202,7 @@ export const ExportMenu = ({
           </div>
         </div>
       ) : null}
-      {problem ? <p className="problem" role="alert">{problem}</p> : null}
+      <Problem text={problem} />
       <div className="row end go">
         <button type="button" onClick={onClose}>Cancel</button>
         <button type="button" className="primary" data-dg="export-go" disabled={busy || nodes.length === 0 || Boolean(draft) || (toZenodo && !kept?.kept)} onClick={() => void go()}>{busy ? `Exporting ${nodes.length}` : toZenodo ? "Save and start draft" : destination === "crate" ? "Save crate" : "Export"}</button>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { MethodChain, MethodStep, MethodView, NodeSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, plain } from "../shared/ui.tsx";
+import { messageOf } from "../shared/words.ts";
 
 const ROLE: Record<MethodStep["role"], string> = {
   question: "Question",
@@ -140,7 +141,7 @@ const Fields = ({ connection, unit, onSaved }: { connection: Connection; unit: N
       }
       onSaved();
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
     }
   };
 

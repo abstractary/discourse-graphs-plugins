@@ -17,15 +17,15 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 | Record log | [#3](https://github.com/abstractary/discourse-graphs-plugins/issues/3) | Built; property-level merge and full validation open | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Labs and sync | [#4](https://github.com/abstractary/discourse-graphs-plugins/issues/4) | Built for one lab | [four-vaults.md](four-vaults.md) |
 | Identity and devices | [#5](https://github.com/abstractary/discourse-graphs-plugins/issues/5) | Built | [four-vaults.md](four-vaults.md) |
-| Canvas | [#6](https://github.com/abstractary/discourse-graphs-plugins/issues/6) | Built; the component needs splitting | [DESIGN.md](DESIGN.md) |
+| Canvas | [#6](https://github.com/abstractary/discourse-graphs-plugins/issues/6) | Built; the component is split, its toolbar still to go | [DESIGN.md](DESIGN.md) |
 | Units, relations and grammar | [#7](https://github.com/abstractary/discourse-graphs-plugins/issues/7) | Built; the calls need one naming scheme | [guide/schema.md](guide/schema.md) |
 | Reading and papers | [#8](https://github.com/abstractary/discourse-graphs-plugins/issues/8) | Built; page text not kept yet | [guide/README.md](guide/README.md) |
 | Method, runs and checks | [#9](https://github.com/abstractary/discourse-graphs-plugins/issues/9) | Built | [guide/schema.md](guide/schema.md) |
 | Search | [#10](https://github.com/abstractary/discourse-graphs-plugins/issues/10) | Built by words; by person, time and meaning planned | [semantic-search-plan.md](semantic-search-plan.md) |
 | Publishing and the scholarly record | [#11](https://github.com/abstractary/discourse-graphs-plugins/issues/11) | Crates and lookups built; AT Protocol partly | [scholarly.md](scholarly.md) |
-| AI and agents | [#12](https://github.com/abstractary/discourse-graphs-plugins/issues/12) | Ask AI and proposals built; MCP server designed, not built | [mcp.md](mcp.md) |
+| AI and agents | [#12](https://github.com/abstractary/discourse-graphs-plugins/issues/12) | Ask AI and proposals built; MCP server reads, and does not propose yet | [mcp.md](mcp.md) |
 | Zotero | [#13](https://github.com/abstractary/discourse-graphs-plugins/issues/13) | Built, read only; highlights and groups tested against a stand-in | [zotero.md](zotero.md) |
-| Hosts | [#14](https://github.com/abstractary/discourse-graphs-plugins/issues/14) | Obsidian and the local app current; Roam behind; Logseq planned | [CONTRACT.md](CONTRACT.md) |
+| Hosts | [#14](https://github.com/abstractary/discourse-graphs-plugins/issues/14) | Obsidian, the local app and the MCP server current; Roam behind; Logseq planned | [CONTRACT.md](CONTRACT.md) |
 | Reference server | [#15](https://github.com/abstractary/discourse-graphs-plugins/issues/15) | A reference, not hardened | [services.md](services.md) |
 | Docs, tests and upkeep | [#16](https://github.com/abstractary/discourse-graphs-plugins/issues/16) | In CI; real-app tests run by hand | [testing.md](testing.md) |
 
@@ -33,22 +33,19 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### Record log ([#3](https://github.com/abstractary/discourse-graphs-plugins/issues/3))
 
-- [#29](https://github.com/abstractary/discourse-graphs-plugins/issues/29) Check what is stored and sent is a record · refactor · Refactor
 - [#33](https://github.com/abstractary/discourse-graphs-plugins/issues/33) Decide: a schema library as the one definition of records and calls · decision · Refactor
 - [#39](https://github.com/abstractary/discourse-graphs-plugins/issues/39) Merge by property, so two changes to one card both stand · feature · Collaboration
 
 ### Canvas ([#6](https://github.com/abstractary/discourse-graphs-plugins/issues/6))
 
-- [#19](https://github.com/abstractary/discourse-graphs-plugins/issues/19) Split the canvas component, starting with its writer · refactor · Refactor
-- [#23](https://github.com/abstractary/discourse-graphs-plugins/issues/23) Shared pieces for the panels, and panels that do not import each other · refactor · Refactor
+- [#19](https://github.com/abstractary/discourse-graphs-plugins/issues/19) Split the canvas component, starting with its writer · refactor · Refactor · partly done: the toolbar and canvas menu remain
+- [#23](https://github.com/abstractary/discourse-graphs-plugins/issues/23) Shared pieces for the panels, and panels that do not import each other · refactor · Refactor · partly done: tab bars, confirms and class prefixes remain
 
 ### Units, relations and grammar ([#7](https://github.com/abstractary/discourse-graphs-plugins/issues/7))
 
-- [#17](https://github.com/abstractary/discourse-graphs-plugins/issues/17) Move the unit and canvas handlers out of core/index.ts · refactor · Refactor
-- [#18](https://github.com/abstractary/discourse-graphs-plugins/issues/18) Replace features wired through variables filled in later · refactor · Refactor
 - [#21](https://github.com/abstractary/discourse-graphs-plugins/issues/21) One name for one idea in the calls a panel makes · refactor · Refactor
 - [#27](https://github.com/abstractary/discourse-graphs-plugins/issues/27) Retire the old word for Overview and Boundary from the code · refactor · Refactor
-- [#28](https://github.com/abstractary/discourse-graphs-plugins/issues/28) Failures that keep their codes, and none that vanish · refactor · Refactor
+- [#28](https://github.com/abstractary/discourse-graphs-plugins/issues/28) Failures that keep their codes, and none that vanish · refactor · Refactor · partly done: panels do not act on the codes yet
 
 ### Reading and papers ([#8](https://github.com/abstractary/discourse-graphs-plugins/issues/8))
 
@@ -60,16 +57,13 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### AI and agents ([#12](https://github.com/abstractary/discourse-graphs-plugins/issues/12))
 
-- [#34](https://github.com/abstractary/discourse-graphs-plugins/issues/34) MCP: the six tools that read, on stdio · feature · MCP server
 - [#36](https://github.com/abstractary/discourse-graphs-plugins/issues/36) MCP: the three tools that propose, and one review list · feature · MCP server
 - [#37](https://github.com/abstractary/discourse-graphs-plugins/issues/37) Reach asked of every route a model can be on · feature · MCP server
 - [#40](https://github.com/abstractary/discourse-graphs-plugins/issues/40) A model on a labmate's computer, through the lab server · feature · Collaboration
 
 ### Hosts ([#14](https://github.com/abstractary/discourse-graphs-plugins/issues/14))
 
-- [#20](https://github.com/abstractary/discourse-graphs-plugins/issues/20) Split the Obsidian plugin file and share start-up wiring · refactor · Refactor
-- [#26](https://github.com/abstractary/discourse-graphs-plugins/issues/26) Plugins use the seam the contract defines for them · refactor · Refactor
-- [#30](https://github.com/abstractary/discourse-graphs-plugins/issues/30) The local app keeps device-only values off the vault · refactor · Refactor
+- [#26](https://github.com/abstractary/discourse-graphs-plugins/issues/26) Plugins use the seam the contract defines for them · refactor · Refactor · partly done: three callers still take the whole core
 - [#32](https://github.com/abstractary/discourse-graphs-plugins/issues/32) Decide: retire the Roam host, or bring it up to date · decision · Refactor
 - [#42](https://github.com/abstractary/discourse-graphs-plugins/issues/42) A Logseq host · feature · Collaboration
 
@@ -79,7 +73,6 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### Docs, tests and upkeep ([#16](https://github.com/abstractary/discourse-graphs-plugins/issues/16))
 
-- [#24](https://github.com/abstractary/discourse-graphs-plugins/issues/24) Move the remaining unit tests onto the shared set-up, and stop sleeping · test · Refactor
 - [#25](https://github.com/abstractary/discourse-graphs-plugins/issues/25) Real-app tests: one set of helpers, and leave the vault as found · test · Refactor
 - [#31](https://github.com/abstractary/discourse-graphs-plugins/issues/31) One account of what leaves the device, and a changelog a person can read · documentation · Refactor
 - [#41](https://github.com/abstractary/discourse-graphs-plugins/issues/41) Several real Obsidians at once, and a real file-sync tool · test · Collaboration

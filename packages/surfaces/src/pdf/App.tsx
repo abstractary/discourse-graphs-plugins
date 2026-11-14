@@ -9,9 +9,9 @@ import type { Connection } from "../shared/rpc.ts";
 import { Highlighted, Icon, plain, LibraryMark } from "../shared/ui.tsx";
 
 type LibraryState = { on: boolean; wanted: boolean; reachable: boolean; files: number; problem?: string };
-import { useFit } from "../canvas/fit.ts";
+import { useFit } from "../shared/fit.ts";
 import { boxesFor, findQuote, foldText, type Box, type DocText, type TextPiece } from "./quote.ts";
-import { sizeOf } from "../shared/words.ts";
+import { sizeOf, messageOf } from "../shared/words.ts";
 
 /**
  * A PDF reader beside the canvas. Highlighting words offers to make them a
@@ -87,7 +87,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const barFit = useFit(bar, [loaded, ref, marks.length]);
   const pageEls = useRef(new Map<number, HTMLDivElement>());
 
-  const report = useCallback((error: unknown) => setProblem(error instanceof Error ? error.message : String(error)), []);
+  const report = useCallback((error: unknown) => setProblem(messageOf(error)), []);
   const say = useCallback((text: string, undo?: () => Promise<unknown>) => setNotice({ text, ...(undo ? { undo } : {}) }), []);
   useEffect(() => {
     if (!notice) return;

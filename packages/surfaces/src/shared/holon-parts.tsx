@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { CanvasDiff, Crossing, Gap, HolonCanvas, HolonEvent, HolonPart, HolonRef, HolonView, Stance } from "@dg/contract/surface.ts";
-import { Icon, Mark, plain } from "../shared/ui.tsx";
+import { Icon, Mark, plain } from "./ui.tsx";
 
 /** Pieces the holon explorer, the boundary panel and the Library share. */
 

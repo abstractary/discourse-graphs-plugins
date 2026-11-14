@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { AvailableUnit, UnitsAvailable, UnitsSegment } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { DRAG_TYPE } from "../shared/drag.ts";
 import { Highlighted, Icon, Mark } from "../shared/ui.tsx";
 
 /**
@@ -11,7 +12,6 @@ import { Highlighted, Icon, Mark } from "../shared/ui.tsx";
  * whole group, in a clear spot, laid out together with its links.
  */
 
-export const DRAG_TYPE = "application/x-dg-units";
 const MIN_HEIGHT = 150;
 const KIND_WORD: Record<UnitsSegment["kind"], string> = { canvas: "Canvas", folder: "Folder", loose: "Loose" };
 

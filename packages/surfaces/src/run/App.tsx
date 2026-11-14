@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { NodeSummary, NotebookFile, NotebookImported, RunOutput, RunPage, SurfaceMethods } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Chip, Icon, plain } from "../shared/ui.tsx";
-import { sizeOf } from "../shared/words.ts";
+import { sizeOf, messageOf } from "../shared/words.ts";
 
 const DRIFT = { changed: "edited since this run", missing: "not in this graph" };
 
@@ -295,7 +295,7 @@ const Chooser = ({ connection, onOpen }: { connection: Connection; onOpen: Open 
       const made = await call("notebook.import", { ref: file.ref, text });
       setSaid({ text: tell(made), run: made.run.id });
     } catch (error) {
-      setSaid({ text: error instanceof Error ? error.message : String(error) });
+      setSaid({ text: messageOf(error) });
     } finally {
       setBusy("");
     }

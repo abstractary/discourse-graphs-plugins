@@ -7,7 +7,7 @@
  * tools that make and arrange, then history and the panels. Chrome stays
  * quiet: plain buttons, muted icons, spacing between groups instead of rules,
  * and a tint only on a tool that's on. Labels step down as room runs out,
- * measured by the bar itself (fit.ts).
+ * measured by the bar itself (shared/fit.ts).
  */
 .bar { grid-area: bar; display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 8px; background: var(--dg-page); border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 80%, transparent); box-sizing: border-box; min-width: 0; overflow: hidden; }
 .picker { flex: 0 1 auto; min-width: 64px; display: flex; margin-right: -4px; }

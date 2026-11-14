@@ -7,7 +7,8 @@ Discourse Graphs runs inside other tools. Obsidian, a folder of Markdown files, 
 | Base | State |
 |---|---|
 | Obsidian | The first base. Everything is built and tested here |
-| The local app | A small web app over the same vault, with no editor. It is also the shape the MCP server will take |
+| The local app | A small web app over the same vault, with no editor |
+| The MCP server | An agent's way to read the same vault, on stdio. It stands on the same vault module as the local app and runs the core in the role `agent` |
 | Roam | An adapter that still builds and passes the conformance suite. It has not kept up with what was built since, and the direction since 10 November is that Roam gets an exporter, not a host |
 | Logseq | Planned. No code yet |
 
@@ -58,7 +59,7 @@ Three seams hold it together, and each one is a file you can read:
 | `@dg/sync` | One file for each outside service | `@dg/contract` |
 | `@dg/native` | UI drawn in the base's own page | `@dg/contract`, `@dg/core` |
 | `@dg/surfaces` | React panels, one bundle, picked by route | `@dg/contract`, `@dg/layout` |
-| `plugins/*`, `local/` | Adapters and wiring | All of the above except `@dg/surfaces`, which arrives as built HTML |
+| `plugins/*`, `local/` | Adapters and wiring. A plugin imports from `@dg/core` only its entry file | All of the above except `@dg/surfaces`, which arrives as built HTML |
 | `server/` | Reference server | Nothing here, on purpose |
 
 `npm run check-boundaries` fails if any module reaches past this table. Core can't import React, the frames can't import a base's API, and only `@dg/sync` calls `fetch`. `npm run dsm` prints the same table as a design structure matrix made from the imports in the code, and fails on a cycle. Both run in CI.
@@ -96,6 +97,10 @@ export const thingFeature = (context: Context, deps: { /* what it needs that isn
 
 | Feature | File | Calls |
 |---|---|---|
+| A unit by itself: find, make, rename, retype, remove, view | `nodes.ts` | `node.*` |
+| Capture from a note, and a renamed note renaming its unit | `capture.ts` | none: used by the base and by `node.create` |
+| Canvases: list, open, write, build on | `canvases.ts` | `canvas.*` |
+| Relations mirrored into notes as link properties | `mirror.ts` | none: runs after every change |
 | Units: folders, reactions, notes, export | `units.ts` | `units.*`, `folder.*`, `unit.react`, `unit.note` |
 | Relations | `relations.ts` | `relation.*` |
 | Grammar: types, templates, schema files, tables | `grammar.ts` | `grammar.*`, `table.open` |
@@ -116,8 +121,16 @@ export const thingFeature = (context: Context, deps: { /* what it needs that isn
 | Overview and Boundary | `holons.ts` | `holon.*` |
 | What a panel asks of the base | `shell.ts` | `panel.*`, `dialog.*`, `link.open`, `server.*` |
 | Shared small conversions | `bytes.ts` | none |
+| Failures that keep their kind | `refuse.ts` | none |
 
-**Still in `index.ts`, and next to move:** the handlers for units themselves (`node.*`) and for canvases (`canvas.*`), with capture and the mirroring of links into notes. They read state the context doesn't offer yet: which note belongs to which unit, which canvas was last in front. Moving them means either widening the context or passing that state as deps. It is tracked.
+**What `index.ts` still does** is what only it can: read the log, hold the graph, sign what is written, set up this person's identity and lab, build the context, and wire the features together. It defines no call a panel makes apart from identity and focus.
+
+**How features reach each other.** Two ways, and no third:
+
+- **Deps**, when one feature needs another's function: the canvas feature is handed `social` from the units feature.
+- **Offers**, when a feature made early needs something from one made later, or when several need the same thing. A feature puts its part on `context.offers` as it is made (checks, preferences, "a note changed"), and others read it when called. A part not there yet reads as absent, so the order features are made in does not matter. `context.afterChange` is the same idea for "run this after every change".
+
+**Failures keep their kind.** A feature refuses with `refuse(code, message)` from `refuse.ts`, and what a base refused keeps the base's own code. A panel receives `not-found`, `read-only`, `conflict`, `no-target` or `unavailable` and can act on it. Anything thrown without a code arrives as `invalid`.
 
 **Rules every feature keeps:**
 
@@ -173,7 +186,8 @@ The simulation that keeps these honest is `node harness/four-vaults.ts`. The pla
 
 | Layer | How | Where |
 |---|---|---|
-| Records, core, layout, sync | Unit tests over the in-memory base. New ones start from `test/support.ts` | `test/` |
+| Records, core, layout, sync | Unit tests over the in-memory base, all from `test/support.ts`, waiting on the thing itself and not on the clock | `test/` |
+| The MCP server | Its tools over a core in memory, then a real MCP client over stdio against a vault on disk | `test/mcp.test.ts` |
 | Server | Unit and route tests with fake model servers | `server/test/` |
 | Several people at once | The real core, sync loop and server in one process, with seeded time, ids and keys | `harness/four-vaults.ts`, `npm run sim` |
 | An adapter | One conformance suite, run inside the real app | `packages/contract/src/conformance.ts` |
@@ -185,9 +199,10 @@ Types, boundaries, the dependency matrix, both unit suites, the simulation and t
 
 The audit lists everything. The largest:
 
-- `core/index.ts` still holds the unit and canvas handlers, and `canvas/App.tsx` is one component of 2,300 lines.
+- `canvas/App.tsx` is down from 2,300 lines to 1,400, with its writer, add box, ink, tidy, clipboard, linking and menus in files of their own. The toolbar and the canvas menu are still in it.
 - The calls a panel can make are named inconsistently: `node.*`, `unit.*` and `units.*` all reach a unit.
 - The client and the server each declare the shapes that cross between them.
-- Plugins import core's internals where the contract defines a narrower seam for them.
-- The server stores what it is sent without checking it is a record, and has no rate limits.
+- The Obsidian plugin's lab sync, walkthrough and test hooks still take the whole core where the rest of it takes the contract's narrower seam.
+- The server has no rate limits. It now refuses anything without a record's shape.
+- The MCP server reads and does not yet propose, and a paper's text by page is not kept.
 - The newest record kinds have no AT Protocol lexicons.

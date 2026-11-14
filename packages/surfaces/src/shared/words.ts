@@ -13,3 +13,6 @@ export const counted = (n: number, word: string): string => count(n, word, IRREG
 /** A file's size in thousands, as file managers show it. Empty when it isn't known. */
 export const sizeOf = (bytes: number | undefined): string =>
   bytes === undefined ? "" : bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1000))} KB`;
+
+/** What an error says, whatever was thrown. */
+export const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));

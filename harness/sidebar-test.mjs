@@ -1,18 +1,19 @@
 // The canvas sidebar in real Obsidian: Library, Search units and Units, floating and pinned.
 //   npm run build:test, then: node harness/sidebar-test.mjs. Pictures go to reports/sidebar.
-// Leaves nothing: the pin setting goes back to what it was, and the "People test" canvas goes if this run made it.
+// Leaves the "People test" canvas, which people-test.mjs also works on. The pin setting goes back to what it was.
 import { resolve } from "node:path";
 import { q, session, sleep } from "./lib.mjs";
 
 const t = await session({ out: resolve("reports/sidebar") });
-const { s, call, check, until, shot, at, has, click, cleanup, makeCanvas } = t;
+const { s, call, check, until, shot, at, has, click, cleanup } = t;
 try {
   await s("s.test(true)");
   await s("s.closeAll()");
   const pinned = (await call("prefs.get")).sidePinned;
   cleanup("the sidebar's pin setting", () => call("prefs.set", { sidePinned: pinned }));
   await call("prefs.set", { sidePinned: false });
-  const board = (await call("canvas.list")).find((canvas) => canvas.title === "People test") ?? (await makeCanvas("People test"));
+  // Left behind: this canvas is found or made by people-test.mjs too, whose Zotero stage keeps its cards on it from run to run.
+  const board = (await call("canvas.list")).find((canvas) => canvas.title === "People test") ?? (await call("canvas.create", { title: "People test" }));
   await s(`s.open(${q(board.id)})`);
   await until(() => has("canvas", '[data-dg="side-toggle"]'), 8000);
   await sleep(1500);

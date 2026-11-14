@@ -43,7 +43,9 @@ export const obsidian = () => {
     titleOf: (abbreviation, content) => `${abbreviation} - ${content}`,
     slice: async (expression) => {
       const out = ob("eval", `code=(async()=>{const s=${PLUGIN}.slice; const v=await (${expression}); return JSON.stringify(v===undefined?null:v)})()`);
-      return JSON.parse(out.replace(/^=> /, ""));
+      // The app can print an error of its own before the answer, such as a file it looked for mid-rename.
+      const answer = out.slice(out.lastIndexOf("=> ") === -1 ? 0 : out.lastIndexOf("=> ") + 3);
+      return JSON.parse(answer);
     },
     input: async (method, params) => send(method, params),
     shot: async (path) => ob("dev:screenshot", `path=${path}`),

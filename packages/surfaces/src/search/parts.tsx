@@ -4,14 +4,13 @@ import type { Connection } from "../shared/rpc.ts";
 import { Chip, Mark, Marked, LibraryMark } from "../shared/ui.tsx";
 
 export { Marked };
-import { DRAG_TYPE } from "../canvas/Drawer.tsx";
+import { DRAG_TYPE } from "../shared/drag.ts";
+import { ALT, MAC, MOD } from "../shared/keys.ts";
 
 /** What's shared by the search panel, the quick finder and the canvas's Add node box. */
 
 export { DRAG_TYPE };
-export const MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-export const MOD = MAC ? "⌘" : "Ctrl";
-export const ALT = MAC ? "⌥" : "Alt";
+export { ALT, MAC, MOD };
 
 const FIELD_WORD = { text: "Note", passage: "Passage" } as const;
 

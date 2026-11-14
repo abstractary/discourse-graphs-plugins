@@ -101,6 +101,7 @@ const USAGE_FLUSH_MS = 2000;
 /** What a plugin needs beside the core itself. Plugins import only from this file. */
 export { browserKeys } from "./identity.ts";
 export type { ExistingGraph } from "./migrate.ts";
+export type { KeyStore } from "./identity.ts";
 
 export type Core = CoreForAdapter & {
   info: HostInfo;

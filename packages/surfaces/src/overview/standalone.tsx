@@ -49,7 +49,7 @@ const writeMain = (main: Main) => {
 type Acts = {
   show: (id: string) => void;
   panel: (surface: string) => void;
-  reveal: (id: string) => void;
+  reveal: (id: string) => Promise<unknown>;
   read: (ref?: string) => void;
   find: (open: boolean) => void;
   run: (id?: string) => void;
@@ -95,9 +95,10 @@ const Shell = () => {
     panel: (surface: string) =>
       surface === "canvases" ? setLibrary(true) : setSide(surface === "context" ? "context" : surface === "search" ? "search" : "boundary"),
     // No notes here, so a unit opens as its context instead.
+    // A failure goes back to the panel that asked, which says so.
     reveal: (id: string) => {
-      void contextCall({ id });
       setSide("context");
+      return contextCall({ id });
     },
     read: (ref?: string) => setReading((old) => (old && old.ref === ref ? old : { ...(ref ? { ref } : {}), n: (old?.n ?? 0) + 1 })),
     run: (id?: string) => writeMain({ kind: "run", ...(id ? { id } : {}) }),

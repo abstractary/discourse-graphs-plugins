@@ -134,11 +134,12 @@ export const useArrivals = ({
   // A link elsewhere pointed at a unit here: bring its card into view and mark it for a moment.
   useEffect(() => on("reveal-unit", ({ canvas, unit }) => {
     if (canvas !== currentRef.current) return;
-    void call("canvas.revealed", { id: canvas }).catch(() => null);
+    void call("canvas.revealed", { id: canvas }).catch(() => null); // Dropped: this only tells the core the reveal was seen. The card comes into view below either way.
     setArrived({ units: [unit], fromHere: true });
   }), [on, call]);
   useEffect(() => {
     if (!current) return;
+    // Dropped: with nothing known to be waiting, the canvas opens where it was left.
     void call("canvas.revealed", { id: current }).then((unit) => (unit && currentRef.current === current ? setArrived({ units: [unit], fromHere: true }) : undefined)).catch(() => undefined);
   }, [call, current]);
   useEffect(() => {

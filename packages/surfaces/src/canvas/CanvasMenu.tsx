@@ -22,7 +22,7 @@ export const useCanvasMenu = ({ connection, go, report }: { connection: Connecti
     if (!open) return;
     void call("library.canvases", {})
       .then((list) => setPictures(Object.fromEntries(list.map((item) => [item.id, item]))))
-      .catch(() => {});
+      .catch(() => {}); // Dropped: the menu lists every canvas by name without its picture.
   }, [open, call]);
 
   const toggle = useCallback(() => {

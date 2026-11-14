@@ -36,11 +36,15 @@ export const useLinking = ({
 
   const askRelation = useCallback(
     async (source: End, target: End, screen: { x: number; y: number }) => {
-      const options = await call("relation.options", { source: source.node, target: target.node });
-      const { x, y } = inFrame(screen.x - 85, screen.y - 60, 170, 180);
-      setMenu({ source, target, options, x: x + 85, y: y + 60 });
+      try {
+        const options = await call("relation.options", { source: source.node, target: target.node });
+        const { x, y } = inFrame(screen.x - 85, screen.y - 60, 170, 180);
+        setMenu({ source, target, options, x: x + 85, y: y + 60 });
+      } catch (error) {
+        report(error);
+      }
     },
-    [call, inFrame],
+    [call, inFrame, report],
   );
 
   const onConnect = useCallback(

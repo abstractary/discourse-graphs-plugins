@@ -110,14 +110,14 @@ try {
     await s("s.closeAll()");
     await s(`s.open(${q(board.id)})`);
     await sleep(1500);
-    if ((await at("canvas", "count", ".note")) === 0) {
+    if ((await at("canvas", "count", ".sticky")) === 0) {
       await click("canvas", '[data-dg="add-note"]');
       await sleep(600);
       await type("Check the Lorenz case again");
       await t.clickAt(700, 800);
       await sleep(900);
     }
-    const by = await until(() => at("canvas", "text", '.note [data-dg="note-by"]'), 6000);
+    const by = await until(() => at("canvas", "text", '.sticky [data-dg="note-by"]'), 6000);
     const me = (await call("profile.get", {})).person.name;
     check("notes.say-who-wrote-them-and-when", (by ?? "").includes(me) && /\d{1,2}:\d{2}/.test(by ?? ""), by);
     await shot("04-note-author");

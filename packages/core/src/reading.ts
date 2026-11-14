@@ -23,7 +23,7 @@ import type { Context, Handlers } from "./context.ts";
 import { cidOfBytes } from "./process.ts";
 import { mustBeOfPaper, readingOf, refusal } from "./locks.ts";
 import { paperOfWork, standsFor } from "./work.ts";
-import { refuse } from "./refuse.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 /**
  * Reading PDFs into the graph, and the units waiting to go on a canvas.
@@ -46,9 +46,9 @@ const cardHeight = (title: string): number => 40 + 19 * Math.ceil(title.length /
 /** Collapses what a PDF's line breaks and spacing add, so a quote matches however it was selected. */
 export const normalizeQuote = (text: string): string => text.normalize("NFKC").replace(/-\s*\n\s*/g, "").replace(/\s+/g, " ").trim();
 
-type Value<T> = { ok: true; value: T } | { ok: false; error: { message: string } };
+type Value<T> = { ok: true; value: T } | { ok: false; error: { message: string; code?: import("@dg/contract/host.ts").HostErrorCode; ref?: string } };
 const value = <T>(result: Value<T>): T => {
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok) throw refusalOf(result.error);
   return result.value;
 };
 

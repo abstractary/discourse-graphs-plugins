@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Credit, ProfileCard } from "@dg/contract/surface.ts";
-import { count } from "./words.ts";
+import { count, sayOf } from "./words.ts";
 
 /**
  * A person, wherever their initials show: hover for a small card about them,
@@ -9,7 +9,7 @@ import { count } from "./words.ts";
  * mark reads without color, and nothing depends on an image being set.
  */
 
-export type People = { card: (id: string) => Promise<ProfileCard>; open: (id: string) => void };
+export type People = { card: (id: string) => Promise<ProfileCard>; open: (id: string) => Promise<unknown> };
 export const PeopleContext = createContext<People | null>(null);
 
 export const initialsOf = (name: string): string => {
@@ -29,14 +29,16 @@ export const dayOf = (at: string): string => {
 };
 
 
-const HoverCard = ({ card, at }: { card: ProfileCard | null; at: DOMRect }) => {
+const HoverCard = ({ card, at, problem }: { card: ProfileCard | null; at: DOMRect; problem?: string | undefined }) => {
   // Kept on screen: below the initials where there is room, otherwise above.
   const below = at.bottom + 150 < window.innerHeight;
   const left = Math.max(8, Math.min(at.left, window.innerWidth - 248));
   const style = below ? { left, top: at.bottom + 6 } : { left, bottom: window.innerHeight - at.top + 6 };
   return createPortal(
     <div className="person-card" role="tooltip" data-dg="person-card" style={style}>
-      {card ? (
+      {problem ? (
+        <p className="person-card-when" role="alert" data-dg="person-card-problem">{problem}</p>
+      ) : card ? (
         <>
           <div className="person-card-head">
             <span className="mark" data-kind="person" aria-hidden="true">{initialsOf(card.name)}</span>
@@ -63,6 +65,7 @@ export const Mark = ({ credit, dg }: { credit: Credit; dg?: string }) => {
   const people = useContext(PeopleContext);
   const [at, setAt] = useState<DOMRect | null>(null);
   const [card, setCard] = useState<ProfileCard | null>(null);
+  const [problem, setProblem] = useState("");
   const timer = useRef<number | undefined>(undefined);
   const el = useRef<HTMLButtonElement>(null);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -80,12 +83,14 @@ export const Mark = ({ credit, dg }: { credit: Credit; dg?: string }) => {
     timer.current = window.setTimeout(() => {
       if (!el.current) return;
       setAt(el.current.getBoundingClientRect());
+      // Dropped: the card is an aside on hover. When it can't be read it just doesn't show.
       void people.card(credit.id).then(setCard).catch(() => setAt(null));
     }, 350);
   };
   const hide = (): void => {
     window.clearTimeout(timer.current);
     setAt(null);
+    setProblem("");
   };
   return (
     <>
@@ -103,13 +108,17 @@ export const Mark = ({ credit, dg }: { credit: Credit; dg?: string }) => {
         onClick={(event) => {
           event.stopPropagation();
           hide();
-          people.open(credit.id);
+          // A profile that didn't open says why in the card's place, beside the initials that were clicked.
+          void people.open(credit.id).catch((error: unknown) => {
+            setProblem(sayOf(error));
+            setAt(el.current?.getBoundingClientRect() ?? null);
+          });
         }}
         onDoubleClick={(event) => event.stopPropagation()}
       >
         {initialsOf(credit.name)}
       </button>
-      {at ? <HoverCard card={card} at={at} /> : null}
+      {at ? <HoverCard card={card} at={at} problem={problem} /> : null}
     </>
   );
 };

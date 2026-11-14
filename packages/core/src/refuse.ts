@@ -19,6 +19,9 @@ export class Refusal extends Error {
 
 export const refuse = (code: HostErrorCode, message: string): Refusal => new Refusal(code, message);
 
+/** A base's own failure, keeping its code and what it points at. */
+export const refusalOf = (error: { code?: HostErrorCode; message: string; ref?: HostRef }): Refusal => new Refusal(error.code ?? "invalid", error.message, error.ref);
+
 /** What a base answered, or a refusal carrying the base's own code. */
 export const value = <T>(result: Result<T>): T => {
   if (!result.ok) throw new Refusal(result.error.code, `${result.error.code}: ${result.error.message}`, result.error.ref);

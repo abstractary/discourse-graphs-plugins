@@ -68,7 +68,7 @@ import { canvasFeature, canvasHomes } from "./canvases.ts";
 import { captureFeature } from "./capture.ts";
 import { mirrorFeature } from "./mirror.ts";
 import { nodeFeature } from "./nodes.ts";
-import { refuse, codeOf, value } from "./refuse.ts";
+import { codeOf, refuse, value } from "./refuse.ts";
 import { labFeature } from "./labs.ts";
 import { aiFeature } from "./ai.ts";
 import { methodFeature } from "./method.ts";
@@ -471,7 +471,7 @@ export const createCore = async ({
   /** Joining is a person's choice, because it gives the PI custody of their DID. */
   const joinLab = async (name?: string): Promise<IdentityView> => {
     const lab = name ? documents("lab").find((item) => item.name === name) : documents("lab")[0];
-    if (!lab) throw new Error("There's no lab here to join.");
+    if (!lab) throw refuse("no-target", "There's no lab here to join.");
     if (myLab()) return identityView();
     await savePlc(await addCustodian({ keys, identity, custodianKey: lab.custodianKey }));
     // Coming back after being taken out is a new membership. The ended one stays ended.

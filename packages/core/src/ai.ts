@@ -141,7 +141,7 @@ export const aiFeature = (
       // A key for one address must not follow the settings to another.
       if (changes.provider && changes.provider !== kept.provider && !changes.model) next.model = provider.defaultModel;
       if (key !== undefined) {
-        if (!secrets) throw new Error("This base has nowhere to keep a key.");
+        if (!secrets) throw refuse("unavailable", "This base has nowhere to keep a key.");
         const clean = key?.trim() || null;
         await secrets.set(secretId(next.provider), clean);
         next.keyHints = { ...next.keyHints };

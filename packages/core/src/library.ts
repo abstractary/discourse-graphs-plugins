@@ -6,7 +6,7 @@ import type { Context, Handlers } from "./context.ts";
 import { baseOf } from "./process.ts";
 import { keyOfPaper, sameWork } from "./work.ts";
 import { readingOf, refusal } from "./locks.ts";
-import { refuse } from "./refuse.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 /**
  * A reference library, read into the graph only when a person asks. Zotero
@@ -70,7 +70,7 @@ export const libraryFeature = (context: Context) => {
     "zotero.show": async ({ item, canvas }) => {
       pending = item;
       const opened = await context.host.openSurface({ route: { surface: "zotero", ...(canvas ? { id: canvas } : {}) }, placement: "dialog" });
-      if (!opened.ok) throw new Error(opened.error.message);
+      if (!opened.ok) throw refusalOf(opened.error);
       return null;
     },
     "zotero.pending": async () => {

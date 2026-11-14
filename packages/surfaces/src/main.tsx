@@ -34,13 +34,14 @@ void connect().then((connection) => {
   // something inside (a menu, a field being edited) already used the key.
   if (["upload", "welcome", "zotero", "grammar"].includes(connection.route.surface)) {
     window.addEventListener("keydown", (event) => {
+      // Dropped: a key press has nowhere to say it failed. The dialog's own Close button does.
       if (event.key === "Escape" && !event.defaultPrevented) void connection.call("dialog.close", {}).catch(() => undefined);
     });
   }
   // Initials anywhere, in any panel, lead to the same card and the same profile.
   const people: People = {
     card: (id) => connection.call("profile.card", { id }),
-    open: (id) => void connection.call("profile.show", { id }).catch(() => undefined),
+    open: (id) => connection.call("profile.show", { id }),
   };
   createRoot(document.getElementById("root")!).render(
     <PeopleContext.Provider value={people}>

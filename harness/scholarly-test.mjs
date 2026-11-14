@@ -4,7 +4,7 @@
 // registries about one paper, sending its DOI and title only. Pictures go to reports/scholarly.
 // Leaves what the lookup wrote on the paper's source, and the foreign crate's file with its four units and their
 // canvas. The crate and notebook files it saves are removed, and the card facts setting goes back to what it was.
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { q, session, sleep } from "./lib.mjs";
@@ -185,6 +185,7 @@ try {
     };
     // Left behind: this file, and the four units and the canvas read from it. Core has no call that takes a crate's
     // import back, and whether units removed with node.remove are read in again by the next run hasn't been tried.
+    mkdirSync(`${VAULT}/Crates`, { recursive: true });
     writeFileSync(`${VAULT}/Crates/lorenz-sweep-ro-crate-metadata.json`, JSON.stringify(foreign, null, 2));
     await sleep(1500);
     const read = await call("crate.import", { ref: "Crates/lorenz-sweep-ro-crate-metadata.json" });

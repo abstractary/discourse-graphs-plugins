@@ -48,7 +48,7 @@ import { useClipboard } from "./useClipboard.ts";
 import { useDelete } from "./useDelete.ts";
 import { LinkAskDialog } from "./LinkAsk.tsx";
 import { clipOf, textOfClip, type Clip } from "./clipboard.ts";
-import { messageOf } from "../shared/words.ts";
+import { TRY_AGAIN, canRetry, codeOf, goneOf, messageOf, sayOf } from "../shared/words.ts";
 
 /** Three columns fit the common 725 px frame beside a sidebar. */
 // Keeps a link's tooltip inside the frame.
@@ -104,10 +104,10 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       // Nothing was saved, so the canvas is drawn again as it stands.
       setFixedAsk(true);
       setNotice("");
-      void refreshRef.current().catch(() => undefined);
+      void refreshRef.current().catch(() => undefined); // Dropped: the person is already being told the canvas is fixed, and the next change reads it again.
       return;
     }
-    setNotice(message);
+    setNotice(sayOf(error));
   }, []);
   const { record, drop, undo, redo, status: done, dismiss, next } = useHistory(current, report);
 
@@ -124,6 +124,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
   const [pdfFor, setPdfFor] = useState<{ canvas: string; pdf: { ref: string; name: string } } | null>(null);
   useEffect(() => {
     if (!current) return;
+    // Dropped: the PDF button then opens the reader without a file, and asks again when pressed.
     void call("canvas.pdf", { id: current }).then((pdf) => setPdfFor(pdf ? { canvas: current, pdf } : null)).catch(() => setPdfFor(null));
   }, [call, current]);
 
@@ -171,14 +172,20 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
   refreshRef.current = refresh;
 
   useEffect(() => {
-    void call("grammar.get", {}).then(({ nodeTypes: types }) => setNodeTypeList(types));
-  }, [call]);
+    void call("grammar.get", {}).then(({ nodeTypes: types }) => setNodeTypeList(types)).catch(report);
+  }, [call, report]);
 
-  useEffect(() => {
-    void refresh().catch(report);
-  }, [refresh, current, report]);
+  /** The canvas couldn't be read. One that is gone is said plainly and cleared; a base out of reach can be asked again. */
+  const [unread, setUnread] = useState(false);
+  const unreadable = useCallback((error: unknown) => {
+    if (codeOf(error) !== "not-found") return setUnread(canRetry(error)), report(error);
+    setView(null);
+    setNotice(goneOf("canvas"));
+  }, [report]);
+  const read = useCallback(() => void refresh().then(() => setUnread(false), unreadable), [refresh, unreadable]);
+  useEffect(read, [read, current]);
 
-  useEffect(() => on("graph-changed", () => void refresh().catch(report)), [refresh, on, report]);
+  useEffect(() => on("graph-changed", read), [read, on]);
   useEffect(() => on("focus-changed", (message) => setFollowed(message.node)), [on]);
 
   useEffect(() => {
@@ -335,7 +342,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       },
       readPassage: (node) => void call("unit.get", { id: node }).then((seen) => (seen.provenance.pdf ? call("pdf.show", { ref: seen.provenance.pdf.ref, unit: node }) : null)).catch(report),
       openLibrary: (url) => void call("link.open", { url }).catch(report),
-      image: (node) => call("unit.image", { id: node }).catch(() => null),
+      image: (node) => call("unit.image", { id: node }).catch(() => null), // Dropped: the card is drawn without its picture.
       observe: (output, item, title) => {
         if (!current) return;
         // The evidence lands to the left of its picture, the way an argument reads toward its claim.
@@ -840,7 +847,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
         <h1>Start a canvas</h1>
         <p>Lay out questions, claims and evidence, and how they connect.</p>
         <NameForm value={canvasMenu.name} onChange={canvasMenu.setName} onCreate={() => void canvasMenu.start()} onCancel={() => canvasMenu.setNaming(false)} />
-        {notice ? <p role="alert">{notice}</p> : null}
+        {notice ? <p role="alert">{notice}{unread ? <>{" "}<button type="button" className="load-again" data-dg="canvas-again" onClick={() => (setNotice(""), read())}>{TRY_AGAIN}</button></> : null}</p> : null}
       </main>
     );
   }
@@ -862,6 +869,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
   const parentPdf = pdfFor && pdfFor.canvas === current ? pdfFor.pdf : undefined;
   // Asked again at the press, since cards may have come and gone since the canvas opened.
   const openPdf = (): void =>
+    // The first is dropped: without knowing the canvas's PDF, the reader still opens, on no file.
     void (current ? call("canvas.pdf", { id: current }).catch(() => null) : Promise.resolve(null))
       .then((pdf) => call("pdf.show", pdf ? { ref: pdf.ref } : {}))
       .catch(report);
@@ -1008,11 +1016,12 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
               const summary = (node.data as CardData).node;
               // Picking a card shows where it came from: its passage in an open reader, and the Context panel.
               if (summary && !aiOn) {
+                // Dropped: a courtesy on every pick of a card, and there may be no reader open to follow.
                 void call("pdf.follow", { unit: summary.id }).catch(() => undefined);
                 // The panel opening must not take the keyboard: Delete and undo still belong to the picked card.
                 void call("panel.open", { surface: "context" })
                   .then(() => window.focus())
-                  .catch(() => undefined);
+                  .catch(() => undefined); // Dropped: the same courtesy, and a base may have no side panel to open.
               }
               if (!aiOn || !summary) return;
               setGrounded((old) => (old.includes(summary.id) ? old.filter((id) => id !== summary.id) : [...old, summary.id]));

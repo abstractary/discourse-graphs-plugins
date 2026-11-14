@@ -25,7 +25,7 @@ import {
 import type { ExtractedEdge, ExtractedNode, ExtractionGraph } from "@dg/contract/services.ts";
 import type { PaperSummary, SavedExtraction } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
-import { refuse } from "./refuse.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 type TypeSpec = { label: string; abbreviation: string; base: BaseNodeType; lexicon?: string; color?: string };
 
@@ -462,7 +462,7 @@ export const paperFeature = (
       let file = picked;
       if (!file && ref) {
         const asset = await context.readFile(ref);
-        if (!asset.ok) throw new Error(asset.error.message);
+        if (!asset.ok) throw refusalOf(asset.error);
         file = { name: asset.value.name, mediaType: asset.value.mime, dataBase64: asset.value.dataUrl.split(",")[1] ?? "" };
       }
       if (!file) throw refuse("no-target", "Choose a paper first.");
@@ -473,7 +473,7 @@ export const paperFeature = (
 
       if (saved) {
         const found = saved === true ? await savedBeside(name, ref) : { name: saved.name, graph: parseExtraction(saved.name, saved.text) };
-        if (!found) throw new Error(`No saved extraction sits beside ${name}.`);
+        if (!found) throw refuse("not-found", `No saved extraction sits beside ${name}.`);
         graph = found.graph;
         const from = `Saved extraction (${found.name})`;
         const madeBy = graph.models?.[0] ?? "Unknown";

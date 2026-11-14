@@ -5,6 +5,8 @@ import { usePlace } from "../shared/place.ts";
 import { Icon, Mark } from "../shared/ui.tsx";
 import { DiffView, Flag, Preview, counted, when } from "../shared/overview-parts.tsx";
 import { Thumb } from "../shared/Thumb.tsx";
+import { LoadProblem, useLoad, type Report } from "../shared/load.tsx";
+import { goneOf } from "../shared/words.ts";
 
 type Scope = "everyone" | "lab" | "mine";
 const SCOPES: { value: Scope; label: string; hint: string }[] = [
@@ -21,7 +23,7 @@ const SCOPES: { value: Scope; label: string; hint: string }[] = [
  * narrows the same list, from everyone's canvases to the lab's to your own.
  * A canvas's history, releases and forks open in place, so they fit a 300 px sidebar.
  */
-export const Repository = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+export const Repository = ({ connection, report }: { connection: Connection; report: Report }) => {
   const { call, on } = connection;
   const [canvases, setCanvases] = useState<RepositoryCanvas[] | null>(null);
   const [query, setQuery] = useState("");
@@ -34,7 +36,7 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
   const [name, setName] = useState("");
   const [version, setVersion] = useState(0);
 
-  const refresh = useCallback(() => void call("library.canvases", {}).then(setCanvases).catch(report), [call, report]);
+  const refresh = useCallback(() => void call("library.canvases", {}).then(setCanvases).catch((error: unknown) => report(error, refresh)), [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", () => {
     refresh();
@@ -221,7 +223,7 @@ const Versions = ({
   connection: Connection;
   canvas: RepositoryCanvas;
   version: number;
-  report: (error: unknown) => void;
+  report: Report;
   onShow: (id: string) => void;
 }) => {
   const { call } = connection;
@@ -233,30 +235,43 @@ const Versions = ({
   const [diff, setDiff] = useState<CanvasDiff | null>(null);
   const [from, setFrom] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  useEffect(() => {
-    void call("canvas.history", { id: canvas.id }).then((h) => {
-      setHistory(h);
-      setAt(h.events.length - 1);
-      setFrom(h.releases.at(-1)?.id ?? "");
-    }).catch(report);
-  }, [call, canvas.id, version, report]);
+  const read = useLoad(
+    () =>
+      call("canvas.history", { id: canvas.id }).then((h) => {
+        setHistory(h);
+        setAt(h.events.length - 1);
+        setFrom(h.releases.at(-1)?.id ?? "");
+      }),
+    [call, canvas.id, version],
+  );
   useEffect(() => {
     if (!history || at === null || !history.events[at]) return;
     void call("canvas.at", { id: canvas.id, at: history.events[at]!.at }).then(setSnapshot).catch(report);
   }, [call, canvas.id, history, at, report]);
-  if (!history) return <p className="cvs-meta repo-versions">Reading history…</p>;
+  if (!history) return read.failed !== undefined ? <LoadProblem failed={read.failed} again={read.again} gone={goneOf("canvas")} /> : <p className="cvs-meta repo-versions">Reading history…</p>;
   const release = async () => {
     if (!name.trim()) return;
-    const made = await call("canvas.release", { id: canvas.id, name: name.trim(), ...(note.trim() ? { note: note.trim() } : {}) });
-    setName("");
-    setNote("");
-    setMessage(`Released ${made.name}, pinning ${counted(made.units, "unit")}.`);
+    try {
+      const made = await call("canvas.release", { id: canvas.id, name: name.trim(), ...(note.trim() ? { note: note.trim() } : {}) });
+      setName("");
+      setNote("");
+      setMessage(`Released ${made.name}, pinning ${counted(made.units, "unit")}.`);
+    } catch (error) {
+      report(error);
+    }
   };
-  const fork = async (r: ReleaseSummary) => onShow((await call("canvas.fork", { release: r.id })).id);
+  const fork = async (r: ReleaseSummary) => {
+    try {
+      onShow((await call("canvas.fork", { release: r.id })).id);
+    } catch (error) {
+      report(error);
+    }
+  };
   const event = at !== null ? history.events[at] : undefined;
   return (
     <div className="repo-versions" data-dg="repo-versions">
       <h3>History</h3>
+      <LoadProblem failed={read.failed} again={read.again} gone={goneOf("canvas")} />
       {history.events.length > 1 ? (
         <>
           <input type="range" min={0} max={history.events.length - 1} value={at ?? 0} onChange={(e) => setAt(Number(e.target.value))} aria-label="Move through the canvas's history" />

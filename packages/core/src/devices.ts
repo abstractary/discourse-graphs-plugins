@@ -63,7 +63,7 @@ export const deviceFeature = (
     "device.list": list,
     "device.accept": async ({ id }) => {
       const device = context.documents("device").find((item) => item.id === id && item.by.id === did());
-      if (!device || device.removed) throw new Error("That device isn't asking any more.");
+      if (!device || device.removed) throw refuse("not-found", "That device isn't asking any more.");
       const by = await myKey();
       const pair = signing();
       if (!pair || !by || !(await trusted())) throw refuse("conflict", "Approve it from a device that is already trusted, such as the one you started on.");

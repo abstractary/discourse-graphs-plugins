@@ -119,7 +119,7 @@ export const notifyFeature = (context: Context) => {
     },
     "notify.send": async ({ unit, id }) => {
       const node = context.nodeOf(unit);
-      if (!node || !context.services) throw new Error("There is nothing to send, or no network to send it on.");
+      if (!node || !context.services) throw refuse("unavailable", "There is nothing to send, or no network to send it on.");
       const made = await draft(node);
       if (!made.ready) throw new Error(made.why);
       // The person saw one notification; that one is sent, under the id they saw.

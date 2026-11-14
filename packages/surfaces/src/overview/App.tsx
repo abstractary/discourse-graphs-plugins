@@ -13,9 +13,11 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import type { WholePart, WholeRef, WholeView, Prefs } from "@dg/contract/surface.ts";
+import { LoadProblem, useLoad } from "../shared/load.tsx";
 import { arrange } from "@dg/layout/modes.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, Mark, plain } from "../shared/ui.tsx";
+import { Icon, Mark, Problem, plain } from "../shared/ui.tsx";
+import { goneOf, sayOf } from "../shared/words.ts";
 import { BaseChip, Flag, KIND_WORD, LEVEL_WORD, PartRow, counted } from "../shared/overview-parts.tsx";
 
 /**
@@ -212,23 +214,24 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   const [view, setView] = useState<WholeView | null>(null);
   const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"], sidePinned: false, miniMap: true, zoteroLibrary: false });
   const [lit, setLit] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
   const [version, setVersion] = useState(0);
+  const report = useCallback((error: unknown) => setNotice(sayOf(error)), []);
 
   useEffect(() => on("graph-changed", () => setVersion((v) => v + 1)), [on]);
   useEffect(() => on("highlight", ({ units }) => setLit(new Set(units))), [on]);
   useEffect(() => on("prefs-changed", ({ prefs: next }) => setPrefs(next)), [on]);
-  useEffect(() => void call("prefs.get", {}).then(setPrefs), [call]);
-  useEffect(() => void call("overview.list", {}).then(setRoots).catch((e: Error) => setError(e.message)), [call, version]);
+  useEffect(() => void call("prefs.get", {}).then(setPrefs).catch(() => undefined), [call]); // Dropped: the settings above stand until the base says otherwise.
+  const listed = useLoad(() => call("overview.list", {}).then(setRoots), [call, version]);
   useEffect(() => {
-    if (start.locate) void call("overview.locate", { id: start.locate }).then((found) => found && setRef(found));
-  }, [call, start.locate]);
+    if (start.locate) void call("overview.locate", { id: start.locate }).then((found) => found && setRef(found)).catch(report);
+  }, [call, start.locate, report]);
   const current = ref ?? roots?.find((r) => r.holds > 0)?.ref ?? roots?.[0]?.ref ?? null;
-  useEffect(() => {
+  const opened = useLoad(async () => {
     if (!current) return;
-    void call("overview.get", { ref: current, stance: "lab" }).then(setView).catch((e: Error) => setError(e.message));
-    // The boundary panel follows what this tab shows.
+    // The boundary panel follows what this tab shows. Dropped when it fails: that panel then keeps what it had, and this one is whole without it.
     void call("overview.focus.set", { ref: current }).catch(() => undefined);
+    setView(await call("overview.get", { ref: current, stance: "lab" }));
   }, [call, current?.id, current?.level, version]);
 
   const go = useCallback(
@@ -240,32 +243,48 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
     [current],
   );
   const showCanvas = useCallback(
-    (id: string) => (onShowCanvas ? onShowCanvas(id) : void call("canvas.show", { id }).catch(() => undefined)),
-    [call, onShowCanvas],
+    (id: string) => (onShowCanvas ? onShowCanvas(id) : void call("canvas.show", { id }).catch(report)),
+    [call, onShowCanvas, report],
   );
   // A whole with a canvas opens there; one without stays here until someone makes one.
   const openInside = useCallback(
     async (next: WholeRef) => {
-      const target = await call("overview.get", { ref: next, stance: "lab" });
-      if (target.canvas.id) showCanvas(target.canvas.id);
-      else go(next);
+      try {
+        const target = await call("overview.get", { ref: next, stance: "lab" });
+        if (target.canvas.id) showCanvas(target.canvas.id);
+        else go(next);
+      } catch (error) {
+        report(error);
+      }
     },
-    [call, go, showCanvas],
+    [call, go, showCanvas, report],
   );
   const pick = useCallback(
     (unit: string) => {
       setLit(new Set([unit]));
-      void call("focus.set", { id: unit }).catch(() => undefined);
+      void call("focus.set", { id: unit }).catch(report);
     },
-    [call],
+    [call, report],
   );
   const makeCanvas = async () => {
     if (!current) return;
-    const { id } = await call("overview.canvas", { ref: current });
-    showCanvas(id);
+    try {
+      const { id } = await call("overview.canvas", { ref: current });
+      showCanvas(id);
+    } catch (error) {
+      report(error);
+    }
   };
 
-  if (error) return <p className="hv-error" role="alert">{error}</p>;
+  if (listed.failed !== undefined) return <LoadProblem failed={listed.failed} again={listed.again} className="hv-error" />;
+  if (opened.failed !== undefined) {
+    return (
+      <>
+        <LoadProblem failed={opened.failed} again={opened.again} gone={goneOf("part of the graph")} className="hv-error" />
+        {ref ? <p className="hv-pad"><button type="button" className="hv-link" onClick={() => setRef(null)}>Back to the workspace</button></p> : null}
+      </>
+    );
+  }
   if (!roots) return <p className="hv-muted hv-pad">Reading the graph…</p>;
   if (!roots.length) return <p className="hv-muted hv-pad">No questions yet. A workspace's overview starts from its questions.</p>;
   if (!view) return <p className="hv-muted hv-pad">Opening…</p>;
@@ -312,6 +331,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
             <h1 className="hv-title">{plain(view.title)}</h1>
           </div>
           {view.flags.length ? <div className="hv-flags">{view.flags.map((f) => <Flag key={f} name={f} />)}</div> : null}
+          <Problem text={notice} dg="overview-problem" />
         </header>
         <section className="hv-canvas" aria-label="Laid out from the graph">
           <div className="hv-canvas-bar">
@@ -325,7 +345,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
               ) : view.ref.level !== "lab" || view.parts.length ? (
                 <button type="button" onClick={() => void makeCanvas()} data-dg="make-whole-canvas"><Icon name="canvas" /> Make it a canvas</button>
               ) : null}
-              <button type="button" onClick={() => void call("panel.open", { surface: "boundary" }).catch(() => undefined)} data-dg="explorer-boundary">
+              <button type="button" onClick={() => void call("panel.open", { surface: "boundary" }).catch(report)} data-dg="explorer-boundary">
                 <Icon name="context" /> Boundary
               </button>
             </span>
@@ -336,7 +356,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
             lit={lit}
             onPick={pick}
             onInside={(next) => void openInside(next)}
-            onText={(unit) => void call("base.reveal", { id: unit, placement: "main" }).catch(() => undefined)}
+            onText={(unit) => void call("base.reveal", { id: unit, placement: "main" }).catch(report)}
           />
         </section>
         <section className="hv-parts" aria-label="Parts">

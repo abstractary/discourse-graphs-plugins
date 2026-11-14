@@ -3,7 +3,7 @@ import type { SearchHit } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon } from "../shared/ui.tsx";
 import { ALT, HitBody, MOD, useOpenCanvas, useSearch } from "./parts.tsx";
-import { messageOf } from "../shared/words.ts";
+import { sayOf } from "../shared/words.ts";
 
 /**
  * The quick finder: type a few words, then open the unit, link it at the
@@ -29,7 +29,7 @@ export const Find = ({ connection }: { connection: Connection }) => {
     pointer.current = at;
     if (moved) setActive(index);
   };
-  const report = useCallback((error: unknown) => setNotice(messageOf(error)), []);
+  const report = useCallback((error: unknown) => setNotice(sayOf(error)), []);
   const query = useMemo(() => ({ text, limit: LIMIT }), [text]);
   const results = useSearch(connection, query, report, 40);
   const canvas = useOpenCanvas(connection);
@@ -42,7 +42,7 @@ export const Find = ({ connection }: { connection: Connection }) => {
 
   const close = () => void call("dialog.close", {}).catch(report);
   const done = (work: Promise<unknown>) =>
-    void work.then(close).catch((error: Error) => setNotice(/cursor/i.test(error.message) ? "Click into a note first, then link." : error.message));
+    void work.then(close).catch((error: Error) => setNotice(/cursor/i.test(error.message) ? "Click into a note first, then link." : sayOf(error)));
 
   const open = (hit: SearchHit) =>
     done(

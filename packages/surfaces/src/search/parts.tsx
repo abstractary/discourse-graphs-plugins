@@ -83,10 +83,11 @@ export const useOpenCanvas = (connection: Connection) => {
       const found = list.find((entry) => entry.id === id);
       setCanvas(found ? { id: found.id, title: found.title } : null);
     };
-    void call("overview.focus.get", {}).then(({ canvas: id }) => titled(id));
+    // Both dropped: when the open canvas can't be told, "Put on canvas" just isn't offered.
+    void call("overview.focus.get", {}).then(({ canvas: id }) => titled(id)).catch(() => setCanvas(null));
     return on("overview-focus-changed", ({ canvas: id }) => {
       // A note opened elsewhere moves the whole in focus, but the canvas tab stays where it was.
-      if (id) void titled(id);
+      if (id) void titled(id).catch(() => setCanvas(null)); // Dropped, as above.
     });
   }, [call, on]);
   return canvas;

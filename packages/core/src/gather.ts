@@ -4,6 +4,7 @@ import type { Candidate, RelatedUnit } from "@dg/contract/surface.ts";
 import { fillTemplate } from "@dg/contract/grammar.ts";
 import type { Context, Handlers } from "./context.ts";
 import { baseOf, cidOfBytes, ensureProcessTypes, provenanceOf } from "./process.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 /**
  * Three ways an argument grows from what is already at hand:
@@ -47,7 +48,7 @@ export const gatherFeature = (context: Context, { place }: { place: Place }) => 
         return { unit: context.summarize(held), fresh: false };
       }
       const kept = await context.host.writeAsset({ asset: { name: file.name, mime: file.mediaType, dataUrl: `data:${file.mediaType};base64,${file.dataBase64}` } });
-      if (!kept.ok) throw new Error(kept.error.message);
+      if (!kept.ok) throw refusalOf(kept.error);
       const type = await outputType();
       const title = file.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").trim() || "Picture";
       const node = createNode({
@@ -118,7 +119,7 @@ export const gatherFeature = (context: Context, { place }: { place: Place }) => 
       if (!context.host.listTagged) return { supported: false, tags, candidates: [] };
       if (tags.length === 0) return { supported: true, tags, candidates: [] };
       const found = await context.host.listTagged({ tags: tags.map(({ tag }) => tag), limit: 500 });
-      if (!found.ok) throw new Error(found.error.message);
+      if (!found.ok) throw refusalOf(found.error);
       const candidates: Candidate[] = found.value.flatMap((line) => {
         const type = tags.find(({ tag }) => tag.toLowerCase() === line.tag.toLowerCase());
         return type && line.text.trim() ? [{ ref: line.ref, note: line.title, line: line.line, text: line.text.trim(), type: type.type, typeLabel: type.label, tag: type.tag }] : [];
@@ -129,7 +130,7 @@ export const gatherFeature = (context: Context, { place }: { place: Place }) => 
     "candidate.promote": async ({ ref, line, type: typeId, text }) => {
       const type = context.typeOf(typeId);
       if (!type?.tag) throw new Error("That type has no candidate tag.");
-      if (!context.host.replaceTagged) throw new Error("This base has no tags.");
+      if (!context.host.replaceTagged) throw refuse("unavailable", "This base has no tags.");
       const title = text.replace(/\s+/g, " ").trim();
       if (!title) throw new Error("A unit needs a title.");
       const node = createNode({ ...context.stamp(), title, type: type.id, facts: { provenance: { method: "authored" } } });
@@ -143,7 +144,7 @@ export const gatherFeature = (context: Context, { place }: { place: Place }) => 
       const target = made.ok ? made.value.ref : !made.ok && made.error.code === "conflict" ? made.error.ref : undefined;
       if (!target) throw new Error(made.ok ? "Couldn't make the note." : made.error.message);
       const swapped = await context.host.replaceTagged({ ref, line, tag: type.tag, target });
-      if (!swapped.ok) throw new Error(swapped.error.message);
+      if (!swapped.ok) throw refusalOf(swapped.error);
       if (known && context.nodeOf(known)) return context.summarize(context.nodeOf(known)!);
       await context.put([node, createAnchor({ ...context.stamp(), node: node.id, ref: target })]);
       return context.summarize(context.nodeOf(node.id)!);

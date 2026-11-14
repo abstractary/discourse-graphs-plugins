@@ -2,6 +2,7 @@ import { ownColor } from "./process.ts";
 import type { CanvasRecord, DgId, DgRecord, FoldedGraph, NodeRecord, RelationTypeRecord } from "@dg/contract/records.ts";
 import type { Profile, ProfileAudience, ProfileCard, ProfileEvent, ProfileStats } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refusalOf } from "./refuse.ts";
 
 /**
  * A person's work, told three ways. The person sees all of it. Their lab sees
@@ -226,7 +227,7 @@ export const profileFeature = (context: Context, { shareable }: { /** What this 
     },
     "profile.show": async ({ id }) => {
       const opened = await context.host.openSurface({ route: { surface: "profile", ...(id ? { id } : {}) }, placement: "main" });
-      if (!opened.ok) throw new Error(opened.error.message);
+      if (!opened.ok) throw refusalOf(opened.error);
       return null;
     },
   };

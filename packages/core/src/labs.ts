@@ -4,7 +4,7 @@ import type { LabLink } from "@dg/contract/services.ts";
 import type { BreadcrumbDefault, IdentityView, LabView } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { checkSignatures, signerOf } from "./signing.ts";
-import { refuse } from "./refuse.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 const BREADCRUMB_KEY = "breadcrumb-default";
 
@@ -208,7 +208,7 @@ export const labFeature = (
 
   const settle = async (requestId: string, decision: "accept" | "decline", tokenKind?: "personal" | "team"): Promise<LabView> => {
     const link = await services().link();
-    if (!link) throw new Error("You're not in a lab.");
+    if (!link) throw refuse("no-target", "You're not in a lab.");
     await services().decide(link, { requestId, decision, ...(tokenKind ? { tokenKind } : {}) });
     return view();
   };
@@ -286,7 +286,7 @@ export const labFeature = (
     "lab.remove": async ({ id: did }) => {
       const link = await services().link();
       const lab = context.myLab();
-      if (!link?.token || !lab) throw new Error("You're not in a lab.");
+      if (!link?.token || !lab) throw refuse("no-target", "You're not in a lab.");
       if (lab.custodian !== context.me().id) throw refuse("read-only", "Only the lab's PI can remove a member.");
       await services().removeMember(link, did);
       // Said in the lab's own records too, so every member's copy agrees on who is in.
@@ -296,7 +296,7 @@ export const labFeature = (
     },
     "lab.configure": async (changes) => {
       const lab = context.myLab();
-      if (!lab) throw new Error("You're not in a lab.");
+      if (!lab) throw refuse("no-target", "You're not in a lab.");
       if (lab.custodian !== context.me().id) throw refuse("read-only", "Only the lab's PI can change what the lab sets for everyone.");
       const next: Record<string, unknown> = { ...(lab.settings ?? {}) };
       for (const [key, value] of Object.entries(changes)) {
@@ -310,7 +310,7 @@ export const labFeature = (
       const link = await services().link();
       if (!link?.token) throw refuse("no-target", "Join a lab first.");
       const saved = await context.host.saveFile(await services().paperFile(link, id));
-      if (!saved.ok) throw new Error(saved.error.message);
+      if (!saved.ok) throw refusalOf(saved.error);
       return saved.value;
     },
     "canvas.audience": async ({ id }) => {

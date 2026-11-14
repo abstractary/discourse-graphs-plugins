@@ -14,7 +14,7 @@ import {
 } from "@dg/contract/records.ts";
 import { STARTER_TEMPLATES, fillTemplate } from "@dg/contract/grammar.ts";
 import type { Context, Handlers } from "./context.ts";
-import { refuse } from "./refuse.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 export { STARTER_TEMPLATES, fillTemplate };
 
@@ -242,7 +242,7 @@ export const grammarFeature = (context: Context) => {
       let binary = "";
       for (const byte of bytes) binary += String.fromCharCode(byte);
       const saved = await context.host.saveFile({ name: SCHEMA_FILE, mediaType: "application/json", dataBase64: btoa(binary) });
-      if (!saved.ok) throw new Error(saved.error.message);
+      if (!saved.ok) throw refusalOf(saved.error);
       return { where: saved.value.where, name: SCHEMA_FILE, nodeTypes: file.nodeTypes.length, relationTypes: file.relationTypes.length };
     },
 
@@ -257,7 +257,7 @@ export const grammarFeature = (context: Context) => {
 
     "grammar.import": async ({ ref }) => {
       const asset = await context.host.readAsset({ ref });
-      if (!asset.ok) throw new Error(asset.error.message);
+      if (!asset.ok) throw refusalOf(asset.error);
       let raw: unknown;
       try {
         raw = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(asset.value.dataUrl.split(",")[1] ?? ""), (char) => char.charCodeAt(0))));
@@ -321,9 +321,9 @@ export const grammarFeature = (context: Context) => {
     "table.open": async ({ type }) => {
       const held = context.typeOf(type);
       if (!held) throw refuse("not-found", "That type isn't here any more.");
-      if (!context.host.openTable) throw new Error("This base has no tables of its own.");
+      if (!context.host.openTable) throw refuse("unavailable", "This base has no tables of its own.");
       const made = await context.host.openTable({ name: held.label, property: FACT_KEYS.type, value: held.label, columns: TABLE_COLUMNS.filter(({ only }) => !only || only === held.base).map(({ property, label }) => ({ property, label })) });
-      if (!made.ok) throw new Error(made.error.message);
+      if (!made.ok) throw refusalOf(made.error);
       return made.value;
     },
   };

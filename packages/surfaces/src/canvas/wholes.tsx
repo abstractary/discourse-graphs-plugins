@@ -55,6 +55,7 @@ export const useWholeCanvas = ({
   const shownWidth = useRef(0);
   useEffect(() => {
     if (!current) return;
+    // Dropped: this only keeps the boundary panel in step, and it is said again on the next focus or switch.
     const tell = () => void call("overview.focus.set", { canvas: current }).catch(() => undefined);
     tell();
     const observer = new ResizeObserver(([entry]) => {

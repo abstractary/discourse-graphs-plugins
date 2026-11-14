@@ -4,6 +4,7 @@ import { identifierLabel } from "@dg/contract/scholarly.ts";
 import type { LibraryHit, LibraryItemView } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, Problem } from "../shared/ui.tsx";
+import { sayOf } from "../shared/words.ts";
 
 /**
  * From Zotero: find a reference, see the highlights made on it, and bring in
@@ -33,7 +34,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     setStatus(null);
     void call("zotero.status", {})
       .then(setStatus)
-      .catch((error: Error) => setStatus({ ok: false, app: "zotero", problem: error.message }));
+      .catch((error: unknown) => setStatus({ ok: false, app: "zotero", problem: sayOf(error) }));
   }, [call]);
   useEffect(check, [check]);
   useEffect(() => {
@@ -44,6 +45,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   useEffect(() => {
     if (!status?.ok || startedAt.current) return;
     startedAt.current = true;
+    // Dropped: with nothing known to be waiting, the panel starts at its search, as it would anyway.
     void call("zotero.pending", {}).then(({ item }) => (item ? openRef.current(item) : undefined)).catch(() => undefined);
   }, [status?.ok, call]);
 
@@ -58,7 +60,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     const timer = window.setTimeout(() => {
       void call("zotero.search", { text: wanted, limit: 20 })
         .then((found) => turn === asked.current && (setHits(found), setProblem("")))
-        .catch((error: Error) => turn === asked.current && setProblem(error.message));
+        .catch((error: unknown) => turn === asked.current && setProblem(sayOf(error)));
     }, 250);
     return () => window.clearTimeout(timer);
   }, [call, status?.ok, text]);
@@ -73,7 +75,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         // Start with every highlight that isn't here yet. The person takes away what they don't want.
         setPicked(new Map(next.annotations.filter((mark) => mark.usable && !mark.held).map((mark) => [mark.key, mark.suggested])));
       })
-      .catch((error: Error) => setProblem(error.message))
+      .catch((error: unknown) => setProblem(sayOf(error)))
       .finally(() => setBusy(false));
   };  openRef.current = open;
 
@@ -84,20 +86,21 @@ export const App = ({ connection }: { connection: Connection }) => {
     setProblem("");
     void call("zotero.import", { ref: view.item.ref, annotations: [...picked].map(([key, type]) => ({ key, ...(type ? { type } : {}) })), ...(route.id ? { canvas: route.id } : {}) })
       .then(async (made) => {
+        // Dropped, all three: the highlights are in by now, and showing them is a courtesy that mustn't keep the dialog open.
         if (made.canvas) await call("canvas.show", { id: made.canvas }).catch(() => null);
         else {
-          await call("focus.set", { id: made.source.id }).catch(() => null);
-          await call("panel.open", { surface: "context" }).catch(() => null);
+          await call("focus.set", { id: made.source.id }).catch(() => null); // Dropped, as above.
+          await call("panel.open", { surface: "context" }).catch(() => null); // Dropped, as above.
         }
         await call("dialog.close", {});
       })
-      .catch((error: Error) => {
-        setProblem(error.message);
+      .catch((error: unknown) => {
+        setProblem(sayOf(error));
         setBusy(false);
       });
   };
 
-  const close = (): void => void call("dialog.close", {});
+  const close = (): void => void call("dialog.close", {}).catch((error: unknown) => setProblem(sayOf(error)));
 
   return (
     <main className="sheet zotero" data-dg="zotero">
@@ -149,7 +152,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             </span>
             <span>
               {view.held ? "This source is in your graph already. Bringing it in again adds only what is new. " : "It will be added as a Source. "}
-              <button type="button" className="ctx-link" onClick={() => void call("link.open", { url: view.item.open })}>Show it in Zotero</button>
+              <button type="button" className="ctx-link" onClick={() => void call("link.open", { url: view.item.open }).catch((error: unknown) => setProblem(sayOf(error)))}>Show it in Zotero</button>
             </span>
           </div>
           {view.annotations.length === 0 ? (

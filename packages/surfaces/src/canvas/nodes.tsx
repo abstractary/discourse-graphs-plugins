@@ -362,7 +362,7 @@ export const NoteNode = memo(({ id, data, selected }: NodeProps<Node<NoteData>>)
     if (!editing) setDraft(data.text);
   }, [data.text, editing]);
   return (
-    <div className="note" data-dg={`note-${data.text}`} onDoubleClick={() => setEditing(true)}>
+    <div className="sticky" data-dg={`note-${data.text}`} onDoubleClick={() => setEditing(true)}>
       <NodeResizer isVisible={selected} minWidth={100} minHeight={40} onResizeEnd={(_, box) => actions.saveBox(id, box)} />
       <Handles />
       {editing ? (

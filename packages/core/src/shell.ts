@@ -53,7 +53,7 @@ export const shellFeature = (context: Context) => {
     },
     "base.reveal": async ({ id, placement }) => {
       const anchor = context.anchorOf(id);
-      if (!anchor) throw new Error("This node has no text in this space.");
+      if (!anchor) throw refuse("not-found", "This node has no text in this space.");
       value(await context.host.reveal({ ref: anchor.ref, placement }));
       return null;
     } };

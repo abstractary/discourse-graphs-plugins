@@ -2,6 +2,26 @@
 
 Each entry has up to two lists. **For people using it** is what changed in what you see and do. **Under the hood** is internals, tests and tooling.
 
+## Failures a person can act on, and one scheme for calls (14 November 2026)
+
+**For people using it**
+
+- **A panel that can't load says so, and offers Try again,** where it used to stay blank. This covers the profile, the run page and run list, the paper map, the grammar, the Overview, the Boundary, Context, the welcome and upload dialogs, AI setup, the Library's tabs and a canvas's history.
+- **Something that has been removed says it is gone,** in place of the raw error: a unit, a run, a profile, a PDF or a canvas. Context and the Overview add a way back.
+- **About sixty buttons that failed silently now tell you,** among them Add to canvas on the run page, Stop in Ask AI, and opening a canvas from the paper map or a profile. Ask AI offers to ask the same question again when the model can't be reached.
+- **A change that isn't yours to make starts with "This can't be changed here."** and then says who can.
+- **Fixed: hints inside the canvas's export and related menus were drawn as sticky notes,** with a tinted box. They are plain hints now, as in the Library.
+- **In Obsidian, a tab saved as the Overview before today, or a hotkey bound to opening it, needs opening or binding again.** Its internal name changed.
+
+**Under the hood**
+
+- **Calls follow one scheme.** A read is `get` or `list` everywhere (`lab.get`, `profile.get`, `canvas.get`, `pdf.get`, `zotero.get`, `run.get`, `method.get`). A decision is `accept` or `reject` (`relation`, `lab`, `proposal`, `device`). The subject of a call is `id`.
+- **"holon" is gone from the code:** files, identifiers, classes, command ids. A canvas names what it is tied to in `whole`. A log written earlier says `holon` and is read under the new name; the canvas's next edit writes the new one.
+- **Every shape that crosses to the server is declared once,** in `packages/contract/src/wire.ts`: 39 shapes over the 32 routes. The client types against it, the server takes a generated copy, and CI checks both. Three that disagreed now say what the server sends.
+- **One `useLoad` and `LoadProblem` for a panel's first read,** one `TwoStep` for anything asked twice, and the hint style lives with the shared styles. About thirty calls still drop a failure on purpose, each with a line saying why.
+- **A failure from the base keeps the base's own kind** through the core, in thirty-two more places. What is left without a kind is bad input, which is what `invalid` means.
+- **Real-app tests:** the PDF suite passes again (its drop point was half off the canvas, and the canvas rightly moved the card into view), and the people suite no longer depends on where the view happens to be or on whether Zotero is open.
+
 ## Canvas neighbours and map, one Library, standing side panels (14 November 2026)
 
 **For people using it**

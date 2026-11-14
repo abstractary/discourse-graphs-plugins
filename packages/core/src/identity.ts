@@ -4,6 +4,7 @@ import { base58btc } from "multiformats/bases/base58";
 import { CID } from "multiformats/cid";
 import { sha256 } from "multiformats/hashes/sha2";
 import type { JsonObject } from "@dg/contract/records.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * A did:plc is the hash of its signed first operation, so it can be computed on
@@ -177,7 +178,7 @@ export const createLabIdentity = async ({
   custodian: Identity;
 }): Promise<Identity> => {
   const rotation = await keys.get(`rotation:${custodian.did}`);
-  if (!rotation) throw new Error("Only the device holding the PI's key can create the lab.");
+  if (!rotation) throw refuse("read-only", "Only the device holding the PI's key can create the lab.");
   const signing = await makeKeys(keys);
   const operation = await genesis({
     rotationKeys: [custodian.rotationKey],
@@ -204,7 +205,7 @@ export const addCustodian = async ({
   custodianKey: string;
 }): Promise<Identity> => {
   const rotation = await keys.get(`rotation:${identity.did}`);
-  if (!rotation) throw new Error("This device doesn't hold your rotation key.");
+  if (!rotation) throw refuse("read-only", "This device doesn't hold your rotation key.");
   const previous = identity.plc[identity.plc.length - 1]!;
   const { sig: _sig, ...fields } = previous;
   const existing = (fields.rotationKeys as string[]).filter((key) => key !== custodianKey);

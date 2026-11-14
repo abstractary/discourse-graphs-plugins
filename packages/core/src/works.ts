@@ -84,7 +84,7 @@ export const worksFeature = (context: Context) => {
 
   const handlers: Pick<Handlers, "work.lookup" | "unit.identify"> = {
     "work.lookup": async ({ id: unit }): Promise<WorkLookup> => {
-      if (!context.services) throw new Error("Looking a work up needs the network, and this base has none set up.");
+      if (!context.services) throw refuse("unavailable", "Looking a work up needs the network, and this base has none set up.");
       const node = context.nodeOf(unit);
       const target = node ? targetOf(node) : undefined;
       if (!node || !target) throw new Error("This unit wasn't read from a paper, so there is nothing to look up.");

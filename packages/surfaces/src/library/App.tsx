@@ -5,7 +5,8 @@ import { PlaceContext, usePlace, type Place } from "../shared/place.ts";
 import { Icon, LibraryMark, Mark, Problem, Tabs } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
 import { Repository } from "./Repository.tsx";
-import { counted, messageOf } from "../shared/words.ts";
+import type { Report } from "../shared/load.tsx";
+import { counted, sayOf } from "../shared/words.ts";
 
 const DAY = 86_400_000;
 const CHECK_MS = 4000;
@@ -21,14 +22,14 @@ const whenEdited = (at: string): string => {
 
 type Tab = "canvases" | "papers" | "folders" | "lab";
 
-const Papers = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+const Papers = ({ connection, report }: { connection: Connection; report: Report }) => {
   const place = usePlace();
   const { call, on } = connection;
   const [papers, setPapers] = useState<PaperSummary[] | null>(null);
   const [inLab, setInLab] = useState(false);
   const refresh = useCallback(() => {
-    void call("paper.list", {}).then(setPapers).catch(report);
-    void call("lab.get", {}).then((lab) => setInLab(Boolean(lab.link?.token))).catch(report);
+    void call("paper.list", {}).then(setPapers).catch((error: unknown) => report(error, refresh));
+    void call("lab.get", {}).then((lab) => setInLab(Boolean(lab.link?.token))).catch((error: unknown) => report(error, refresh));
   }, [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
@@ -57,12 +58,12 @@ const Papers = ({ connection, report }: { connection: Connection; report: (error
   );
 };
 
-const Folders = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+const Folders = ({ connection, report }: { connection: Connection; report: Report }) => {
   const { call, on } = connection;
   const [folders, setFolders] = useState<{ id: string; title: string; units: number }[] | null>(null);
   const [name, setName] = useState("");
   const refresh = useCallback(() => {
-    void call("folder.list", {}).then(setFolders).catch(report);
+    void call("folder.list", {}).then(setFolders).catch((error: unknown) => report(error, refresh));
   }, [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
@@ -96,10 +97,10 @@ const Folders = ({ connection, report }: { connection: Connection; report: (erro
 };
 
 /** This person's own devices. A new one waits here until a trusted one lets it in. */
-const Devices = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+const Devices = ({ connection, report }: { connection: Connection; report: Report }) => {
   const { call, on } = connection;
   const [devices, setDevices] = useState<DeviceView[]>([]);
-  const refresh = useCallback(() => void call("device.list", {}).then(setDevices).catch(() => setDevices([])), [call]);
+  const refresh = useCallback(() => void call("device.list", {}).then(setDevices).catch((error: unknown) => (setDevices([]), report(error, refresh))), [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
   const others = devices.filter((device) => device.id !== "first" || devices.length > 1);
@@ -134,13 +135,14 @@ const REACH: { value: Reach; label: string }[] = [
 ];
 
 /** What the PI sets once and every member inherits. Members read it. */
-const LabSettings = ({ connection, lab, onChange, report }: { connection: Connection; lab: LabView; onChange: (view: LabView) => void; report: (error: unknown) => void }) => {
+const LabSettings = ({ connection, lab, onChange, report }: { connection: Connection; lab: LabView; onChange: (view: LabView) => void; report: Report }) => {
   const { call } = connection;
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const { settings, custodian } = lab;
   useEffect(() => {
+    // Dropped: Zotero being closed is ordinary, and the lab's own group stays in the list without it.
     if (custodian) void call("zotero.groups", {}).then(setGroups).catch(() => setGroups([]));
   }, [call, custodian]);
   const set = (changes: LabChanges): void => void call("lab.configure", changes).then(onChange).catch(report);
@@ -202,7 +204,7 @@ const LabSettings = ({ connection, lab, onChange, report }: { connection: Connec
   );
 };
 
-const Lab = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+const Lab = ({ connection, report }: { connection: Connection; report: Report }) => {
   const place = usePlace();
   const { call, on } = connection;
   const [lab, setLab] = useState<LabView | null>(null);
@@ -210,7 +212,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   const [invite, setInvite] = useState("");
   const [removing, setRemoving] = useState("");
   const refresh = useCallback(() => {
-    void call("lab.get", {}).then(setLab).catch(report);
+    void call("lab.get", {}).then(setLab).catch((error: unknown) => report(error, refresh));
   }, [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
@@ -218,7 +220,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   const link = lab?.link;
   useEffect(() => {
     if (!link) return undefined;
-    const timer = window.setInterval(() => void call(link.pending ? "lab.check" : "lab.get", {}).then(setLab).catch(() => {}), CHECK_MS);
+    const timer = window.setInterval(() => void call(link.pending ? "lab.check" : "lab.get", {}).then(setLab).catch(() => {}), CHECK_MS); // Dropped: the next check, a few seconds on, asks again.
     return () => window.clearInterval(timer);
   }, [call, link]);
 
@@ -351,9 +353,9 @@ const NOWHERE: Place = {};
 
 const Shelves = ({ connection }: { connection: Connection }) => {
   const [tab, setTab] = useState<Tab>("canvases");
-  const [notice, setNotice] = useState("");
-  const report = useCallback((error: unknown) => {
-    setNotice(messageOf(error));
+  const [notice, setNotice] = useState<{ text: string; again?: () => void } | null>(null);
+  const report = useCallback<Report>((error, again) => {
+    setNotice({ text: sayOf(error), ...(again ? { again } : {}) });
   }, []);
   const props = { connection, report };
   return (
@@ -364,9 +366,9 @@ const Shelves = ({ connection }: { connection: Connection }) => {
         aria-label="Library"
         tabs={TABS.map(({ id, label }) => ({ id, label, dg: `library-${id}` }))}
         selected={tab}
-        onPick={(id) => { setTab(id); setNotice(""); }}
+        onPick={(id) => { setTab(id); setNotice(null); }}
       />
-      <Problem text={notice} />
+      <Problem text={notice?.text ?? ""} again={notice?.again ? () => { setNotice(null); notice.again!(); } : undefined} />
       {tab === "canvases" ? <Repository {...props} /> : null}
       {tab === "papers" ? <Papers {...props} /> : null}
       {tab === "folders" ? <Folders {...props} /> : null}

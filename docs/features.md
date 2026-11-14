@@ -38,13 +38,11 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### Canvas ([#6](https://github.com/abstractary/discourse-graphs-plugins/issues/6))
 
-- [#23](https://github.com/abstractary/discourse-graphs-plugins/issues/23) Shared pieces for the panels, and panels that do not import each other · refactor · Refactor · partly done: confirms, list rows and class prefixes remain
+- [#23](https://github.com/abstractary/discourse-graphs-plugins/issues/23) Shared pieces for the panels, and panels that do not import each other · refactor · Refactor · partly done: tabs, the two-step confirm, the hint and first loads are shared; list rows and class prefixes remain
 
 ### Units, relations and grammar ([#7](https://github.com/abstractary/discourse-graphs-plugins/issues/7))
 
-- [#21](https://github.com/abstractary/discourse-graphs-plugins/issues/21) One name for one idea in the calls a panel makes · refactor · Refactor · partly done: units and the overview renamed; verbs and id names remain
-- [#27](https://github.com/abstractary/discourse-graphs-plugins/issues/27) Retire the old word for Overview and Boundary from the code · refactor · Refactor · partly done: the calls and the event; identifiers and a record field remain
-- [#28](https://github.com/abstractary/discourse-graphs-plugins/issues/28) Failures that keep their codes, and none that vanish · refactor · Refactor · partly done: the code reaches a panel; panels do not act on it, and about forty calls drop a failure
+- [#28](https://github.com/abstractary/discourse-graphs-plugins/issues/28) Failures that keep their codes, and none that vanish · refactor · Refactor · done on 14 November: panels show or explain every failed call and act on three kinds; a failure from the base keeps its kind
 
 ### Reading and papers ([#8](https://github.com/abstractary/discourse-graphs-plugins/issues/8))
 
@@ -67,7 +65,7 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### Reference server ([#15](https://github.com/abstractary/discourse-graphs-plugins/issues/15))
 
-- [#22](https://github.com/abstractary/discourse-graphs-plugins/issues/22) One table of routes for the client, the server and the docs · refactor · Refactor · partly done: paths in one table; shapes still on both sides
+- [#22](https://github.com/abstractary/discourse-graphs-plugins/issues/22) One table of routes for the client, the server and the docs · refactor · Refactor · partly done: paths and shapes declared once; the server's stored papers and graph type are not checked against them
 
 ### Docs, tests and upkeep ([#16](https://github.com/abstractary/discourse-graphs-plugins/issues/16))
 

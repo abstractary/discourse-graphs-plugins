@@ -9,6 +9,7 @@ import type {
 import type { TextMarks } from "@dg/contract/words.ts";
 import type { Context, Handlers } from "./context.ts";
 import { fold, foldWithMap, marksOf, wordsOf } from "@dg/contract/words.ts";
+import { refusalOf } from "./refuse.ts";
 
 export { fold, foldWithMap, wordsOf };
 
@@ -281,7 +282,7 @@ export const searchFeature = (context: Context) => {
       carried = query ?? null;
       if (query) context.send({ event: "search-set", query });
       const opened = await context.host.openSurface({ route: { surface: "search" }, placement: "side" });
-      if (!opened.ok) throw new Error(opened.error.message);
+      if (!opened.ok) throw refusalOf(opened.error);
       return null;
     },
     "search.take": async () => {

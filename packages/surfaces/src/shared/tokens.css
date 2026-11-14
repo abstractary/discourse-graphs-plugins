@@ -87,6 +87,9 @@ button, input, textarea { font: inherit; color: inherit; }
 button { border: 1px solid transparent; border-radius: var(--dg-radius); background: none; padding: 4px 8px; cursor: pointer; transition: background-color 150ms var(--ease), color 150ms var(--ease); }
 button:hover { background: var(--hover); }
 button:disabled { color: var(--dg-muted); cursor: default; }
+/* Asking again, beside the sentence that says a read failed. */
+button.load-again { padding: 0 2px; color: var(--dg-accent); font: inherit; }
+button.load-again:hover { text-decoration: underline; background: none; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--dg-accent); outline-offset: 1px; }
 input { box-sizing: border-box; width: 100%; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); padding: 6px 8px; background: var(--dg-page); }
 input::placeholder { color: var(--dg-muted); }
@@ -156,7 +159,9 @@ button.mark:hover, button.mark:focus-visible { border-color: var(--dg-accent); c
 .library-mark .icon { width: 11px; height: 11px; stroke-width: 2; }
 button.library-mark { cursor: pointer; min-height: 0; width: auto; }
 button.library-mark:hover, button.library-mark:focus-visible { background: color-mix(in oklch, var(--dg-library, oklch(0.56 0.19 25)) 20%, transparent); }
-.note { display: flex; flex-direction: column; }
+/* A hint under a control or a heading, in any panel. */
+.note { margin: 0; color: var(--dg-muted); font-size: var(--small); }
+.sticky { display: flex; flex-direction: column; }
 .note-text { flex: 1; min-height: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note-by { flex: none; display: flex; align-items: center; gap: 5px; margin-top: 6px; color: var(--dg-muted); font-size: var(--tiny); line-height: 1.3; white-space: nowrap; overflow: hidden; }
 .note-by span:last-child { overflow: hidden; text-overflow: ellipsis; }

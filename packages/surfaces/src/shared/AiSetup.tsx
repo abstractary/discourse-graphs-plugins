@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AI_PROVIDERS, OPENAI_COMPATIBLE, providerOf, type AiModel, type AiProviderKind, type AiRoute, type AiSettings, type AiSource } from "@dg/contract/llm.ts";
 import type { Connection } from "./rpc.ts";
-import { messageOf } from "./words.ts";
+import { LoadProblem, useLoad } from "./load.tsx";
+import { sayOf } from "./words.ts";
 
 const KEPT: Record<AiSettings["keptIn"], string> = {
   keychain: "The key is kept in this device's keychain. It is never written to your notes, and it doesn't sync.",
@@ -45,16 +46,18 @@ export const AiSetup = ({ connection, onDone, onCancel }: { connection: Connecti
   const keyOnFile = Boolean(saved?.hasKey && saved.provider === provider);
   const needsKey = spec.needsKey || !local;
 
-  useEffect(() => {
-    void call("ai.settings", {}).then((view) => {
-      setSaved(view);
-      setSource(view.inLab ? view.source : "own");
-      setProvider(view.provider);
-      setBaseUrl(view.baseUrl ?? "");
-      setModel(view.model);
-      setRoute(view.route);
-    });
-  }, [call]);
+  const read = useLoad(
+    () =>
+      call("ai.settings", {}).then((view) => {
+        setSaved(view);
+        setSource(view.inLab ? view.source : "own");
+        setProvider(view.provider);
+        setBaseUrl(view.baseUrl ?? "");
+        setModel(view.model);
+        setRoute(view.route);
+      }),
+    [call],
+  );
 
   const loadModels = useCallback(
     async (typed: string): Promise<void> => {
@@ -73,7 +76,7 @@ export const AiSetup = ({ connection, onDone, onCancel }: { connection: Connecti
       } catch (error) {
         if (mine !== loads.current) return;
         setModels(null);
-        setListProblem(messageOf(error));
+        setListProblem(sayOf(error));
       } finally {
         if (mine === loads.current) setLoading(false);
       }
@@ -105,18 +108,23 @@ export const AiSetup = ({ connection, onDone, onCancel }: { connection: Connecti
       if (!tried.ok) throw new Error(`Saved, but the test call failed. ${tried.message}`);
       onDone();
     } catch (error) {
-      setProblem(messageOf(error));
+      setProblem(sayOf(error));
     } finally {
       setBusy(false);
     }
   };
 
   const removeKey = async (): Promise<void> => {
-    setSaved(await call("ai.configure", { provider, key: null }));
-    setModels(null);
+    setProblem("");
+    try {
+      setSaved(await call("ai.configure", { provider, key: null }));
+      setModels(null);
+    } catch (error) {
+      setProblem(sayOf(error));
+    }
   };
 
-  if (!saved) return <div className="ai-setup" data-dg="ai-setup" aria-busy="true" />;
+  if (!saved) return read.failed !== undefined ? <div className="ai-setup" data-dg="ai-setup"><LoadProblem failed={read.failed} again={read.again} className="ai-problem" /></div> : <div className="ai-setup" data-dg="ai-setup" aria-busy="true" />;
   if (!saved.canCall && !saved.inLab) {
     return (
       <div className="ai-setup" data-dg="ai-setup">

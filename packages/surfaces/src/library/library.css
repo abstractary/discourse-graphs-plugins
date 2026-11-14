@@ -38,7 +38,6 @@
 .row { display: flex; align-items: center; gap: 6px; }
 .row.end { justify-content: flex-end; }
 .row select { flex: 1; min-width: 0; }
-.note { margin: 0; color: var(--dg-muted); font-size: var(--small); }
 .problem { margin: 0; color: var(--opposes); font-size: var(--small); }
 button.primary { padding: 5px 14px; background: var(--dg-accent); color: var(--dg-page); border-radius: var(--dg-radius); }
 button.primary:disabled { opacity: 0.45; cursor: default; }

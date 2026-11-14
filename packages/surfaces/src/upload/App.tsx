@@ -3,7 +3,8 @@ import type { ComputeServer, ServerOption } from "@dg/contract/services.ts";
 import type { LabView, SavedExtraction } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, Problem } from "../shared/ui.tsx";
-import { sizeOf, messageOf } from "../shared/words.ts";
+import { LoadProblem, useLoad } from "../shared/load.tsx";
+import { canRetry, sayOf, sizeOf } from "../shared/words.ts";
 
 const ACCEPTED = ".pdf,.doc,.docx,.md,.txt,.json,.jsonld";
 const isSaved = (name: string): boolean => /\.(json|jsonld)$/i.test(name);
@@ -52,13 +53,19 @@ const AddServer = ({ connection, onDone, onCancel }: { connection: Connection; o
       if (!name) setName(info.name);
       return true;
     } catch (error) {
-      setProblem(messageOf(error));
+      setProblem(sayOf(error));
       return false;
     }
   };
 
   const save = async (): Promise<void> => {
-    if (await test()) onDone(await call("server.add", { name: name || url, url, kind }));
+    if (!(await test())) return;
+    try {
+      onDone(await call("server.add", { name: name || url, url, kind }));
+    } catch (error) {
+      setResult("");
+      setProblem(sayOf(error));
+    }
   };
 
   return (
@@ -107,6 +114,9 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [includeFile, setIncludeFile] = useState(true);
   const [adding, setAdding] = useState(false);
   const [problem, setProblem] = useState("");
+  // Set when the server's models and schemas couldn't be read because it wasn't reachable, so asking again is offered.
+  const [optionsTurn, setOptionsTurn] = useState(0);
+  const [retry, setRetry] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [started, setStarted] = useState(0);
   const [elapsed, setElapsed] = useState(0);
@@ -118,10 +128,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     setServer((old) => choose ?? (old || (list[0]?.url ?? "")));
   }, [call]);
 
-  useEffect(() => {
-    void loadServers();
-    void call("lab.get", {}).then(setLab);
-  }, [call, loadServers]);
+  const first = useLoad(() => Promise.all([loadServers(), call("lab.get", {}).then(setLab)]), [call, loadServers]);
 
   useEffect(() => on("job-status", ({ message }) => setStatus(message)), [on]);
 
@@ -131,12 +138,14 @@ export const App = ({ connection }: { connection: Connection }) => {
     if (!given) return;
     const name = given.split("/").pop() ?? given;
     setFile({ name, mediaType: "application/pdf", dataBase64: "", size: 0, ref: given });
+    // Dropped: with no saved extraction known, the paper is read afresh, which is the ordinary path.
     void call("paper.saved", { name, ref: given }).then(setSaved, () => setSaved(null));
   }, [call, given]);
 
   useEffect(() => {
     if (!server) return;
     setProblem("");
+    setRetry(false);
     setModels([]);
     setSchemas([]);
     call("server.options", { url: server })
@@ -146,8 +155,8 @@ export const App = ({ connection }: { connection: Connection }) => {
         setModel((options.models.find((item) => item.default) ?? options.models[0])?.id ?? "");
         setSchema((options.schemas.find((item) => item.default) ?? options.schemas[0])?.id ?? "");
       })
-      .catch((error: unknown) => setProblem(messageOf(error)));
-  }, [call, server]);
+      .catch((error: unknown) => (setProblem(sayOf(error)), setRetry(canRetry(error))));
+  }, [call, server, optionsTurn]);
 
   useEffect(() => {
     if (status === null) return undefined;
@@ -172,11 +181,12 @@ export const App = ({ connection }: { connection: Connection }) => {
         // A saved extraction on its own still names its paper.
         if (!next) setFile({ name: `${stemOf(extraction.name)}.pdf`, mediaType: "application/pdf", dataBase64: "", size: 0 });
       } else if (paper && next) {
+        // Dropped: with no saved extraction known, the paper is read afresh, which is the ordinary path.
         setSaved(await call("paper.saved", { name: next.name }).catch(() => null));
         setAgain(false);
       }
     } catch (error) {
-      setProblem(messageOf(error));
+      setProblem(sayOf(error));
     }
   };
 
@@ -200,7 +210,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       await call("dialog.close", {});
     } catch (error) {
       setStatus(null);
-      setProblem(messageOf(error));
+      setProblem(sayOf(error));
     }
   };
 
@@ -212,7 +222,7 @@ export const App = ({ connection }: { connection: Connection }) => {
           onCancel={() => setAdding(false)}
           onDone={(added) => {
             setAdding(false);
-            void loadServers(added.url);
+            void loadServers(added.url).catch((error: unknown) => setProblem(sayOf(error)));
           }}
         />
       </main>
@@ -233,7 +243,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     <main className="sheet">
       <header className="sheet-head">
         <h1>Upload a paper</h1>
-        <button type="button" className="icon-only" data-dg="upload-close" aria-label="Close" onClick={() => void call("dialog.close", {})}>
+        <button type="button" className="icon-only" data-dg="upload-close" aria-label="Close" onClick={() => void call("dialog.close", {}).catch((error: unknown) => setProblem(sayOf(error)))}>
           <Icon name="close" />
         </button>
       </header>
@@ -324,7 +334,8 @@ export const App = ({ connection }: { connection: Connection }) => {
       ) : null}
 
       {useSaved ? null : <p className="note">If this paper has a DOI, its extraction and DOI are kept on Discourse Graphs. The file isn't. With no DOI, nothing is kept there.</p>}
-      <Problem text={problem} dg="upload-problem" />
+      <LoadProblem failed={first.failed} again={first.again} />
+      <Problem text={problem} dg="upload-problem" again={retry ? () => setOptionsTurn((n) => n + 1) : undefined} />
       <div className="row end">
         <button type="button" className="primary" data-dg="upload-go" disabled={!file || (useSaved ? false : !hasBytes || !model || !schema)} onClick={() => void extract()}>Extract graph</button>
       </div>

@@ -21,7 +21,7 @@ import {
   type Pinned,
 } from "./process.ts";
 import { shapeProblems, type ShapeProblem } from "./shapes.ts";
-import { refuse } from "./refuse.ts";
+import { refusalOf, refuse } from "./refuse.ts";
 
 /**
  * How a result was made, for the panels: the chain behind a unit, one run as
@@ -31,9 +31,9 @@ import { refuse } from "./refuse.ts";
  * bytes are still the ones recorded.
  */
 
-type Value<T> = { ok: true; value: T } | { ok: false; error: { message: string } };
+type Value<T> = { ok: true; value: T } | { ok: false; error: { message: string; code?: import("@dg/contract/host.ts").HostErrorCode; ref?: string } };
 const value = <T>(result: Value<T>): T => {
-  if (!result.ok) throw new Error(result.error.message);
+  if (!result.ok) throw refusalOf(result.error);
   return result.value;
 };
 

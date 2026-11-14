@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import type { Profile, ProfileAudience, ProfileEvent, ProfileStats } from "@dg/contract/surface.ts";
 import { dayOf, initialsOf, Mark } from "../shared/people.tsx";
 import type { Connection } from "../shared/rpc.ts";
-import { Tabs, plain } from "../shared/ui.tsx";
-import { count } from "../shared/words.ts";
+import { LoadProblem, useLoad } from "../shared/load.tsx";
+import { Problem, Tabs, plain } from "../shared/ui.tsx";
+import { count, goneOf, sayOf } from "../shared/words.ts";
 
 /**
  * A person's profile: who they are, what they have made, and a history of
@@ -93,21 +94,29 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [id, setId] = useState<string | undefined>(route.id);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tab, setTab] = useState<Tab | null>(null);
-  const [problem, setProblem] = useState("");
+  const [notice, setNotice] = useState("");
+  const report = useCallback((error: unknown) => setNotice(sayOf(error)), []);
 
-  const load = useCallback(() => {
-    void call("profile.get", id ? { id } : {})
-      .then((next) => {
+  const load = useCallback(
+    () =>
+      call("profile.get", id ? { id } : {}).then((next) => {
         setProfile(next);
         // Open on the widest view this viewer has that still shows a history.
         setTab((old) => (old && next.audiences.includes(old) ? old : next.audiences.includes("private") ? "private" : next.audiences[0]!));
-      })
-      .catch((error: Error) => setProblem(error.message));
-  }, [call, id]);
-  useEffect(load, [load]);
-  useEffect(() => on("graph-changed", load), [on, load]);
+      }),
+    [call, id],
+  );
+  const { failed, again } = useLoad(load, [load]);
+  useEffect(() => on("graph-changed", again), [on, again]);
 
-  if (problem) return <main className="profile"><p className="profile-none" role="alert">{problem}</p></main>;
+  if (failed !== undefined) {
+    return (
+      <main className="profile">
+        <LoadProblem failed={failed} again={again} gone={goneOf("profile")} className="profile-none" />
+        {id ? <button type="button" className="profile-mine" onClick={() => setId(undefined)}>Your own profile</button> : null}
+      </main>
+    );
+  }
   if (!profile || !tab) return <main className="profile" aria-busy="true" />;
   const { person } = profile;
   const lab = person.lab ?? "the lab";
@@ -126,7 +135,8 @@ export const App = ({ connection }: { connection: Connection }) => {
   const part = tab === "public" ? null : profile[tab];
   const stats = tab === "public" ? profile.public : part!.stats;
   const openUnit = (unit: string): void => {
-    void call("focus.set", { id: unit });
+    void call("focus.set", { id: unit }).catch(report);
+    // Dropped: a base with nowhere to put the panel still moved the focus, which is what was asked.
     void call("panel.open", { surface: "context" }).catch(() => undefined);
   };
 
@@ -140,7 +150,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             {[person.lab, profile.public.since ? `Here since ${dayOf(profile.public.since)}` : null, profile.public.lastActive ? `last active ${dayOf(profile.public.lastActive)}` : null].filter(Boolean).join(" · ") || "Nothing of theirs is here yet"}
           </p>
           {person.orcid ? (
-            <button type="button" className="profile-orcid" onClick={() => void call("link.open", { url: `https://orcid.org/${person.orcid}` })} title={`Open https://orcid.org/${person.orcid}`}>
+            <button type="button" className="profile-orcid" onClick={() => void call("link.open", { url: `https://orcid.org/${person.orcid}` }).catch(report)} title={`Open https://orcid.org/${person.orcid}`}>
               ORCID {person.orcid}
             </button>
           ) : null}
@@ -160,9 +170,10 @@ export const App = ({ connection }: { connection: Connection }) => {
         onPick={setTab}
       />
       <p className="profile-audience" data-dg="profile-audience">{TABS[tab].who}</p>
+      <Problem text={notice} dg="profile-problem" />
 
       <Stats stats={stats} />
-      {part ? <History events={part.history} more={part.more} onUnit={openUnit} onCanvas={(canvas) => void call("canvas.show", { id: canvas })} /> : null}
+      {part ? <History events={part.history} more={part.more} onUnit={openUnit} onCanvas={(canvas) => void call("canvas.show", { id: canvas }).catch(report)} /> : null}
       {/* A profile reached from someone's initials can be left for another person's without a new tab. */}
       {id && !person.me ? <button type="button" className="profile-mine" onClick={() => setId(undefined)}>Your own profile</button> : null}
     </main>

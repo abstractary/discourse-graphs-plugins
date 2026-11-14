@@ -4,6 +4,7 @@ import type { PaperMap, PaperMapLink, PaperMapPaper, PaperMapTie, PaperScope, Pa
 import type { Context, Handlers } from "./context.ts";
 import { paperLabel } from "./papers.ts";
 import { keyOfPaper, keyOfSource, paperOfWork, sameWork } from "./work.ts";
+import { refusalOf } from "./refuse.ts";
 
 /**
  * Papers laid out by how far they have been worked into each other.
@@ -324,7 +325,7 @@ export const paperMapFeature = (context: Context): { handlers: Pick<Handlers, "p
       },
       "paper.showMap": async ({ canvas }) => {
         const opened = await context.host.openSurface({ route: { surface: "papers", ...(canvas ? { id: canvas } : {}) }, placement: "main" });
-        if (!opened.ok) throw new Error(opened.error.message);
+        if (!opened.ok) throw refusalOf(opened.error);
         return null;
       },
     },

@@ -143,7 +143,7 @@ export const Announcements = ({ unit, call }: { unit: string; call: Connection["
     let live = true;
     void call("notify.about", { unit })
       .then((found) => live && setHeld(found))
-      .catch(() => undefined);
+      .catch(() => undefined); // Dropped: this is an aside that is quiet when empty, and the lab's server may be out of reach.
     return () => {
       live = false;
     };

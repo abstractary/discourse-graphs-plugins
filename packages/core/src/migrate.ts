@@ -49,14 +49,13 @@ const NODE_BASES: Record<string, BaseNodeType> = {
   EVD: "evidence",
   RES: "evidence",
   SRC: "source",
-  EXP: "source",
-  MTD: "source",
+  // An experiment is a designed investigation; a method is a reusable protocol.
+  EXP: "study",
+  MTD: "protocol",
 };
 
 /** Lab types with their own MIRA record. The rest follow their base type. */
 const NODE_LEXICONS: Record<string, string> = {
-  EXP: "science.mira.study",
-  MTD: "science.mira.protocol",
   ISS: "science.mira.request",
 };
 
@@ -304,8 +303,9 @@ type Ref = { uri: string };
 
 /** MIRA collections our default grammar has no type for. */
 const EXTRA_TYPES: Record<string, { label: string; abbreviation: string; base: BaseNodeType }> = {
-  "science.mira.study": { label: "Study", abbreviation: "STU", base: "source" },
-  "science.mira.protocol": { label: "Protocol", abbreviation: "PRO", base: "source" },
+  // MIRA's Study is one activity that produced evidence: DG's Run.
+  "science.mira.study": { label: "Run", abbreviation: "RUN", base: "run" },
+  "science.mira.protocol": { label: "Protocol", abbreviation: "PRO", base: "protocol" },
   "science.mira.request": { label: "Request", abbreviation: "REQ", base: "question" },
 };
 const MIRA_BASES: Record<string, BaseNodeType> = {
@@ -383,8 +383,10 @@ export const planAtImport = ({
     const collection = uri.replace("at://", "").split("/")[1] ?? "";
     if (collection === "science.mira.relation" || !collection.startsWith("science.mira.")) continue;
     const id = unitIdOf(uri);
-    if (graph.documents.has(id) || known.has(id)) continue;
+    // A unit already here still counts as known, so a later pull keeps new relations to it.
+    if (known.has(id)) continue;
     known.add(id);
+    if (graph.documents.has(id)) continue;
     const { did } = splitUnitId(id);
     const type = typeFor(collection);
     const raw = String(value.title ?? "");

@@ -1,0 +1,71 @@
+{
+ "result": {
+  "uids": [
+   "31579114"
+  ],
+  "31579114": {
+   "uid": "31579114",
+   "pubdate": "2019",
+   "epubdate": "2019 Sep 24",
+   "source": "Ther Adv Med Oncol",
+   "fulljournalname": "Therapeutic advances in medical oncology",
+   "title": "Downregulation of long noncoding RNA LINC01419 inhibits cell migration, invasion, and tumor growth and promotes autophagy via inactivation of the PI3K/Akt1/mTOR pathway in gastric cancer.",
+   "volume": "11",
+   "issue": "",
+   "pages": "1758835919874651",
+   "pubtype": [
+    "Journal Article",
+    "Retracted Publication"
+   ],
+   "articleids": [
+    {
+     "idtype": "pubmed",
+     "idtypen": 1,
+     "value": "31579114"
+    },
+    {
+     "idtype": "pmc",
+     "idtypen": 8,
+     "value": "PMC6759708"
+    },
+    {
+     "idtype": "pmcid",
+     "idtypen": 5,
+     "value": "pmc-id: PMC6759708;"
+    },
+    {
+     "idtype": "doi",
+     "idtypen": 3,
+     "value": "10.1177/1758835919874651"
+    },
+    {
+     "idtype": "pii",
+     "idtypen": 4,
+     "value": "10.1177_1758835919874651"
+    }
+   ],
+   "references": [
+    {
+     "refsource": "Ther Adv Med Oncol. 2021 Dec 15;13:17588359211061903. doi: 10.1177/17588359211061903.",
+     "reftype": "Retraction in",
+     "pmid": 35035532,
+     "note": ""
+    }
+   ],
+   "authors": [
+    {
+     "name": "Wang LL",
+     "authtype": "Author"
+    },
+    {
+     "name": "Zhang L",
+     "authtype": "Author"
+    },
+    {
+     "name": "Cui XF",
+     "authtype": "Author"
+    }
+   ]
+  }
+ }
+}

@@ -22,10 +22,13 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
   }, [call]);
 
   const report = (error: unknown): void => setNotice(error instanceof Error ? error.message : String(error));
+  // An invitation is one pasted line with the server, the lab and a code in it. An identifier is a few words.
+  const invited = mode === "join" && /^https?:\/\/\S+\/join\/\S+#\S+$/.test(text.trim());
 
   const look = async (): Promise<void> => {
     setNotice("");
     setFound("");
+    if (invited) return;
     try {
       setFound((await call("lab.find", { server, id: text.trim() })).name);
     } catch (error) {
@@ -39,7 +42,9 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
     setNotice("");
     try {
       onChange(
-        mode === "join"
+        invited
+          ? await call("lab.acceptInvite", { invite: text.trim() })
+          : mode === "join"
           ? await call("lab.requestJoin", { server, id: text.trim() })
           : await call("lab.register", { server, name: text.trim() }),
       );
@@ -57,11 +62,11 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
         <button type="button" role="tab" aria-selected={mode === "start"} data-dg="lab-mode-start" onClick={() => { setMode("start"); setText(""); setFound(""); }}>Start a lab</button>
       </div>
       <label className="field">
-        <span>{mode === "join" ? "Lab identifier" : "Lab name"}</span>
+        <span>{mode === "join" ? "Invitation or lab identifier" : "Lab name"}</span>
         <input
           data-dg="lab-text"
           value={text}
-          placeholder={mode === "join" ? "Like tension-lab-4k2" : "Your lab's name"}
+          placeholder={mode === "join" ? "Paste the invitation, or type an identifier like tension-lab-4k2" : "Your lab's name"}
           onChange={(event) => setText(event.target.value)}
           onBlur={() => mode === "join" && text.trim() && void look()}
           onKeyDown={(event) => {
@@ -70,7 +75,7 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
         />
       </label>
       {found ? <p className="note" data-dg="lab-found">Found {found}.</p> : null}
-      {servers.length > 1 ? (
+      {servers.length > 1 && !invited ? (
         <label className="field">
           <span>Server</span>
           <select data-dg="lab-server" value={server} onChange={(event) => setServer(event.target.value)}>
@@ -79,13 +84,15 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
         </label>
       ) : null}
       <p className="note">
-        {mode === "join"
-          ? "Your lab's PI sees your request. Once accepted, you get AI and the lab's shared canvases."
+        {invited
+          ? "This invitation lets you in at once. You get the lab's shared canvases, its grammar and what its PI has set for everyone."
+          : mode === "join"
+          ? "With an invitation you are in at once. With only the identifier, your lab's PI sees your request and accepts it."
           : "You become the lab's custodian, and you accept the people who ask to join."}
       </p>
       {notice ? <p className="problem" role="alert">{notice}</p> : null}
       <button type="button" className="primary" data-dg="lab-go" disabled={busy || !text.trim()} onClick={() => void go()}>
-        {mode === "join" ? "Ask to join" : "Start the lab"}
+        {invited ? "Join the lab" : mode === "join" ? "Ask to join" : "Start the lab"}
       </button>
     </div>
   );

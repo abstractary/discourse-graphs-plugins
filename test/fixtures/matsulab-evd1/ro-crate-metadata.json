@@ -1,0 +1,153 @@
+{
+  "@context": "https://w3id.org/ro/crate/1.1/context",
+  "@graph": [
+    {
+      "@id": "ro-crate-metadata.json",
+      "@type": "CreativeWork",
+      "about": {
+        "@id": "./"
+      },
+      "conformsTo": {
+        "@id": "https://w3id.org/ro/crate/1.1"
+      }
+    },
+    {
+      "@id": "./",
+      "@type": "Dataset",
+      "name": "EVD 1: Issue Conversion Rate — MATSUlab Discourse Graph",
+      "description": "Evidence bundle for the finding that 29% of MATSUlab issues (n=445) were claimed as experiments. Contains the evidence statement, static and interactive figures, underlying data, and methodological documentation.",
+      "datePublished": "2026-02-14",
+      "creator": [
+        {
+          "@id": "#matt-akamatsu"
+        }
+      ],
+      "license": {
+        "@id": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "hasPart": [
+        {
+          "@id": "evidence.jsonld"
+        },
+        {
+          "@id": "figS1_issue_timeline.png"
+        },
+        {
+          "@id": "figS1_issue_timeline.html"
+        },
+        {
+          "@id": "figS1_issue_timeline_animated.gif"
+        },
+        {
+          "@id": "fig1_conversion_rate.png"
+        },
+        {
+          "@id": "fig1_conversion_rate.html"
+        },
+        {
+          "@id": "data/conversion_data.json"
+        },
+        {
+          "@id": "data/issue_timeline_data.json"
+        },
+        {
+          "@id": "methods_excerpt.md"
+        }
+      ]
+    },
+    {
+      "@id": "#matt-akamatsu",
+      "@type": "Person",
+      "name": "Matt Akamatsu",
+      "affiliation": {
+        "@id": "#uw"
+      }
+    },
+    {
+      "@id": "#uw",
+      "@type": "Organization",
+      "name": "University of Washington"
+    },
+    {
+      "@id": "evidence.jsonld",
+      "@type": "File",
+      "name": "Evidence Bundle Metadata (JSON-LD)",
+      "description": "Canonical evidence bundle metadata written in the MIRA schema (https://github.com/MIRA-science/schema): a mira:Evidence node with its observation statement, the mira:Study that grounds it, the mira:Protocol the study follows, grounding data, and provenance.",
+      "encodingFormat": "application/ld+json",
+      "conformsTo": {
+        "@id": "http://purl.org/mira-science/mira#"
+      }
+    },
+    {
+      "@id": "figS1_issue_timeline.png",
+      "@type": [
+        "File",
+        "ImageObject"
+      ],
+      "name": "Figure S1: Issue Creation Timeline (static)",
+      "description": "Cumulative issue creation over time with dual y-axis. Left axis: cumulative issue count (claimed vs unclaimed). Right axis: issues as percentage of total discourse nodes. Introductory panel contextualizing when and how the 445 issues accumulated.",
+      "encodingFormat": "image/png"
+    },
+    {
+      "@id": "figS1_issue_timeline.html",
+      "@type": [
+        "File",
+        "WebPage"
+      ],
+      "name": "Figure S1: Issue Creation Timeline (interactive)",
+      "description": "Interactive Plotly version of the issue creation timeline. Hover for date and count details. Toggle between discourse node and all-content-page denominators for percentage calculation.",
+      "encodingFormat": "text/html"
+    },
+    {
+      "@id": "figS1_issue_timeline_animated.gif",
+      "@type": [
+        "File",
+        "ImageObject"
+      ],
+      "name": "Figure S1 (animated): Issue Creation Timeline",
+      "description": "Animated GIF showing cumulative issue creation month by month, with running counter. Suitable for presentations.",
+      "encodingFormat": "image/gif"
+    },
+    {
+      "@id": "fig1_conversion_rate.png",
+      "@type": [
+        "File",
+        "ImageObject"
+      ],
+      "name": "Figure 1: Issue Conversion Rate (static)",
+      "description": "Two-panel figure. Left: stacked horizontal bar showing 445 issues broken down by claiming type (69 explicitly, 56 inferred, 5 ISS with activity, 315 unclaimed). Right: donut chart of claiming authorship (106 self-claimed, 19 cross-person).",
+      "encodingFormat": "image/png"
+    },
+    {
+      "@id": "fig1_conversion_rate.html",
+      "@type": [
+        "File",
+        "WebPage"
+      ],
+      "name": "Figure 1: Issue Conversion Rate (interactive)",
+      "description": "Interactive HTML/JS version of Figure 1 with hover tooltips, animated transitions, and responsive layout. Self-contained single-file application.",
+      "encodingFormat": "text/html"
+    },
+    {
+      "@id": "data/conversion_data.json",
+      "@type": "File",
+      "name": "Conversion Rate Data",
+      "description": "Aggregated conversion rate data with claiming type breakdown, authorship statistics, and result production metrics.",
+      "encodingFormat": "application/json"
+    },
+    {
+      "@id": "data/issue_timeline_data.json",
+      "@type": "File",
+      "name": "Issue Timeline Data",
+      "description": "Per-issue creation dates, monthly summary with cumulative counts, and discourse node growth data by type. Supports Figure S1 visualizations.",
+      "encodingFormat": "application/json"
+    },
+    {
+      "@id": "methods_excerpt.md",
+      "@type": "File",
+      "name": "Methods Excerpt",
+      "description": "Relevant sections from the full methods document covering node identification, claiming detection, and conversion rate calculation.",
+      "encodingFormat": "text/markdown"
+    }
+  ]
+}

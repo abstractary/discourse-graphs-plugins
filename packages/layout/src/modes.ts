@@ -11,6 +11,8 @@ export type Card = TidyBox & {
   at?: string;
   kind?: { key: string; label: string };
   credit?: { key: string; label: string };
+  /** The paper a card was read from. Cards a person wrote themselves have none. */
+  source?: { key: string; label: string };
 };
 
 export type RelationLink = Link & { kind?: string };
@@ -23,6 +25,7 @@ export const MODES: { mode: TidyMode; label: string; hint: string; group: "Arran
   { mode: "timeline", label: "Timeline", hint: "Oldest on the left, in periods", group: "Arrange by" },
   { mode: "kinds", label: "Kinds", hint: "A column for each node type", group: "Arrange by" },
   { mode: "people", label: "People", hint: "A column for each contributor or lab", group: "Arrange by" },
+  { mode: "sources", label: "Papers", hint: "A column for each paper, and one for what you wrote", group: "Arrange by" },
   { mode: "focus", label: "Focus", hint: "The selected card and what touches it", group: "Arrange by" },
   { mode: "connected", label: "Most connected", hint: "Ranks cards by how many they touch", group: "Centrality" },
   { mode: "bridges", label: "Bridges", hint: "Ranks cards that join parts of the argument", group: "Centrality" },
@@ -180,6 +183,13 @@ const peopleRegions = (boxes: Card[]): Region[] => {
   return [...ordered, ...leftOver(boxes, new Set(regions.flatMap(({ ids }) => ids)), "Notes")];
 };
 
+/** One column a paper, widest first, with the person's own units set apart: who said what, at a glance. */
+const sourceRegions = (boxes: Card[]): Region[] => {
+  const regions = groupedRegions(boxes, (box) => box.source ?? (box.note ? undefined : { key: "own", label: "Written here" }));
+  const ordered = [...regions].sort((a, b) => Number(a.label === "Written here") - Number(b.label === "Written here") || b.ids.length - a.ids.length || a.label.localeCompare(b.label));
+  return [...ordered, ...leftOver(boxes, new Set(regions.flatMap(({ ids }) => ids)), "Notes")];
+};
+
 const HOPS = 2;
 
 /**
@@ -275,6 +285,8 @@ export const arrange = ({
           ? kindRegions(boxes, links)
           : mode === "people"
             ? peopleRegions(boxes)
-            : focusRegions(boxes, links, focus ?? boxes[0]!.id);
+            : mode === "sources"
+              ? sourceRegions(boxes)
+              : focusRegions(boxes, links, focus ?? boxes[0]!.id);
   return shifted(layOutRegions({ regions, boxes, links, frame, ranked: measure !== null }), start);
 };

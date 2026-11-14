@@ -11,9 +11,9 @@ import type {
   NodeTypeRecord,
   RelationTypeRecord,
 } from "@dg/contract/records.ts";
-import type { Host, HostInfo } from "@dg/contract/host.ts";
+import type { Asset, Host, HostInfo, Result } from "@dg/contract/host.ts";
 import type { Services } from "@dg/contract/services.ts";
-import type { Credit, NodeSummary, SurfaceEvent, SurfaceMethod, SurfaceMethods } from "@dg/contract/surface.ts";
+import type { Credit, NodeSummary, SurfaceEvent, SurfaceMethod, SurfaceMethods, Prefs } from "@dg/contract/surface.ts";
 
 export type Handlers = {
   [M in SurfaceMethod]: (params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
@@ -32,6 +32,8 @@ export type Context = {
   localSpace: string;
   titleFormat: ((abbreviation: string) => string) | undefined;
   graph: () => FoldedGraph;
+  /** Every record read so far, every version of each: the log, for history and diffs. */
+  records: () => DgRecord[];
   documents: <K extends DgRecord["kind"]>(kind: K) => Extract<DgRecord, { kind: K }>[];
   put: (records: DgRecord[]) => Promise<void>;
   stamp: () => Stamp;
@@ -46,9 +48,18 @@ export type Context = {
   creditFor: (record: { by: Author; lab?: string }) => Credit;
   myLab: () => LabRecord | undefined;
   anchorOf: (node: DgId) => AnchorRecord | undefined;
+  /** The unit or canvas a text in this base belongs to. */
+  anchoredAt: (ref: HostRef) => DgId | undefined;
   hasLiveText: (ref: HostRef) => boolean;
   makeCanvas: (title: string, fields?: Parameters<typeof import("@dg/contract/records.ts").createCanvas>[0]["fields"]) => Promise<CanvasRecord>;
   send: (event: SurfaceEvent) => void;
+  /** This device's preferences. */
+  prefs: () => Promise<Prefs>;
+  /**
+   * A file by its ref, wherever it lives: in the base, or in the reference library when the ref says so.
+   * A library's file is read where the library keeps it and never copied.
+   */
+  readFile: (ref: string) => Promise<Result<Asset>>;
   getLocal: (key: string) => Promise<unknown>;
   setLocal: (key: string, value: unknown) => Promise<void>;
 };

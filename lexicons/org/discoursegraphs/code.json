@@ -1,0 +1,71 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.code",
+  "description": "A notebook, script or workflow at a version. Its identity is sourceCid, a CID over the sources alone with outputs stripped; repo, commit, path and swhid say where it lives.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "title",
+          "createdAt"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "attributedTo": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            }
+          },
+          "provenance": {
+            "type": "ref",
+            "ref": "science.mira.defs#provenance"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "repo": {
+            "type": "string",
+            "format": "uri"
+          },
+          "commit": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "sourceCid": {
+            "type": "string",
+            "format": "cid"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "swhid": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "license": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      }
+    }
+  }
+}

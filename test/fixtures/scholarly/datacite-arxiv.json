@@ -1,0 +1,73 @@
+{
+ "data": {
+  "id": "10.48550/arxiv.2010.14967",
+  "type": "dois",
+  "attributes": {
+   "doi": "10.48550/arxiv.2010.14967",
+   "titles": [
+    {
+     "title": "Construction of quasimodes for non-selfadjoint operators via propagation of Hagedorn wave-packets"
+    }
+   ],
+   "creators": [
+    {
+     "name": "Arnaiz, Víctor",
+     "nameType": "Personal",
+     "givenName": "Víctor",
+     "familyName": "Arnaiz",
+     "affiliation": [],
+     "nameIdentifiers": []
+    }
+   ],
+   "publisher": "arXiv",
+   "publicationYear": 2020,
+   "types": {
+    "ris": "GEN",
+    "bibtex": "misc",
+    "citeproc": "article",
+    "schemaOrg": "CreativeWork",
+    "resourceType": "Article",
+    "resourceTypeGeneral": "Preprint"
+   },
+   "rightsList": [
+    {
+     "rights": "arXiv.org perpetual, non-exclusive license",
+     "rightsUri": "http://arxiv.org/licenses/nonexclusive-distrib/1.0/"
+    }
+   ],
+   "relatedIdentifiers": [],
+   "citationCount": 0,
+   "container": {},
+   "url": "https://arxiv.org/abs/2010.14967",
+   "dates": [
+    {
+     "date": "2020-10-28T13:30:53Z",
+     "dateType": "Submitted",
+     "dateInformation": "v1"
+    },
+    {
+     "date": "2020-10-29T00:24:25Z",
+     "dateType": "Updated",
+     "dateInformation": "v1"
+    }
+   ],
+   "subjects": [
+    {
+     "lang": "en",
+     "subject": "Analysis of PDEs (math.AP)",
+     "subjectScheme": "arXiv"
+    },
+    {
+     "lang": "en",
+     "subject": "Mathematical Physics (math-ph)",
+     "subjectScheme": "arXiv"
+    },
+    {
+     "lang": "en",
+     "subject": "Spectral Theory (math.SP)",
+     "subjectScheme": "arXiv"
+    }
+   ]
+  }
+ }
+}

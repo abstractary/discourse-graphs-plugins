@@ -60,6 +60,11 @@ export type HostInfo = {
   skin: Skin;
   /** True when other people write to this space, such as a Roam team graph. */
   sharedSpace: boolean;
+  /**
+   * True where every unit should have a text of its own, so the base's links,
+   * search and graph reach all of them. Core then makes the missing ones.
+   */
+  textForEveryUnit?: boolean;
 };
 
 export type TextScope = "page" | "part";
@@ -82,16 +87,45 @@ export type TextUnit = TextSummary & {
 export type Asset = { name: string; mime: string; dataUrl: string };
 export type AssetRef = string;
 
+/** A file the base holds, such as a PDF in a vault. `ref` reads it back with `readAsset`. */
+export type FileSummary = {
+  ref: AssetRef;
+  /** With its extension. */
+  name: string;
+  mime: string;
+  /** Where it sits in the base, for grouping. Absent at the top. */
+  folder?: string;
+  size?: number;
+  modifiedAt?: string;
+};
+
 export type Placement = "main" | "side" | "dialog";
 export type SurfaceName =
   | "canvas"
   | "canvases"
+  /** The holon explorer, for holons without a canvas yet. `id` is `<level>|<id>` or `unit|<id>`. */
+  | "holon"
+  /** A side panel with the boundary of whichever holon is in focus. */
+  | "boundary"
+  /** A PDF reader. `id` is the file's asset ref; none shows the choice of PDFs. */
+  | "pdf"
+  /** Unit search, in a side panel. */
+  | "search"
+  /** The quick finder, in a pop-up: find a unit, then open it, link it or put it on the canvas. */
+  | "find"
   | "context"
   | "upload"
+  /** Bringing a source and its highlights in from Zotero. `id` is the canvas to put them on. */
+  | "zotero"
   | "welcome"
   | "node"
   | "view"
   | "grammar"
+  | "run"
+  /** A person's profile. `id` is their DID; none is the viewer's own. */
+  | "profile"
+  /** Papers laid out by how far they have been worked into each other. `id` is a canvas to open on. */
+  | "papers"
   | "check";
 export type SurfaceRoute = {
   surface: SurfaceName;
@@ -170,7 +204,15 @@ export type Host = {
   }) => Promise<Result<{ stored: number }>>;
 
   readAsset: (args: { ref: AssetRef }) => Promise<Result<Asset>>;
+  /** Keeps an asset where the base can read it back. A document goes where a person would look for it. */
   writeAsset: (args: { asset: Asset }) => Promise<Result<{ ref: AssetRef }>>;
+  /**
+   * A PDF that lives outside the base, where a reference library keeps it. Read in place, never copied.
+   * Absent where a base can't reach the computer's files, such as a browser. Only PDFs are read.
+   */
+  readLocalFile?: (args: { path: string }) => Promise<Result<Asset>>;
+  /** Files of these kinds, by extension without the dot, such as `pdf`. Newest first. */
+  listFiles: (args: { extensions: string[]; limit: number }) => Promise<Result<FileSummary[]>>;
 
   getFocus: () => Promise<Result<{ ref: HostRef | null }>>;
   reveal: (args: {
@@ -182,6 +224,36 @@ export type Host = {
     ref: HostRef;
     label?: string;
   }) => Promise<Result<null>>;
+  /**
+   * Shows a text's relations as the base's own links, so its backlinks, graph
+   * and renames follow them. `links` maps a relation's wording to the texts at
+   * the other end. Every name in `managed` that `links` leaves out is cleared.
+   * One-way: the records stay the source, and a hand edit is put back.
+   */
+  setLinks: (args: {
+    ref: HostRef;
+    links: Record<string, HostRef[]>;
+    managed: string[];
+    /**
+     * Plain facts about the unit, such as its type and the day it was made, written beside the links
+     * so the base's own tables can sort and filter by them. Every name in `managedFacts` that `facts`
+     * leaves out is cleared. One-way, like the links.
+     */
+    facts?: Record<string, string>;
+    managedFacts?: string[];
+  }) => Promise<Result<{ written: boolean }>>;
+  /**
+   * A table of every text whose `property` is `value`, made with the base's own table tool and opened.
+   * Absent where the base has none. Making it again opens the one already there.
+   */
+  openTable?: (args: { name: string; property: string; value: string; columns: { property: string; label: string }[] }) => Promise<Result<{ where: string }>>;
+  /**
+   * Lines a person tagged as something to come back to, such as `#clm-candidate`, across the base's
+   * texts. Absent where the base has no tags. `text` is the line without the tag or its list mark.
+   */
+  listTagged?: (args: { tags: string[]; limit: number }) => Promise<Result<{ ref: HostRef; title: string; line: number; text: string; tag: string }[]>>;
+  /** Swaps a tagged line for a link to `target`, once it has become a unit. Refused if the line no longer carries the tag. */
+  replaceTagged?: (args: { ref: HostRef; line: number; tag: string; target: HostRef }) => Promise<Result<null>>;
   /** What's selected in the base's editor, or null when nothing is. */
   readSelection: () => Promise<Result<{ text: string } | null>>;
   /** Swaps the selection for a link to this text, in the base's own link form. */
@@ -191,6 +263,8 @@ export type Host = {
     placement: Placement;
   }) => Promise<Result<null>>;
   closeDialog: () => Promise<Result<null>>;
+  /** Opens a web address in the person's own browser. Only `http` and `https` addresses arrive here. */
+  openLink: (args: { url: string }) => Promise<Result<null>>;
 
   /** Per-device state that is neither shared nor synced: caches, usage log. */
   getLocal: (args: { key: string }) => Promise<Result<Json>>;

@@ -1,0 +1,40 @@
+{
+ "result": {
+  "uids": [
+   "33380041"
+  ],
+  "33380041": {
+   "uid": "33380041",
+   "pubdate": "2020 Dec",
+   "epubdate": "",
+   "source": "Chaos",
+   "fulljournalname": "Chaos (Woodbury, N.Y.)",
+   "title": "Do reservoir computers work best at the edge of chaos?",
+   "volume": "30",
+   "issue": "12",
+   "pages": "121109",
+   "pubtype": [
+    "Journal Article"
+   ],
+   "articleids": [
+    {
+     "idtype": "pubmed",
+     "idtypen": 1,
+     "value": "33380041"
+    },
+    {
+     "idtype": "doi",
+     "idtypen": 3,
+     "value": "10.1063/5.0038163"
+    }
+   ],
+   "references": [],
+   "authors": [
+    {
+     "name": "Carroll TL",
+     "authtype": "Author"
+    }
+   ]
+  }
+ }
+}

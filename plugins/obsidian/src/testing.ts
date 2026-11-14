@@ -1,7 +1,7 @@
 // What the real-host test scripts drive. A release build leaves all of this out.
 import { appendFileSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
-import { MarkdownView, type FileSystemAdapter } from "obsidian";
+import { MarkdownView, Menu, type FileSystemAdapter } from "obsidian";
 import { createNode, foldRecords, type DgRecord, type HostRef } from "@dg/contract/records.ts";
 import type { Host } from "@dg/contract/host.ts";
 import type { SurfaceMethod } from "@dg/contract/surface.ts";
@@ -33,8 +33,13 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   const probe = createFrameProbe(() => plugin.surfaceFrame());
   const contextProbe = createFrameProbe(() => plugin.surfaceFrame("context"));
   const canvasesProbe = createFrameProbe(() => plugin.surfaceFrame("canvases"));
+  const holonProbe = createFrameProbe(() => plugin.surfaceFrame("holon"));
+  const boundaryProbe = createFrameProbe(() => plugin.surfaceFrame("boundary"));
+  const pdfProbe = createFrameProbe(() => plugin.surfaceFrame("pdf"));
   const dialogProbe = createFrameProbe(() => plugin.dialogFrame);
+  const searchProbe = createFrameProbe(() => plugin.surfaceFrame("search"));
   let caller: ReturnType<typeof surfaceCaller> | null = null;
+  const probes = new Map<string, ReturnType<typeof createFrameProbe>>();
 
   const makeDriver = (adapter: ObsidianHost): ConformanceDriver => {
     const { vault, workspace } = plugin.app;
@@ -198,6 +203,15 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
         if (file) await plugin.app.workspace.getLeaf("tab").openFile(file);
         return Boolean(file);
       },
+      /** A note's properties and the notes Obsidian itself resolves its links to. */
+      noteLinks: (path: string) => {
+        const file = plugin.app.vault.getFileByPath(path);
+        return file ? { frontmatter: plugin.app.metadataCache.getFileCache(file)?.frontmatter ?? null, out: Object.keys(plugin.app.metadataCache.resolvedLinks[path] ?? {}) } : null;
+      },
+      setProperty: async (path: string, key: string, value: unknown) => {
+        const file = plugin.app.vault.getFileByPath(path);
+        if (file) await plugin.app.fileManager.processFrontMatter(file, (held) => void (value === null ? delete held[key] : (held[key] = value)));
+      },
       searchBase: (title: string) => plugin.app.vault.getMarkdownFiles().filter((item) => item.basename.includes(title)).map((item) => item.path),
       open: (id?: string) => {
         if (!id) return plugin.openCanvas();
@@ -227,6 +241,60 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       scroll: () => probe.scroll(),
       drawn: () => probe.drawn(),
       style: (selector: string, prop: string) => probe.style(selector, prop),
+      openHolons: (id?: string) => plugin.openHolons(id),
+      holonText: (selector: string) => holonProbe.text(selector),
+      holonCount: (selector: string) => holonProbe.count(selector),
+      holonLocate: (selector: string) => holonProbe.locate(selector),
+      holonTheme: () => holonProbe.theme(),
+      openBoundary: () => plugin.openBoundary(),
+      boundaryText: (selector: string) => boundaryProbe.text(selector),
+      boundaryTheme: () => boundaryProbe.theme(),
+      openLibrary: () => plugin.openCanvases(),
+      /** Any panel by its surface name: `at("run", "text", selector)`. */
+      at: (surface: Parameters<DiscourseGraphsPlugin["surfaceFrame"]>[0], method: "text" | "count" | "locate" | "value", selector: string) => {
+        const key = String(surface);
+        if (!probes.has(key)) probes.set(key, surface === ("dialog" as never) ? dialogProbe : createFrameProbe(() => plugin.surfaceFrame(surface)));
+        return probes.get(key)![method](selector);
+      },
+      openRuns: (id?: string) => plugin.openRuns(id),
+      extractGraph: (path: string) => plugin.extractGraph(path),
+      importCrate: (path: string) => plugin.importCrate(path),
+      openSide: (surface: "search" | "context") => plugin.openSide(surface),
+      openSettings: () => plugin.openSettings(),
+      findUnit: (intent?: "link") => plugin.findUnit(intent),
+      boundaryCount: (selector: string) => boundaryProbe.count(selector),
+      boundaryLocate: (selector: string) => boundaryProbe.locate(selector),
+      libraryText: (selector: string) => canvasesProbe.text(selector),
+      libraryCount: (selector: string) => canvasesProbe.count(selector),
+      libraryLocate: (selector: string) => canvasesProbe.locate(selector),
+      openPdf: (ref?: string) => plugin.openPdf(ref),
+      pdfText: (selector: string) => pdfProbe.text(selector),
+      pdfCount: (selector: string) => pdfProbe.count(selector),
+      pdfLocate: (selector: string) => pdfProbe.locate(selector),
+      pdfValue: (selector: string) => pdfProbe.value(selector),
+      pdfChoose: (selector: string, value: string) => pdfProbe.choose(selector, value),
+      pdfTheme: () => pdfProbe.theme(),
+      pdfSelection: () => pdfProbe.selection(),
+      // A vault file dropped on the reader as if from the desktop. The bytes stay inside Obsidian.
+      pdfDropVaultFile: async (selector: string, path: string, name: string) => {
+        const view = new Uint8Array(await plugin.app.vault.adapter.readBinary(path));
+        let binary = "";
+        for (let i = 0; i < view.length; i += 0x8000) binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
+        return pdfProbe.dropFile(selector, { name, type: "application/pdf", base64: btoa(binary) });
+      },
+      // A file dropped on the canvas as if from the desktop.
+      canvasDropFile: (selector: string, file: { name: string; type: string; base64: string }) => probe.dropFile(selector, file),
+      runCommand: (id: string) => (plugin.app as unknown as { commands: { executeCommandById: (id: string) => boolean } }).commands.executeCommandById(`${plugin.manifest.id}:${id}`),
+      dialogIsModal: () => Boolean(document.querySelector('.modal[data-dg="dialog"]')),
+      dragTo: (selector: string, at: { x: number; y: number }) => probe.dragTo(selector, at),
+      canvasReveal: (selector: string) => probe.reveal(selector),
+      // Which tabs show what, and side by side or not, for checking the reader lands beside the canvas.
+      layout: () =>
+        plugin.app.workspace.getLeavesOfType(VIEW).map((leaf) => {
+          const view = leaf.view as SurfaceView;
+          const box = view.containerEl.getBoundingClientRect();
+          return { surface: view.route.surface, id: view.route.id ?? null, title: view.getDisplayText(), header: view.containerEl.querySelector(".view-header-title")?.textContent ?? null, x: Math.round(box.left), width: Math.round(box.width), shown: view.containerEl.offsetParent !== null };
+        }),
       skin: () => plugin.ensureCore().then((core) => core.info.skin),
       frameWidth: (width: number | null) => {
         const frame = (plugin.app.workspace.getLeavesOfType(VIEW).map((leaf) => leaf.view as SurfaceView).find((view) => view.route.surface === "canvas"))?.frame;
@@ -303,6 +371,45 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       ctx: contextProbe,
       list: canvasesProbe,
       dialog: dialogProbe,
+      search: searchProbe,
+      openSearch: () => host.openSurface({ route: { surface: "search" }, placement: "side" }),
+      /** The ribbon's menu, shown where a test can read it. */
+      showMenu: async (variant: "plain" | "section" | "label" | "full" = "full") => {
+        try {
+          const menu = new Menu();
+          if (variant === "full") plugin.fillMenu(menu);
+          if (variant === "plain") menu.addItem((item) => item.setTitle("Plain").onClick(() => {}));
+          if (variant === "section") menu.addItem((item) => item.setTitle("Sectioned").setSection("discourse-graphs").onClick(() => {}));
+          if (variant === "label") menu.addItem((item) => item.setTitle("Label").setIsLabel(true));
+          menu.showAtPosition({ x: 60, y: 60 });
+          await sleep(150);
+          return Array.from(document.querySelectorAll(".menu .menu-item, .menu .menu-separator")).map((item) =>
+            item.classList.contains("menu-separator") ? "---" : `${item.classList.contains("is-label") ? "# " : ""}${item.textContent?.trim() ?? ""}`,
+          );
+        } catch (error) {
+          return `error: ${String(error)}`;
+        }
+      },
+      dialogOpen: () => Boolean(document.querySelector('[data-dg="dialog"]')),
+      prefs: async () => (await plugin.ensureCore()).prefs(),
+      setPrefs: async (changes: Record<string, unknown>) => (await plugin.ensureCore()).setPrefs(changes),
+      /** A note open in the editor with the cursor at its end, for links put in at the cursor. */
+      writeAtEnd: async (title: string, body: string) => {
+        const made = await host.createText({ title, body });
+        if (!made.ok) throw new Error(made.error.message);
+        await host.reveal({ ref: made.value.ref, placement: "main" });
+        await sleep(400);
+        const editor = plugin.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+        if (editor) {
+          editor.focus();
+          editor.setCursor(editor.lastLine(), editor.getLine(editor.lastLine()).length);
+        }
+        return made.value.ref;
+      },
+      noteBody: async (ref: string) => {
+        const text = await host.readText({ ref });
+        return text.ok ? text.value.body : null;
+      },
       openDialog: (surface: "upload" | "welcome") => plugin.openDialog(surface),
       syncNow: () => plugin.sync?.now(),
       firstRun: async () => {
@@ -361,7 +468,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   };
 
   const stop = (): void => {
-    for (const each of [probe, contextProbe, canvasesProbe, dialogProbe]) each.stop();
+    for (const each of [probe, contextProbe, canvasesProbe, holonProbe, boundaryProbe, pdfProbe, dialogProbe, searchProbe]) each.stop();
   };
 
   return { ...slice(), runConformance, openPanel, verifyPanel, exportExchange, importExchange, measureRecords, stop };

@@ -16,6 +16,15 @@ export function hashOf(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+/** JSON with every object's keys in order, so one record always reads the same however a client wrote it. */
+export function canonical(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>).filter(([, item]) => item !== undefined);
+  entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
+}
+
 // The last guard against a key from a URL escaping the data folder.
 function checkKey(key: string): void {
   if (!key.split('/').every((segment) => SAFE_SEGMENT.test(segment))) {

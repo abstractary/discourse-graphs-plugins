@@ -1,0 +1,125 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.output",
+  "description": "One data item a run produced: a dataset, file, figure, table or text. Its identity is cid, a CID (raw codec, SHA-256) over its own bytes. The file itself is never in the record.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "title",
+          "createdAt",
+          "cid"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "attributedTo": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            }
+          },
+          "provenance": {
+            "type": "ref",
+            "ref": "science.mira.defs#provenance"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "generatedBy": {
+            "type": "ref",
+            "ref": "at.linkedopendata.defs#ref",
+            "description": "The run that produced it (science.mira.study)."
+          },
+          "derivedFrom": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            }
+          },
+          "cid": {
+            "type": "string",
+            "format": "cid"
+          },
+          "uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "mediaType": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outputKind": {
+            "type": "string",
+            "knownValues": [
+              "dataset",
+              "file",
+              "figure",
+              "table",
+              "text",
+              "image"
+            ]
+          },
+          "locator": {
+            "type": "ref",
+            "ref": "#locator"
+          },
+          "caption": {
+            "type": "string",
+            "maxLength": 5000
+          }
+        }
+      }
+    },
+    "locator": {
+      "type": "object",
+      "description": "Where the output sits. Never identity: cell ids are regenerated, output indexes shift and labels can be renamed.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "commit": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "cellId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "cellIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mime": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 256
+        }
+      }
+    }
+  }
+}

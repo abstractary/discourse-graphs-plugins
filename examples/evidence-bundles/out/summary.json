@@ -1,0 +1,98 @@
+{
+ "source": "DiscourseGraphs/MATSUlab-issue-exchange-analysis",
+ "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+ "results": [
+  {
+   "bundle": "evd1-conversion-rate",
+   "read": {
+    "units": 18,
+    "filesHashed": 10
+   },
+   "theirs": {
+    "entities": 13,
+    "withHash": 0,
+    "miraInCrate": 0
+   },
+   "ours": {
+    "archive": "evd-1-issue-conversion-rate-matsulab-discourse-graph.crate.zip",
+    "bytes": 866229,
+    "entities": 53,
+    "filesWithHash": 12,
+    "outputsPacked": 7,
+    "evidence": 1,
+    "studies": 1,
+    "protocols": 1,
+    "code": 4
+   }
+  },
+  {
+   "bundle": "evd5-issue-funnel",
+   "read": {
+    "units": 17,
+    "filesHashed": 7
+   },
+   "theirs": {
+    "entities": 11,
+    "withHash": 0,
+    "miraInCrate": 0
+   },
+   "ours": {
+    "archive": "evd-5-issue-to-experiment-to-result-conversion-funnel-matsul.crate.zip",
+    "bytes": 5958731,
+    "entities": 51,
+    "filesWithHash": 10,
+    "outputsPacked": 5,
+    "evidence": 1,
+    "studies": 1,
+    "protocols": 1,
+    "code": 5
+   }
+  },
+  {
+   "bundle": "evd6-time-to-result",
+   "read": {
+    "units": 15,
+    "filesHashed": 7
+   },
+   "theirs": {
+    "entities": 10,
+    "withHash": 0,
+    "miraInCrate": 0
+   },
+   "ours": {
+    "archive": "evd-6-time-to-result-matsulab-discourse-graph.crate.zip",
+    "bytes": 406084,
+    "entities": 47,
+    "filesWithHash": 9,
+    "outputsPacked": 4,
+    "evidence": 1,
+    "studies": 1,
+    "protocols": 1,
+    "code": 4
+   }
+  },
+  {
+   "bundle": "evd7-student-onboarding",
+   "read": {
+    "units": 11,
+    "filesHashed": 5
+   },
+   "theirs": {
+    "entities": 8,
+    "withHash": 0,
+    "miraInCrate": 0
+   },
+   "ours": {
+    "archive": "evd-7-undergraduate-researcher-onboarding-timeline-matsulab-.crate.zip",
+    "bytes": 233845,
+    "entities": 38,
+    "filesWithHash": 7,
+    "outputsPacked": 2,
+    "evidence": 1,
+    "studies": 1,
+    "protocols": 1,
+    "code": 1
+   }
+  }
+ ]
+}

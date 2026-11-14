@@ -1,0 +1,191 @@
+{
+ "commit": "08493f6a46db223614cafbde68684fcb0f4b1c8a",
+ "records": 250,
+ "sameBytes": {
+  "notebookOutput": "Figure 4 of Transparent Analysis Pipeline: EVD 1, EVD 5, and EVD 7 (cell 46)",
+  "bundleOutput": "fig7_student_timelines.png",
+  "cid": "bafkreigeidvkzlkef675xq2i6cueloh2tj62hri5nsittw7l7k3omshrei"
+ },
+ "claims": [
+  {
+   "claim": "29% of MATSUlab issues (n=445) were claimed as experiments.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "Of 130 claimed experiments in the MATSUlab discourse graph, 50 (38%) produced at least one formal result node, yielding 139 total RES nodes (avg 2.8 per result-producing experiment). 15% of claiming involved cross-person idea exchange, where a different researcher claimed an issue created by someone else.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "Among 50 experiments in the MATSUlab that produced formal results, the median time from issue claiming to first result was 12 days, with wide variance (n=50, IQR 0–50 days).",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "Three undergraduate researchers tracked in this analysis each generated an original result within ~4 months of joining the lab, with two creating a result within ~1 month.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "Multiple soluble mediators including IL-5, IL-6, and IFN-γ are significantly elevated in pre-SLE individuals more than 3.5 years before classification, prior to or concurrent with autoantibody positivity.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "Innate cytokines, IFN-associated chemokines, and soluble TNF superfamily mediators increase longitudinally in pre-SLE cases approaching classification but not in healthy controls.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "BLyS and APRIL levels are comparable in pre-SLE cases and controls until less than 10 months before classification, then increase significantly in cases.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "Dysregulation of adaptive immune mediators (IL-4, IL-5, IL-6, IFN-γ, MIG) precedes autoantibody accumulation in preclinical SLE.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "Random forest models incorporating ANA and anti-Ro/SSA positivity with IL-5, IL-6, and MIG levels distinguish future SLE patients with 92% accuracy across the entire pre-classification period, compared to 78% accuracy using ANA positivity alone.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "A distinct ANA-negative but IL-5/IFN-γ-high pre-SLE cluster is associated with higher risk of nephritis at classification, while ANA-positive cases are more likely to develop arthritis.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "Early dysregulation of Th-type cytokines IL-5 (Th2) and IL-6 (Th2/Th17) may be an essential early step in SLE pathogenesis, contributing to all stages of disease.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  },
+  {
+   "claim": "IFN-γ elevation precedes autoantibodies and drives BLyS/APRIL production, supporting a model where simultaneous dysregulation of T helper, regulatory, IFN-related, and TNF-related pathways erodes immune tolerance.",
+   "supporting": 1,
+   "runs": 1,
+   "protocols": 1,
+   "flags": {
+    "singleRun": true,
+    "replicated": false,
+    "singleMethod": false,
+    "drift": false,
+    "staleOutput": false,
+    "failedRuns": [],
+    "ungrounded": []
+   }
+  }
+ ]
+}

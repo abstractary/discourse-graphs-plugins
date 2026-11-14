@@ -20,7 +20,26 @@ export type Identity = {
 export type KeyStore = {
   get: (name: string) => Promise<CryptoKeyPair | null>;
   put: (name: string, pair: CryptoKeyPair) => Promise<void>;
+  /** Makes a key pair another way than the platform's own, for a simulation that must be replayable. */
+  make?: () => Promise<CryptoKeyPair>;
+  /** Signs another way, giving the 64 bytes of `r` then `s`. The platform's own signing is random each time. */
+  sign?: (pair: CryptoKeyPair, bytes: Uint8Array) => Promise<Uint8Array>;
 };
+
+/** A signature over `bytes`, as 64 bytes with a low `s`, which is the form PLC verifiers and ours both read. */
+export const signBytes = async (keys: Pick<KeyStore, "sign"> | undefined, pair: CryptoKeyPair, bytes: Uint8Array): Promise<Uint8Array> => {
+  const signature = keys?.sign ? await keys.sign(pair, bytes) : new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, pair.privateKey, bytes as BufferSource));
+  const s = toBigInt(signature.subarray(32));
+  const low = s > CURVE_ORDER / 2n ? CURVE_ORDER - s : s;
+  const canonical = new Uint8Array(64);
+  canonical.set(signature.subarray(0, 32));
+  canonical.set(toBytes(low, 32), 32);
+  return canonical;
+};
+
+export const makeKeys = (keys: Pick<KeyStore, "make">): Promise<CryptoKeyPair> => (keys.make ? keys.make() : newKeys());
+export const didKeyFor = (pair: CryptoKeyPair): Promise<string> => didKeyOf(pair);
+export const toBase64Url = (bytes: Uint8Array): string => base64url(bytes);
 
 export const memoryKeys = (): KeyStore => {
   const pairs = new Map<string, CryptoKeyPair>();
@@ -95,18 +114,10 @@ const base64url = (bytes: Uint8Array): string =>
   btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
 /** PLC verifiers reject high-S signatures, and WebCrypto produces both kinds. */
-const signOperation = async (operation: JsonObject, pair: CryptoKeyPair): Promise<JsonObject> => {
-  const bytes = dagCbor.encode(operation);
-  const signature = new Uint8Array(
-    await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, pair.privateKey, bytes),
-  );
-  const s = toBigInt(signature.subarray(32));
-  const low = s > CURVE_ORDER / 2n ? CURVE_ORDER - s : s;
-  const canonical = new Uint8Array(64);
-  canonical.set(signature.subarray(0, 32));
-  canonical.set(toBytes(low, 32), 32);
-  return { ...operation, sig: base64url(canonical) };
-};
+const signOperation = async (operation: JsonObject, pair: CryptoKeyPair, keys?: Pick<KeyStore, "sign">): Promise<JsonObject> => ({
+  ...operation,
+  sig: base64url(await signBytes(keys, pair, dagCbor.encode(operation))),
+});
 
 const didFrom = async (signed: JsonObject): Promise<string> => {
   const digest = await sha256.digest(dagCbor.encode(signed));
@@ -120,10 +131,12 @@ const genesis = async ({
   rotationKeys,
   signingKey,
   signer,
+  keys,
 }: {
   rotationKeys: string[];
   signingKey: string;
   signer: CryptoKeyPair;
+  keys?: Pick<KeyStore, "sign">;
 }): Promise<JsonObject> =>
   signOperation(
     {
@@ -135,17 +148,19 @@ const genesis = async ({
       prev: null,
     },
     signer,
+    keys,
   );
 
 /** A person's own identity. Their key is the only rotation key until they join a lab. */
 export const createIdentity = async (keys: KeyStore): Promise<Identity> => {
-  const rotation = await newKeys();
-  const signing = await newKeys();
+  const rotation = await makeKeys(keys);
+  const signing = await makeKeys(keys);
   const rotationKey = await didKeyOf(rotation);
   const operation = await genesis({
     rotationKeys: [rotationKey],
     signingKey: await didKeyOf(signing),
     signer: rotation,
+    keys,
   });
   const did = await didFrom(operation);
   await keys.put(`rotation:${did}`, rotation);
@@ -163,11 +178,12 @@ export const createLabIdentity = async ({
 }): Promise<Identity> => {
   const rotation = await keys.get(`rotation:${custodian.did}`);
   if (!rotation) throw new Error("Only the device holding the PI's key can create the lab.");
-  const signing = await newKeys();
+  const signing = await makeKeys(keys);
   const operation = await genesis({
     rotationKeys: [custodian.rotationKey],
     signingKey: await didKeyOf(signing),
     signer: rotation,
+    keys,
   });
   const did = await didFrom(operation);
   await keys.put(`signing:${did}`, signing);
@@ -195,6 +211,7 @@ export const addCustodian = async ({
   const next = await signOperation(
     { ...fields, rotationKeys: [custodianKey, ...existing], prev: await cidOfOperation(previous) },
     rotation,
+    keys,
   );
   return { ...identity, plc: [...identity.plc, next] };
 };

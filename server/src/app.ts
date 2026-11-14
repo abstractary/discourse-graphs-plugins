@@ -6,7 +6,9 @@ import { loadDemoPapers } from './extract/demo-replay.ts';
 import { graphRoutes } from './graphs.ts';
 import { createHttpServer } from './http.ts';
 import { labRoutes } from './labs.ts';
+import { notifyRoutes } from './notify.ts';
 import { paperRoutes } from './papers.ts';
+import { signpostingRoutes } from './signposting.ts';
 import { createStore } from './store.ts';
 import { syncRoutes } from './sync.ts';
 
@@ -27,6 +29,8 @@ export async function startServer(config: Config): Promise<RunningServer> {
       ...syncRoutes(store),
       ...paperRoutes(store),
       ...aiRoutes(config, store),
+      ...signpostingRoutes(config, store),
+      ...notifyRoutes(config, store),
     ],
     config.maxBodyBytes,
   );

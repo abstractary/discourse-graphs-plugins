@@ -17,6 +17,11 @@ export type Config = {
   openRouterKey?: string;
   openRouterBaseUrl: string;
   aiModel?: string;
+  /** Where a member's own OpenAI or Gemini key is sent. Set only to point tests at a stand-in. */
+  openAiBaseUrl?: string;
+  geminiBaseUrl?: string;
+  /** The address people reach this server at, for links in headers and metadata. Without it the Host header is used. */
+  publicUrl?: string;
   maxBodyBytes: number;
   replayMs: number;
 };
@@ -38,6 +43,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     openRouterKey: env.OPENROUTER_API_KEY || undefined,
     openRouterBaseUrl: env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
     aiModel: env.AI_MODEL || undefined,
+    openAiBaseUrl: env.OPENAI_BASE_URL || undefined,
+    geminiBaseUrl: env.GEMINI_BASE_URL || undefined,
+    publicUrl: env.DG_PUBLIC_URL || undefined,
     maxBodyBytes: 40 * 1024 * 1024,
     replayMs: 2000,
   };

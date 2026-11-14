@@ -3,16 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Demo: Discourse Graphs plugins for Roam and Obsidian, sharing one core, canvas and panels",
+  "description": "Demo: Discourse Graphs for Obsidian, with one core, canvas and panels that other bases can share",
   "scripts": {
     "test": "node --test test/*.test.ts",
     "test:server": "npm test --workspace @dg/server",
     "check-types": "tsc --noEmit",
     "check-boundaries": "node scripts/check-boundaries.mjs",
+    "dsm": "node scripts/dsm.mjs && node scripts/dsm.mjs scholarly",
+    "sim": "node harness/four-vaults.ts --strict",
     "build": "DG_RELEASE=1 node scripts/build.mjs",
     "build:test": "node scripts/build.mjs",
     "server": "node scripts/serve.mjs",
-    "coverage": "python3 -I scripts/host_coverage.py"
+    "coverage": "python3 -I scripts/host_coverage.py",
+    "build:local": "node scripts/build-local.mjs",
+    "local": "node local/src/main.ts",
+    "seed:example": "node local/src/seed.ts",
+    "example": "node examples/worked-example/build.ts",
+    "validate:ontology": "python3 -I ontology/validate.py --self-test && python3 -I ontology/validate.py"
   },
   "devDependencies": {
     "@atproto/crypto": "0.5.7",

@@ -143,12 +143,33 @@ const installProbe = (): void => {
       element.dispatchEvent(new Event("change", { bubbles: true }));
       value = (element as HTMLSelectElement).value;
     }
+    if (element && data.what === "dragTo" && data.prop) {
+      // HTML drag and drop, which a test's mouse can't start: from this element to a point in the frame.
+      const { x, y } = JSON.parse(data.prop) as { x: number; y: number };
+      const transfer = new DataTransfer();
+      element.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+      const target = document.elementFromPoint(x, y) ?? document.body;
+      target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer, clientX: x, clientY: y }));
+      target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer, clientX: x, clientY: y }));
+      element.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
+      value = [...transfer.types];
+    }
+    if (element && data.what === "dropFile" && data.prop) {
+      // A file dropped from the desktop onto this element.
+      const { name, type, base64 } = JSON.parse(data.prop) as { name: string; type: string; base64: string };
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))], name, { type }));
+      element.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+      element.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+      value = true;
+    }
     if (element && data.what === "reveal") {
       element.scrollIntoView({ block: "center" });
       value = true;
     }
     if (data.what === "focus") value = document.activeElement?.getAttribute("data-dg") ?? document.activeElement?.tagName ?? null;
     if (data.what === "doubleClicks") value = doubleClicks;
+    if (data.what === "selection") value = document.getSelection()?.toString() ?? "";
     if (data.what === "count") value = document.querySelectorAll(data.selector).length;
     if (data.what === "drawn") {
       // Every link as the browser drew it, for judging a layout on what's on screen.

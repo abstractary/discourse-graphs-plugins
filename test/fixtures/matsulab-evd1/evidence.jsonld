@@ -1,0 +1,339 @@
+{
+  "@context": {
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "dct": "http://purl.org/dc/terms/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "sioc": "http://rdfs.org/sioc/ns#",
+    "schema": "https://schema.org/",
+    "dgb": "https://discoursegraphs.com/schema/dg_base#",
+    "mira": "http://purl.org/mira-science/mira#",
+    "title": "dct:title",
+    "format": "dct:format",
+    "created": "dct:created",
+    "modified": "dct:modified",
+    "creator": {
+      "@id": "dct:creator",
+      "@type": "@id"
+    },
+    "description": {
+      "@id": "dct:description",
+      "@type": "@id"
+    },
+    "license": {
+      "@id": "dct:license",
+      "@type": "@id"
+    },
+    "temporal": "dct:temporal",
+    "content": "sioc:content",
+    "name": "foaf:name",
+    "accountName": "foaf:accountName",
+    "Container": "sioc:Container",
+    "Item": "sioc:Item",
+    "UserAccount": "sioc:UserAccount",
+    "has_container": {
+      "@id": "sioc:has_container",
+      "@type": "@id"
+    },
+    "seeAlso": {
+      "@id": "rdfs:seeAlso",
+      "@type": "@id"
+    },
+    "Question": "mira:Question",
+    "Claim": "mira:Claim",
+    "Evidence": "mira:Evidence",
+    "Study": "mira:Study",
+    "Protocol": "mira:Protocol",
+    "Request": "mira:Request",
+    "SourceDocument": "mira:SourceDocument",
+    "observationStatement": {
+      "@id": "mira:observationStatement",
+      "@type": "@id"
+    },
+    "observationOriginActivity": {
+      "@id": "mira:observationOriginActivity",
+      "@type": "@id"
+    },
+    "observationBase": {
+      "@id": "mira:observationBase",
+      "@type": "@id"
+    },
+    "sourceDocument": {
+      "@id": "mira:sourceDocument",
+      "@type": "@id"
+    },
+    "describesActivity": {
+      "@id": "mira:describesActivity",
+      "@type": "@id"
+    },
+    "supports": {
+      "@id": "mira:supports",
+      "@type": "@id"
+    },
+    "addresses": {
+      "@id": "mira:addresses",
+      "@type": "@id"
+    },
+    "grounds": {
+      "@id": "mira:grounds",
+      "@type": "@id"
+    },
+    "is_grounded_in": {
+      "@id": "mira:is_grounded_in",
+      "@type": "@id"
+    },
+    "follows": {
+      "@id": "mira:follows",
+      "@type": "@id"
+    },
+    "request_for": {
+      "@id": "mira:request_for",
+      "@type": "@id"
+    },
+    "request_target": {
+      "@id": "mira:request_target",
+      "@type": "@id"
+    }
+  },
+  "@graph": [
+    {
+      "@id": "./",
+      "@type": "Container",
+      "title": "EVD 1: Issue Conversion Rate — MATSUlab Discourse Graph",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "@id": "#evidence",
+      "@type": "Evidence",
+      "title": "[[RES]] - 29% of MATSUlab issues (n=445) were claimed as experiments - [[@analysis/quantify issue claiming from MATSUlab]]",
+      "content": "Issue-to-experiment conversion rate and result production. The proportion of issues posted to a discourse graph Issues board that are claimed as experiments, and the subsequent proportion of those claimed experiments that produce formal result nodes. Measured across 445 issues, 130 claimed experiments, and 139 RES nodes in the MATSUlab discourse graph.",
+      "created": "2026-02-14",
+      "creator": "https://orcid.org/0000-0002-0286-5310",
+      "has_container": "./",
+      "description": "README.md",
+      "observationStatement": "#observation",
+      "observationOriginActivity": "#study",
+      "observationBase": [
+        "data/conversion_data.json",
+        "data/issue_timeline_data.json"
+      ],
+      "sourceDocument": "https://experiment.com/u/Hd2AYg",
+      "is_grounded_in": "#study",
+      "foaf:depiction": [
+        {
+          "@id": "fig1_conversion_rate.png"
+        }
+      ]
+    },
+    {
+      "@id": "#observation",
+      "@type": "Claim",
+      "title": "29% of MATSUlab issues (n=445) were claimed as experiments.",
+      "has_container": "./"
+    },
+    {
+      "@id": "#study",
+      "@type": "Study",
+      "title": "@analysis/quantify issue claiming from MATSUlab",
+      "has_container": "./",
+      "grounds": "#evidence",
+      "follows": "#protocol",
+      "prov:startedAtTime": "2026-01-25",
+      "prov:endedAtTime": "2026-02-14",
+      "prov:used": [
+        {
+          "@id": "#matsulab-graph"
+        },
+        {
+          "@id": "#source-1"
+        },
+        {
+          "@id": "#source-2"
+        },
+        {
+          "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/calculate_metrics.py"
+        },
+        {
+          "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/parse_jsonld.py"
+        },
+        {
+          "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/parse_roam_json.py"
+        },
+        {
+          "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/generate_visualizations.py"
+        }
+      ],
+      "prov:wasAssociatedWith": [
+        {
+          "@id": "https://orcid.org/0000-0002-0286-5310"
+        },
+        {
+          "@id": "#claude"
+        }
+      ],
+      "schema:codeRepository": {
+        "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis"
+      },
+      "seeAlso": "https://roamresearch.com/#/app/discourse-graphs/page/E5UYzWC6b"
+    },
+    {
+      "@id": "#protocol",
+      "@type": "Protocol",
+      "title": "Discourse graph conversion rate analysis",
+      "content": "Automated pipeline parsing JSON-LD and Roam JSON exports to identify issue nodes (320 formal ISS + 125 experiment pages), detect claiming via a two-tier strategy (explicitly claimed via Claimed By:: field, n=69; inferred via experimental log presence, n=56; plus 5 ISS pages with activity), and link result nodes using a 3-tier matching strategy (relation instances, backreference matching, full description matching).",
+      "description": "methods_excerpt.md",
+      "has_container": "./"
+    },
+    {
+      "@id": "https://experiment.com/u/Hd2AYg",
+      "@type": "SourceDocument",
+      "title": "Narrative post describing the MATSUlab discourse graph analysis",
+      "format": "text/html",
+      "describesActivity": "#study"
+    },
+    {
+      "@id": "#matsulab-graph",
+      "@type": [
+        "Container",
+        "prov:Entity"
+      ],
+      "title": "MATSUlab discourse graph",
+      "content": "Akamatsu Lab Roam Research discourse graph, February 2026 snapshot. Contains 445 identifiable issues (320 formal ISS nodes + 125 experiment pages), 130 claimed experiments, and 323 result nodes.",
+      "temporal": "2026-02-14"
+    },
+    {
+      "@id": "#source-1",
+      "@type": [
+        "Item",
+        "prov:Entity"
+      ],
+      "title": "akamatsulab_discourse-graph-json-LD202602112140.json (raw input, not included in this repository)",
+      "has_container": "#matsulab-graph"
+    },
+    {
+      "@id": "#source-2",
+      "@type": [
+        "Item",
+        "prov:Entity"
+      ],
+      "title": "akamatsulab-whole-graph-2026-02-13-22-24-27.json (raw input, not included in this repository)",
+      "has_container": "#matsulab-graph"
+    },
+    {
+      "@id": "data/conversion_data.json",
+      "@type": [
+        "Item",
+        "prov:Entity",
+        "schema:Dataset"
+      ],
+      "title": "Aggregated conversion rate data with claiming type breakdown, authorship statistics, and result production metrics",
+      "format": "application/json",
+      "prov:wasGeneratedBy": {
+        "@id": "#study"
+      }
+    },
+    {
+      "@id": "data/issue_timeline_data.json",
+      "@type": [
+        "Item",
+        "prov:Entity",
+        "schema:Dataset"
+      ],
+      "title": "Cumulative issue creation and claiming counts over time, grounding the supplemental timeline figure",
+      "format": "application/json",
+      "prov:wasGeneratedBy": {
+        "@id": "#study"
+      }
+    },
+    {
+      "@id": "fig1_conversion_rate.png",
+      "@type": [
+        "Item",
+        "schema:ImageObject"
+      ],
+      "format": "image/png",
+      "prov:wasGeneratedBy": {
+        "@id": "#study"
+      },
+      "schema:caption": "Figure 1. 29% of MATSUlab issues (n=445) were claimed as experiments, and 15% of those were claimed by a different lab member than the issue creator. (Left) Stacked horizontal bar showing the composition of all 445 issues: explicitly claimed (69, blue), inferred claiming (56, green), ISS with activity (5, amber), unclaimed (315, grey). Bracket indicates total claimed: 130 (29.2%). (Right) Donut chart showing claiming authorship among 125 claimed experiments: self-claimed (106, 85%) and cross-person claiming (19, 15%)."
+    },
+    {
+      "@id": "fig1_conversion_rate.html",
+      "@type": [
+        "Item",
+        "schema:WebPage"
+      ],
+      "format": "text/html",
+      "prov:wasGeneratedBy": {
+        "@id": "#study"
+      },
+      "title": "Interactive HTML/JS version of Figure 1 with hover tooltips, animated transitions, and responsive layout."
+    },
+    {
+      "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/calculate_metrics.py",
+      "@type": [
+        "Item",
+        "schema:SoftwareSourceCode"
+      ],
+      "title": "Metric calculation and data merging",
+      "format": "text/x-python"
+    },
+    {
+      "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/parse_jsonld.py",
+      "@type": [
+        "Item",
+        "schema:SoftwareSourceCode"
+      ],
+      "title": "JSON-LD export parser",
+      "format": "text/x-python"
+    },
+    {
+      "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/parse_roam_json.py",
+      "@type": [
+        "Item",
+        "schema:SoftwareSourceCode"
+      ],
+      "title": "Roam JSON streaming parser",
+      "format": "text/x-python"
+    },
+    {
+      "@id": "https://github.com/DiscourseGraphs/MATSUlab-issue-exchange-analysis/blob/main/src/generate_visualizations.py",
+      "@type": [
+        "Item",
+        "schema:SoftwareSourceCode"
+      ],
+      "title": "Visualization generator",
+      "format": "text/x-python"
+    },
+    {
+      "@id": "methods_excerpt.md",
+      "@type": "Item",
+      "title": "Relevant methods sections for node identification, claiming detection, and conversion rate calculation",
+      "format": "text/markdown"
+    },
+    {
+      "@id": "README.md",
+      "@type": "Item",
+      "title": "Human-readable narrative: evidence statement, key figure, grounding context, and caveats",
+      "format": "text/markdown"
+    },
+    {
+      "@id": "https://orcid.org/0000-0002-0286-5310",
+      "@type": [
+        "UserAccount",
+        "prov:Agent"
+      ],
+      "accountName": "Matt Akamatsu",
+      "schema:affiliation": "University of Washington"
+    },
+    {
+      "@id": "#claude",
+      "@type": [
+        "UserAccount",
+        "prov:SoftwareAgent"
+      ],
+      "accountName": "Claude (Anthropic)"
+    }
+  ]
+}

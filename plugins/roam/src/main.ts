@@ -6,6 +6,7 @@ import { startBadges } from "./badges.ts";
 import { connectFrame } from "@dg/native/frame.ts";
 import { askBreadcrumb, closeDialogFrame, openDialogFrame } from "@dg/native/dialog.ts";
 import { createServices } from "@dg/sync/client.ts";
+import { createLlm } from "@dg/sync/providers.ts";
 import { startLabSync } from "@dg/sync/lab-sync.ts";
 import { canvasShowing, leaveCanvasPage, startCanvasPages } from "./canvases.ts";
 import {
@@ -21,6 +22,7 @@ import { createRoamHost, type RoamApi, type RoamHost } from "./host.ts";
 
 declare const __PANEL_HTML__: string;
 declare const __CANVAS_HTML__: string;
+declare const __PDF_HTML__: string;
 declare const __CANVAS_BUILD__: string;
 declare const __DEMO_GRAPHS__: { filename: string; graph: ExtractionGraph }[];
 declare const __TEST_HOOKS__: boolean;
@@ -43,6 +45,7 @@ let testMode = false;
 let canvasFrame: HTMLIFrameElement | null = null;
 let contextFrame: HTMLIFrameElement | null = null;
 let canvasesFrame: HTMLIFrameElement | null = null;
+let searchFrame: HTMLIFrameElement | null = null;
 let dialogFrame: HTMLIFrameElement | null = null;
 let openCanvasId: string | null = null;
 let sync: ReturnType<typeof startLabSync> | undefined;
@@ -60,6 +63,13 @@ const ensureCore = async (): Promise<Core> => {
     titleFormat: (abbreviation) => `[[${abbreviation}]] - {content}`,
     canvasFormat: "Canvas/{content}",
     services,
+    llm: createLlm({ browser: true, fetch: (url, init) => window.fetch(url, init) }),
+    // Roam has no keychain. The key stays in this browser's own storage, never in the graph, and the panel says so.
+    secrets: {
+      kind: "plain",
+      get: async (id) => ((await local.get(`secret:${id}`)) as string | null) || null,
+      set: async (id, value) => local.set(`secret:${id}`, value),
+    },
     demoGraphs: __DEMO_GRAPHS__,
     askBreadcrumb: (paper) =>
       askBreadcrumb({
@@ -84,11 +94,12 @@ const mountFrame = (surface: SurfaceRoute): HTMLIFrameElement => {
   const frame = document.createElement("iframe");
   frame.setAttribute("sandbox", "allow-scripts");
   frame.setAttribute("title", "Discourse Graphs");
-  frame.srcdoc = surface.surface === "check" ? __PANEL_HTML__ : __CANVAS_HTML__;
+  frame.srcdoc = surface.surface === "check" ? __PANEL_HTML__ : surface.surface === "pdf" ? __PDF_HTML__ : __CANVAS_HTML__;
   frame.style.cssText = "border:0;width:100%;height:100%;display:block;";
   if (surface.surface === "canvas") canvasFrame = frame;
   if (surface.surface === "context") contextFrame = frame;
   if (surface.surface === "canvases") canvasesFrame = frame;
+  if (surface.surface === "search") searchFrame = frame;
   connectFrame({
     frame,
     route: surface,
@@ -116,7 +127,7 @@ const mountInSidebar = async (surface: SurfaceRoute): Promise<void> => {
   const sidebar = document.querySelector("#right-sidebar");
   if (!sidebar) throw new Error("no right sidebar");
   const id = sideId(surface.surface);
-  const frame = surface.surface === "canvases" ? canvasesFrame : contextFrame;
+  const frame = surface.surface === "canvases" ? canvasesFrame : surface.surface === "search" ? searchFrame : contextFrame;
   if (document.getElementById(id)?.isConnected && frame) return;
   document.getElementById(id)?.remove();
   const holder = document.createElement("div");
@@ -169,6 +180,20 @@ const openSurface: Host["openSurface"] = async ({ route: next, placement }) => {
   }
   if (placement === "side") {
     await mountInSidebar(next);
+    return ok(null);
+  }
+  // A PDF reads beside the canvas page, in the sidebar, the way Roam opens anything alongside.
+  if (next.surface === "pdf") {
+    await api.ui.rightSidebar.open();
+    await sleep(300);
+    const sidebar = document.querySelector("#right-sidebar");
+    if (!sidebar) return { ok: false as const, error: { code: "unavailable" as const, message: "No sidebar." } };
+    document.getElementById(sideId("pdf"))?.remove();
+    const holder = document.createElement("div");
+    holder.id = sideId("pdf");
+    holder.style.cssText = "height:min(86vh,1100px);width:100%;flex:none;border-bottom:1px solid rgba(16,22,26,.15);";
+    holder.appendChild(mountFrame(next));
+    sidebar.prepend(holder);
     return ok(null);
   }
   // A canvas lives on its own page. Only with no canvas at all is there nowhere to go.
@@ -343,6 +368,14 @@ api.ui.commandPalette?.addCommand?.({
 });
 const openCanvases = (): void => void openSurface({ route: { surface: "canvases" }, placement: "side" });
 api.ui.commandPalette?.addCommand?.({ label: "Discourse Graphs: Find a canvas", callback: openCanvases });
+api.ui.commandPalette?.addCommand?.({
+  label: "Discourse Graphs: Find a unit",
+  callback: () => void ensureCore().then(() => openSurface({ route: { surface: "find" }, placement: "dialog" })),
+});
+api.ui.commandPalette?.addCommand?.({
+  label: "Discourse Graphs: Search units",
+  callback: () => void ensureCore().then(() => openSurface({ route: { surface: "search" }, placement: "side" })),
+});
 api.ui.commandPalette?.addCommand?.({
   label: "Discourse Graphs: New canvas",
   callback: () =>

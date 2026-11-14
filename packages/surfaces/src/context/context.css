@@ -13,6 +13,17 @@
 .ctx-notice { margin: 0; color: var(--opposes); font-size: var(--small); }
 .ctx-none { margin: 12px 0; color: var(--dg-muted); }
 
+.ctx-checks { list-style: none; margin: 0; padding: 0; }
+.ctx-checks li { display: grid; grid-template-columns: 18px 1fr auto; gap: 6px; align-items: start; padding: 4px 0; font-size: var(--small); }
+.ctx-check-mark { color: color-mix(in oklch, var(--evidence) 75%, var(--dg-ink)); }
+.ctx-checks li[data-verdict="needsWork"] .ctx-check-mark, .ctx-checks li[data-current="false"] .ctx-check-mark { color: var(--dg-muted); }
+.ctx-check-how { color: var(--dg-muted); }
+.ctx-check-note, .ctx-check-stale { display: block; margin-top: 1px; }
+.ctx-check-stale { color: var(--dg-muted); }
+.ctx-check-form { display: flex; flex-direction: column; gap: 5px; }
+.ctx-check-form input, .ctx-check-form select { box-sizing: border-box; padding: 3px 5px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; font-size: var(--small); }
+.ctx-check-form input { width: 100%; }
+.ctx-check-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .ctx-group { padding: 10px 0 2px; }
 .ctx-group h2 { margin: 0 0 4px; color: var(--dg-muted); font: 600 var(--tiny)/1.4 var(--dg-font); }
 .ctx-group h2 span { font-weight: 400; font-variant-numeric: tabular-nums; }
@@ -56,3 +67,100 @@
 .ctx-notes strong { font-weight: 600; }
 .ctx-notes li span:nth-child(2) { flex: 1; min-width: 0; }
 .ctx-note-input input { box-sizing: border-box; width: 100%; padding: 4px 8px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; }
+
+/* Method: the chain behind a unit, in the order the work happened. */
+.method-flags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; }
+.method-flags span { padding: 0 6px; border: 1px solid var(--dg-line); border-radius: 9px; color: var(--dg-muted); font-size: var(--tiny); line-height: 17px; }
+.method-flags span[data-tone="good"] { border-color: color-mix(in oklch, var(--evidence) 50%, transparent); color: color-mix(in oklch, var(--evidence) 70%, var(--dg-ink)); }
+.method-flags span[data-tone="warn"] { border-color: color-mix(in oklch, var(--claim) 60%, transparent); color: color-mix(in oklch, var(--claim) 62%, var(--dg-ink)); }
+.method-chains { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.method-for { margin: 0 0 3px; color: var(--dg-muted); font-size: var(--small); }
+.method-for button { padding: 0; color: var(--dg-ink); text-align: left; text-decoration: underline; text-decoration-color: var(--dg-line); }
+.method-for[data-stance="opposes"] { color: var(--opposes); }
+.method-steps { list-style: none; margin: 0; padding: 0; }
+.method-steps li { position: relative; display: grid; grid-template-columns: 74px 1fr; gap: 6px; padding: 3px 0 3px 12px; }
+.method-steps li::before { content: ""; position: absolute; left: 2px; top: 10px; width: 5px; height: 5px; border-radius: 50%; background: var(--type, var(--dg-muted)); }
+.method-steps li:not(:last-child)::after { content: ""; position: absolute; left: 4px; top: 17px; bottom: -8px; width: 1px; background: var(--dg-line); }
+.method-steps li[data-role="question"] { --type: var(--question); }
+.method-steps li[data-role="study"] { --type: var(--study); }
+.method-steps li[data-role="protocol"] { --type: var(--protocol); }
+.method-steps li[data-role="code"] { --type: var(--code); }
+.method-steps li[data-role="run"] { --type: var(--run); }
+.method-steps li[data-role="output"] { --type: var(--output); }
+.method-steps li[data-role="evidence"] { --type: var(--evidence); }
+.method-steps li[data-role="source"] { --type: var(--source); }
+.method-steps li[data-here="true"] .method-what button { font-weight: 600; }
+.method-role { color: var(--dg-muted); font-size: var(--tiny); line-height: 1.7; }
+.method-what { min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow-wrap: anywhere; }
+.method-what button { padding: 0; text-align: left; }
+.method-what button:hover { background: none; text-decoration: underline; }
+.method-detail, .method-absent, .method-none { color: var(--dg-muted); font-size: var(--tiny); }
+.method-none { margin: 0; font-size: var(--small); }
+.method-drift { align-self: flex-start; padding: 0 5px; border-radius: 8px; background: color-mix(in oklch, var(--claim) 20%, transparent); color: color-mix(in oklch, var(--claim) 55%, var(--dg-ink)); font-size: var(--tiny); }
+.method-gap { margin: 0 0 4px; color: color-mix(in oklch, var(--claim) 55%, var(--dg-ink)); font-size: var(--small); }
+.method-problems { list-style: none; margin: 8px 0 0; padding: 0; font-size: var(--small); }
+.method-problems li { position: relative; padding: 2px 0 2px 14px; color: var(--dg-muted); }
+.method-problems li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--dg-muted); }
+.method-problems li[data-severity="Warning"] { color: color-mix(in oklch, var(--claim) 55%, var(--dg-ink)); }
+.method-problems li[data-severity="Warning"]::before { border-color: var(--claim); background: var(--claim); }
+.method-problems li[data-severity="Violation"] { color: var(--opposes); }
+.method-problems li[data-severity="Violation"]::before { border-color: var(--opposes); background: var(--opposes); }
+.method-actions { display: flex; flex-wrap: wrap; gap: 2px; margin: 6px 0 0 -6px; }
+.method-actions button { display: flex; align-items: center; gap: 4px; padding: 3px 6px; color: var(--dg-muted); font-size: var(--small); }
+.method-actions button:hover { color: var(--dg-ink); }
+.method-actions .primary { color: var(--dg-accent); }
+.method-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding: 8px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); }
+.method-field { display: flex; flex-direction: column; gap: 2px; font-size: var(--small); }
+.method-field > span { color: var(--dg-muted); font-size: var(--tiny); }
+.method-field textarea, .method-field select { box-sizing: border-box; width: 100%; padding: 5px 7px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; resize: vertical; }
+.method-form .primary { padding: 4px 12px; background: var(--dg-accent); color: white; }
+.row-main .from-paper { flex: none; align-self: center; max-width: 45%; }
+.method-rests { display: flex; flex-direction: column; gap: 4px; }
+.method-rests p { margin: 0; }
+.method-papers { display: flex; flex-wrap: wrap; gap: 4px; }
+.method-papers .from-paper { cursor: default; }
+.ctx-similar-find { align-self: flex-start; color: var(--dg-accent); }
+.ctx-similar .row-main small { display: block; color: var(--dg-muted); font-size: var(--tiny); }
+.ctx-similar li { display: flex; align-items: flex-start; gap: 4px; }
+.ctx-similar .row-main { flex: 1; min-width: 0; flex-wrap: wrap; }
+.ctx-similar .row-words { flex-basis: 100%; color: var(--dg-muted); font-size: var(--tiny); }
+
+/* A retraction is the one fact about a source that must not be missed. */
+.ctx-flag { margin: 2px 0 6px; padding: 4px 8px; border-left: 2px solid var(--opposes); color: var(--opposes); font-size: var(--small); line-height: 1.45; }
+.ctx-identify { margin-top: 4px; }
+.ctx-head .facts { border-top: 0; padding-top: 0; }
+.ctx-json { max-height: 180px; margin: 4px 0; padding: 6px 8px; overflow: auto; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); font: var(--tiny)/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ctx-note-when { color: var(--dg-muted); font-size: var(--tiny); }
+
+/* Sections: a ruled, spaced, small-capital label above each, so the eye finds a section before it reads one. */
+.ctx-group { padding: 12px 0 4px; border-top: 1px solid color-mix(in oklch, var(--dg-line) 65%, transparent); margin-top: 8px; }
+.ctx-head + .ctx-group, .ctx-head + .relate + .ctx-group { border-top: 0; margin-top: 0; }
+.ctx-group h2 { margin: 0 0 6px; color: var(--dg-muted); font: 600 10.5px/1.4 var(--dg-font); letter-spacing: 0.06em; text-transform: uppercase; }
+.ctx-group h2 span { margin-left: 4px; padding: 0 5px; border-radius: 8px; background: color-mix(in oklch, var(--dg-muted) 16%, transparent); color: var(--dg-ink); font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.ctx-title { font: 650 calc(var(--dg-size) + 3px)/1.3 var(--dg-font); letter-spacing: -0.005em; }
+.ctx-text { color: var(--dg-ink); }
+.row-main > span:not(.chip):not(.from-paper):not(.row-words) { color: var(--dg-ink); font-weight: 450; line-height: 1.4; }
+.ctx-line { color: color-mix(in oklch, var(--dg-ink) 62%, var(--dg-muted)); }
+.ctx-source blockquote { border-left: 2px solid color-mix(in oklch, var(--source) 55%, var(--dg-line)); font-style: italic; }
+.ctx-link { font-weight: 500; }
+.mentions li .ctx-link { font-size: var(--small); }
+.ctx-asread q { color: var(--dg-ink); }
+
+/* Standing at a glance: a coloured dot with its words, and counts as an icon with a number. */
+.ctx-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 4px 0 6px; font-size: var(--small); color: color-mix(in oklch, var(--dg-ink) 78%, var(--dg-muted)); }
+.ctx-mark { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ctx-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dg-muted); }
+.ctx-mark[data-oa="green"] .ctx-dot { background: oklch(0.68 0.16 150); }
+.ctx-mark[data-oa="gold"] .ctx-dot, .ctx-mark[data-oa="diamond"] .ctx-dot { background: oklch(0.8 0.15 88); }
+.ctx-mark[data-oa="hybrid"] .ctx-dot { background: oklch(0.72 0.12 230); }
+.ctx-mark[data-oa="bronze"] .ctx-dot { background: oklch(0.62 0.1 55); }
+.ctx-mark[data-oa="closed"] .ctx-dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--dg-muted); }
+.ctx-mark-icon { width: 13px; height: 13px; color: var(--dg-muted); }
+.ctx-count { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--dg-ink); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ctx-asread .ctx-link { display: block; margin-top: 2px; }
+.ctx-group h2 { font-size: 11px; }
+/* The open-access kinds differ in shape as well as colour, so the mark doesn't rest on hue. */
+.ctx-mark[data-oa="gold"] .ctx-dot, .ctx-mark[data-oa="diamond"] .ctx-dot { border-radius: 1px; transform: rotate(45deg) scale(0.85); }
+.ctx-mark[data-oa="bronze"] .ctx-dot { border-radius: 1px; }
+.ctx-mark[data-oa="hybrid"] .ctx-dot { background: linear-gradient(90deg, oklch(0.72 0.12 230) 50%, transparent 50%); box-shadow: inset 0 0 0 1.5px oklch(0.72 0.12 230); }

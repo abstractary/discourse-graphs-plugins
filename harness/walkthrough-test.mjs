@@ -59,6 +59,9 @@ const nodes = (text) => s(`s.core().then((core) => [...core.graph().documents.va
 const canvases = () => s(`s.call("canvas.summaries", {}).then((list) => list.filter((c) => c.title.startsWith("Walkthrough canvas")).length)`);
 
 await s("s.test(true)");
+// macOS draws Obsidian's menus natively, where a test can't click them; its own menus are used for this run.
+const nativeMenus = target === "roam" ? null : await s(`app.vault.getConfig("nativeMenus") ?? null`);
+if (target !== "roam") await s(`(() => { app.vault.setConfig("nativeMenus", false); return true; })()`);
 await s("s.closeAll()");
 await sleep(700);
 await s(`s.setLocal("walkthrough-examples", null)`);
@@ -113,7 +116,13 @@ await until(() => holeShown(), 6000);
 await host.shot(`${OUT}/${host.name}-canvases.png`);
 await until(async () => (await canvases()) === start.canvas + 1, 8000);
 await sleep(600);
-await hostClick(target === "roam" ? '[data-dg="roam-canvases"]' : '.side-dock-ribbon-action[aria-label="Discourse Graphs canvases"]');
+if (target === "roam") await hostClick('[data-dg="roam-canvases"]');
+else {
+  // Obsidian has one ribbon icon, whose menu holds the Library.
+  await hostClick('.side-dock-ribbon-action[aria-label="Discourse Graphs"]');
+  const item = await until(() => s(`(() => { const found = [...document.querySelectorAll(".menu .menu-item")].find((e) => e.textContent.trim() === "Library"); if (!found) return null; const r = found.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`), 4000);
+  if (item) await clickAt(item.x, item.y);
+}
 check("open-canvas.follows-a-real-click", await atStep("open-canvas"));
 await until(() => holeShown(), 6000);
 const row = await frameBox("list", '[data-dg="canvases-open-Walkthrough canvas"]');
@@ -193,6 +202,7 @@ await press("Escape", "Escape", 27);
 check("escape.leaves-when-nothing-was-made", await until(async () => (await step()) === null, 3000));
 
 await s("s.closeAll()");
+if (target !== "roam") await s(`(() => { app.vault.setConfig("nativeMenus", ${JSON.stringify(nativeMenus)}); return true; })()`);
 await host.finish();
 const passed = results.filter((result) => result.pass).length;
 console.log(`=== ${host.name}: ${passed} of ${results.length}`);

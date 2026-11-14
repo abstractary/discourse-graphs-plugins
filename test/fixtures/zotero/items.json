@@ -1,0 +1,21 @@
+[
+  {
+    "key": "ABCD2345",
+    "version": 12,
+    "library": { "type": "user", "id": 123456, "name": "My Library" },
+    "meta": { "creatorSummary": "Carroll", "parsedDate": "2020-12-02", "numChildren": 1 },
+    "data": {
+      "key": "ABCD2345",
+      "itemType": "journalArticle",
+      "title": "Do reservoir computers work best at the edge of chaos?",
+      "creators": [{ "creatorType": "author", "firstName": "Thomas L.", "lastName": "Carroll" }, { "creatorType": "editor", "firstName": "Ed", "lastName": "Itor" }],
+      "publicationTitle": "Chaos",
+      "date": "2020-12-02",
+      "DOI": "https://doi.org/10.1063/5.0038163",
+      "url": "https://pubs.aip.org/aip/cha/article/30/12/121109",
+      "extra": "PMID: 33380041\narXiv: 2012.01409\nCitation Key: carroll2020edge",
+      "tags": [{ "tag": "reservoir computing" }]
+    }
+  },
+  { "key": "NOTE0001", "library": { "type": "user", "id": 123456 }, "data": { "key": "NOTE0001", "itemType": "note", "note": "<p>standalone</p>" } }
+]

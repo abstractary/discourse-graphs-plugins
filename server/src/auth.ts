@@ -25,6 +25,21 @@ export type JoinRequest = {
   tokenKind?: TokenKind;
 };
 
+// Only a hash of the code is kept, so the stored lab cannot be used to join.
+export type Invite = {
+  id: string;
+  codeHash: string;
+  createdAt: string;
+  expiresAt: string;
+  usesLeft: number;
+  by: string;
+  tokenKind: TokenKind;
+};
+
+export type Removal = { did: string; at: string };
+export type RevokedToken = { hash: string; did: string; at: string };
+
+// The last three lists came later. A lab stored before them has none, which reads as empty.
 export type Lab = {
   id: string;
   name: string;
@@ -33,6 +48,9 @@ export type Lab = {
   members: Member[];
   tokens: LabToken[];
   requests: JoinRequest[];
+  invites?: Invite[];
+  removed?: Removal[];
+  revoked?: RevokedToken[];
 };
 
 export type Caller = { lab: Lab; token: LabToken };
@@ -89,10 +107,20 @@ function findToken(lab: Lab, token: string): LabToken | undefined {
   return lab.tokens.find((entry) => hashesMatch(entry.hash, hash));
 }
 
+function isRevoked(lab: Lab, token: string): boolean {
+  const hash = hashOf(token);
+  return (lab.revoked ?? []).some((entry) => hashesMatch(entry.hash, hash));
+}
+
+function removedError(): ApiError {
+  return new ApiError(403, 'removed', 'You were removed from this lab. Ask its PI if that was a mistake.');
+}
+
 export function requireMember(req: IncomingMessage, store: Store, labId: string): Caller {
   const token = bearerToken(req);
   const lab = readLab(store, labId);
   const entry = lab && findToken(lab, token);
+  if (lab && !entry && isRevoked(lab, token)) throw removedError();
   if (!lab || !entry) {
     throw new ApiError(403, 'wrong-token', `This token is not a member token for lab ${labId}. Check the lab id and the token.`);
   }
@@ -110,11 +138,8 @@ export function requireAdmin(req: IncomingMessage, store: Store, labId: string):
 // The AI route names no lab, so a member token for any lab on this server will do.
 export function requireAnyMember(req: IncomingMessage, store: Store): void {
   const token = bearerToken(req);
-  const known = store.list('labs').some((id) => {
-    const lab = readLab(store, id);
-    return lab !== undefined && findToken(lab, token) !== undefined;
-  });
-  if (!known) {
-    throw new ApiError(403, 'wrong-token', 'This token is not a member token for any lab on this server. Check the token.');
-  }
+  const labs = store.list('labs').flatMap((id) => readLab(store, id) ?? []);
+  if (labs.some((lab) => findToken(lab, token) !== undefined)) return;
+  if (labs.some((lab) => isRevoked(lab, token))) throw removedError();
+  throw new ApiError(403, 'wrong-token', 'This token is not a member token for any lab on this server. Check the token.');
 }

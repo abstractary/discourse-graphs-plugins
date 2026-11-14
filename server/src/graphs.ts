@@ -6,7 +6,7 @@ import type { Graph } from './types.ts';
 
 const FILE_FIELDS = ['file', 'fileBase64', 'dataBase64'];
 
-type StoredGraph = {
+export type StoredGraph = {
   doi: string;
   title?: string;
   schema: unknown;
@@ -23,10 +23,15 @@ function readLog(store: Store): GraphLog {
 }
 
 // DOIs are case-insensitive and often arrive as a doi.org link.
-function normalizeDoi(value: unknown): string | undefined {
+export function normalizeDoi(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const bare = value.trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').replace(/^doi:\s*/i, '').toLowerCase();
   return /^10\.\d{4,9}\/\S+$/.test(bare) ? bare : undefined;
+}
+
+// The same paper can be stored more than once. The last one stored is the newest.
+export function newestGraph(store: Store, doi: string): StoredGraph | undefined {
+  return readLog(store).graphs.filter((entry) => entry.doi === doi).at(-1);
 }
 
 function hasFileField(value: Record<string, unknown>): boolean {

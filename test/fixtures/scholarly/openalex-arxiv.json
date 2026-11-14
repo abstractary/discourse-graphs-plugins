@@ -1,0 +1,52 @@
+{
+ "id": "https://openalex.org/W3097863073",
+ "doi": "https://doi.org/10.4171/jst/418",
+ "title": "Construction of quasimodes for non-selfadjoint operators via propagation of Hagedorn wave-packets",
+ "publication_date": "2022-09-21",
+ "type": "article",
+ "ids": {
+  "openalex": "https://openalex.org/W3097863073",
+  "doi": "https://doi.org/10.4171/jst/418",
+  "mag": "3097863073"
+ },
+ "is_retracted": false,
+ "cited_by_count": 4,
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "diamond",
+  "oa_url": "https://ems.press/content/serial-article-files/25155"
+ },
+ "authorships": [
+  {
+   "author": {
+    "display_name": "Víctor Arnaiz",
+    "orcid": "https://orcid.org/0000-0002-3390-0596"
+   },
+   "institutions": [
+    {
+     "display_name": "Université Paris-Saclay",
+     "ror": "https://ror.org/03xjwb503"
+    }
+   ]
+  }
+ ],
+ "primary_location": {
+  "source": {
+   "display_name": "Journal of Spectral Theory"
+  }
+ },
+ "primary_topic": {
+  "display_name": "Spectral Theory in Mathematical Physics"
+ },
+ "topics": [
+  {
+   "display_name": "Spectral Theory in Mathematical Physics"
+  },
+  {
+   "display_name": "Advanced Mathematical Physics Problems"
+  },
+  {
+   "display_name": "Mathematical Analysis and Transform Methods"
+  }
+ ]
+}

@@ -492,6 +492,22 @@ export const CHECKS: Check[] = [
     },
   },
   {
+    id: "files.list-documents",
+    run: async (context) => {
+      const name = `${context.unique("paper")}.pdf`;
+      const asset = { name, mime: "application/pdf", dataUrl: "data:application/pdf;base64,JVBERi0xLjQKJSVFT0YK" };
+      const { ref } = must(await context.host.writeAsset({ asset }), "writeAsset of a PDF");
+      const listed = must(await context.host.listFiles({ extensions: ["pdf"], limit: 500 }), "listFiles");
+      const found = listed.find((file) => file.ref === ref);
+      expect(Boolean(found), "a PDF just kept isn't listed");
+      expect(found?.name.endsWith(".pdf") === true, "a listed file lost its extension");
+      const read = must(await context.host.readAsset({ ref }), "readAsset of a listed PDF");
+      expect(read.dataUrl.endsWith(asset.dataUrl.split(",")[1]!), "a listed PDF reads back different bytes");
+      const images = must(await context.host.listFiles({ extensions: ["png"], limit: 500 }), "listFiles of images");
+      expect(!images.some((file) => file.ref === ref), "listFiles ignored the extensions asked for");
+    },
+  },
+  {
     id: "navigation.reveal",
     run: async (context) => {
       await context.driver.closePanels();

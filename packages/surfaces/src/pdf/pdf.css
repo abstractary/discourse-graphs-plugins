@@ -1,0 +1,101 @@
+/* The PDF reader: a bar like the canvas's, pages on the panel color, and marks in each unit type's hue. */
+.pdf-shell { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; background: var(--dg-panel); }
+/* Same weights as the canvas bar: plain buttons, muted icons, labels stepping down as room runs out. */
+.pdf-bar { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 8px; background: var(--dg-page); border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 80%, transparent); box-sizing: border-box; min-width: 0; overflow: hidden; }
+.pdf-title { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: min(360px, 44vw); font-weight: 600; padding: 4px 6px; }
+.pdf-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdf-tools { display: flex; align-items: center; gap: 2px; flex: none; }
+.tool { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; box-sizing: border-box; color: color-mix(in oklch, var(--dg-ink) 86%, var(--dg-muted)); }
+.tool .icon { color: var(--dg-muted); }
+.tool:hover, .tool:hover .icon { color: var(--dg-ink); }
+.tool[aria-pressed="true"], .tool[aria-expanded="true"] { background: color-mix(in oklch, var(--dg-accent) 12%, transparent); color: color-mix(in oklch, var(--dg-accent) 80%, var(--dg-ink)); }
+.tool[aria-pressed="true"] .icon, .tool[aria-expanded="true"] .icon { color: inherit; }
+.pdf-zoom { min-width: 48px; justify-content: center; font-variant-numeric: tabular-nums; color: var(--dg-muted); }
+.pdf-page-at { display: inline-flex; align-items: center; gap: 4px; color: var(--dg-muted); font-size: var(--small); margin-right: 4px; }
+.pdf-page-at input { width: 3.2em; padding: 2px 4px; text-align: center; font-variant-numeric: tabular-nums; }
+.pdf-count { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--hover); color: var(--dg-muted); font-size: var(--tiny); font-variant-numeric: tabular-nums; text-align: center; }
+.pdf-gap { flex: 1; }
+.tool { white-space: nowrap; }
+/* What just happened, with its way back, floats over the pages so a narrow bar never hides it. */
+.pdf-notice { position: absolute; z-index: 35; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); padding: 6px 6px 6px 12px; background: var(--dg-page); border: 1px solid var(--dg-line); border-radius: var(--dg-radius); box-shadow: 0 4px 16px color-mix(in oklch, black 16%, transparent); font-size: var(--small); }
+.pdf-notice[hidden] { display: none; }
+.pdf-notice > span { overflow-wrap: anywhere; }
+.pdf-notice button { flex: none; color: var(--dg-accent); padding: 2px 8px; font-weight: 600; }
+.pdf-problem { color: var(--opposes); }
+.pdf-bar[data-fit="compact"] .tool:not(.keep) .tool-label, .pdf-bar[data-fit="icons"] .tool-label, .pdf-bar[data-fit="more"] .tool-label { display: none; }
+.pdf-bar[data-fit="icons"] .pdf-page-at > span, .pdf-bar[data-fit="more"] .pdf-page-at > span { display: none; }
+
+.pdf-scroll { position: relative; overflow: auto; padding: 16px 16px 48px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.pdf-wait { color: var(--dg-muted); }
+.pdf-page { position: relative; flex: none; background: white; box-shadow: 0 0 0 1px var(--dg-line), 0 1px 3px color-mix(in oklch, black 12%, transparent); }
+.pdf-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pdf-marks { position: absolute; inset: 0; pointer-events: none; z-index: 1; mix-blend-mode: multiply; }
+.pdf-mark { --type: var(--none); position: absolute; border-radius: 2px; background: color-mix(in oklch, var(--type) 26%, transparent); box-shadow: inset 0 -2px 0 color-mix(in oklch, var(--type) 70%, transparent); transition: background-color 150ms var(--ease); }
+.pdf-mark[data-base="question"] { --type: var(--question); }
+.pdf-mark[data-base="claim"] { --type: var(--claim); }
+.pdf-mark[data-base="evidence"] { --type: var(--evidence); }
+.pdf-mark[data-base="source"] { --type: var(--source); }
+.pdf-mark[data-base="protocol"] { --type: var(--protocol); }
+.pdf-mark[data-base="study"] { --type: var(--study); }
+.pdf-mark[data-base="run"] { --type: var(--run); }
+.pdf-mark[data-base="code"] { --type: var(--code); }
+.pdf-mark[data-base="output"] { --type: var(--output); }
+.pdf-mark[data-active] { background: color-mix(in oklch, var(--type) 44%, transparent); box-shadow: inset 0 -2px 0 var(--type), 0 0 0 1px var(--type); }
+.pdf-mark[data-flash] { animation: pdf-flash 2s var(--ease); }
+@keyframes pdf-flash { 0%, 45% { background: color-mix(in oklch, var(--type) 55%, transparent); box-shadow: inset 0 -2px 0 var(--type), 0 0 0 2px var(--type), 0 2px 10px color-mix(in oklch, var(--type) 60%, transparent); } 100% { box-shadow: inset 0 -2px 0 color-mix(in oklch, var(--type) 70%, transparent), 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .pdf-mark[data-flash] { animation: none; box-shadow: inset 0 -2px 0 var(--type), 0 0 0 2px var(--type); } }
+.pdf-mark.pending { background: color-mix(in oklch, var(--dg-accent) 22%, transparent); box-shadow: none; }
+.pdf-scroll[data-hovering] .textLayer span { cursor: pointer; }
+
+/* pdf.js's own text layer, trimmed to what selection needs. */
+.textLayer { position: absolute; text-align: initial; inset: 0; overflow: clip; opacity: 1; line-height: 1; z-index: 2; text-size-adjust: none; -webkit-text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; caret-color: CanvasText; --min-font-size: 1; --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size)); --min-font-size-inv: calc(1 / var(--min-font-size)); }
+.textLayer :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; user-select: text; -webkit-user-select: text; }
+.textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) { z-index: 1; --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height)); --scale-x: 1; --rotate: 0deg; transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
+.textLayer .markedContent { display: contents; }
+.textLayer span[role="img"] { user-select: none; cursor: default; }
+.textLayer ::selection { background: color-mix(in oklch, var(--dg-accent) 30%, transparent); color: transparent; }
+.textLayer br::selection { background: transparent; }
+.textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; cursor: default; user-select: none; }
+
+.popover { position: absolute; z-index: 30; background: var(--dg-page); border: 1px solid var(--dg-line); border-radius: var(--dg-radius); box-shadow: 0 6px 24px color-mix(in oklch, black 16%, transparent); }
+.pdf-tip { position: fixed; z-index: 40; max-width: 260px; padding: 4px 8px; background: var(--dg-page); border: 1px solid var(--dg-line); border-radius: var(--dg-radius); font-size: var(--small); box-shadow: 0 2px 8px color-mix(in oklch, black 12%, transparent); pointer-events: none; }
+
+/* Choosing a PDF: in the empty panel, or dropped down from the title. */
+.pdf-chooser { overflow: auto; padding: 24px; max-width: 640px; width: 100%; box-sizing: border-box; justify-self: center; }
+.pdf-chooser.popover { top: 40px; left: 6px; width: min(440px, calc(100% - 12px)); max-height: min(70vh, 560px); padding: 10px; }
+.pdf-intro h1 { font-size: calc(var(--dg-size) + 5px); margin: 8px 0 4px; }
+.pdf-intro p, .pdf-hint, .pdf-none { color: var(--dg-muted); margin: 0 0 12px; max-width: 60ch; }
+.pdf-chooser-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+.pdf-chooser-bar button { flex: none; display: inline-flex; gap: 4px; align-items: center; border-color: var(--dg-line); }
+.pdf-chooser h2 { font-size: var(--tiny); text-transform: uppercase; letter-spacing: 0.06em; color: var(--dg-muted); margin: 12px 0 4px; }
+.pdf-chooser ul { list-style: none; margin: 0; padding: 0; }
+.pdf-chooser li button { display: grid; gap: 1px; width: 100%; text-align: left; padding: 6px 8px; }
+.pdf-chooser li button[aria-current="true"] { background: var(--hover); }
+.pdf-doc-title { font-weight: 600; }
+.pdf-doc-meta { color: var(--dg-muted); font-size: var(--small); }
+
+.pdf-list { top: 40px; right: 6px; width: min(380px, calc(100% - 12px)); max-height: min(60vh, 480px); overflow: auto; padding: 4px; }
+.pdf-list button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: start; width: 100%; text-align: left; }
+.pdf-list-page { color: var(--dg-muted); font-size: var(--tiny); font-variant-numeric: tabular-nums; }
+.pdf-list p { color: var(--dg-muted); font-size: var(--small); margin: 6px 8px; }
+
+/* The highlight's popup: one choice of type, one of canvas. */
+.pdf-cut { position: fixed; width: min(380px, calc(100vw - 16px)); padding: 10px; display: grid; gap: 8px; outline: none; }
+.cut-field { display: grid; gap: 3px; }
+.cut-field > span { font-size: var(--tiny); color: var(--dg-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pdf-cut textarea { box-sizing: border-box; width: 100%; resize: vertical; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); padding: 6px 8px; background: var(--dg-page); font: var(--dg-size)/1.35 var(--dg-text-font); }
+.pdf-cut select { width: 100%; padding: 5px 6px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; }
+.pdf-cut input { width: 100%; }
+.cut-types { display: flex; flex-wrap: wrap; gap: 4px; }
+.cut-type { display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px 3px 4px; border-color: var(--dg-line); }
+.cut-type[aria-checked="true"] { border-color: var(--dg-accent); background: color-mix(in oklch, var(--dg-accent) 10%, transparent); }
+.cut-type kbd { font: 600 var(--tiny)/1 var(--dg-font); color: var(--dg-muted); }
+.cut-actions { display: flex; align-items: center; gap: 6px; }
+.cut-hint { flex: 1; color: var(--dg-muted); font-size: var(--tiny); }
+.cut-actions .primary, .pdf-shell .primary { background: var(--dg-accent); color: white; }
+.cut-actions .primary:disabled { opacity: 0.5; color: white; }
+
+.pdf-drop { position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in oklch, var(--dg-page) 82%, transparent); border: 2px dashed var(--dg-accent); pointer-events: none; }
+.pdf-drop span { padding: 8px 12px; background: var(--dg-page); border-radius: var(--dg-radius); font-weight: 600; }
+
+.cut-fixed { margin: 0; color: var(--dg-muted); font-size: var(--tiny); line-height: 1.35; }

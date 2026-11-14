@@ -133,7 +133,7 @@ test("MIRA types and relations keep their meaning", async () => {
   const paper = await call("paper.extract", EXTRACT);
   const view = await call("canvas.open", { id: paper.canvas });
   const labels = new Set(Object.values(view.nodes).map(({ typeLabel }) => typeLabel));
-  for (const label of ["Question", "Claim", "Evidence", "Study", "Protocol", "Source", "Request"]) assert.ok(labels.has(label), label);
+  for (const label of ["Question", "Claim", "Evidence", "Run", "Protocol", "Source", "Request"]) assert.ok(labels.has(label), label);
   const kinds = new Set(Object.values(view.relations).map(({ kind }) => kind));
   for (const kind of ["supports", "addresses", "grounds", "follows", "describesActivity", "requestTarget"]) assert.ok(kinds.has(kind), kind);
 });
@@ -353,10 +353,11 @@ test("a paper outside a lab leaves no breadcrumb", async () => {
   assert.deepEqual(asked, []);
 });
 
-test("AI comes with a lab, and asks about this canvas or the units picked", async () => {
+test("a lab's model answers about this canvas or the units picked, and with no lab the units are quoted", async () => {
   const graph = demo(NEPHRITIS);
   const solo = await setup(graph);
-  assert.equal((await solo.call("ai.status", {})).ready, false);
+  const alone = await solo.call("ai.status", {});
+  assert.deepEqual([alone.ready, alone.mode, alone.source], [true, "search-only", "none"]);
   const { call, calls, events, core } = await setup(graph, LINK);
   await core.createLab("Home Lab");
   assert.equal((await call("ai.status", {})).ready, true);
@@ -378,4 +379,226 @@ test("a relation from your own lab doesn't wait for a decision", async () => {
   const graph = foldRecords({ records: [inLab, outside], localSpace: "mine", trustedLab: "did:plc:lab" });
   assert.equal(graph.relations.get(inLab.id)!.state, "active");
   assert.equal(graph.relations.get(outside.id)!.state, "pending");
+});
+
+// ---- Extract graph: a saved extraction beside the file stands in for a server ----
+
+const SAVED: ExtractionGraph = {
+  source: "reservoir.pdf",
+  models: ["a-model"],
+  paper: { title: "A paper about reservoirs", doi: "https://doi.org/10.1000/abc", license: "CC BY 4.0", authors: [{ name: "A. Author" }] },
+  nodes: [
+    { id: "g0", type: "Question", text: "Does it work?", anchor: "does it work" },
+    { id: "g1", type: "Claim", text: "It works.", anchor: "it works" },
+    { id: "g2", type: "Evidence", text: "Error fell by half.", anchor: "error fell by half" },
+    { id: "g3", type: "SourceDocument", text: "An earlier paper someone else wrote." },
+    { id: "g4", type: "SourceDocument", text: "A paper about reservoirs, A. Author." },
+    { id: "g5", type: "Study", text: "A simulation." },
+  ],
+  edges: [
+    { relation: "addresses", subject: "g1", object: "g0" },
+    { relation: "supports", subject: "g2", object: "g1" },
+    { relation: "describesActivity", subject: "g4", object: "g5" },
+    { relation: "grounds", subject: "g5", object: "g2" },
+  ],
+};
+
+const asMira = (graph: ExtractionGraph) => ({
+  "@context": ["https://purl.org/mira-science/mira.jsonld", { x: "urn:test:" }],
+  "@graph": [
+    { "@id": "x:author-0", "@type": "UserAccount", accountName: "A. Author" },
+    ...["Question", "Claim", "Evidence", "SourceDocument", "Study"].map((name) => ({ "@id": `x:_schema_${name}`, "@type": "NodeSchema", subClassOf: [name] })),
+    ...graph.nodes.flatMap((node) => [
+      ...(node.anchor ? [{ "@id": `x:a-${node.id}`, "@type": "Item", content: node.anchor }] : []),
+      { "@id": `x:${node.id}`, "@type": [`x:_schema_${node.type}`, node.type], title: node.text, content: `${node.text}\n\nMore about it.`, ...(node.anchor ? { description: `x:a-${node.id}` } : {}) },
+    ]),
+    ...graph.edges.map((edge, index) => ({ "@id": `x:r${index}`, "@type": [`x:_rel_${edge.relation}`, edge.relation, "RelationInstance"], source: `x:${edge.subject}`, destination: `x:${edge.object}` })),
+  ],
+});
+
+const put = async (store: MemoryStore, name: string, body: string, mime = "application/json"): Promise<string> => {
+  const ref = `ref-${name}`;
+  store.assets.set(ref, { name, mime, dataUrl: `data:${mime};base64,${Buffer.from(body).toString("base64")}` });
+  return ref;
+};
+
+test("extract graph uses the saved extraction beside a PDF, and needs no server", async () => {
+  const { call, store, calls } = await setup(demo(NEPHRITIS));
+  const ref = await put(store, "reservoir.pdf", "%PDF-1.4", "application/pdf");
+  assert.equal(await call("paper.saved", { name: "reservoir.pdf", ref }), null);
+  await put(store, "reservoir.graph.json", JSON.stringify(SAVED));
+  const saved = await call("paper.saved", { name: "reservoir.pdf", ref });
+  assert.deepEqual(saved, { name: "reservoir.graph.json", title: "A paper about reservoirs", model: "a-model", units: 6, relations: 4 });
+
+  const paper = await call("paper.extract", { ref, saved: true });
+  assert.equal(paper.title, "A paper about reservoirs");
+  assert.equal(paper.units, 6);
+  assert.equal(paper.relations, 4);
+  assert.equal(paper.model, "a-model");
+  assert.equal(paper.server, "Saved extraction (reservoir.graph.json)");
+  assert.equal(paper.doi, "10.1000/abc", "a DOI written as a link is kept bare");
+  assert.equal(calls.stored.length, 0, "nothing went to a server");
+
+  const again = await call("paper.extract", { ref, saved: true });
+  assert.equal(again.id, paper.id, "the same saved file read twice is one paper");
+  assert.equal((await call("paper.list", {})).length, 1);
+});
+
+test("the paper's own source is told from the ones it cites, and keeps its DOI", async () => {
+  const { call, store } = await setup(demo(NEPHRITIS));
+  const ref = await put(store, "reservoir.pdf", "%PDF-1.4", "application/pdf");
+  const paper = await call("paper.extract", { ref, saved: { name: "reservoir.graph.json", text: JSON.stringify(SAVED) } });
+  const opened = await call("pdf.open", { ref, data: false });
+  assert.equal(opened.document.paper?.id, paper.id);
+  const view = await call("canvas.open", { id: paper.canvas });
+  const source = view.nodes[opened.document.source!]!;
+  assert.match(source.title, /A paper about reservoirs/, "not the paper it cites, though that one comes first");
+  assert.equal(opened.marks.length, 3, "every unit with a passage is marked in the reader");
+});
+
+test("MIRA's own JSON-LD reads into the same graph", async () => {
+  const { call, store } = await setup(demo(NEPHRITIS));
+  const ref = await put(store, "reservoir.pdf", "%PDF-1.4", "application/pdf");
+  await put(store, "reservoir.mira.jsonld", JSON.stringify(asMira(SAVED)), "application/ld+json");
+  const saved = await call("paper.saved", { name: "reservoir.pdf", ref });
+  assert.equal(saved?.name, "reservoir.mira.jsonld");
+  assert.equal(saved?.units, 6);
+  assert.equal(saved?.relations, 4);
+  const paper = await call("paper.extract", { ref, saved: true });
+  const view = await call("canvas.open", { id: paper.canvas });
+  const titles = Object.values(view.nodes).map(({ title }) => title);
+  assert.ok(titles.includes("It works."), "the title is the unit's own words, without the description");
+  assert.equal(paper.authors[0], "A. Author");
+});
+
+test("a picked PDF is kept for the reader, and a file that isn't an extraction says so", async () => {
+  const { call, store } = await setup(demo(NEPHRITIS));
+  await assert.rejects(call("paper.saved", { name: "x.graph.json", text: "{\"hello\":1}" }), /isn't a saved extraction/);
+  await assert.rejects(call("paper.saved", { name: "x.graph.json", text: "not json" }), /isn't valid JSON/);
+  await assert.rejects(call("paper.extract", { file: FILE, saved: true }), /No saved extraction/);
+  const pdf = { name: "reservoir.pdf", mediaType: "application/pdf", dataBase64: Buffer.from("%PDF-1.4").toString("base64") };
+  await call("paper.extract", { file: pdf, saved: { name: "reservoir.graph.json", text: JSON.stringify(SAVED) } });
+  assert.ok([...store.assets.values()].some((asset) => asset.name === "reservoir.pdf"), "the reader can find the file by name");
+  const listed = await call("pdf.list", {});
+  assert.equal(listed[0]?.paper?.title, "A paper about reservoirs");
+});
+
+// ---- Reading across papers ----
+
+const METHODS: ExtractionGraph = {
+  ...SAVED,
+  nodes: [
+    ...SAVED.nodes,
+    { id: "p1", type: "Protocol", text: "Drive the reservoir with a Lorenz signal." },
+    { id: "p2", type: "Protocol", text: "Fit the readout by ridge regression." },
+    { id: "p3", type: "Protocol", text: "Compute the testing error." },
+  ],
+  edges: [...SAVED.edges, { relation: "follows", subject: "g5", object: "p1" }, { relation: "follows", subject: "g5", object: "p2" }, { relation: "follows", subject: "g5", object: "p3" }],
+};
+
+const OTHER: ExtractionGraph = {
+  source: "capacity.pdf",
+  models: ["a-model"],
+  paper: { title: "Capacity of dynamical systems", authors: [{ name: "Joni Dambre" }, { name: "David Verstraeten" }, { name: "Serge Massar" }] },
+  nodes: [
+    { id: "c1", type: "Claim", text: "Reservoir error falls when memory capacity matches the task." },
+    { id: "c2", type: "Evidence", text: "Measured capacity stayed near the number of nodes." },
+    { id: "c3", type: "SourceDocument", text: "Dambre et al., Sci. Rep. 2, 514 (2012)." },
+    { id: "c4", type: "Study", text: "A capacity measurement." },
+  ],
+  edges: [
+    { relation: "supports", subject: "c2", object: "c1" },
+    { relation: "describesActivity", subject: "c3", object: "c4" },
+    { relation: "grounds", subject: "c4", object: "c2" },
+  ],
+};
+
+const twoPapers = async () => {
+  const made = await setup(demo(NEPHRITIS));
+  const first = await made.call("paper.extract", { file: { ...FILE, name: "reservoir-2021.pdf" }, saved: { name: "reservoir-2021.graph.json", text: JSON.stringify(METHODS) } });
+  const second = await made.call("paper.extract", { file: { ...FILE, name: "capacity.pdf" }, saved: { name: "capacity.graph.json", text: JSON.stringify(OTHER) } });
+  const unitsOf = async (canvas: string) => Object.values((await made.call("canvas.open", { id: canvas })).nodes);
+  const [a, b] = [await unitsOf(first.canvas), await unitsOf(second.canvas)];
+  const named = (start: string) => [...a, ...b].find((unit) => unit.title.startsWith(start))!;
+  return { ...made, first, second, named };
+};
+
+test("a unit read from a paper says which, in the few words a person would", async () => {
+  const { named } = await twoPapers();
+  assert.equal(named("It works").paper?.label, "Author 2021", "one author, and the year from the file's name");
+  assert.equal(named("Reservoir error falls").paper?.label, "Dambre et al. 2012", "three authors, and the year from the paper's own citation");
+  assert.equal(named("Reservoir error falls").paper?.title, "Capacity of dynamical systems");
+});
+
+test("a run a paper reports shows every method it followed, and isn't held to a lab's bookkeeping", async () => {
+  const { call, named } = await twoPapers();
+  const method = await call("process.method", { id: named("Error fell by half").id });
+  const roles = method.chains[0]!.steps.map((step) => step.role);
+  assert.deepEqual(roles, ["protocol", "protocol", "protocol", "run", "source", "evidence"]);
+  assert.equal(method.chains[0]!.ungrounded, false, "it rests on a run and on the paper");
+  assert.equal(method.chains[0]!.steps.find((step) => step.role === "run")!.detail, undefined, "the day it was imported isn't when it ran");
+  assert.ok(!method.problems.some((problem) => problem.rule === "evidence-ungrounded"));
+
+  const page = await call("process.run", { id: named("A simulation").id });
+  assert.equal(page.protocol?.unit?.title, "Drive the reservoir with a Lorenz signal.");
+  assert.equal(page.alsoFollowed.length, 2);
+  assert.equal(page.reportedIn?.paper?.label, "Author 2021");
+  assert.match(page.reportedIn?.source?.title ?? "", /A paper about reservoirs/);
+  assert.deepEqual(page.problems.map((problem) => problem.rule), [], "no study and no code is how a paper's run arrives");
+  const listed = (await call("run.list", {})).find((item) => item.run.id === page.run.id)!;
+  assert.equal(listed.reported, true);
+});
+
+test("a type someone made under the same name but another meaning isn't taken for MIRA's", async () => {
+  const { call, core } = await setup(demo(NEPHRITIS));
+  const { createNodeType } = await import("@dg/contract/records.ts");
+  const odd = createNodeType({ by: { id: "did:plc:someone", name: "Someone" }, space: "s", at: new Date().toISOString(), fields: { label: "Protocol", base: "source", abbreviation: "PRO", titleFormat: "PRO - {content}" } } as never);
+  await core.take([odd]);
+  const paper = await call("paper.extract", { file: { ...FILE, name: "reservoir-2021.pdf" }, saved: { name: "reservoir-2021.graph.json", text: JSON.stringify(METHODS) } });
+  const protocol = Object.values((await call("canvas.open", { id: paper.canvas })).nodes).find((unit) => unit.title.startsWith("Fit the readout"))!;
+  assert.equal(protocol.base, "protocol");
+});
+
+test("a relation stated away from a canvas is drawn on the canvases that hold both units", async () => {
+  const { call, named } = await twoPapers();
+  const canvas = await call("canvas.create", { title: "Across papers" });
+  const [mine, theirs] = [named("It works"), named("Reservoir error falls")];
+  await call("units.put", { canvas: canvas.id, nodes: [mine.id, theirs.id] });
+  const option = (await call("relation.options", { source: theirs.id, target: mine.id })).find((item) => item.label === "Supports")!;
+  const edges = async () => (await call("canvas.open", { id: canvas.id })).items.filter(({ item }) => "fromNode" in item).length;
+  assert.equal(await edges(), 0);
+  await call("relation.assert", { type: option.type, source: theirs.id, target: mine.id });
+  assert.equal(await edges(), 0, "a canvas draws its own, so nothing is drawn unless asked");
+  await call("relation.assert", { type: option.type, source: theirs.id, target: mine.id, draw: true });
+  assert.equal(await edges(), 1);
+  await call("relation.assert", { type: option.type, source: theirs.id, target: mine.id, draw: true });
+  assert.equal(await edges(), 1, "and only once");
+});
+
+test("a claim says what it rests on through other claims, and which papers that comes from", async () => {
+  const { call, named } = await twoPapers();
+  const own = await call("node.create", { title: "Capacity, not the reservoir, is what matters.", type: named("It works").type! });
+  for (const from of [named("It works"), named("Reservoir error falls")]) {
+    const option = (await call("relation.options", { source: from.id, target: own.id })).find((item) => item.label === "Supports")!;
+    await call("relation.assert", { type: option.type, source: from.id, target: own.id });
+  }
+  const method = await call("process.method", { id: own.id });
+  assert.equal(method.rests?.claims, 2);
+  assert.equal(method.rests?.evidence, 2);
+  assert.equal(method.rests?.runs, 2);
+  assert.deepEqual(method.rests?.papers.map((paper) => paper.label).sort(), ["Author 2021", "Dambre et al. 2012"]);
+  assert.equal((await call("process.method", { id: named("It works").id })).rests, undefined, "a claim resting straight on evidence has its chains instead");
+});
+
+test("units that read alike in other papers are offered, and never the same paper's or ones already related", async () => {
+  const { call, named } = await twoPapers();
+  const own = await call("node.create", { title: "Reservoir error depends on memory capacity matching the task.", type: named("It works").type! });
+  const found = await call("node.similar", { id: own.id });
+  assert.equal(found[0]?.node.title, "Reservoir error falls when memory capacity matches the task.");
+  assert.ok(found[0]!.shared.length >= 2, "it says which words they share");
+  const fromSamePaper = await call("node.similar", { id: named("Reservoir error falls").id });
+  assert.ok(fromSamePaper.every((item) => item.node.paper?.label !== "Dambre et al. 2012"));
+  const option = (await call("relation.options", { source: found[0]!.node.id, target: own.id })).find((item) => item.label === "Supports")!;
+  await call("relation.assert", { type: option.type, source: found[0]!.node.id, target: own.id });
+  assert.ok(!(await call("node.similar", { id: own.id })).some((item) => item.node.id === found[0]!.node.id), "once related, it's no longer a lead");
 });

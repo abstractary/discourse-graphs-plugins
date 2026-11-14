@@ -1,15 +1,21 @@
+import { trimmedUrl as trimmed } from "@dg/contract/urls.ts";
 import type {
   ComputeServer,
   ExtractionGraph,
+  LabInvite,
   LabLink,
   ServerInfo,
   ServerOption,
   Services,
 } from "@dg/contract/services.ts";
 import type { DgRecord } from "@dg/contract/records.ts";
+import { createScholarly } from "./scholarly.ts";
+import { createZenodo } from "./zenodo.ts";
+import { createZotero } from "./zotero.ts";
 
 const SERVERS_KEY = "compute-servers";
 const LINK_KEY = "lab-link";
+const REMOVED_KEY = "lab-removed";
 const CHUNK = 32_768;
 
 /** Both run from the repo with one command. A real install would point at DG's own service. */
@@ -25,7 +31,6 @@ type Store = {
 
 type Request = { method?: string; body?: unknown; token?: string };
 
-const trimmed = (url: string): string => url.replace(/\/+$/, "");
 
 const headers = ({ body, token }: Request): Record<string, string> => ({
   ...(body === undefined ? {} : { "content-type": "application/json" }),
@@ -56,10 +61,16 @@ const readLines = async (response: Response, onLine: (line: Record<string, unkno
 export const createServices = ({
   fetch: send,
   store,
+  outside,
 }: {
   /** Passed in, so each base can use whichever client gets past its own limits. */
   fetch: typeof fetch;
   store: Store;
+  /**
+   * For the registries and landing pages, which are other people's sites: a client that can read
+   * their answers and their `Link` headers, where the base's own `fetch` is held back by CORS.
+   */
+  outside?: typeof fetch;
 }): Services => {
   const open = async (url: string, path: string, request: Request = {}): Promise<Response> => {
     let response: Response;
@@ -73,7 +84,15 @@ export const createServices = ({
       throw new Error(`Couldn't reach ${url}. Check that the server is running.`);
     }
     if (response.ok) return response;
-    const failed = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
+    const failed = (await response.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
+    if (failed?.error?.code === "removed") {
+      // The PI took this person out of the lab. The link is dropped, so nothing more is sent or asked for.
+      const link = (await store.get(LINK_KEY)) as LabLink | null;
+      if (link && trimmed(link.server) === trimmed(url)) {
+        await store.set(REMOVED_KEY, link.name);
+        await store.set(LINK_KEY, null);
+      }
+    }
     throw new Error(failed?.error?.message ?? `The server answered ${response.status}.`);
   };
   const json = async <T>(url: string, path: string, request?: Request): Promise<T> =>
@@ -154,12 +173,32 @@ export const createServices = ({
     pushRecords: async (link, records) => {
       await json(link.server, labPath(link, "/records"), { token: link.token!, body: { records } });
     },
-    pullRecords: (link, after) =>
-      json<{ records: DgRecord[]; next?: string; done: boolean }>(
+    invite: async (link, { uses, days }) =>
+      (await json<{ invite: LabInvite }>(link.server, labPath(link, "/invites"), { token: link.token!, body: { ...(uses ? { uses } : {}), ...(days ? { days } : {}) } })).invite,
+    invites: async (link) => (await json<{ invites: LabInvite[] }>(link.server, labPath(link, "/invites"), { token: link.token! })).invites,
+    revokeInvite: async (link, id) => {
+      await json(link.server, labPath(link, `/invites/${encodeURIComponent(id)}`), { token: link.token!, method: "DELETE" });
+    },
+    acceptInvite: async ({ server, id, code, person }) => {
+      const joined = await json<{ lab: { id: string; name: string }; token: string; tokenKind?: "personal" | "team" }>(server, `/v1/labs/${encodeURIComponent(id)}/invites/accept`, { body: { code, person } });
+      await store.set(REMOVED_KEY, null);
+      return { server: trimmed(server), id: joined.lab.id, name: joined.lab.name, token: joined.token, tokenKind: joined.tokenKind ?? "personal", role: "member" };
+    },
+    removeMember: async (link, did) => {
+      await json(link.server, labPath(link, `/members/${encodeURIComponent(did)}`), { token: link.token!, method: "DELETE" });
+    },
+    removedFrom: async () => ((await store.get(REMOVED_KEY)) as string | null) ?? null,
+    forgetRemoved: () => store.set(REMOVED_KEY, null),
+    pullRecords: async (link, after) => {
+      const page = await json<{ records: DgRecord[]; next?: string | number; done: boolean; now?: string }>(
         link.server,
         labPath(link, `/records?limit=500${after ? `&after=${encodeURIComponent(after)}` : ""}`),
         { token: link.token! },
-      ),
+      );
+      // The server counts its place as a number. Here it is only ever handed back, so it is kept as text.
+      const { next, ...rest } = page;
+      return { ...rest, ...(next === undefined ? {} : { next: String(next) }) };
+    },
 
     uploadPaper: async (link, body) => {
       await json(link.server, labPath(link, "/papers"), { token: link.token!, body });
@@ -181,8 +220,10 @@ export const createServices = ({
       await json(link.server, labPath(link, `/papers/${encodeURIComponent(paper)}/breadcrumbs`), { token: link.token!, body: { person } });
     },
 
-    ask: async ({ link, question, units, grounded, onDelta }) => {
-      const response = await open(link.server, "/v1/ai/ask", { token: link.token!, body: { question, units, grounded } });
+    ask: async ({ link, question, units, grounded, provider, onDelta }) => {
+      // The server picks the address for a provider itself, so a base URL is not sent.
+      const own = provider ? { kind: provider.provider, model: provider.model, key: provider.key } : undefined;
+      const response = await open(link.server, "/v1/ai/ask", { token: link.token!, body: { question, units, grounded, ...(own ? { provider: own } : {}) } });
       let answer: Awaited<ReturnType<Services["ask"]>> | null = null;
       let failure: string | null = null;
       await readLines(response, (line) => {
@@ -194,5 +235,9 @@ export const createServices = ({
       if (!answer) throw new Error("The server stopped before answering. Try again.");
       return answer;
     },
+
+    ...createScholarly({ fetch: outside ?? send }),
+    zotero: createZotero({ fetch: outside ?? send }),
+    deposit: createZenodo({ fetch: outside ?? send }),
   };
 };

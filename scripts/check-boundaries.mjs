@@ -13,6 +13,7 @@ const ALLOWED = {
   "packages/surfaces": ["@dg/contract", "@dg/layout"],
   "plugins/obsidian": ["@dg/contract", "@dg/core", "@dg/native", "@dg/sync"],
   "plugins/roam": ["@dg/contract", "@dg/core", "@dg/native", "@dg/sync"],
+  local: ["@dg/contract", "@dg/core", "@dg/sync"],
   server: [],
 };
 
@@ -23,6 +24,7 @@ const FORBIDDEN = {
   "packages/layout": ["obsidian", "react", "@xyflow/react"],
   "packages/sync": ["obsidian", "react", "@xyflow/react"],
   "packages/surfaces": ["obsidian"],
+  local: ["obsidian", "react", "@xyflow/react"],
 };
 
 const walk = (folder) =>
@@ -43,7 +45,7 @@ for (const [module, allowed] of Object.entries(ALLOWED)) {
   }
   for (const file of files) {
     const text = readFileSync(file, "utf8");
-    for (const [, specifier] of text.matchAll(/(?:from|import)\s*\(?\s*"([^"]+)"/g)) {
+    for (const [, specifier] of text.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)) {
       const scope = /^@dg\/[a-z-]+/.exec(specifier)?.[0];
       if (scope && !allowed.includes(scope)) problems.push(`${file} imports ${scope}, which ${module} may not use`);
       if ((FORBIDDEN[module] ?? []).some((name) => specifier === name || specifier.startsWith(`${name}/`))) {

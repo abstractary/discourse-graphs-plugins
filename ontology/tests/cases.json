@@ -1,0 +1,1022 @@
+{
+ "note": "One wrong graph per rule. `patch` merges into the base node with that short id; null removes a key. `_:` is a pin, which has no id. Run by ontology/validate.py --self-test and test/shapes.test.ts.",
+ "base": [
+  {
+   "id": "urn:dg:q",
+   "type": "Question",
+   "title": "q",
+   "attributedTo": [
+    "did:plc:me"
+   ]
+  },
+  {
+   "id": "urn:dg:p",
+   "type": "Protocol",
+   "title": "p",
+   "attributedTo": [
+    "did:plc:me"
+   ],
+   "versionCid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "steps": [
+    "Thaw",
+    "Stain",
+    "Image"
+   ],
+   "materials": [
+    "RRID:AB_2314866"
+   ]
+  },
+  {
+   "id": "urn:dg:s",
+   "type": "Study",
+   "title": "s",
+   "attributedTo": [
+    "did:plc:me"
+   ],
+   "question": "urn:dg:q",
+   "protocols": [
+    "urn:dg:p"
+   ],
+   "design": "experimental",
+   "conditions": [
+    "treated",
+    "control"
+   ],
+   "sampleSize": 12
+  },
+  {
+   "id": "urn:dg:c",
+   "type": "Code",
+   "title": "c",
+   "attributedTo": [
+    "did:plc:me"
+   ],
+   "sourceCid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "id": "urn:dg:r",
+   "type": "Run",
+   "title": "r",
+   "attributedTo": [
+    "did:plc:me"
+   ],
+   "partOf": "urn:dg:s",
+   "status": "completed",
+   "condition": "treated",
+   "follows": {
+    "type": "Pin",
+    "target": "urn:dg:p",
+    "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "instrument": [
+    {
+     "type": "Pin",
+     "target": "urn:dg:c",
+     "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ],
+   "startedAt": "2026-11-01T09:00:00Z",
+   "endedAt": "2026-11-01T10:00:00Z",
+   "agents": [
+    "https://orcid.org/0000-0002-1825-0097"
+   ]
+  },
+  {
+   "id": "urn:dg:o",
+   "type": "Output",
+   "title": "o",
+   "attributedTo": [
+    "did:plc:me"
+   ],
+   "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "generatedBy": "urn:dg:r",
+   "outputKind": "figure",
+   "byteSize": 10
+  },
+  {
+   "id": "urn:dg:src",
+   "type": "Source",
+   "title": "src",
+   "attributedTo": [
+    "did:plc:me"
+   ]
+  },
+  {
+   "id": "urn:dg:cl",
+   "type": "Claim",
+   "title": "cl",
+   "attributedTo": [
+    "did:plc:me"
+   ],
+   "addresses": [
+    "urn:dg:q"
+   ]
+  },
+  {
+   "id": "urn:dg:e",
+   "type": "Evidence",
+   "title": "e",
+   "attributedTo": [
+    "did:plc:me"
+   ],
+   "observationBase": [
+    {
+     "type": "Pin",
+     "target": "urn:dg:o",
+     "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   ],
+   "supports": [
+    "urn:dg:cl"
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "name": "the base graph is clean",
+   "patch": {},
+   "expect": []
+  },
+  {
+   "name": "unit without a title",
+   "patch": {
+    "r": {
+     "title": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "unit-title",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "unit attributed to nobody",
+   "patch": {
+    "o": {
+     "attributedTo": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:o",
+     "rule": "unit-attributed",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "pin without a target",
+   "patch": {
+    "r": {
+     "used": [
+      {
+       "type": "Pin",
+       "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "_:",
+     "rule": "pin-target",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "pin with a malformed version",
+   "patch": {
+    "r": {
+     "follows": {
+      "type": "Pin",
+      "target": "urn:dg:p",
+      "cid": "sha256:abc"
+     }
+    }
+   },
+   "expect": [
+    {
+     "focus": "_:",
+     "rule": "pin-cid",
+     "severity": "Violation"
+    },
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-protocol-drift",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "protocol implemented by a run",
+   "patch": {
+    "p": {
+     "implementedBy": [
+      "urn:dg:r"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:p",
+     "rule": "protocol-implementedBy",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "study question is a claim",
+   "patch": {
+    "s": {
+     "question": "urn:dg:cl"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:s",
+     "rule": "study-question",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "study protocol is code",
+   "patch": {
+    "s": {
+     "protocols": [
+      "urn:dg:c"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:s",
+     "rule": "study-protocols",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "study design not in the list",
+   "patch": {
+    "s": {
+     "design": "vibes"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:s",
+     "rule": "study-design",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "study sample size negative",
+   "patch": {
+    "s": {
+     "sampleSize": -3
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:s",
+     "rule": "study-sampleSize",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "study with no question",
+   "patch": {
+    "s": {
+     "question": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:s",
+     "rule": "study-no-question",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "study with no protocol",
+   "patch": {
+    "s": {
+     "protocols": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:s",
+     "rule": "study-no-protocol",
+     "severity": "Info"
+    }
+   ]
+  },
+  {
+   "name": "run part of a protocol",
+   "patch": {
+    "r": {
+     "partOf": "urn:dg:p"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-partOf",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run follows two protocols",
+   "patch": {
+    "r": {
+     "follows": [
+      {
+       "type": "Pin",
+       "target": "urn:dg:p",
+       "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+       "type": "Pin",
+       "target": "urn:dg:p"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-follows",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run follows code",
+   "patch": {
+    "r": {
+     "follows": {
+      "type": "Pin",
+      "target": "urn:dg:c",
+      "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     }
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-follows-target",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run executes a protocol",
+   "patch": {
+    "r": {
+     "instrument": [
+      {
+       "type": "Pin",
+       "target": "urn:dg:p",
+       "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-instrument-target",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run status not in the list",
+   "patch": {
+    "r": {
+     "status": "done"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-status",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run start is not a date and time",
+   "patch": {
+    "r": {
+     "startedAt": "yesterday",
+     "endedAt": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-started",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run end is not a date and time",
+   "patch": {
+    "r": {
+     "endedAt": "later"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-ended",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run ended before it started",
+   "patch": {
+    "r": {
+     "endedAt": "2026-10-31T10:00:00Z"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-time-order",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run agent is a bare ORCID",
+   "patch": {
+    "r": {
+     "agents": [
+      "0000-0002-1825-0097"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-agents",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run in no study",
+   "patch": {
+    "r": {
+     "partOf": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-no-study",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "run that is also a protocol",
+   "patch": {
+    "r": {
+     "type": [
+      "Run",
+      "Protocol"
+     ],
+     "versionCid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-not-plan",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run with no protocol or code",
+   "patch": {
+    "r": {
+     "follows": null,
+     "instrument": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-no-method",
+     "severity": "Info"
+    }
+   ]
+  },
+  {
+   "name": "run code not pinned",
+   "patch": {
+    "r": {
+     "instrument": [
+      {
+       "type": "Pin",
+       "target": "urn:dg:c"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "_:",
+     "rule": "run-code-unpinned",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "code changed after the run",
+   "patch": {
+    "r": {
+     "instrument": [
+      {
+       "type": "Pin",
+       "target": "urn:dg:c",
+       "cid": "bafkreibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-code-drift",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "protocol edited after the run",
+   "patch": {
+    "r": {
+     "follows": {
+      "type": "Pin",
+      "target": "urn:dg:p",
+      "cid": "bafkreibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-protocol-drift",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "run condition its study doesn't list",
+   "patch": {
+    "r": {
+     "condition": "sham"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-condition-unknown",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "code without a source hash",
+   "patch": {
+    "c": {
+     "sourceCid": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:c",
+     "rule": "code-sourceCid",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "output without a hash",
+   "patch": {
+    "o": {
+     "cid": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:o",
+     "rule": "output-cid",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "output from no run",
+   "patch": {
+    "o": {
+     "generatedBy": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:o",
+     "rule": "output-generatedBy",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "output generated by a study",
+   "patch": {
+    "o": {
+     "generatedBy": "urn:dg:s"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:o",
+     "rule": "output-generatedBy",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "output with a negative size",
+   "patch": {
+    "o": {
+     "byteSize": -1
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:o",
+     "rule": "output-byteSize",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "output kind not in the list",
+   "patch": {
+    "o": {
+     "outputKind": "vibe"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:o",
+     "rule": "output-kind",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "output derived from a run",
+   "patch": {
+    "o": {
+     "derivedFrom": [
+      {
+       "type": "Pin",
+       "target": "urn:dg:r"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:o",
+     "rule": "output-derivedFrom-target",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "evidence grounded in a study",
+   "patch": {
+    "e": {
+     "isGroundedIn": "urn:dg:s"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:e",
+     "rule": "evidence-isGroundedIn",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "evidence source is a claim",
+   "patch": {
+    "e": {
+     "sourceDocument": "urn:dg:cl"
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:e",
+     "rule": "evidence-sourceDocument",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "evidence rests on a run",
+   "patch": {
+    "e": {
+     "observationBase": [
+      {
+       "type": "Pin",
+       "target": "urn:dg:r",
+       "cid": "bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:e",
+     "rule": "evidence-observationBase-target",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "evidence informs a claim",
+   "patch": {
+    "e": {
+     "informs": [
+      "urn:dg:cl"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:e",
+     "rule": "evidence-informs",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "evidence with nothing behind it",
+   "patch": {
+    "e": {
+     "observationBase": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:e",
+     "rule": "evidence-ungrounded",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "evidence from a source alone is grounded",
+   "patch": {
+    "e": {
+     "observationBase": null,
+     "sourceDocument": "urn:dg:src"
+    }
+   },
+   "expect": []
+  },
+  {
+   "name": "evidence output not pinned",
+   "patch": {
+    "e": {
+     "observationBase": [
+      {
+       "type": "Pin",
+       "target": "urn:dg:o"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "_:",
+     "rule": "evidence-output-unpinned",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "output changed after the evidence",
+   "patch": {
+    "e": {
+     "observationBase": [
+      {
+       "type": "Pin",
+       "target": "urn:dg:o",
+       "cid": "bafkreibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:e",
+     "rule": "evidence-output-drift",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "claim addresses evidence",
+   "patch": {
+    "cl": {
+     "addresses": [
+      "urn:dg:e"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:cl",
+     "rule": "claim-addresses",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "claim nothing supports",
+   "patch": {
+    "e": {
+     "supports": null
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:cl",
+     "rule": "claim-unsupported",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "evidence supports a question",
+   "patch": {
+    "e": {
+     "supports": [
+      "urn:dg:q"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:q",
+     "rule": "argument-object",
+     "severity": "Violation"
+    },
+    {
+     "focus": "urn:dg:cl",
+     "rule": "claim-unsupported",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "a run supports a claim",
+   "patch": {
+    "r": {
+     "supports": [
+      "urn:dg:cl"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "argument-subject",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "a claim may support a claim",
+   "patch": {},
+   "add": [
+    {
+     "id": "urn:dg:cl2",
+     "type": "Claim",
+     "title": "cl2",
+     "attributedTo": [
+      "did:plc:me"
+     ],
+     "supports": [
+      "urn:dg:cl"
+     ],
+     "addresses": [
+      "urn:dg:q"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "focus": "urn:dg:cl2",
+     "rule": "claim-unsupported",
+     "severity": "Warning"
+    }
+   ]
+  },
+  {
+   "name": "evidence addresses a question",
+   "patch": {
+    "e": {
+     "addresses": [
+      "urn:dg:q"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:e",
+     "rule": "addresses-subject",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "source describes a study",
+   "patch": {
+    "src": {
+     "describesActivity": [
+      "urn:dg:s"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:src",
+     "rule": "source-describesActivity",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "protocol with a malformed version",
+   "patch": {
+    "p": {
+     "versionCid": "v2"
+    },
+    "r": {
+     "follows": {
+      "type": "Pin",
+      "target": "urn:dg:p"
+     }
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:p",
+     "rule": "protocol-versionCid",
+     "severity": "Violation"
+    }
+   ]
+  },
+  {
+   "name": "run with two conditions",
+   "patch": {
+    "r": {
+     "condition": [
+      "treated",
+      "control"
+     ]
+    }
+   },
+   "expect": [
+    {
+     "focus": "urn:dg:r",
+     "rule": "run-condition",
+     "severity": "Violation"
+    }
+   ]
+  }
+ ]
+}

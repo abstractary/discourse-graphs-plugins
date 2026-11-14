@@ -1,0 +1,178 @@
+{
+ "status": "ok",
+ "message": {
+  "items": [
+   {
+    "DOI": "10.1063/5.0038163",
+    "title": [
+     "Do reservoir computers work best at the edge of chaos?"
+    ],
+    "container-title": [
+     "Chaos: An Interdisciplinary Journal of Nonlinear Science"
+    ],
+    "publisher": "AIP Publishing",
+    "issued": {
+     "date-parts": [
+      [
+       2020,
+       12,
+       1
+      ]
+     ]
+    },
+    "published": {
+     "date-parts": [
+      [
+       2020,
+       12,
+       1
+      ]
+     ]
+    },
+    "volume": "30",
+    "issue": "12",
+    "article-number": "121109",
+    "is-referenced-by-count": 81,
+    "type": "journal-article",
+    "author": [
+     {
+      "given": "T. L.",
+      "family": "Carroll",
+      "ORCID": "https://orcid.org/0000-0002-2371-2049",
+      "affiliation": [
+       {
+        "name": "U.S. Naval Research Lab , Washington, DC 20375, USA"
+       }
+      ]
+     }
+    ],
+    "reference": [
+     {
+      "key": "2024031516341117000_c1"
+     },
+     {
+      "key": "2024031516341117000_c2",
+      "DOI": "10.1016/0167-2789(90)90064-V"
+     },
+     {
+      "key": "2024031516341117000_c3"
+     },
+     {
+      "key": "2024031516341117000_c4"
+     }
+    ]
+   },
+   {
+    "DOI": "10.1063/10.0003206",
+    "title": [
+     "Performance limits of reservoir computers at the edge of chaos"
+    ],
+    "container-title": [
+     "Scilight"
+    ],
+    "publisher": "AIP Publishing",
+    "issued": {
+     "date-parts": [
+      [
+       2020,
+       12,
+       29
+      ]
+     ]
+    },
+    "published": {
+     "date-parts": [
+      [
+       2020,
+       12,
+       29
+      ]
+     ]
+    },
+    "volume": "2021",
+    "issue": "1",
+    "article-number": "011104",
+    "is-referenced-by-count": 0,
+    "type": "journal-article",
+    "author": [
+     {
+      "given": "Matthew",
+      "family": "Ishimaru",
+      "affiliation": []
+     }
+    ]
+   },
+   {
+    "DOI": "10.1016/j.chaos.2022.112688",
+    "title": [
+     "Creating new chaotic signals with reservoir computers"
+    ],
+    "container-title": [
+     "Chaos, Solitons &amp; Fractals"
+    ],
+    "publisher": "Elsevier BV",
+    "issued": {
+     "date-parts": [
+      [
+       2022,
+       11
+      ]
+     ]
+    },
+    "published": {
+     "date-parts": [
+      [
+       2022,
+       11
+      ]
+     ]
+    },
+    "volume": "164",
+    "page": "112688",
+    "article-number": "112688",
+    "is-referenced-by-count": 16,
+    "type": "journal-article",
+    "author": [
+     {
+      "given": "Thomas L.",
+      "family": "Carroll",
+      "ORCID": "https://orcid.org/0000-0002-2371-2049",
+      "affiliation": []
+     }
+    ],
+    "license": [
+     {
+      "URL": "https://www.elsevier.com/tdm/userlicense/1.0/",
+      "content-version": "tdm"
+     },
+     {
+      "URL": "https://www.elsevier.com/legal/tdmrep-license",
+      "content-version": "tdm"
+     },
+     {
+      "URL": "http://www.elsevier.com/open-access/userlicense/1.0/",
+      "content-version": "am"
+     }
+    ],
+    "reference": [
+     {
+      "key": "10.1016/j.chaos.2022.112688_b1",
+      "DOI": "10.1103/PhysRevLett.71.65"
+     },
+     {
+      "key": "10.1016/j.chaos.2022.112688_b2",
+      "DOI": "10.1142/S0218127492000562"
+     },
+     {
+      "key": "10.1016/j.chaos.2022.112688_b3",
+      "DOI": "10.1103/PhysRevLett.73.1781"
+     },
+     {
+      "key": "10.1016/j.chaos.2022.112688_b4",
+      "DOI": "10.1142/S0218127497001886"
+     }
+    ]
+   }
+  ]
+ }
+}

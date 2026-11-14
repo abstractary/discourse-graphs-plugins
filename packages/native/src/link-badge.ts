@@ -66,7 +66,7 @@ export const installBadgeStyle = (): (() => void) => {
 
 const describe = ({ count, typeLabel }: LinkBadge): string => {
   const relations = count === 0 ? "no relations yet" : `${count} ${count === 1 ? "relation" : "relations"}`;
-  return `${typeLabel ?? "Node"}, ${relations}. Open context`;
+  return `${typeLabel ?? "Unit"}, ${relations}. Open context`;
 };
 
 export const refOfBadge = (element: Element): string | null => element.getAttribute(REF_ATTR);

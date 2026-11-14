@@ -1,0 +1,53 @@
+{
+  "lexicon": 1,
+  "id": "org.discoursegraphs.canvasRelease",
+  "description": "A named, pinned point in a canvas's history. Each card's unit is pinned by its content hash, so the release can be cited, forked and compared.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "canvas",
+          "name",
+          "units",
+          "createdAt"
+        ],
+        "properties": {
+          "canvas": {
+            "type": "string",
+            "format": "uri"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "parent": {
+            "type": "string",
+            "format": "uri"
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "ref",
+              "ref": "at.linkedopendata.defs#ref"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

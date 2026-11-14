@@ -20,6 +20,8 @@ export type GraphEdge = {
 export type GraphPaper = {
   title: string;
   doi?: string;
+  url?: string;
+  license?: string;
   authors?: unknown[];
 };
 

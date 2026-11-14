@@ -1,0 +1,47 @@
+/* A person's profile: a readable column, who sees what always stated above the work. */
+.profile { box-sizing: border-box; max-width: 760px; min-height: 100%; margin: 0 auto; padding: 18px 18px 60px; background: var(--dg-page); overflow-wrap: anywhere; }
+.profile-head { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; }
+.profile-face { flex: none; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid color-mix(in oklch, var(--dg-muted) 50%, transparent); border-radius: 50%; color: var(--dg-muted); font: 600 15px/1 var(--dg-font); }
+.profile-who { flex: 1; min-width: 0; }
+.profile-who h1 { margin: 0; font: 600 calc(var(--dg-size) + 5px)/1.3 var(--dg-font); }
+.profile-who h1 span { color: var(--dg-muted); font-weight: 400; }
+.profile-who p { margin: 1px 0 0; color: var(--dg-muted); font-size: var(--small); }
+.profile-orcid { padding: 0; color: var(--dg-accent); font: var(--tiny)/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.profile-people { display: flex; gap: 4px; }
+.profile-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--dg-line); }
+.profile-tabs button { padding: 6px 10px; margin-bottom: -1px; border-bottom: 2px solid transparent; border-radius: 0; color: var(--dg-muted); }
+.profile-tabs button[aria-selected="true"] { border-bottom-color: var(--dg-accent); color: var(--dg-ink); font-weight: 600; }
+.profile-audience { margin: 8px 0 14px; color: var(--dg-muted); font-size: var(--small); max-width: 64ch; }
+.profile-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px 16px; margin: 0; }
+.profile-counts dt { color: var(--dg-muted); font-size: var(--tiny); }
+.profile-counts dd { margin: 0; font: 600 calc(var(--dg-size) + 7px)/1.25 var(--dg-font); font-variant-numeric: tabular-nums; }
+.profile-weeks { display: flex; align-items: flex-end; gap: 3px; height: 44px; margin-top: 18px; }
+.profile-weeks span { flex: 1; min-width: 3px; border-radius: 2px 2px 0 0; background: color-mix(in oklch, var(--dg-accent) 70%, transparent); }
+.profile-weeks span[data-none="true"] { background: var(--dg-line); }
+.profile-caption { margin: 3px 0 0; color: var(--dg-muted); font-size: var(--tiny); }
+.profile-types { list-style: none; margin: 14px 0 0; padding: 0; font-size: var(--small); }
+.profile-types li { --type: var(--none); display: grid; grid-template-columns: 110px 1fr 44px; gap: 8px; align-items: center; padding: 2px 0; }
+.profile-types li[data-base="question"] { --type: var(--question); }
+.profile-types li[data-base="claim"] { --type: var(--claim); }
+.profile-types li[data-base="evidence"] { --type: var(--evidence); }
+.profile-types li[data-base="source"] { --type: var(--source); }
+.profile-types li[data-base="protocol"] { --type: var(--protocol); }
+.profile-types li[data-base="study"] { --type: var(--study); }
+.profile-types li[data-base="run"] { --type: var(--run); }
+.profile-types li[data-base="code"] { --type: var(--code); }
+.profile-types li[data-base="output"] { --type: var(--output); }
+.profile-types li > span:last-child { text-align: right; color: var(--dg-muted); font-variant-numeric: tabular-nums; }
+.profile-bar { height: 6px; border-radius: 3px; background: color-mix(in oklch, var(--dg-line) 60%, transparent); overflow: hidden; }
+.profile-bar i { display: block; height: 100%; border-radius: 3px; background: color-mix(in oklch, var(--type) 70%, var(--dg-muted)); }
+.profile-history { margin-top: 22px; }
+.profile-day h3 { margin: 14px 0 4px; color: var(--dg-muted); font: 600 var(--small)/1.4 var(--dg-font); }
+.profile-day h3 span { font-weight: 400; font-variant-numeric: tabular-nums; }
+.profile-day ol { list-style: none; margin: 0; padding: 0; }
+.profile-day li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; padding: 4px 0; border-top: 1px solid color-mix(in oklch, var(--dg-line) 50%, transparent); }
+.profile-day time { color: var(--dg-muted); font-size: var(--tiny); line-height: 1.7; font-variant-numeric: tabular-nums; }
+.profile-did { display: block; color: var(--dg-muted); font-size: var(--small); }
+.profile-unit { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 1px 0; text-align: left; overflow-wrap: anywhere; }
+.profile-unit:hover span:last-child, .profile-canvas:hover { text-decoration: underline; }
+.profile-canvas { padding: 0; color: var(--dg-accent); text-align: left; }
+.profile-none { margin: 14px 0 0; color: var(--dg-muted); }
+.profile-mine { margin-top: 24px; padding: 0; color: var(--dg-accent); font-size: var(--small); }

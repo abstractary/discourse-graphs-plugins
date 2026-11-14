@@ -137,12 +137,24 @@ test("the default grammar is valid and points at base types", () => {
 
 test("validation rejects malformed records", () => {
   const node = createNode({ ...home, title: "x" });
-  assert.notDeepEqual(validateRecord({ ...node, kind: "mystery" }), []);
-  assert.notDeepEqual(validateRecord({ ...node, v: 99 }), []);
+  assert.notDeepEqual(validateRecord({ ...node, v: 1 }), []);
+  assert.notDeepEqual(validateRecord({ ...node, kind: undefined }), []);
+  assert.notDeepEqual(validateRecord({ ...node, kind: "mystery", id: "no-tid-here" }), []);
   assert.notDeepEqual(validateRecord({ ...node, id: "no-tid-here" }), []);
   assert.notDeepEqual(validateRecord({ ...node, rev: 0 }), []);
   assert.notDeepEqual(validateRecord({ ...node, by: "ana" }), []);
   assert.notDeepEqual(validateRecord("nope"), []);
+});
+
+test("a newer client's kinds and versions are kept but never folded", () => {
+  const node = createNode({ ...home, title: "x" });
+  const mystery = { ...createNode({ ...home, title: "y" }), kind: "mystery" };
+  const later = { ...createNode({ ...home, title: "z" }), v: 99 };
+  assert.deepEqual(validateRecord(mystery), []);
+  assert.deepEqual(validateRecord(later), []);
+  const graph = foldRecords({ records: [node, mystery, later] as DgRecord[], localSpace: "home" });
+  assert.deepEqual([...graph.documents.keys()], [node.id]);
+  assert.equal(graph.relations.size, 0);
 });
 
 test("unknown fields are valid", () => {

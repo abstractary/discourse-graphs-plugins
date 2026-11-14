@@ -1,0 +1,81 @@
+[
+ {
+  "slug": "computer-science",
+  "field": "Computer science",
+  "name": "Next generation reservoir computing (Gauthier et al. 2021)",
+  "doi": "10.1038/s41467-021-25801-2",
+  "notes": [
+   "The whole chain is on record. The code is public under an MIT license, the version the paper used is tagged v1.0 and archived on Zenodo, and the run's parameters are read from the script itself.",
+   "The script is pinned by a hash of its bytes at that tag, so a later change to the repository shows up as drift.",
+   "The data is not a file: the paper says it is recreated by running the code. So the evidence rests on a figure and on the run that makes it."
+  ],
+  "units": {
+   "question": 1,
+   "claim": 1,
+   "evidence": 1,
+   "output": 1,
+   "run": 1,
+   "protocol": 1,
+   "code": 1,
+   "study": 1,
+   "source": 1
+  },
+  "evidenceWithFiles": 1,
+  "evidenceOnPassageOnly": 0,
+  "codePinnedByHash": 1,
+  "records": 45
+ },
+ {
+  "slug": "biology",
+  "field": "Biology",
+  "name": "Actin force production in clathrin-mediated endocytosis (Akamatsu et al. 2020)",
+  "doi": "10.7554/elife.49840",
+  "notes": [
+   "Two different methods reach the same number. A simulation says about 200 Arp2/3 complexes are needed, and a count in live cells finds about 200. Each is its own run, under its own protocol, and both support one claim.",
+   "The bench protocol names what a rerun needs that no script holds: the genome-edited cell line and the calibration standards. They are recorded as materials.",
+   "The code is public, but the paper cites the repository as a whole. So the code is recorded at the repository's last commit, with no file path and no hash of one file.",
+   "The images and simulation outputs are not deposited as files. The evidence rests on the paper's figures."
+  ],
+  "units": {
+   "question": 1,
+   "claim": 1,
+   "evidence": 2,
+   "output": 2,
+   "run": 2,
+   "protocol": 2,
+   "code": 1,
+   "study": 2,
+   "source": 1
+  },
+  "evidenceWithFiles": 2,
+  "evidenceOnPassageOnly": 0,
+  "codePinnedByHash": 0,
+  "records": 61
+ },
+ {
+  "slug": "sociology",
+  "field": "Sociology",
+  "name": "Inequality and unpredictability in an artificial cultural market (Salganik, Dodds and Watts 2006)",
+  "doi": "10.1126/science.1121066",
+  "notes": [
+   "The design carries the weight. The study records what a reader of an experiment with people asks first: the conditions, who was assigned to them, and how many took part.",
+   "There is no code and no data file on record here, and the paper is not open access. So the evidence rests on a passage in the paper and nothing else, and the crate says so instead of implying more.",
+   "This is what a first reading looks like before anyone has traced the data. The gap is visible: a run with no outputs."
+  ],
+  "units": {
+   "question": 1,
+   "claim": 2,
+   "evidence": 2,
+   "output": 0,
+   "run": 1,
+   "protocol": 1,
+   "code": 0,
+   "study": 1,
+   "source": 1
+  },
+  "evidenceWithFiles": 0,
+  "evidenceOnPassageOnly": 2,
+  "codePinnedByHash": 0,
+  "records": 46
+ }
+]

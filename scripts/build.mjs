@@ -52,6 +52,23 @@ const canvasHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><
 writeFileSync("dist/canvas.html", canvasHtml);
 const canvasBuild = createHash("sha256").update(canvasHtml).digest("hex").slice(0, 12);
 
+// The PDF reader is its own page, so pdf.js loads only where a PDF is read.
+const pdfSurface = await build({
+  entryPoints: ["packages/surfaces/src/pdf/main.tsx"],
+  bundle: true,
+  minify: true,
+  write: false,
+  outdir: "out",
+  format: "iife",
+  target: "es2022",
+  jsx: "automatic",
+  define: { "process.env.NODE_ENV": '"production"' },
+});
+const pdfJs = pdfSurface.outputFiles.find((file) => file.path.endsWith(".js")).text.replaceAll("</script", "<\\/script");
+const pdfCss = pdfSurface.outputFiles.find((file) => file.path.endsWith(".css")).text;
+const pdfHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CSP}"><title>Discourse Graphs PDF</title><style>${pdfCss}</style></head><body><div id="root"></div><script>${pdfJs}</script></body></html>`;
+writeFileSync("dist/pdf.html", pdfHtml);
+
 // The demo graphs ship inside the plugin, so "Load demo papers" works with no server.
 const demoGraphs = readdirSync("demo/papers")
   .filter((name) => name.endsWith(".graph.json"))
@@ -67,6 +84,7 @@ const shared = {
     __TEST_HOOKS__: JSON.stringify(!release),
     __CANVAS_HTML__: JSON.stringify(canvasHtml),
     __CANVAS_BUILD__: JSON.stringify(canvasBuild),
+    __PDF_HTML__: JSON.stringify(pdfHtml),
     __DEMO_GRAPHS__: JSON.stringify(demoGraphs),
   },
 };
@@ -97,4 +115,4 @@ await build({
   outfile: "dist/roam/extension.js",
   format: "iife",
 });
-console.log(`panel build ${stamp}, canvas build ${canvasBuild}, ${Math.round(canvasHtml.length / 1024)} KB`);
+console.log(`panel build ${stamp}, canvas build ${canvasBuild}, ${Math.round(canvasHtml.length / 1024)} KB, PDF reader ${Math.round(pdfHtml.length / 1024)} KB`);

@@ -10,6 +10,8 @@
   "dependencies": {
     "@dg/contract": "*",
     "@ipld/dag-cbor": "9.2.2",
+    "@noble/curves": "1.9.7",
+    "@noble/hashes": "1.8.0",
     "multiformats": "13.3.2"
   }
 }

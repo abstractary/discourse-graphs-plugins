@@ -1,0 +1,305 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dct:  <http://purl.org/dc/terms/> .
+@prefix dg:   <https://discoursegraphs.com/schema/dg_core#> .
+@prefix dgp:  <https://discoursegraphs.com/schema/dg_process#> .
+@prefix dgs:  <https://discoursegraphs.com/schema/dg_process/shapes#> .
+
+# Shapes for the process layer (draft 0.2, 12 Nov 2026).
+#
+# Every rule has its own IRI, so a result names the rule it broke. The same
+# rules run inside the plugins as `shapeProblems` in packages/core/src/shapes.ts,
+# and ontology/tests/cases.json holds one wrong graph per rule that both must
+# catch. Change a rule here and that test fails until the other side matches.
+#
+# Severity:
+#   Violation  the data is wrong, and a writer should refuse it;
+#   Warning    a gap a person should look at; the views show it, nothing blocks;
+#   Info       worth knowing, often fine (a run a paper reports has no code).
+
+dgs: a owl:Ontology ;
+    sh:declare [ sh:prefix "dgp" ; sh:namespace "https://discoursegraphs.com/schema/dg_process#"^^xsd:anyURI ] ,
+               [ sh:prefix "dg" ; sh:namespace "https://discoursegraphs.com/schema/dg_core#"^^xsd:anyURI ] .
+
+# ---------------------------------------------------------------------------
+# Every unit
+
+dgs:UnitShape a sh:NodeShape ;
+    sh:targetClass dg:Question, dg:Claim, dg:Evidence, dg:Source, dgp:Protocol, dgp:Study, dgp:Run, dgp:Code, dgp:Output ;
+    sh:property dgs:unit-title, dgs:unit-attributed .
+
+dgs:unit-title a sh:PropertyShape ;
+    sh:path dct:title ; sh:minCount 1 ; sh:maxCount 1 ; sh:minLength 1 ;
+    sh:message "A unit needs exactly one title." .
+dgs:unit-attributed a sh:PropertyShape ;
+    sh:path prov:wasAttributedTo ; sh:minCount 1 ; sh:nodeKind sh:IRI ;
+    sh:message "A unit needs the person or lab it is attributed to." .
+
+# ---------------------------------------------------------------------------
+# Pins. A pin is reached through the property that holds it, so one without a
+# type is still checked.
+
+dgs:PinShape a sh:NodeShape ;
+    sh:targetClass dgp:Pin ;
+    sh:targetObjectsOf dgp:follows, dgp:instrument, dgp:used, dgp:derivedFrom, dgp:observationBase ;
+    sh:property dgs:pin-target, dgs:pin-cid .
+
+dgs:pin-target a sh:PropertyShape ;
+    sh:path dgp:target ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ;
+    sh:message "A pin names exactly one target." .
+dgs:pin-cid a sh:PropertyShape ;
+    sh:path dgp:cid ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^b[a-z2-7]{58}$" ;
+    sh:message "A pin's version is a CIDv1 in base32 (SHA-256)." .
+
+# ---------------------------------------------------------------------------
+# Protocol: how something is done
+
+dgs:ProtocolShape a sh:NodeShape ;
+    sh:targetClass dgp:Protocol ;
+    sh:property dgs:protocol-implementedBy, dgs:protocol-versionCid .
+
+dgs:protocol-implementedBy a sh:PropertyShape ;
+    sh:path dgp:implementedBy ; sh:class dgp:Code ;
+    sh:message "A protocol is implemented by code." .
+dgs:protocol-versionCid a sh:PropertyShape ;
+    sh:path dgp:versionCid ; sh:maxCount 1 ; sh:pattern "^b[a-z2-7]{58}$" ;
+    sh:message "A protocol's version is a CID." .
+
+# ---------------------------------------------------------------------------
+# Study: what one investigation compares
+
+dgs:StudyShape a sh:NodeShape ;
+    sh:targetClass dgp:Study ;
+    sh:property dgs:study-question, dgs:study-protocols, dgs:study-design, dgs:study-sampleSize,
+                dgs:study-no-question, dgs:study-no-protocol .
+
+dgs:study-question a sh:PropertyShape ;
+    sh:path dgp:question ; sh:maxCount 1 ; sh:class dg:Question ;
+    sh:message "A study investigates at most one question, and it is a Question." .
+dgs:study-protocols a sh:PropertyShape ;
+    sh:path dgp:protocols ; sh:class dgp:Protocol ;
+    sh:message "A study's protocols are Protocols." .
+dgs:study-design a sh:PropertyShape ;
+    sh:path dgp:design ; sh:maxCount 1 ;
+    sh:in ( "experimental" "observational" "computational" "replication" "review" ) ;
+    sh:message "A study's design is experimental, observational, computational, replication or review." .
+dgs:study-sampleSize a sh:PropertyShape ;
+    sh:path dgp:sampleSize ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 0 ;
+    sh:message "A planned sample size is a whole number." .
+dgs:study-no-question a sh:PropertyShape ;
+    sh:path dgp:question ; sh:minCount 1 ; sh:severity sh:Warning ;
+    sh:message "A study with no question: what is it investigating?" .
+dgs:study-no-protocol a sh:PropertyShape ;
+    sh:path dgp:protocols ; sh:minCount 1 ; sh:severity sh:Info ;
+    sh:message "A study that names no protocol." .
+
+# ---------------------------------------------------------------------------
+# Run: what happened on one occasion
+
+dgs:RunShape a sh:NodeShape ;
+    sh:targetClass dgp:Run ;
+    sh:property dgs:run-partOf, dgs:run-follows, dgs:run-follows-target, dgs:run-instrument-target,
+                dgs:run-status, dgs:run-started, dgs:run-ended, dgs:run-time-order, dgs:run-agents,
+                dgs:run-condition, dgs:run-no-study .
+
+dgs:run-partOf a sh:PropertyShape ;
+    sh:path dgp:partOf ; sh:maxCount 1 ; sh:class dgp:Study ;
+    sh:message "A run is part of at most one study, and it is a Study." .
+dgs:run-follows a sh:PropertyShape ;
+    sh:path dgp:follows ; sh:maxCount 1 ;
+    sh:message "A run follows at most one protocol version." .
+dgs:run-follows-target a sh:PropertyShape ;
+    sh:path ( dgp:follows dgp:target ) ; sh:class dgp:Protocol ;
+    sh:message "What a run follows is a Protocol." .
+dgs:run-instrument-target a sh:PropertyShape ;
+    sh:path ( dgp:instrument dgp:target ) ; sh:class dgp:Code ;
+    sh:message "What a run executes is Code." .
+dgs:run-status a sh:PropertyShape ;
+    sh:path dgp:status ; sh:maxCount 1 ; sh:in ( "planned" "running" "completed" "failed" ) ;
+    sh:message "A run's status is planned, running, completed or failed." .
+dgs:run-started a sh:PropertyShape ;
+    sh:path prov:startedAtTime ; sh:maxCount 1 ; sh:datatype xsd:dateTime ;
+    sh:message "A run's start is one date and time." .
+dgs:run-ended a sh:PropertyShape ;
+    sh:path prov:endedAtTime ; sh:maxCount 1 ; sh:datatype xsd:dateTime ;
+    sh:message "A run's end is one date and time." .
+dgs:run-time-order a sh:PropertyShape ;
+    sh:path prov:startedAtTime ; sh:lessThanOrEquals prov:endedAtTime ;
+    sh:message "A run ended before it started." .
+dgs:run-agents a sh:PropertyShape ;
+    sh:path prov:wasAssociatedWith ; sh:nodeKind sh:IRI ; sh:pattern "^(did:[a-z0-9]+:|https://orcid\\.org/)" ;
+    sh:message "Who carried out a run is a DID or an ORCID iD written as https://orcid.org/…" .
+dgs:run-condition a sh:PropertyShape ;
+    sh:path dgp:condition ; sh:maxCount 1 ; sh:datatype xsd:string ;
+    sh:message "A run carries out one condition." .
+dgs:run-no-study a sh:PropertyShape ;
+    sh:path dgp:partOf ; sh:minCount 1 ; sh:severity sh:Warning ;
+    sh:message "A run that belongs to no study." .
+
+# PROV-O: an activity is never a plan or an entity.
+dgs:run-not-plan a sh:NodeShape ;
+    sh:targetClass dgp:Run ;
+    sh:not [ sh:or ( [ sh:class dgp:Protocol ] [ sh:class dgp:Study ] [ sh:class dgp:Code ] [ sh:class dgp:Output ] ) ] ;
+    sh:message "A run is also typed as a plan or an output. A notebook is Code, its execution is a Run." .
+
+dgs:run-no-method a sh:NodeShape ;
+    sh:targetClass dgp:Run ;
+    sh:or ( [ sh:path dgp:follows ; sh:minCount 1 ] [ sh:path dgp:instrument ; sh:minCount 1 ] ) ;
+    sh:severity sh:Info ;
+    sh:message "A run with no protocol and no code: nothing says how it was done." .
+
+dgs:InstrumentPinShape a sh:NodeShape ;
+    sh:targetObjectsOf dgp:instrument ;
+    sh:property dgs:run-code-unpinned .
+dgs:run-code-unpinned a sh:PropertyShape ;
+    sh:path dgp:cid ; sh:minCount 1 ;
+    sh:severity sh:Warning ;
+    sh:message "A run's code isn't pinned to a version, so drift can't be checked." .
+
+dgs:run-code-drift a sh:NodeShape ;
+    sh:targetClass dgp:Run ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "The code changed after this run: its sources no longer match the pinned version." ;
+        sh:prefixes dgs: ;
+        sh:select """SELECT $this ?value WHERE {
+            $this dgp:instrument ?pin . ?pin dgp:target ?value ; dgp:cid ?pinned .
+            ?value dgp:sourceCid ?now . FILTER (?pinned != ?now) }""" ] .
+
+dgs:run-protocol-drift a sh:NodeShape ;
+    sh:targetClass dgp:Run ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "The protocol was edited after this run followed it." ;
+        sh:prefixes dgs: ;
+        sh:select """SELECT $this ?value WHERE {
+            $this dgp:follows ?pin . ?pin dgp:target ?value ; dgp:cid ?pinned .
+            ?value dgp:versionCid ?now . FILTER (?pinned != ?now) }""" ] .
+
+dgs:run-condition-unknown a sh:NodeShape ;
+    sh:targetClass dgp:Run ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "A run names a condition its study doesn't list." ;
+        sh:prefixes dgs: ;
+        sh:select """SELECT $this ?value WHERE {
+            $this dgp:condition ?value ; dgp:partOf ?study .
+            ?study dgp:conditions ?any .
+            FILTER NOT EXISTS { ?study dgp:conditions ?value } }""" ] .
+
+# ---------------------------------------------------------------------------
+# Code and Output
+
+dgs:CodeShape a sh:NodeShape ;
+    sh:targetClass dgp:Code ;
+    sh:property dgs:code-sourceCid .
+
+dgs:code-sourceCid a sh:PropertyShape ;
+    sh:path dgp:sourceCid ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^b[a-z2-7]{58}$" ;
+    sh:message "Code is identified by one CID over its sources." .
+
+# Outputs come from runs, never from plans.
+dgs:OutputShape a sh:NodeShape ;
+    sh:targetClass dgp:Output ;
+    sh:property dgs:output-cid, dgs:output-generatedBy, dgs:output-byteSize, dgs:output-kind, dgs:output-derivedFrom-target .
+
+dgs:output-cid a sh:PropertyShape ;
+    sh:path dgp:cid ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^b[a-z2-7]{58}$" ;
+    sh:message "An output is identified by one CID over its own bytes." .
+dgs:output-generatedBy a sh:PropertyShape ;
+    sh:path dgp:generatedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class dgp:Run ;
+    sh:message "An output is generated by exactly one Run." .
+dgs:output-byteSize a sh:PropertyShape ;
+    sh:path dgp:byteSize ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 0 ;
+    sh:message "An output's size is a whole number of bytes." .
+dgs:output-kind a sh:PropertyShape ;
+    sh:path dgp:outputKind ; sh:maxCount 1 ; sh:in ( "dataset" "file" "figure" "table" "text" "image" ) ;
+    sh:message "An output's kind is dataset, file, figure, table, text or image." .
+dgs:output-derivedFrom-target a sh:PropertyShape ;
+    sh:path ( dgp:derivedFrom dgp:target ) ; sh:class dgp:Output ;
+    sh:message "An output is derived from other Outputs." .
+
+# ---------------------------------------------------------------------------
+# Evidence, claims and sources
+
+dgs:EvidenceShape a sh:NodeShape ;
+    sh:targetClass dg:Evidence ;
+    sh:property dgs:evidence-isGroundedIn, dgs:evidence-sourceDocument, dgs:evidence-observationBase-target, dgs:evidence-informs .
+
+dgs:evidence-isGroundedIn a sh:PropertyShape ;
+    sh:path dgp:isGroundedIn ; sh:maxCount 1 ; sh:class dgp:Run ;
+    sh:message "Evidence is grounded in at most one Run." .
+dgs:evidence-sourceDocument a sh:PropertyShape ;
+    sh:path dgp:sourceDocument ; sh:maxCount 1 ; sh:class dg:Source ;
+    sh:message "Evidence has at most one source document, and it is a Source." .
+dgs:evidence-observationBase-target a sh:PropertyShape ;
+    sh:path ( dgp:observationBase dgp:target ) ; sh:class dgp:Output ;
+    sh:message "Evidence rests on Outputs." .
+dgs:evidence-informs a sh:PropertyShape ;
+    sh:path dgp:informs ; sh:class dg:Question ;
+    sh:message "Evidence informs Questions." .
+
+dgs:evidence-ungrounded a sh:NodeShape ;
+    sh:targetClass dg:Evidence ;
+    sh:or (
+        [ sh:path dgp:observationBase ; sh:minCount 1 ]
+        [ sh:path dgp:isGroundedIn ; sh:minCount 1 ]
+        [ sh:path dgp:sourceDocument ; sh:minCount 1 ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "Evidence with nothing behind it: no output, run or source." .
+
+dgs:ObservationPinShape a sh:NodeShape ;
+    sh:targetObjectsOf dgp:observationBase ;
+    sh:property dgs:evidence-output-unpinned .
+dgs:evidence-output-unpinned a sh:PropertyShape ;
+    sh:path dgp:cid ; sh:minCount 1 ;
+    sh:severity sh:Warning ;
+    sh:message "Evidence cites an output without pinning its bytes." .
+
+dgs:evidence-output-drift a sh:NodeShape ;
+    sh:targetClass dg:Evidence ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "An output changed after this evidence cited it: its bytes no longer match the pin." ;
+        sh:prefixes dgs: ;
+        sh:select """SELECT $this ?value WHERE {
+            $this dgp:observationBase ?pin . ?pin dgp:target ?value ; dgp:cid ?pinned .
+            ?value dgp:cid ?now . FILTER (?pinned != ?now) }""" ] .
+
+dgs:ClaimShape a sh:NodeShape ;
+    sh:targetClass dg:Claim ;
+    sh:property dgs:claim-addresses, dgs:claim-unsupported .
+
+dgs:claim-addresses a sh:PropertyShape ;
+    sh:path dgp:addresses ; sh:class dg:Question ;
+    sh:message "A claim addresses Questions." .
+dgs:claim-unsupported a sh:PropertyShape ;
+    sh:path [ sh:inversePath dgp:supports ] ; sh:minCount 1 ; sh:severity sh:Warning ;
+    sh:message "A claim nothing supports yet." .
+
+# Supports and opposes run from evidence or a claim, to a claim.
+dgs:argument-object a sh:NodeShape ;
+    sh:targetObjectsOf dgp:supports, dgp:opposes ;
+    sh:class dg:Claim ;
+    sh:message "Only a Claim can be supported or opposed." .
+dgs:argument-subject a sh:NodeShape ;
+    sh:targetSubjectsOf dgp:supports, dgp:opposes ;
+    sh:or ( [ sh:class dg:Evidence ] [ sh:class dg:Claim ] ) ;
+    sh:message "Only Evidence or a Claim can support or oppose." .
+dgs:addresses-subject a sh:NodeShape ;
+    sh:targetSubjectsOf dgp:addresses ;
+    sh:class dg:Claim ;
+    sh:message "Only a Claim addresses a question. Evidence informs one." .
+
+dgs:SourceShape a sh:NodeShape ;
+    sh:targetClass dg:Source ;
+    sh:property dgs:source-describesActivity .
+
+dgs:source-describesActivity a sh:PropertyShape ;
+    sh:path dgp:describesActivity ; sh:class dgp:Run ;
+    sh:message "A source describes Runs." .

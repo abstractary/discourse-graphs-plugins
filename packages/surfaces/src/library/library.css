@@ -22,6 +22,8 @@
 .cvs-bar button { display: flex; align-items: center; gap: 3px; padding: 2px 6px; color: var(--dg-accent); font-size: var(--small); }
 .cvs-static { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 5px 6px; }
 .cvs-list li > button:not(:first-child) { flex: none; padding: 2px 6px; color: var(--dg-accent); font-size: var(--small); }
+/* A person's mark in a row keeps its own round shape. The row's rule for buttons would stretch it. */
+.cvs-list li > .mark { flex: none; padding: 0; margin-left: 6px; align-items: center; }
 .lab-id { display: block; padding: 4px 6px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); font: var(--small)/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; user-select: all; }
 
 /* Shared by the pop-ups and the Library. */
@@ -49,6 +51,11 @@ button.primary:disabled { opacity: 0.45; cursor: default; }
 .drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 84px; padding: 12px; border: 1px dashed var(--dg-line); border-radius: calc(var(--dg-radius) + 2px); color: var(--dg-muted); text-align: center; cursor: pointer; }
 .drop strong { color: var(--dg-ink); font-weight: 500; }
 .drop.filled { border-style: solid; color: var(--dg-ink); }
+.found { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid color-mix(in oklch, var(--dg-accent) 40%, var(--dg-line)); border-radius: calc(var(--dg-radius) + 2px); background: color-mix(in oklch, var(--dg-accent) 6%, transparent); font-size: var(--small); }
+.found strong { font-weight: 600; font-size: inherit; }
+.found span { color: var(--dg-muted); overflow-wrap: anywhere; }
+.found label { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 6px; margin-top: 2px; }
+.found label input { flex: none; width: auto; margin: 0; }
 .choices { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; border: 0; }
 .choices label { display: flex; align-items: center; gap: 6px; }
 .choices .indent { margin-left: 22px; color: var(--dg-muted); font-size: var(--small); }
@@ -56,3 +63,63 @@ button.primary:disabled { opacity: 0.45; cursor: default; }
 
 /* A long Lab tab shouldn't hide the way to the others. */
 .cvs > .segments { position: sticky; top: 0; z-index: 2; background: var(--dg-page); }
+
+/* The Canvases tab as the repository. */
+.repo-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--small); }
+.repo-filters select { flex: 1 1 120px; min-width: 0; padding: 3px 6px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; }
+.repo-filters label { display: inline-flex; align-items: center; gap: 4px; color: var(--dg-muted); }
+.repo-list li { display: block; padding-right: 0; }
+.repo-list li[data-open="true"] { background: color-mix(in oklch, var(--dg-accent) 6%, transparent); }
+.repo-row { display: flex; align-items: flex-start; gap: 2px; }
+.repo-list .repo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px; text-align: left; }
+.repo-holon { display: flex; align-items: baseline; gap: 4px; font-size: var(--small); min-width: 0; }
+.repo-holon > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.repo-tags { display: flex; align-items: center; gap: 6px; font-size: var(--tiny); color: var(--dg-muted); }
+.repo-list .repo-toggle { flex: none; padding: 6px 4px; color: var(--dg-muted); }
+.repo-toggle[aria-expanded="true"] .icon { transform: rotate(180deg); }
+.repo-versions { padding: 2px 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.repo-versions h3 { margin: 8px 0 2px; font: 600 var(--small)/1.3 var(--dg-font); color: var(--dg-muted); }
+.repo-versions input[type="range"] { width: 100%; }
+.repo-versions .hv-form input, .repo-versions .hv-form select { flex: 1 1 100%; }
+.repo-versions .hv-form button { color: var(--dg-accent); }
+.repo-versions .hv-releases button { color: var(--dg-accent); padding: 2px 0; }
+
+/* The canvas picker: a picture of the real graph beside the title. */
+.repo-list .repo-main { flex-direction: row; align-items: flex-start; gap: 8px; }
+.repo-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.thumb { flex: none; width: 76px; height: 54px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: color-mix(in oklch, var(--dg-ink) 3%, var(--dg-page)); }
+.thumb-empty { display: block; background-image: radial-gradient(color-mix(in oklch, var(--dg-ink) 14%, transparent) 1px, transparent 1px); background-size: 8px 8px; }
+.thumb line { stroke: color-mix(in oklch, var(--dg-ink) 34%, transparent); stroke-width: 1; }
+.thumb rect { --type: var(--none); fill: color-mix(in oklch, var(--type) 62%, var(--dg-page)); }
+.thumb rect[data-base="question"] { --type: var(--question); }
+.thumb rect[data-base="claim"] { --type: var(--claim); }
+.thumb rect[data-base="evidence"] { --type: var(--evidence); }
+.thumb rect[data-base="source"] { --type: var(--source); }
+.thumb rect[data-base="protocol"] { --type: var(--protocol); }
+.thumb rect[data-base="study"] { --type: var(--study); }
+.thumb rect[data-base="run"] { --type: var(--run); }
+.thumb rect[data-base="code"] { --type: var(--code); }
+.thumb rect[data-base="output"] { --type: var(--output); }
+.thumb rect[data-base="canvas"] { fill: none; stroke: var(--dg-muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.repo-kind { display: flex; align-items: center; gap: 3px; min-width: 0; font-size: var(--small); }
+.repo-kind .icon { flex: none; width: 13px; height: 13px; }
+.repo-kind[data-kind="paper"] { color: color-mix(in oklch, var(--source) 70%, var(--dg-ink)); }
+.repo-kind[data-kind="canvas"] { color: color-mix(in oklch, var(--dg-accent) 70%, var(--dg-ink)); }
+.repo-kind .cvs-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo-scope { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); }
+.repo-scope button { flex: 1; padding: 2px 6px; color: var(--dg-muted); font-size: var(--small); }
+.repo-scope button[aria-pressed="true"] { background: color-mix(in oklch, var(--dg-accent) 14%, transparent); color: var(--dg-ink); font-weight: 600; }
+.repo-scope button span { font-weight: 400; font-variant-numeric: tabular-nums; color: var(--dg-muted); }
+
+/* Canvases grouped by the workspace they live in. */
+.repo-workspace + .repo-workspace { margin-top: 14px; }
+.repo-workspace-head { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; padding: 0 2px; font: 600 var(--small)/1.3 var(--dg-ui-font, inherit); }
+.repo-workspace-name { color: var(--dg-ink); }
+.repo-sources { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo-faces { flex: none; display: inline-flex; align-items: center; align-self: start; margin-top: 4px; }
+.repo-faces .mark + .mark { margin-left: -4px; }
+.repo-more { margin-left: 3px; color: var(--dg-muted); font-size: var(--tiny); }
+.repo-invite { padding: 6px 8px 8px; font-size: var(--small); color: var(--dg-muted); }
+.repo-invite p { margin: 0 0 6px; line-height: 1.4; color: var(--dg-ink); }
+.repo-invite-actions { display: flex; gap: 6px; }
+.repo-invite .primary { background: var(--dg-accent); color: white; }

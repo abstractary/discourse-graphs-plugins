@@ -1,7 +1,7 @@
 import { requireMember } from './auth.ts';
 import { ApiError } from './http.ts';
 import type { Context, Route } from './http.ts';
-import { hashOf } from './store.ts';
+import { canonical, hashOf } from './store.ts';
 import type { Store } from './store.ts';
 
 const DEFAULT_LIMIT = 100;
@@ -34,7 +34,7 @@ async function pushRecords({ req, params, readJson }: Context, store: Store): Pr
   let seq = log.items.at(-1)?.seq ?? 0;
   let stored = 0;
   for (const record of records) {
-    const hash = hashOf(JSON.stringify(record));
+    const hash = hashOf(canonical(record));
     if (seen.has(hash)) continue;
     seen.add(hash);
     seq += 1;
@@ -42,7 +42,7 @@ async function pushRecords({ req, params, readJson }: Context, store: Store): Pr
     log.items.push({ seq, hash, record });
   }
   if (stored > 0) store.write(`records/${params.id}`, log);
-  return { stored };
+  return { stored, now: new Date().toISOString() };
 }
 
 function pullRecords({ req, params, query }: Context, store: Store): unknown {
@@ -56,6 +56,7 @@ function pullRecords({ req, params, query }: Context, store: Store): unknown {
     records: page.map((item) => item.record),
     next: page.at(-1)?.seq ?? after,
     done: remaining.length <= limit,
+    now: new Date().toISOString(),
   };
 }
 

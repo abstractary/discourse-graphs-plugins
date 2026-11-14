@@ -21,7 +21,7 @@ import {
 } from "./host.ts";
 import type { ConformanceDriver, ConformanceSetup } from "./conformance.ts";
 
-type StoredText = Omit<TextUnit, "ref">;
+type StoredText = Omit<TextUnit, "ref"> & { properties?: Record<string, HostRef[] | string> };
 
 /** The durable part. Sharing one store between hosts simulates a reload. */
 export type MemoryStore = {
@@ -30,6 +30,8 @@ export type MemoryStore = {
   records: DgRecord[];
   local: Map<string, Json>;
   assets: Map<string, Asset>;
+  /** Files that live outside the base, by path: what a reference library keeps. */
+  outside: Map<string, Asset>;
   focus: HostRef | null;
   cursor: HostRef | null;
   selection: { ref: HostRef; text: string } | null;
@@ -46,6 +48,7 @@ export const createMemoryStore = (): MemoryStore => ({
   records: [],
   local: new Map(),
   assets: new Map(),
+  outside: new Map(),
   focus: null,
   cursor: null,
 });
@@ -75,9 +78,11 @@ const pageOf = <T>(
 export const createMemoryHost = ({
   store,
   host = "memory",
+  textForEveryUnit = false,
 }: {
   store: MemoryStore;
   host?: string;
+  textForEveryUnit?: boolean;
 }): { host: Host; emit: (event: HostEvent) => void } => {
   const listeners = new Set<HostListener>();
   const emit = (event: HostEvent): void => {
@@ -94,6 +99,7 @@ export const createMemoryHost = ({
         contract: CONTRACT_VERSION,
         host,
         adapterVersion: "0.0.0",
+        ...(textForEveryUnit ? { textForEveryUnit } : {}),
         space: { id: store.spaceId, name: "Memory" },
         person: { id: "person-1", name: "Test Person" },
         appearance: "light",
@@ -208,6 +214,15 @@ export const createMemoryHost = ({
       store.assets.set(ref, asset);
       return ok({ ref });
     },
+    listFiles: async ({ extensions, limit }) => {
+      const wanted = new Set(extensions.map((extension) => extension.toLowerCase()));
+      const files = [...store.assets.entries()]
+        .filter(([, asset]) => wanted.has(asset.name.split(".").pop()?.toLowerCase() ?? ""))
+        .reverse()
+        .slice(0, limit)
+        .map(([ref, asset]) => ({ ref, name: asset.name, mime: asset.mime, size: Math.floor(((asset.dataUrl.split(",")[1] ?? "").length * 3) / 4) }));
+      return ok(files);
+    },
     getFocus: async () => ok({ ref: store.focus }),
     reveal: async ({ ref }) => {
       if (!readRef(ref)) return notFound(ref);
@@ -224,6 +239,46 @@ export const createMemoryHost = ({
       page.links.push(ref);
       return ok(null);
     },
+    readLocalFile: async ({ path }) => {
+      const asset = store.outside.get(path);
+      return asset ? ok(asset) : fail("not-found", `Nothing at ${path}.`);
+    },
+    listTagged: async ({ tags, limit }) => {
+      const found: { ref: HostRef; title: string; line: number; text: string; tag: string }[] = [];
+      for (const [ref, text] of store.texts) {
+        text.body.split("\n").forEach((held, line) => {
+          const tag = tags.find((item) => new RegExp(`#${item}(?![\\w/-])`, "i").test(held));
+          const words = tag ? held.replace(new RegExp(`#${tag}(?![\\w/-])`, "i"), "").replace(/^\s*[-*+]\s+/, "").replace(/\s+/g, " ").trim() : "";
+          if (tag && words && found.length < limit) found.push({ ref, title: text.title, line, text: words, tag });
+        });
+      }
+      return ok(found);
+    },
+    replaceTagged: async ({ ref, line, tag, target }) => {
+      const text = readRef(ref);
+      const to = readRef(target);
+      if (!text || !to) return notFound(text ? target : ref);
+      const lines = text.body.split("\n");
+      if (!new RegExp(`#${tag}(?![\\w/-])`, "i").test(lines[line] ?? "")) return fail("conflict", "That line has changed since it was listed. Look again.");
+      lines[line] = `${/^\s*[-*+]\s+/.exec(lines[line]!)?.[0] ?? ""}[[${to.title}]]`;
+      text.body = lines.join("\n");
+      return ok(null);
+    },
+    setLinks: async ({ ref, links, managed, facts = {}, managedFacts = [] }) => {
+      const text = readRef(ref);
+      if (!text) return notFound(ref);
+      const before = JSON.stringify(text.properties ?? {});
+      const next: Record<string, HostRef[] | string> = { ...(text.properties ?? {}) };
+      for (const key of [...managed, ...managedFacts]) delete next[key];
+      for (const [key, value] of Object.entries(facts)) next[key] = value;
+      for (const [key, refs] of Object.entries(links)) {
+        const live = refs.filter((other) => other !== ref && store.texts.has(other));
+        if (live.length) next[key] = live;
+      }
+      if (JSON.stringify(next) === before) return ok({ written: false });
+      text.properties = next;
+      return ok({ written: true });
+    },
     readSelection: async () => ok(store.selection ? { text: store.selection.text } : null),
     replaceSelection: async ({ ref }) => {
       const { selection } = store;
@@ -236,6 +291,7 @@ export const createMemoryHost = ({
     },
     openSurface: async () => ok(null),
     closeDialog: async () => ok(null),
+    openLink: async () => ok(null),
     getLocal: async ({ key }) => ok(store.local.get(key) ?? null),
     setLocal: async ({ key, value }) => {
       store.local.set(key, value);

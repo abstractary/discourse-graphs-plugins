@@ -20,6 +20,21 @@ jobs:
       - run: npm ci
       - run: npm run check-types
       - run: npm run check-boundaries
+      # Prints the dependency matrix and fails on a cycle between modules.
+      - run: npm run dsm
       - run: npm test
       - run: npm run test:server
+      # Several people, each with a vault, around one lab server, all in this process.
+      - run: npm run sim
       - run: npm run build
+
+  ontology:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install rdflib pyshacl
+      # One wrong graph per rule, then the worked example. test/shapes.test.ts runs the same cases in the app's own check.
+      - run: npm run validate:ontology

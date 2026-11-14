@@ -1,3 +1,4 @@
+import { cursorAfter, logLines, parseLogLine, resumeAt, type LogCursor } from "@dg/contract/log.ts";
 import {
   MarkdownView,
   TFile,
@@ -36,6 +37,8 @@ export const RECORDS = `${ROOT}/records`;
 const ASSETS = `${ROOT}/assets`;
 const UNIT_FOLDERS = "Discourse Units";
 const PAPER_FILES = "Paper files";
+const TABLES = "Discourse tables";
+const PICTURES = "Discourse pictures";
 const ID_KEY = "dg-id";
 // A raw rename on disk arrives as a delete then a create, so a delete waits this
 // long to see whether the same id comes back at a new path.
@@ -48,6 +51,12 @@ const MIME: Record<string, string> = {
   gif: "image/gif",
   svg: "image/svg+xml",
   webp: "image/webp",
+  pdf: "application/pdf",
+};
+
+const splitName = (name: string): [string, string] => {
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? [name.slice(0, dot), name.slice(dot + 1)] : [name, "pdf"];
 };
 
 const sanitize = (title: string): string =>
@@ -125,6 +134,9 @@ const skinNow = (): Skin => {
     radius: px("--radius-s", 4),
   };
 };
+
+const DEVICE_KEY = "discourse-graphs-device";
+const LOCAL_PREFIX = "discourse-graphs-local:";
 
 export const createObsidianHost = async ({
   app,
@@ -222,12 +234,42 @@ export const createObsidianHost = async ({
 
   let data: LocalData = ((await plugin.loadData()) as LocalData | null) ?? {};
   const saveData = async (): Promise<void> => plugin.saveData(data);
-  if (!data.deviceId || !data.personId) {
-    data.deviceId ??= uuidv7();
-    data.personId ??= uuidv7();
+  // A device's id is kept on the device. The plugin's own data file travels with the vault, and two
+  // devices that shared an id would write to one log, which a sync tool then has to merge.
+  let deviceId = (app.loadLocalStorage(DEVICE_KEY) as string | null) ?? null;
+  if (!deviceId) {
+    // The first device to start after this change keeps the id the vault had. Any other makes its own.
+    deviceId = data.deviceId ?? uuidv7();
+    app.saveLocalStorage(DEVICE_KEY, deviceId);
+    if (data.deviceId) {
+      delete data.deviceId;
+      await saveData();
+    }
+  }
+  if (!data.personId) {
+    data.personId = uuidv7();
     await saveData();
   }
-  const deviceLog = `${RECORDS}/${data.deviceId}.jsonl`;
+  // What is for this device only is kept on the device: the link to a lab with its token, a model key
+  // where there is no keychain, the clock's correction. The plugin's data file travels with the vault,
+  // so anything left in it from before is moved here and taken out of the file.
+  const readLocal = (key: string): Json | null => {
+    const kept = app.loadLocalStorage(`${LOCAL_PREFIX}${key}`) as string | null;
+    if (kept === null || kept === undefined) return null;
+    try {
+      return JSON.parse(kept) as Json;
+    } catch {
+      return null;
+    }
+  };
+  if (data.local) {
+    for (const [key, value] of Object.entries(data.local)) {
+      if (app.loadLocalStorage(`${LOCAL_PREFIX}${key}`) === null) app.saveLocalStorage(`${LOCAL_PREFIX}${key}`, JSON.stringify(value));
+    }
+    delete data.local;
+    await saveData();
+  }
+  const deviceLog = `${RECORDS}/${deviceId}.jsonl`;
 
   const ensureFolder = async (path: string): Promise<void> => {
     if (!(await vault.adapter.exists(path))) await vault.createFolder(path);
@@ -250,12 +292,8 @@ export const createObsidianHost = async ({
     return files.filter((file) => file.endsWith(".jsonl")).sort();
   };
 
-  const readLines = async (path: string): Promise<string[]> => {
-    const lines = (await vault.adapter.read(path)).split("\n");
-    // A line with no trailing newline may still be mid-write, so leave it for later.
-    lines.pop();
-    return lines;
-  };
+  // Whole lines only. What a sync tool left half written, joined or marked is skipped when read as a record.
+  const readLines = async (path: string): Promise<string[]> => logLines(await vault.adapter.read(path));
 
   let known: Set<string> | null = null;
   const loadKnown = async (): Promise<Set<string>> => {
@@ -263,7 +301,8 @@ export const createObsidianHost = async ({
     const set = new Set<string>();
     for (const path of await recordFiles()) {
       for (const line of await readLines(path)) {
-        set.add(canonicalJson(JSON.parse(line)));
+        const record = parseLogLine(line);
+        if (record) set.add(canonicalJson(record));
       }
     }
     known = set;
@@ -376,8 +415,9 @@ export const createObsidianHost = async ({
     }),
   ];
 
-  const pageOfCursor = (after?: string): Record<string, number> =>
-    after ? (JSON.parse(after) as Record<string, number>) : {};
+  const pageOfCursor = (after?: string): Record<string, LogCursor | number> =>
+    after ? (JSON.parse(after) as Record<string, LogCursor | number>) : {};
+
 
   const host: Host = {
     describe: async () =>
@@ -390,6 +430,7 @@ export const createObsidianHost = async ({
         appearance: appearanceNow(),
         skin: skinNow(),
         sharedSpace: false,
+        textForEveryUnit: true,
       }),
 
     listText: async ({ after, limit }) => {
@@ -476,6 +517,88 @@ export const createObsidianHost = async ({
       return ok({ where: path });
     },
 
+    readLocalFile: async ({ path }) => {
+      // Only a PDF, and only where a reference library says its file is. Read in place, never copied into the vault.
+      if (!/\.pdf$/i.test(path)) return fail("unavailable", "Only PDFs are read from outside the vault.");
+      const fs = (window as unknown as { require?: (name: string) => { promises: { readFile: (path: string) => Promise<Uint8Array> } } }).require?.("fs");
+      if (!fs) return fail("unavailable", "Files outside the vault can only be read in Obsidian's desktop app.");
+      const name = path.split(/[\\/]/).pop() ?? "Document.pdf";
+      try {
+        const bytes = new Uint8Array(await fs.promises.readFile(path));
+        let binary = "";
+        for (let at = 0; at < bytes.length; at += 0x8000) binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+        return ok({ name, mime: "application/pdf", dataUrl: `data:application/pdf;base64,${btoa(binary)}` });
+      } catch {
+        return fail("not-found", `${name} isn't where Zotero says it is. Open it in Zotero once so it downloads.`);
+      }
+    },
+
+    listTagged: async ({ tags, limit }) => {
+      const wanted = new Set(tags.map((tag) => `#${tag}`.toLowerCase()));
+      const found: { ref: HostRef; title: string; line: number; text: string; tag: string }[] = [];
+      for (const file of textFiles()) {
+        const marks = (metadataCache.getFileCache(file)?.tags ?? []).filter((mark) => wanted.has(mark.tag.toLowerCase()));
+        if (marks.length === 0) continue;
+        const lines = (await vault.cachedRead(file)).split("\n");
+        const ref = await refOf(file);
+        for (const mark of marks) {
+          const line = mark.position.start.line;
+          // The line's own words: no tag, no list mark, no checkbox.
+          const text = (lines[line] ?? "").replace(new RegExp(`${mark.tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`, "i"), "").replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[.\]\s+)?/, "").replace(/\s+/g, " ").trim();
+          if (text) found.push({ ref, title: file.basename, line, text, tag: mark.tag.slice(1) });
+          if (found.length >= limit) return ok(found);
+        }
+      }
+      return ok(found);
+    },
+
+    replaceTagged: async ({ ref, line, tag, target }) => {
+      const file = await resolve(ref);
+      const to = await resolve(target);
+      if (!file || !to) return notFound(file ? target : ref);
+      const pattern = new RegExp(`#${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w/-])`, "i");
+      let done = false;
+      await vault.process(file, (data) => {
+        const lines = data.split("\n");
+        const held = lines[line];
+        // The note may have been edited since it was listed. A line without the tag is left alone.
+        if (held === undefined || !pattern.test(held)) return data;
+        const lead = /^\s*(?:[-*+]|\d+[.)])\s+(?:\[.\]\s+)?/.exec(held)?.[0] ?? /^\s*/.exec(held)![0];
+        lines[line] = `${lead}[[${metadataCache.fileToLinktext(to, file.path, true)}]]`;
+        done = true;
+        return lines.join("\n");
+      });
+      return done ? ok(null) : fail("conflict", "That line has changed since it was listed. Look again.");
+    },
+
+    openTable: async ({ name, property, value, columns }) => {
+      // An Obsidian base: a table over every note whose property says it is this type.
+      if (!vault.getFolderByPath(TABLES)) await vault.createFolder(TABLES);
+      const path = normalizePath(`${TABLES}/${sanitize(name)}.base`);
+      const quoted = (text: string): string => `"${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+      const yaml = [
+        "filters:",
+        "  and:",
+        `    - 'note[${quoted(property)}] == ${quoted(value).replace(/'/g, "''")}'`,
+        "properties:",
+        "  file.name:",
+        "    displayName: Unit",
+        ...columns.flatMap((column) => [`  note.${column.property}:`, `    displayName: ${quoted(column.label)}`]),
+        "views:",
+        "  - type: table",
+        `    name: ${quoted(name)}`,
+        "    order:",
+        "      - file.name",
+        ...columns.map((column) => `      - note.${column.property}`),
+        "",
+      ].join("\n");
+      const held = vault.getFileByPath(path);
+      // One a person has since arranged is theirs. It is opened as it is.
+      const file = held ?? (await vault.create(path, yaml));
+      await workspace.getLeaf(false).openFile(file);
+      return ok({ where: path });
+    },
+
     fileInFolder: async ({ ref, folder }) => {
       const file = await resolve(ref);
       if (!file) return notFound(ref);
@@ -501,6 +624,49 @@ export const createObsidianHost = async ({
       return ok(await summary(file));
     },
 
+    setLinks: async ({ ref, links, managed, facts = {}, managedFacts = [] }) => {
+      const file = await resolve(ref);
+      if (!file) return notFound(ref);
+      const wanted: Record<string, string[]> = {};
+      for (const [key, refs] of Object.entries(links)) {
+        const texts = new Set<string>();
+        for (const other of refs) {
+          const target = await resolve(other);
+          // The shortest text Obsidian resolves to this file, so two notes of one name in different folders stay apart.
+          if (target && target.path !== file.path) texts.add(`[[${metadataCache.fileToLinktext(target, file.path, true)}]]`);
+        }
+        if (texts.size > 0) wanted[key] = [...texts].sort();
+      }
+      const ours = (held: unknown): held is string[] | undefined | null =>
+        held === undefined || held === null || (Array.isArray(held) && held.every((item) => typeof item === "string" && /^\[\[.*\]\]$/.test(item)));
+      const differs = (held: Record<string, unknown>): string[] =>
+        managed.filter((key) => {
+          const now = held[key];
+          // A property of the same name that a person filled with something else is theirs, and stays.
+          if (!ours(now)) return false;
+          return JSON.stringify(now ?? []) !== JSON.stringify(wanted[key] ?? []);
+        });
+      // Facts are plain text under names only this plugin uses, so they are simply kept in step.
+      const stale = (held: Record<string, unknown>): string[] => managedFacts.filter((key) => (held[key] ?? undefined) !== (facts[key] ?? undefined));
+      const cached = metadataCache.getFileCache(file)?.frontmatter as Record<string, unknown> | undefined;
+      if (cached && differs(cached).length === 0 && stale(cached).length === 0) return ok({ written: false });
+      let written = false;
+      await fileManager.processFrontMatter(file, (frontmatter) => {
+        const held = frontmatter as Record<string, unknown>;
+        for (const key of differs(held)) {
+          written = true;
+          if (wanted[key]) held[key] = wanted[key];
+          else delete held[key];
+        }
+        for (const key of stale(held)) {
+          written = true;
+          if (facts[key] !== undefined) held[key] = facts[key];
+          else delete held[key];
+        }
+      });
+      return ok({ written });
+    },
+
     pinText: async ({ ref, unit }) => {
       const file = await resolve(ref);
       if (!file) return notFound(ref);
@@ -522,12 +688,14 @@ export const createObsidianHost = async ({
       let done = true;
       for (const path of await recordFiles()) {
         const lines = await readLines(path);
-        let line = cursor[path] ?? 0;
+        // A log that was replaced or joined with a copy since is read again from its top.
+        let line = resumeAt(lines, cursor[path]);
         while (line < lines.length && items.length < limit) {
-          items.push(JSON.parse(lines[line]!) as DgRecord);
+          const record = parseLogLine(lines[line]!);
+          if (record) items.push(record);
           line += 1;
         }
-        cursor[path] = line;
+        cursor[path] = cursorAfter(lines, line);
         if (line < lines.length) done = false;
       }
       return ok({ items, next: JSON.stringify(cursor), done });
@@ -567,13 +735,49 @@ export const createObsidianHost = async ({
     },
 
     writeAsset: async ({ asset }) => {
-      await ensureFolder(ROOT);
-      await ensureFolder(ASSETS);
       const encoded = asset.dataUrl.split(",")[1] ?? "";
       const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+      // A document a person added sits with the papers, where they'd look for it.
+      if (asset.mime === "application/pdf") {
+        await ensureFolder(PAPER_FILES);
+        const [stem, extension] = splitName(sanitize(asset.name) || "Document.pdf");
+        let path = normalizePath(`${PAPER_FILES}/${stem}.${extension}`);
+        for (let n = 2; vault.getFileByPath(path); n += 1) path = normalizePath(`${PAPER_FILES}/${stem} ${n}.${extension}`);
+        await vault.createBinary(path, bytes.buffer);
+        return ok({ ref: path });
+      }
+      // A picture a person added is theirs to find again, under the name they gave it.
+      if (asset.mime.startsWith("image/")) {
+        await ensureFolder(PICTURES);
+        const [stem, extension] = splitName(sanitize(asset.name) || "Picture.png");
+        let path = normalizePath(`${PICTURES}/${stem}.${extension}`);
+        for (let n = 2; vault.getFileByPath(path); n += 1) path = normalizePath(`${PICTURES}/${stem} ${n}.${extension}`);
+        await vault.createBinary(path, bytes.buffer);
+        return ok({ ref: path });
+      }
+      await ensureFolder(ROOT);
+      await ensureFolder(ASSETS);
       const path = `${ASSETS}/${uuidv7()}-${sanitize(asset.name)}`;
       await vault.createBinary(path, bytes.buffer);
       return ok({ ref: path });
+    },
+
+    listFiles: async ({ extensions, limit }) => {
+      const wanted = new Set(extensions.map((extension) => extension.toLowerCase()));
+      const files = vault
+        .getFiles()
+        .filter((file) => wanted.has(file.extension.toLowerCase()))
+        .sort((a, b) => b.stat.mtime - a.stat.mtime)
+        .slice(0, limit)
+        .map((file) => ({
+          ref: file.path,
+          name: file.name,
+          mime: MIME[file.extension.toLowerCase()] ?? "application/octet-stream",
+          ...(file.parent && file.parent.path !== "/" ? { folder: file.parent.path } : {}),
+          size: file.stat.size,
+          modifiedAt: new Date(file.stat.mtime).toISOString(),
+        }));
+      return ok(files);
     },
 
     getFocus: async () => {
@@ -619,14 +823,16 @@ export const createObsidianHost = async ({
 
     openSurface,
     closeDialog,
+    openLink: async ({ url }) => {
+      window.open(url, "_blank", "noopener");
+      return ok(null);
+    },
 
-    getLocal: async ({ key }) => ok(data.local?.[key] ?? null),
-    setLocal: async ({ key, value }) =>
-      inOrder(async () => {
-        data = { ...data, local: { ...data.local, [key]: value } };
-        await saveData();
-        return ok(null);
-      }),
+    getLocal: async ({ key }) => ok(readLocal(key)),
+    setLocal: async ({ key, value }) => {
+      app.saveLocalStorage(`${LOCAL_PREFIX}${key}`, JSON.stringify(value));
+      return ok(null);
+    },
 
     subscribe: (listener) => {
       listeners.add(listener);

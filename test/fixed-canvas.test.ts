@@ -1,44 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
-import type { ExtractionGraph, Services } from "@dg/contract/services.ts";
-import { PDF_CANVAS_FIXED, type SurfaceMessage, type SurfaceMethod, type SurfaceMethods, type SurfacePort } from "@dg/contract/surface.ts";
+import type { ExtractionGraph } from "@dg/contract/services.ts";
+import { PDF_CANVAS_FIXED } from "@dg/contract/surface.ts";
+import { makeCore } from "./support.ts";
 
 const demo = JSON.parse(readFileSync("demo/papers/lupus-nephritis-prediction.graph.json", "utf8")) as ExtractionGraph;
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  const services = { servers: async () => [], extract: async () => demo, storeGraph: async () => {}, link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }) } as unknown as Services;
-  const core = await createCore({ host: host as never, services, demoGraphs: [{ filename: "demo.pdf", graph: demo }] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { call } = await makeCore({ services: { extract: async () => demo }, demoGraphs: [{ filename: "demo.pdf", graph: demo }] });
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
   return { call, paper };
 };

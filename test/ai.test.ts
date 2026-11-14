@@ -1,16 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import { AiError, citedIds, quoteAnswer, type AiCall, type Llm, type SecretStore } from "@dg/contract/llm.ts";
 import type { LabLink, Services } from "@dg/contract/services.ts";
-import type { SurfaceEvent, SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { createLlm } from "@dg/sync/providers.ts";
+import { makeCore, until } from "./support.ts";
 
 const KEY = "sk-ant-test-0123456789-WXYZ";
 const LINK: LabLink = { server: "http://lab", id: "lab-1", name: "Lab", token: "t", role: "member" };
-
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
 
 const memorySecrets = (): SecretStore & { held: Map<string, string> } => {
   const held = new Map<string, string>();
@@ -23,8 +19,6 @@ const memorySecrets = (): SecretStore & { held: Map<string, string> } => {
 };
 
 const setup = async ({ llm, link = null }: { llm?: Llm; link?: LabLink | null } = {}) => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
   const secrets = memorySecrets();
   const asked: { provider?: AiCall; units: number; grounded?: string[] }[] = [];
   const services = {
@@ -36,33 +30,7 @@ const setup = async ({ llm, link = null }: { llm?: Llm; link?: LabLink | null } 
       return { answer: "From the lab.", citations: [], mode: "model" as const, model: provider?.model ?? "lab-model" };
     },
   } as unknown as Services;
-  const core = await createCore({ host, services, secrets, ...(llm ? { llm } : {}) });
-  const pending = new Map<string, { resolve: (value: never) => void; reject: (error: Error) => void }>();
-  const events: SurfaceEvent[] = [];
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("event" in message) events.push(message as SurfaceEvent);
-      if ("id" in message) {
-        const waiting = pending.get(message.id);
-        const reply = message as { ok?: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok === false) waiting?.reject(new Error(reply.error?.message));
-        else waiting?.resolve(reply.result as never);
-      }
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      pending.set(`m${next}`, { resolve: resolve as never, reject });
-      listener({ id: `m${next}`, method, params } as SurfaceMessage);
-    });
+  const { call, events, store } = await makeCore({ services, secrets, ...(llm ? { llm } : {}) });
   const canvas = await call("canvas.create", { title: "Markers" });
   const claim = await call("node.create", { title: "Anti-dsDNA antibodies predict nephritis" });
   const other = await call("node.create", { title: "Vitamin D has no known effect" });
@@ -82,6 +50,7 @@ const fakeLlm = (words: string[], seen: (AiCall & { prompt: string })[] = []): L
     for (const word of words) {
       if (signal?.aborted) throw new AiError("stopped", "Stopped.");
       yield word;
+      // A real wait: this stands for an answer that takes time to arrive, so there is time to stop it.
       await new Promise((resolve) => setTimeout(resolve, 1));
     }
   },
@@ -128,10 +97,10 @@ test("a saved key answers from this device, and the key never reaches a panel or
 });
 
 test("an answer that is still arriving can be stopped, and what arrived is kept", async () => {
-  const { call, canvas } = await setup({ llm: fakeLlm(Array.from({ length: 200 }, (_, index) => `w${index} `)) });
+  const { call, events, canvas } = await setup({ llm: fakeLlm(Array.from({ length: 200 }, (_, index) => `w${index} `)) });
   await call("ai.configure", { key: KEY });
   const asking = call("ai.ask", { canvas, question: "Go on", requestId: "long" });
-  await new Promise((resolve) => setTimeout(resolve, 15));
+  await until(() => events.some((event) => event.event === "ai-delta" && event.requestId === "long"), "the answer to start arriving");
   await call("ai.cancel", { requestId: "long" });
   const answer = await asking;
   assert.equal(answer.stopped, true);

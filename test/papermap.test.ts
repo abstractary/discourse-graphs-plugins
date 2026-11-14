@@ -1,49 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
 import { layOut, tieStrength } from "@dg/core/papermap.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
-import type { ExtractionGraph, Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import type { ExtractionGraph } from "@dg/contract/services.ts";
+import { makeCore, type Call } from "./support.ts";
 
 const graphs: Record<string, ExtractionGraph> = {
   "lupus.pdf": JSON.parse(readFileSync("demo/papers/lupus-nephritis-prediction.graph.json", "utf8")),
   "sle.pdf": JSON.parse(readFileSync("demo/papers/preclinical-sle-mediators.graph.json", "utf8")),
 };
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
   let reading = "lupus.pdf";
-  const services = { servers: async () => [], extract: async () => graphs[reading], storeGraph: async () => {}, link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }) } as unknown as Services;
-  const core = await createCore({ host: host as never, services });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { call } = await makeCore({ services: { extract: async () => graphs[reading]! } });
   const read = async (name: string, bytes: string) => {
     reading = name;
     return call("paper.extract", { file: { name, mediaType: "application/pdf", dataBase64: bytes }, server: "http://local", model: "demo-replay", schema: "mira" } as never);

@@ -25,6 +25,7 @@ import {
 import type { ExtractedEdge, ExtractedNode, ExtractionGraph } from "@dg/contract/services.ts";
 import type { PaperSummary, SavedExtraction } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refuse } from "./refuse.ts";
 
 type TypeSpec = { label: string; abbreviation: string; base: BaseNodeType; lexicon?: string; color?: string };
 
@@ -483,7 +484,7 @@ export const paperFeature = (
         if (picked) await keepFile(picked);
         paper = await importGraph(graph, { filename: name, model: madeBy, server: from, schema: schema ?? "mira", fileCid: await hashOf(file) });
       } else {
-        if (!context.services) throw new Error("No services are set up here.");
+        if (!context.services) throw refuse("unavailable", "No services are set up here.");
         if (!server || !model || !schema) throw new Error("Choose a server, a model and a schema first.");
         const servers = await context.services.servers();
         const serverName = servers.find(({ url }) => url === server)?.name ?? server;

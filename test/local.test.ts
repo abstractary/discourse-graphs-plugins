@@ -24,6 +24,7 @@ const waitFor = async (check: () => Promise<boolean>, ms = 8000): Promise<void> 
   const end = Date.now() + ms;
   while (Date.now() < end) {
     if (await check().catch(() => false)) return;
+    // A real wait between looks: this asks another process, over the network, whether it is up yet.
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error("timed out");

@@ -1,58 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore, type Core } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore, type MemoryStore } from "@dg/contract/memory-host.ts";
 import { assertRelation, createCanvasItem, createLab, createNode, defaultGrammar, type DgId, type NodeTypeRecord } from "@dg/contract/records.ts";
 import type { Host } from "@dg/contract/host.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import { makeCore, type Made } from "./support.ts";
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async (wrap: (host: Host) => Host = (host) => host): Promise<{ core: Core; call: Call; store: MemoryStore; host: Host; emit: (event: Parameters<ReturnType<typeof createMemoryHost>["emit"]>[0]) => void; events: SurfaceMessage[]; type: (base: string) => DgId; relation: (base: string) => DgId }> => {
-  const store = createMemoryStore();
-  const { host, emit } = createMemoryHost({ store });
-  const core = await createCore({ host: wrap(host) });
-  const events: SurfaceMessage[] = [];
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("event" in message) events.push(message);
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  const grammar = await call("grammar.get", {});
+const setup = async (wrap?: (host: Host) => Host): Promise<Made & { type: (base: string) => DgId; relation: (base: string) => DgId }> => {
+  const made = await makeCore(wrap ? { wrap } : {});
+  const grammar = await made.call("grammar.get", {});
   return {
-    core, call, store, host, emit, events,
+    ...made,
     type: (base) => (grammar.nodeTypes.find((item: NodeTypeRecord) => item.base === base))!.id,
     relation: (base) => grammar.relationTypes.find((item) => item.base === base)!.id,
   };
 };
 
-const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 5));
-
 test("a new space gets the default grammar once", async () => {
-  const { store, host } = await setup();
+  const { store } = await setup();
   const count = store.records.filter((record) => record.kind === "node-type").length;
   assert.equal(count, 4);
-  await createCore({ host });
+  await makeCore({ store });
   assert.equal(store.records.filter((record) => record.kind === "node-type").length, 4);
 });
 
@@ -140,7 +106,7 @@ test("strokes persist but stay out of plain JSON Canvas", async () => {
 });
 
 test("a rename in the base reaches the node and any open surface", async () => {
-  const { call, type, store, emit, events } = await setup();
+  const { call, type, store, emit, events, settle } = await setup();
   const node = await call("node.create", { title: "Old", type: type("claim") });
   const [ref] = [...store.texts.keys()];
   events.length = 0;
@@ -152,7 +118,7 @@ test("a rename in the base reaches the node and any open surface", async () => {
 });
 
 test("a rename that drops the prefix keeps the whole title", async () => {
-  const { call, type, store, emit } = await setup();
+  const { call, type, store, emit, settle } = await setup();
   const node = await call("node.create", { title: "Old", type: type("claim") });
   const [ref] = [...store.texts.keys()];
   emit({ type: "text-renamed", ref: ref!, title: "Something else" });
@@ -161,7 +127,7 @@ test("a rename that drops the prefix keeps the whole title", async () => {
 });
 
 test("records from elsewhere arrive through the cursor", async () => {
-  const { call, core, store, emit, events } = await setup();
+  const { call, core, store, emit, events, settle } = await setup();
   const canvas = await call("canvas.create", { title: "Map" });
   events.length = 0;
   const other = { space: core.info.space.id, by: { id: "teammate", name: "T" } };
@@ -173,7 +139,7 @@ test("records from elsewhere arrive through the cursor", async () => {
 });
 
 test("a removed text is reported without losing the node", async () => {
-  const { call, type, store, emit } = await setup();
+  const { call, type, store, emit, settle } = await setup();
   const node = await call("node.create", { title: "Gone", type: type("claim") });
   const [ref] = [...store.texts.keys()];
   store.texts.delete(ref!);
@@ -185,7 +151,7 @@ test("a removed text is reported without losing the node", async () => {
 });
 
 test("a text that comes back clears the warning on open surfaces", async () => {
-  const { call, type, store, emit, events } = await setup();
+  const { call, type, store, emit, events, settle } = await setup();
   const node = await call("node.create", { title: "Back", type: type("claim") });
   const [ref] = [...store.texts.keys()];
   emit({ type: "text-removed", ref: ref! });
@@ -199,7 +165,7 @@ test("a text that comes back clears the warning on open surfaces", async () => {
 });
 
 test("a grammar seeded twice, as two offline devices would, shows each type once", async () => {
-  const { call, core, store, emit, type } = await setup();
+  const { call, core, store, emit, type, settle } = await setup();
   const other = defaultGrammar({ space: "second-device", by: { id: "did:plc:seconddevice", name: "Me" } });
   store.records.push(...other);
   emit({ type: "records-changed" });
@@ -216,7 +182,7 @@ test("a grammar seeded twice, as two offline devices would, shows each type once
 });
 
 test("nodes from another space match the grammar by base type", async () => {
-  const { call, core, store, emit, type } = await setup();
+  const { call, core, store, emit, type, settle } = await setup();
   const foreign = { space: "partner", by: { id: "p", name: "P" } };
   const theirs = createNode({ ...foreign, title: "Their evidence", type: "partner-evidence-type" });
   store.records.push({ ...theirs });
@@ -246,7 +212,7 @@ test("badges are ready synchronously, and count only active relations", async ()
 });
 
 test("a person can turn badges off, and the choice stays on this device", async () => {
-  const { call, core, type, host, store } = await setup();
+  const { call, core, type, store } = await setup();
   await call("node.create", { title: "E", type: type("evidence") });
   const ref = [...store.texts.keys()][0]!;
   let changes = 0;
@@ -256,7 +222,7 @@ test("a person can turn badges off, and the choice stays on this device", async 
   assert.equal(await core.toggleBadges(), false);
   assert.equal(core.badgeFor({ ref }), null);
   assert.equal(changes, 1);
-  const again = await createCore({ host });
+  const { core: again } = await makeCore({ store });
   assert.equal(again.badgeFor({ ref }), null);
   again.stop();
   assert.equal(await core.toggleBadges(), true);
@@ -284,21 +250,21 @@ test("a badge opens the context panel on its node without moving the page", asyn
 });
 
 test("a type shared by another lab never changes how titles are written here", async () => {
-  const { call, core, store, emit, type } = await setup();
+  const { call, core, store, emit, type, settle } = await setup();
   const ours = type("claim");
   const older = "2000-01-01T00:00:00.000Z";
   const stamp = { space: "their-space", by: { id: "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa", name: "Ana" }, at: older };
   const theirs = defaultGrammar({ ...stamp, titleFormat: (abbreviation: string) => `[[${abbreviation}]] - {content}` } as never);
   store.records.push(...theirs.map((record) => ({ ...record, at: older })));
   emit({ type: "records-changed" });
-  await new Promise((done) => setTimeout(done, 20));
+  await settle();
   assert.equal(core.nodeTypes().find((item) => item.label === "Claim")?.id, ours);
   const made = await call("node.create", { title: "Local format", type: core.nodeTypes().find((item) => item.label === "Claim")!.id });
   assert.ok(![...store.texts.values()].some(({ title }) => title.startsWith("[[")), made.title);
 });
 
 test("credit shows the contributor inside a lab, and the lab from outside it", async () => {
-  const { call, core, type, emit, store } = await setup();
+  const { call, core, type, emit, store, settle } = await setup();
   const mine = await call("node.create", { title: "Mine", type: type("claim") });
   assert.deepEqual([mine.credit.kind, mine.credit.id], ["person", core.identity().did]);
   await core.createLab("Home Lab");
@@ -310,7 +276,7 @@ test("credit shows the contributor inside a lab, and the lab from outside it", a
   const solo = createNode({ ...stamp, title: "From someone with no lab" });
   store.records.push(colleague, stranger, lab, solo);
   emit({ type: "records-changed" });
-  await new Promise((done) => setTimeout(done, 20));
+  await settle();
   const credit = async (title: string) => (await call("node.query", { text: title, limit: 1 }))[0]!.credit;
   assert.deepEqual([(await credit("colleague")).kind, (await credit("colleague")).name], ["person", "Ana Ruiz"]);
   assert.deepEqual([(await credit("another lab")).kind, (await credit("another lab")).name], ["lab", "Away Lab"]);
@@ -328,7 +294,7 @@ test("a new name reaches work done before it was set", async () => {
 });
 
 test("a canvas gets its own text, and renaming that text renames the canvas", async () => {
-  const { call, core, store, emit } = await setup();
+  const { call, core, store, emit, settle } = await setup();
   const canvas = await call("canvas.create", { title: "Findings" });
   const home = await core.canvasHome({ id: canvas.id });
   assert.equal(home.ok, true);
@@ -337,7 +303,7 @@ test("a canvas gets its own text, and renaming that text renames the canvas", as
   assert.equal(core.canvasOfRef({ ref: home.value }), canvas.id);
   assert.equal(core.badgeFor({ ref: home.value }), null, "a canvas isn't a node");
   emit({ type: "text-renamed", ref: home.value, title: "Canvas - New name" });
-  await new Promise((done) => setTimeout(done, 20));
+  await settle();
   assert.equal(core.canvasTitle({ id: canvas.id }), "New name");
 });
 
@@ -392,7 +358,7 @@ test("the surface never receives a host ref", async () => {
 });
 
 test("a remounted panel can return to the last canvas", async () => {
-  const { call, host } = await setup();
+  const { call, host, store } = await setup();
   const first = await call("canvas.create", { title: "One" });
   const second = await call("canvas.create", { title: "Two" });
   assert.equal(await call("canvas.last", {}), null);
@@ -400,14 +366,14 @@ test("a remounted panel can return to the last canvas", async () => {
   assert.equal(await call("canvas.last", {}), second.id);
   await call("canvas.open", { id: first.id });
   await call("canvas.open", { id: second.id });
-  const again = await createCore({ host });
+  const { core: again } = await makeCore({ store });
   const stored = await host.getLocal({ key: "last-canvas" });
   assert.ok(stored.ok && stored.value === second.id);
   assert.equal(again.graph().documents.has(second.id), true);
 });
 
 test("records made elsewhere stay pending until accepted", async () => {
-  const { call, core, store, emit, type, relation } = await setup();
+  const { call, core, store, emit, type, relation, settle } = await setup();
   const evidence = await call("node.create", { title: "E", type: type("evidence") });
   const claim = await call("node.create", { title: "C", type: type("claim") });
   const theirs = assertRelation({ space: "partner", by: { id: "p", name: "P" }, type: relation("supports"), source: evidence.id, target: claim.id });

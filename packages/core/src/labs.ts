@@ -1,9 +1,10 @@
 import type { DgRecord, LabSettings, NodeRecord } from "@dg/contract/records.ts";
-import { clock, revise, staysLocal } from "@dg/contract/records.ts";
+import { clock, revise, staysLocal, validateRecord } from "@dg/contract/records.ts";
 import type { LabLink } from "@dg/contract/services.ts";
 import type { BreadcrumbDefault, IdentityView, LabView } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { checkSignatures, signerOf } from "./signing.ts";
+import { refuse } from "./refuse.ts";
 
 const BREADCRUMB_KEY = "breadcrumb-default";
 
@@ -29,7 +30,7 @@ export const labFeature = (
   },
 ) => {
   const services = (): NonNullable<Context["services"]> => {
-    if (!context.services) throw new Error("No services are set up here.");
+    if (!context.services) throw refuse("unavailable", "No services are set up here.");
     return context.services;
   };
   const me = () => ({ did: context.me().id, name: context.me().name });
@@ -175,10 +176,13 @@ export const labFeature = (
     // A record that says a labmate wrote it has to carry that labmate's signature.
     const lab = context.myLab();
     const members = new Set(context.documents("membership").filter((item) => !lab || item.lab === lab.did).map((item) => item.member));
-    for (const record of records) if (record.kind === "membership") members.add(record.member);
+    for (const record of records) if (record?.kind === "membership" && typeof record.member === "string") members.add(record.member);
     const waiting = held;
     held = [];
-    const checked = await checkSignatures([...waiting, ...records], { persons: context.documents("person"), devices: context.documents("device"), members });
+    // Anything that isn't a well-formed record is left out before it can be read as one.
+    const sound = records.filter((record) => validateRecord(record).length === 0);
+    refused += records.length - sound.length;
+    const checked = await checkSignatures([...waiting, ...sound], { persons: context.documents("person"), devices: context.documents("device"), members });
     held = checked.held.slice(-5000);
     refused += checked.refused.length;
     for (const record of checked.refused) refusedBy.set(signerOf(record), (refusedBy.get(signerOf(record)) ?? 0) + 1);
@@ -309,7 +313,7 @@ export const labFeature = (
     },
     "canvas.audience": async ({ id }) => {
       const canvas = context.canvasOf(id);
-      if (!canvas) throw new Error("That canvas is gone.");
+      if (!canvas) throw refuse("not-found", "That canvas is gone.");
       const lab = context.myLab();
       const link = context.services ? await context.services.link().catch(() => null) : null;
       const members = lab && link?.token ? await services().members(link).then((list) => list.map((member) => member.name)).catch(() => []) : [];

@@ -92,6 +92,7 @@ test("a card that outlives its unit is not shown", async (t) => {
   const { world, mira, tomas, canvas, evidence, cards, titles } = await lab(t);
   // Mira removes her evidence while Tomas, apart, moves its card. His move is the later change to the card.
   await mira.call("node.remove", { id: evidence.id });
+  // A real wait: his change has to be stamped later than hers to be the later one.
   await new Promise((done) => setTimeout(done, 5));
   const held = (await tomas.call("canvas.open", { id: canvas })).items.find((item) => item.id === cards.evidence)!;
   await tomas.call("canvas.write", { canvas, upserts: [{ id: cards.evidence, z: held.z, item: { ...(held.item as object), x: 900 } as never }] });

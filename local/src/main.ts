@@ -7,7 +7,7 @@
 // JSON Canvas file under `discourse-graph/canvases/`, which Obsidian opens natively.
 import { readLog } from "@dg/contract/log.ts";
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, watch, writeFileSync } from "node:fs";
+import { rmSync, appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, watch, writeFileSync } from "node:fs";
 import { createServer, type ServerResponse } from "node:http";
 import { homedir } from "node:os";
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
@@ -49,15 +49,23 @@ const MIME: Record<string, string> = { pdf: "application/pdf", png: "image/png",
 mkdirSync(RECORDS, { recursive: true });
 
 // ---------------------------------------------------------------------------
-// This device: its id and settings live in the vault, its keys never do.
+// This device: its id, its settings and its keys live outside the vault, so a tool that syncs the
+// vault to another computer doesn't carry them there. Two computers with one id would write one log.
 
-const SETTINGS = join(ROOT, "local-app.json");
+const KEYS = values.keys ?? join(homedir(), ".discourse-graphs", "local-app");
+mkdirSync(KEYS, { recursive: true });
+const SETTINGS = join(KEYS, `${createHash("sha256").update(`${VAULT}:device`).digest("hex").slice(0, 16)}.json`);
+/** Where earlier versions kept them, inside the vault. Read once and taken out. */
+const OLD_SETTINGS = join(ROOT, "local-app.json");
 type Settings = { deviceId: string; local: Record<string, unknown> };
 const settings: Settings = existsSync(SETTINGS)
   ? (JSON.parse(readFileSync(SETTINGS, "utf8")) as Settings)
-  : { deviceId: `local-${uuidv7()}`, local: {} };
-const saveSettings = (): void => writeFileSync(SETTINGS, `${JSON.stringify(settings, null, 1)}\n`);
+  : existsSync(OLD_SETTINGS)
+    ? (JSON.parse(readFileSync(OLD_SETTINGS, "utf8")) as Settings)
+    : { deviceId: `local-${uuidv7()}`, local: {} };
+const saveSettings = (): void => writeFileSync(SETTINGS, `${JSON.stringify(settings, null, 1)}\n`, { mode: 0o600 });
 saveSettings();
+if (existsSync(OLD_SETTINGS)) rmSync(OLD_SETTINGS);
 const deviceLog = join(RECORDS, `${settings.deviceId}.jsonl`);
 
 const spaceFile = join(ROOT, "space.json");
@@ -209,8 +217,6 @@ function vaultFiles(folder: string): string[] {
     return entry.isDirectory() ? vaultFiles(path) : [path];
   });
 }
-
-const KEYS = values.keys ?? join(homedir(), ".discourse-graphs", "local-app");
 
 /** Model keys sit beside the signing keys, outside the vault, in a file only this user can read. */
 const fileSecrets = (folder: string): SecretStore => {

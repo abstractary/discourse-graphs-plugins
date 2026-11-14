@@ -1,51 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import type { CanvasItemRecord, DgRecord, NodeRecord } from "@dg/contract/records.ts";
-import type { SurfaceEvent, SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
-import { createCore } from "@dg/core/index.ts";
 import { normalizeQuote } from "@dg/core/reading.ts";
+import { makeCore } from "./support.ts";
 
 // Reading a PDF into the graph, and the drawer of units waiting to go on a canvas.
 const records = JSON.parse(readFileSync("examples/worked-example/records.json", "utf8")) as DgRecord[];
 const paperPdf = readFileSync("demo/papers/preclinical-sle-mediators.pdf").toString("base64");
 const graphOf = JSON.parse(readFileSync("demo/papers/preclinical-sle-mediators.graph.json", "utf8"));
 
-const setup = async (seed: DgRecord[] = records) => {
-  const store = createMemoryStore();
-  store.records.push(...seed);
-  const { host } = createMemoryHost({ store });
-  const opened: unknown[] = [];
-  const core = await createCore({ host: { ...host, openSurface: async (args) => (opened.push(args), { ok: true, value: null }) } });
-  const events: SurfaceEvent[] = [];
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("event" in message) events.push(message as SurfaceEvent);
-      if ("id" in message) pending.get(String(message.id))?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]): Promise<SurfaceMethods[M]["result"]> =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  return { core, call, events, store, opened };
-};
+const setup = (seed: DgRecord[] = records) => makeCore({ records: seed, watchSurfaces: true });
 
 const cardsOf = (store: { records: DgRecord[] }, canvas: string) => {
   const latest = new Map<string, CanvasItemRecord>();

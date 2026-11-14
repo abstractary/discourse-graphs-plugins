@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore, type Core } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore, type MemoryStore } from "@dg/contract/memory-host.ts";
+import type { MemoryStore } from "@dg/contract/memory-host.ts";
 import type { ExtractionGraph, LabLink, Services } from "@dg/contract/services.ts";
 import type { DgRecord } from "@dg/contract/records.ts";
-import type { SurfaceEvent, SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import { makeCore, type Made } from "./support.ts";
 
 const demo = (name: string): ExtractionGraph => JSON.parse(readFileSync(`demo/papers/${name}.graph.json`, "utf8")) as ExtractionGraph;
 const NEPHRITIS = "lupus-nephritis-prediction";
@@ -69,44 +68,14 @@ const fakeServices = (graph: ExtractionGraph, link: LabLink | null = null): { se
   return { services, calls, state };
 };
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async (
   graph: ExtractionGraph,
   link: LabLink | null = null,
   extra: { askBreadcrumb?: (paper: { id: string; title: string }) => void } = {},
-): Promise<{ core: Core; call: Call; store: MemoryStore; calls: Calls; events: SurfaceEvent[] }> => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
+): Promise<Made & { calls: Calls }> => {
   const { services, calls } = fakeServices(graph, link);
-  const core = await createCore({ host, services, demoGraphs: [{ filename: "demo.pdf", graph }], ...extra });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  const events: SurfaceEvent[] = [];
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("event" in message) events.push(message as SurfaceEvent);
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  return { core, call, store, calls, events };
+  const made = await makeCore({ services, demoGraphs: [{ filename: "demo.pdf", graph }], ...extra });
+  return { ...made, calls };
 };
 
 const FILE = { name: "paper.pdf", mediaType: "application/pdf", dataBase64: "AAAA" };

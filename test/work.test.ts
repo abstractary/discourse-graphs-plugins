@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import { createNode, createPaper, type NodeRecord, type PaperRecord } from "@dg/contract/records.ts";
-import type { ExtractionGraph, Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import type { ExtractionGraph } from "@dg/contract/services.ts";
 import { keyOfPaper, keyOfSource, paperOfWork, sameWork, standsFor } from "@dg/core/work.ts";
+import { makeCore } from "./support.ts";
 
 const stamp = { space: "here", by: { id: "did:plc:me", name: "Me" } };
 const paper = (fields: Partial<PaperRecord> & { title: string }): PaperRecord =>
@@ -51,28 +49,10 @@ test("a source finds its paper by the strongest tie, and a library key names no 
 });
 
 const demo = JSON.parse(readFileSync("demo/papers/lupus-nephritis-prediction.graph.json", "utf8")) as ExtractionGraph;
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
 
 test("a reading keeps the hash of the PDF it read, and its DOI in one form", async () => {
-  const { host } = createMemoryHost({ store: createMemoryStore() });
   const shouted = { ...demo, paper: { ...demo.paper, doi: "https://doi.org/10.1016/J.JAUT.2016.06.001" } } as ExtractionGraph;
-  const services = { servers: async () => [], extract: async () => shouted, storeGraph: async () => {}, link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }) } as unknown as Services;
-  const core = await createCore({ host: host as never, services, demoGraphs: [] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = { send: (message) => { if ("id" in message) pending.get(message.id)?.(message); }, onMessage: (handler) => { listener = handler; return () => {}; } };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = `r${(next += 1)}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { call } = await makeCore({ services: { extract: async () => shouted }, demoGraphs: [] });
   const pdf = Buffer.from("%PDF-1.7 not really").toString("base64");
   const read = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: pdf }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
   assert.equal(read.doi, "10.1016/j.jaut.2016.06.001");

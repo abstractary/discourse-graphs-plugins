@@ -1,38 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore, type Core } from "@dg/core/index.ts";
 import { BASE_WORDS, STARTER_TEMPLATES, fillTemplate } from "@dg/contract/grammar.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import { BASE_NODE_TYPES, type NodeRecord } from "@dg/contract/records.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import { makeCore, until } from "./support.ts";
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async (store = createMemoryStore()) => {
-  const { host } = createMemoryHost({ store });
+const setup = async () => {
   const files = new Map<string, string>();
   const tables: { name: string; property: string; value: string; columns: { property: string; label: string }[] }[] = [];
-  const base = {
-    ...host,
-    saveFile: async ({ name, dataBase64 }: { name: string; dataBase64: string }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }),
-    openTable: async (args: (typeof tables)[number]) => (tables.push(args), { ok: true as const, value: { where: `Discourse tables/${args.name}.base` } }),
-  };
-  const core: Core = await createCore({ host: base });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = { send: (message) => void ("id" in message && pending.get(message.id)?.(message)), onMessage: (handler) => ((listener = handler), () => {}) };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = `r${(next += 1)}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { core, call, store, host } = await makeCore({
+    wrap: (host) => ({
+      ...host,
+      saveFile: async ({ name, dataBase64 }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }),
+      openTable: async (args: (typeof tables)[number]) => (tables.push(args), { ok: true as const, value: { where: `Discourse tables/${args.name}.base` } }),
+    }),
+  });
   const put = async (name: string, body: string): Promise<string> => {
     const made = await host.writeAsset({ asset: { name, mime: "application/json", dataUrl: `data:application/json;base64,${btoa(body)}` } });
     assert.ok(made.ok);
@@ -188,7 +169,7 @@ test("a new unit's note starts from its type's template, and carries the facts a
   const note = texts().find((text) => text.title === "CLM - Tension rises")!;
   assert.ok(note, texts().map((text) => text.title).join(" | "));
   assert.match(note.body ?? "", /# Tension rises\n\nMade \d{4}-\d{2}-\d{2} by Test Person as a Claim\.\n\n## What it rests on/);
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await until(() => ["dg-type", "dg-made", "dg-by"].every((key) => note.properties?.[key]), "the note to get its facts");
   assert.equal(note.properties?.["dg-type"], "Claim");
   assert.match(String(note.properties?.["dg-made"]), /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(note.properties?.["dg-by"], "Test Person");

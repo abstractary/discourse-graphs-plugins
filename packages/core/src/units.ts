@@ -20,6 +20,7 @@ import type { ExportTarget, Provenance, UnitSocial } from "@dg/contract/surface.
 import type { HostRef } from "@dg/contract/records.ts";
 import { fillTemplate } from "./grammar.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refuse } from "./refuse.ts";
 
 const WORKSPACE = "My canvas";
 const LAB_CANVAS = "Lab canvas";
@@ -122,7 +123,7 @@ export const unitFeature = (
     }
     if (target.kind === "canvas") {
       const canvas = context.canvasOf(target.id);
-      if (!canvas) throw new Error("That canvas is gone.");
+      if (!canvas) throw refuse("not-found", "That canvas is gone.");
       return canvas;
     }
     return null;

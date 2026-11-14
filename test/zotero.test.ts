@@ -1,14 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import type { NodeRecord } from "@dg/contract/records.ts";
 import { identifierCurie, identifierUrl, parseIdentifier } from "@dg/contract/scholarly.ts";
-import type { Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { suggestType } from "@dg/core/library.ts";
 import { createZotero } from "@dg/sync/zotero.ts";
+import { makeCore } from "./support.ts";
 
 const fixture = (name: string): unknown => JSON.parse(readFileSync(`test/fixtures/zotero/${name}.json`, "utf8"));
 const ITEMS = fixture("items") as { key: string }[];
@@ -32,38 +29,9 @@ const zoteroApp = (seen: Seen, mode: "on" | "off" | "closed" = "on"): typeof fet
     return new Response("Not found", { status: 404 });
   }) as typeof fetch;
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async (mode: "on" | "off" | "closed" = "on") => {
   const seen: Seen = [];
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  const services = { servers: async () => [], link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }), zotero: createZotero({ fetch: zoteroApp(seen, mode) }) } as unknown as Services;
-  const core = await createCore({ host, services, demoGraphs: [] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { core, call, host } = await makeCore({ services: { zotero: createZotero({ fetch: zoteroApp(seen, mode) }) }, demoGraphs: [] });
   return { core, call, seen, host };
 };
 

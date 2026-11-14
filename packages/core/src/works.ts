@@ -4,6 +4,7 @@ import { sameDoi, isIdentifier, mergeIdentifiers, parseIdentifier, sameIdentifie
 import type { WorkLookup, WorkView } from "@dg/contract/surface.ts";
 import { identifiersOf, paperIdentifiers } from "./card.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * Looks a published work up in the open registries and keeps what they say:
@@ -110,7 +111,7 @@ export const worksFeature = (context: Context) => {
     },
     "unit.identify": async ({ node: id, add, remove }) => {
       const node = context.nodeOf(id);
-      if (!node) throw new Error(`No node ${id}`);
+      if (!node) throw refuse("not-found", `No node ${id}`);
       if (node.by.id !== context.me().id) throw new Error("Only whoever made a unit can change its identifiers.");
       const fresh = (add ?? []).map((text) => {
         const found = typeof text === "string" ? parseIdentifier(text) : isIdentifier(text) ? text : null;

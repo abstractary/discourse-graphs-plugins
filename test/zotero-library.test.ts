@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
+import { createMemoryStore } from "@dg/contract/memory-host.ts";
 import { createNode, type Author, type NodeRecord } from "@dg/contract/records.ts";
 import { isLibraryRef, isSharedLibraryRef } from "@dg/contract/scholarly.ts";
-import type { Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { inLibraryOf } from "@dg/core/card.ts";
 import { createZotero } from "@dg/sync/zotero.ts";
+import { makeCore } from "./support.ts";
 
 /**
  * Zotero as it really answers on its own computer, as read from Zotero 10.0.9 on 13 November 2026: the
@@ -48,34 +46,18 @@ const zoteroApp = (state: { open: boolean }): typeof fetch =>
     return new Response("Not found", { status: 404 });
   }) as typeof fetch;
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async () => {
   const state = { open: true };
   const store = createMemoryStore();
   store.outside.set(PATH, { name: "Carroll 2020.pdf", mime: "application/pdf", dataUrl: `data:application/pdf;base64,${btoa(BYTES)}` });
-  const { host, emit } = createMemoryHost({ store });
   const opened: string[] = [];
-  const base = { ...host, openSurface: async (args: { route: { surface: string } }) => (opened.push(args.route.surface), { ok: true as const, value: null }) };
-  const services = { servers: async () => [], link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }), zotero: createZotero({ fetch: zoteroApp(state) }) } as unknown as Services;
-  const core = await createCore({ host: base as never, services, demoGraphs: [] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = { send: (message) => void ("id" in message && pending.get(message.id)?.(message)), onMessage: (handler) => ((listener = handler), () => {}) };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = `r${(next += 1)}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  const nodes = (): NodeRecord[] => [...core.graph().documents.values()].filter((record): record is NodeRecord => record.kind === "node" && !record.removed);
-  return { core, call, store, host, emit, state, opened, nodes };
+  const made = await makeCore({
+    store,
+    wrap: (host) => ({ ...host, openSurface: async (args) => (opened.push(args.route.surface), { ok: true as const, value: null }) }),
+    services: { zotero: createZotero({ fetch: zoteroApp(state) }) },
+    demoGraphs: [],
+  });
+  return { ...made, state, opened };
 };
 
 test("a personal library read on its own computer is user 0, and still a library", async () => {
@@ -183,12 +165,12 @@ test("a personal library's address marks and opens only for the person whose uni
   assert.equal(inLibraryOf(personal, me, me.id, "zotero://open-pdf/library/items/PDFA0001?annotation=A")?.what, "passage");
 
   // In the graph: a teammate's source with the same personal address isn't taken for mine.
-  const { call, host, emit, core, nodes } = await setup();
+  const { call, host, emit, core, nodes, arrive } = await setup();
   const { nodeTypes } = await call("grammar.get", {});
   const theirs = createNode({ space: "lab", by: mate, title: "Some other paper in their library", type: nodeTypes.find((type) => type.base === "source")!.id, facts: { identifiers: personal } });
   await host.putRecords({ records: [theirs] });
   emit({ type: "records-changed" });
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await arrive(theirs);
   assert.equal((await call("node.view", { id: theirs.id })).node.card.library, undefined);
   const brought = await call("zotero.import", { ref: ITEM_REF });
   assert.notEqual(brought.source.id, theirs.id, "my item makes my own source");

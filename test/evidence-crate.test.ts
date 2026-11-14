@@ -1,74 +1,43 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore, type Core } from "@dg/core/index.ts";
 import type { SecretStore } from "@dg/contract/llm.ts";
-import { createMemoryHost, createMemoryStore, type MemoryStore } from "@dg/contract/memory-host.ts";
 import type { JsonObject, NodeRecord } from "@dg/contract/records.ts";
-import type { Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { readCrate } from "@dg/core/crate.ts";
 import { isMiraDocument, miraEntities } from "@dg/core/mira.ts";
 import { unzip } from "@dg/core/zip.ts";
 import { toZenodo } from "@dg/core/zenodo.ts";
+import { makeCore } from "./support.ts";
 
 // The real EVD 1 bundle's two metadata files, from DiscourseGraphs/MATSUlab-issue-exchange-analysis (CC BY 4.0).
 const BUNDLE = "test/fixtures/matsulab-evd1";
 const CRATE = readFileSync(`${BUNDLE}/ro-crate-metadata.json`, "utf8");
 const EVIDENCE = readFileSync(`${BUNDLE}/evidence.jsonld`, "utf8");
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
 type Deposits = { opened: { server: string; token: string; metadata: Record<string, unknown> }[]; uploaded: { bucket: string; token: string; name: string; bytes: Uint8Array }[] };
 
-const setup = async (store: MemoryStore = createMemoryStore()) => {
-  const { host } = createMemoryHost({ store });
+const setup = async () => {
   const files = new Map<string, string>();
-  const keeping = { ...host, saveFile: async ({ name, dataBase64 }: { name: string; dataBase64: string }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }) };
   const deposits: Deposits = { opened: [], uploaded: [] };
-  const services = {
-    servers: async () => [],
-    link: async () => null,
-    pushRecords: async () => {},
-    pullRecords: async () => ({ records: [], done: true }),
-    notifications: async () => [],
-    deposit: {
-      open: async (args: Deposits["opened"][number]) => {
-        deposits.opened.push(args);
-        return { id: "1", bucket: `${args.server}/api/files/bucket-1`, page: `${args.server}/deposit/1`, doi: "10.5072/zenodo.1" };
-      },
-      upload: async (args: Deposits["uploaded"][number]) => {
-        deposits.uploaded.push(args);
-        return { size: args.bytes.length };
-      },
-    },
-  } as unknown as Services;
   const kept = new Map<string, string>();
   const secrets: SecretStore = { kind: "plain", get: async (id) => kept.get(id) ?? null, set: async (id, value) => void (value === null ? kept.delete(id) : kept.set(id, value)) };
-  const core: Core = await createCore({ host: keeping, services, secrets });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const { core, call, store, host, nodes } = await makeCore({
+    wrap: (host) => ({ ...host, saveFile: async ({ name, dataBase64 }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }) }),
+    services: {
+      notifications: async () => [],
+      deposit: {
+        open: async (args: Deposits["opened"][number]) => {
+          deposits.opened.push(args);
+          return { id: "1", bucket: `${args.server}/api/files/bucket-1`, page: `${args.server}/deposit/1`, doi: "10.5072/zenodo.1" };
+        },
+        upload: async (args: Deposits["uploaded"][number]) => {
+          deposits.uploaded.push(args);
+          return { size: args.bytes.length };
+        },
+      },
+    } as never,
+    secrets,
+  });
   const put = async (name: string, mime: string, body: string | Uint8Array): Promise<string> => {
     const bytes = typeof body === "string" ? new TextEncoder().encode(body) : body;
     let binary = "";
@@ -77,7 +46,6 @@ const setup = async (store: MemoryStore = createMemoryStore()) => {
     assert.ok(made.ok);
     return made.value.ref;
   };
-  const nodes = (): NodeRecord[] => [...core.graph().documents.values()].filter((record): record is NodeRecord => record.kind === "node" && !record.removed);
   return { core, call, store, put, nodes, saved: () => files, deposits, kept };
 };
 

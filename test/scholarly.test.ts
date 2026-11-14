@@ -1,17 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore, type Core } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore, type MemoryStore } from "@dg/contract/memory-host.ts";
+import { createMemoryStore, type MemoryStore } from "@dg/contract/memory-host.ts";
 import type { ExtractionGraph, LabLink, Services } from "@dg/contract/services.ts";
 import type { DgRecord, JsonObject, NodeRecord, PaperRecord } from "@dg/contract/records.ts";
 import { CARD_FIELD_IDS, identifierCurie, identifierUrl, mergeIdentifiers, parseIdentifier, type Notification, type WorkMetadata } from "@dg/contract/scholarly.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { planCrateImport, readCrate, slugOf } from "@dg/core/crate.ts";
 import { toDataCite } from "@dg/core/datacite.ts";
 import { buildNotification, RELATIONSHIPS } from "@dg/core/notify.ts";
 import { PROCESS_RUN_CRATE } from "@dg/core/rocrate.ts";
 import { crc32, unzip, zip } from "@dg/core/zip.ts";
+import { makeCore, type Call, type Made } from "./support.ts";
 
 const demo = JSON.parse(readFileSync("demo/papers/lupus-nephritis-prediction.graph.json", "utf8")) as ExtractionGraph;
 const DOI = demo.paper?.doi ?? "10.1016/j.semarthrit.2018.02.012";
@@ -63,39 +62,16 @@ const services = (link: LabLink | null, sent: Sent): Services =>
     notifications: async () => [],
   }) as unknown as Services;
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async (link: LabLink | null = null, store: MemoryStore = createMemoryStore()): Promise<{ core: Core; call: Call; store: MemoryStore; sent: Sent; saved: () => Map<string, string> }> => {
-  const { host } = createMemoryHost({ store });
+const setup = async (link: LabLink | null = null, store: MemoryStore = createMemoryStore()): Promise<Made & { sent: Sent; saved: () => Map<string, string> }> => {
   const sent: Sent = { looked: [], notified: [] };
   const files = new Map<string, string>();
-  const keeping = { ...host, saveFile: async ({ name, dataBase64 }: { name: string; dataBase64: string }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }) };
-  const core = await createCore({ host: keeping, services: services(link, sent), demoGraphs: [{ filename: "demo.pdf", graph: demo }] });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  return { core, call, store, sent, saved: () => files };
+  const made = await makeCore({
+    store,
+    wrap: (host) => ({ ...host, saveFile: async ({ name, dataBase64 }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }) }),
+    services: services(link, sent),
+    demoGraphs: [{ filename: "demo.pdf", graph: demo }],
+  });
+  return { ...made, sent, saved: () => files };
 };
 
 const extracted = async (call: Call) => {
@@ -346,7 +322,7 @@ test("a crate made here comes back whole in another space, and twice makes nothi
 
   const store = createMemoryStore();
   const second = await setup(null, store);
-  const { host } = createMemoryHost({ store });
+  const { host } = second;
   const kept = await host.writeAsset({ asset: { name: made.name, mime: "application/zip", dataUrl: `data:application/zip;base64,${archive}` } });
   assert.ok(kept.ok);
   const read = await second.call("crate.import", { ref: kept.value.ref });
@@ -396,8 +372,7 @@ const FOREIGN = {
 };
 
 test("another tool's run crate becomes a run with its code, inputs and outputs", async () => {
-  const { call, core, store } = await setup();
-  const { host } = createMemoryHost({ store });
+  const { call, core, store, host } = await setup();
   const json = btoa(JSON.stringify(FOREIGN));
   const kept = await host.writeAsset({ asset: { name: "ro-crate-metadata.json", mime: "application/json", dataUrl: `data:application/json;base64,${json}` } });
   assert.ok(kept.ok);

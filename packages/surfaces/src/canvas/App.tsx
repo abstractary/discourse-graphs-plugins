@@ -37,6 +37,8 @@ import { DRAG_TYPE, Drawer, useUnitsDrawer } from "./Drawer.tsx";
 import { Sidebar, type SideTab } from "./Sidebar.tsx";
 import { useHistory } from "./history.ts";
 import { useFit } from "./fit.ts";
+import { CARD_WIDTH, NOTE, cardHeight, clamp, nodeOfItem, toEdge, toNode, withoutId, type Anchor, type End, type FlowNode } from "./items.ts";
+import { useCanvasWriter } from "./useCanvasWriter.ts";
 import { LinkAskDialog, type LinkAsk } from "./LinkAsk.tsx";
 import { CLIP_TYPE, clipFromTransfer, writeClip, type Clip } from "./clipboard.ts";
 import { MOD, Marked } from "../search/parts.tsx";
@@ -49,78 +51,6 @@ const TIP_WIDTH = 160;
 // Shift is what most drawing tools use to add to a selection.
 const MULTI_SELECT_KEYS = ["Meta", "Control", "Shift"];
 
-const CARD_WIDTH = 240;
-const NOTE = { width: 200, height: 80 };
-const GAP = 24;
-
-/** Median research titles run about 70 characters, and some twice that. */
-const cardHeight = (title: string): number => Math.max(64, 34 + 18 * Math.ceil(title.length / 34));
-
-type FlowData = Record<string, unknown>;
-type FlowNode = Node<FlowData>;
-
-const withoutId = (item: CanvasItem): WithoutId<CanvasItem> => {
-  const { id: _id, ...rest } = item;
-  return rest as WithoutId<CanvasItem>;
-};
-
-const toNode = ({ id, z, item, credit, at }: CanvasItemView, view: CanvasView): FlowNode | null => {
-  if ("fromNode" in item) return null;
-  const base = { id, position: { x: item.x, y: item.y }, zIndex: z };
-  const sized = { ...base, width: item.width, height: item.height };
-  if (item.type === "stroke") return { ...sized, type: "ink", data: { path: item.path, credit, at } };
-  if (item.type === "group") {
-    const fixed = item.guide ? { draggable: false, selectable: false, focusable: false, deletable: false } : {};
-    return { ...sized, ...fixed, type: "zone", zIndex: -1, data: { label: item.label ?? "", guide: item.guide ?? false } };
-  }
-  if (item.type === "text" && item.dg) {
-    return {
-      ...base,
-      width: item.width,
-      type: "card",
-      data: {
-        node: view.nodes[item.dg.node],
-        text: item.text,
-        minHeight: item.height,
-        ...(view.social[item.dg.node] ? { social: view.social[item.dg.node] } : {}),
-      },
-    };
-  }
-  // Another canvas held inside this one: it opens in place, like going into a holon.
-  if (item.type === "file" && item.dg?.canvas) {
-    return { ...base, width: item.width, type: "nested", data: { canvas: item.dg.canvas, file: item.file, minHeight: Math.min(item.height, 120) } };
-  }
-  const text = item.type === "text" ? item.text : item.type === "file" ? item.file : item.url;
-  return { ...sized, type: "note", data: { text, credit, at } };
-};
-
-const toEdge = ({ id, item }: CanvasItemView, view: CanvasView, boxes: Map<string, Box>): Edge | null => {
-  if (!("fromNode" in item)) return null;
-  const relation = item.dg ? view.relations[item.dg.relation] : undefined;
-  // A declined relation is history. Nobody should have to read past it.
-  if (relation?.state === "rejected" || relation?.state === "withdrawn") return null;
-  const from = boxes.get(item.fromNode);
-  const to = boxes.get(item.toNode);
-  const [sourceHandle, targetHandle] = from && to ? sidesFor(from, to) : ["r", "l"];
-  const kind = relation?.kind ?? "";
-  const color = relationColor(kind);
-  return {
-    id,
-    source: item.fromNode,
-    target: item.toNode,
-    sourceHandle,
-    targetHandle,
-    ...(relation?.label || item.label ? { label: relation?.label ?? item.label } : {}),
-    labelBgPadding: [4, 2],
-    labelBgBorderRadius: 3,
-    style: { stroke: color },
-    labelStyle: { fill: color },
-    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
-    className: relation?.state === "pending" ? "edge-pending" : "",
-    data: { ...(kind ? { kind } : {}), ...(relation ? { credit: relation.credit } : {}), ...(item.dg ? { relation: item.dg.relation } : {}) },
-  };
-};
-
 const pathFrom = (outline: number[][]): string => {
   if (outline.length === 0) return "";
   const round = (value: number): number => Math.round(value * 10) / 10;
@@ -128,17 +58,10 @@ const pathFrom = (outline: number[][]): string => {
   return `M${round(first![0]!)} ${round(first![1]!)}${rest.map(([x, y]) => `L${round(x!)} ${round(y!)}`).join("")}Z`;
 };
 
-const clamp = (value: number, low: number, high: number): number => Math.max(low, Math.min(value, Math.max(low, high)));
-
-const nodeOfItem = (entry: CanvasItemView | undefined): string | undefined =>
-  (entry?.item as { dg?: { node?: string } } | undefined)?.dg?.node;
-
-type End = { item: string; node: string };
 type RelationMenu = { source: End; target: End; options: RelationOption[]; x: number; y: number };
 type TypeMenu = { node: string; x: number; y: number };
 /** A connection dropped on empty canvas, waiting for the node it should reach. */
 type Linking = { from: End | null; item: string; at: { x: number; y: number } };
-type Anchor = { left: number; top: number };
 type EdgeTip = { x: number; y: number; credit: Credit };
 
 const ViewBar = () => {
@@ -389,73 +312,9 @@ export const App = ({ connection }: { connection: Connection }) => {
     return () => observer.disconnect();
   }, [flow, hasCanvas]);
 
-  const nextZ = useCallback(
-    (): number => Math.max(0, ...[...items.current.values()].map((entry) => entry.z)) + 1,
-    [],
-  );
-
-  const write = useCallback(
-    async (args: {
-      upserts?: { id?: string; item: WithoutId<CanvasItem>; z: number }[];
-      removes?: string[];
-      restores?: string[];
-    }) => {
-      if (!current) return { ids: [] as string[] };
-      setNotice("");
-      return call("canvas.write", { canvas: current, ...args });
-    },
-    [call, current],
-  );
-
-  /** Finds room near a spot, so a new item never lands on top of an old one. */
-  const freeSpot = useCallback(
-    (start: { x: number; y: number }, size: { width: number; height: number }, ignore?: Set<string>) => {
-      const taken = flow.getNodes().flatMap((node) =>
-        node.type === "ink" || ignore?.has(node.id)
-          ? []
-          : [{
-              x: node.position.x,
-              y: node.position.y,
-              width: node.measured?.width ?? node.width ?? 0,
-              height: node.measured?.height ?? node.height ?? 0,
-            }],
-      );
-      const clear = (x: number, y: number): boolean =>
-        taken.every(
-          (box) =>
-            x + size.width + GAP <= box.x ||
-            x >= box.x + box.width + GAP ||
-            y + size.height + GAP <= box.y ||
-            y >= box.y + box.height + GAP,
-        );
-      for (let ring = 0; ring < 24; ring += 1) {
-        for (let dy = -ring; dy <= ring; dy += 1) {
-          for (let dx = -ring; dx <= ring; dx += 1) {
-            if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-            const x = start.x + dx * (size.width / 2 + GAP);
-            const y = start.y + dy * (size.height / 2 + GAP);
-            if (clear(x, y)) return { x: Math.round(x), y: Math.round(y) };
-          }
-        }
-      }
-      return { x: Math.round(start.x), y: Math.round(start.y) };
-    },
-    [flow],
-  );
-
-  const startingPoint = useCallback(
-    (size: { width: number; height: number }) => {
-      const picked = flow.getNodes().filter((node) => node.selected && node.type !== "ink");
-      if (picked.length === 1) {
-        const [node] = picked;
-        return { x: node!.position.x + (node!.measured?.width ?? CARD_WIDTH) + 48, y: node!.position.y };
-      }
-      const box = area.current!.getBoundingClientRect();
-      const point = flow.screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 2 });
-      return { x: point.x - size.width / 2, y: point.y - size.height / 2 };
-    },
-    [flow],
-  );
+  const clearNotice = useCallback(() => setNotice(""), []);
+  const writer = useCanvasWriter({ connection, current, items, area, record, onWrite: clearNotice });
+  const { write, freeSpot, startingPoint, nextZ } = writer;
 
   const updateItem = useCallback(
     (id: string, change: (item: CanvasItem) => CanvasItem, label: string) => {

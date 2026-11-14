@@ -12,7 +12,7 @@ A working note, 14 November 2026. An analysis and a set of proposals; none of it
 |---|---|---|
 | Record kinds | 22 | `contract/record.ts` |
 | Base unit types, base relation types | 9 and 9 | `BASE_NODE_TYPES`, `BASE_RELATION_TYPES` |
-| Calls a panel can make | 163, in 35 namespaces | `contract/surface.ts` |
+| Calls a panel can make | 166, in 36 namespaces | `contract/surface.ts` |
 | Panels | 14 | `packages/surfaces/src` |
 | Hand-kept tables with one entry per base type | 5 (AT collection, MIRA class, RO-Crate type, words, templates), plus 26 lexicon files, the SHACL shapes, a copy of those rules in TypeScript, and 49 mapping lines | `atproto.ts`, `mira.ts`, `rocrate.ts`, `grammar.ts`, `lexicons/`, `ontology/`, `shapes.ts` |
 | Files that name a base type in code | 45 | grep |

@@ -3,12 +3,12 @@ import type { Config } from './config.ts';
 import { normalizeDoi } from './graphs.ts';
 import { ApiError, isObject, publicBase, sendJson } from './http.ts';
 import type { Context, Route } from './http.ts';
+import { ROUTES, at } from './routes.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
 
 export const INBOX_REL = 'http://www.w3.org/ns/ldp#inbox';
 
-const INBOX_PATH = '/v1/notify/inbox';
 const ACCEPT_POST = 'application/ld+json, application/json';
 const AS_CONTEXT = 'https://www.w3.org/ns/activitystreams';
 const NOTIFY_CONTEXTS = ['https://coar-notify.net', 'https://purl.org/coar/notify'];
@@ -35,7 +35,7 @@ export type NotificationSummary = {
 };
 
 export function inboxUrl(base: string): string {
-  return base + INBOX_PATH;
+  return base + ROUTES.notifications.path;
 }
 
 export function inboxLink(base: string): string {
@@ -252,15 +252,15 @@ function inboxOptions({ res }: Context): void {
 function root({ req, res }: Context, config: Config): unknown {
   const base = publicBase(req, config.publicUrl);
   res.setHeader('Link', inboxLink(base));
-  return { name: 'Discourse Graphs reference server', info: `${base}/v1/info`, inbox: inboxUrl(base) };
+  return { name: 'Discourse Graphs reference server', info: `${base}${ROUTES.info.path}`, inbox: inboxUrl(base) };
 }
 
 export function notifyRoutes(config: Config, store: Store): Route[] {
   return [
-    { method: 'GET', path: '/', handler: (context) => root(context, config) },
-    { method: 'POST', path: INBOX_PATH, handler: (context) => receive(context, config, store) },
-    { method: 'GET', path: INBOX_PATH, handler: (context) => listInbox(context, config, store) },
-    { method: 'OPTIONS', path: INBOX_PATH, handler: inboxOptions },
-    { method: 'GET', path: `${INBOX_PATH}/:key`, handler: (context) => readOne(context, store) },
+    { ...at('root'), handler: (context) => root(context, config) },
+    { ...at('sendNotification'), handler: (context) => receive(context, config, store) },
+    { ...at('notifications'), handler: (context) => listInbox(context, config, store) },
+    { ...at('inboxOptions'), handler: inboxOptions },
+    { ...at('readNotification'), handler: (context) => readOne(context, store) },
   ];
 }

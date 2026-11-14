@@ -1,3 +1,4 @@
+import { pathOf } from "@dg/contract/routes.ts";
 import { trimmedUrl as trimmed } from "@dg/contract/urls.ts";
 import type {
   ComputeServer,
@@ -101,8 +102,6 @@ export const createServices = ({
   const serverList = async (): Promise<ComputeServer[]> =>
     ((await store.get(SERVERS_KEY)) as ComputeServer[] | null) ?? DEFAULT_SERVERS;
 
-  const labPath = (link: LabLink, rest = ""): string => `/v1/labs/${encodeURIComponent(link.id)}${rest}`;
-
   return {
     servers: serverList,
     addServer: async (server) => {
@@ -113,12 +112,12 @@ export const createServices = ({
     removeServer: async (id) => {
       await store.set(SERVERS_KEY, (await serverList()).filter((server) => server.id !== id));
     },
-    check: (url) => json<ServerInfo>(url, "/v1/info"),
-    models: async (url) => (await json<{ models: ServerOption[] }>(url, "/v1/models")).models,
-    schemas: async (url) => (await json<{ schemas: ServerOption[] }>(url, "/v1/schemas")).schemas,
+    check: (url) => json<ServerInfo>(url, pathOf("info")),
+    models: async (url) => (await json<{ models: ServerOption[] }>(url, pathOf("models"))).models,
+    schemas: async (url) => (await json<{ schemas: ServerOption[] }>(url, pathOf("schemas"))).schemas,
 
     extract: async ({ url, onStatus, ...body }) => {
-      const response = await open(url, "/v1/extract", { body });
+      const response = await open(url, pathOf("extract"), { body });
       let result: ExtractionGraph | null = null;
       let failure: string | null = null;
       await readLines(response, (line) => {
@@ -134,22 +133,22 @@ export const createServices = ({
     storeGraph: async ({ doi, graph, schema, model }) => {
       const managed = (await serverList()).find((server) => server.kind === "managed");
       if (!managed) throw new Error("No Discourse Graphs service is set up.");
-      await json(managed.url, "/v1/graphs", { body: { doi, graph, schema, model } });
+      await json(managed.url, pathOf("storeGraph"), { body: { doi, graph, schema, model } });
     },
 
     link: async () => (await store.get(LINK_KEY)) as LabLink | null,
     saveLink: (link) => store.set(LINK_KEY, link),
 
     createLab: async ({ server, name, person, labDid }) => {
-      const made = await json<{ lab: { id: string; name: string }; token: string }>(server, "/v1/labs", {
+      const made = await json<{ lab: { id: string; name: string }; token: string }>(server, pathOf("createLab"), {
         body: { name, person, labDid },
       });
       return { server: trimmed(server), id: made.lab.id, name: made.lab.name, token: made.token, tokenKind: "personal", role: "admin" };
     },
-    findLab: ({ server, id }) => json(server, `/v1/labs/${encodeURIComponent(id)}`),
+    findLab: ({ server, id }) => json(server, pathOf("findLab", { id })),
     requestToJoin: async ({ server, id, person }) => {
-      const lab = await json<{ id: string; name: string }>(server, `/v1/labs/${encodeURIComponent(id)}`);
-      const asked = await json<{ requestId: string; secret: string }>(server, `/v1/labs/${encodeURIComponent(id)}/join`, { body: { person } });
+      const lab = await json<{ id: string; name: string }>(server, pathOf("findLab", { id }));
+      const asked = await json<{ requestId: string; secret: string }>(server, pathOf("askToJoin", { id }), { body: { person } });
       return { server: trimmed(server), id: lab.id, name: lab.name, pending: asked };
     },
     checkRequest: async (link) => {
@@ -157,42 +156,42 @@ export const createServices = ({
       const { requestId, secret } = link.pending;
       const answer = await json<{ state: "pending" | "accepted" | "declined"; token?: string; tokenKind?: "personal" | "team" }>(
         link.server,
-        labPath(link, `/join/${encodeURIComponent(requestId)}?secret=${encodeURIComponent(secret)}`),
+        `${pathOf("pollJoin", { id: link.id, requestId })}?secret=${encodeURIComponent(secret)}`,
       );
       if (answer.state === "pending") return { link, state: "pending" };
       if (answer.state === "declined") return { link: null, state: "declined" };
       const { pending: _done, ...rest } = link;
       return { link: { ...rest, token: answer.token!, tokenKind: answer.tokenKind ?? "personal", role: "member" }, state: "accepted" };
     },
-    requests: async (link) => (await json<{ requests: Awaited<ReturnType<Services["requests"]>> }>(link.server, labPath(link, "/requests"), { token: link.token! })).requests,
+    requests: async (link) => (await json<{ requests: Awaited<ReturnType<Services["requests"]>> }>(link.server, pathOf("requests", { id: link.id }), { token: link.token! })).requests,
     decide: async (link, { requestId, decision, tokenKind }) => {
-      await json(link.server, labPath(link, `/requests/${encodeURIComponent(requestId)}`), { token: link.token!, body: { decision, tokenKind } });
+      await json(link.server, pathOf("decide", { id: link.id, requestId }), { token: link.token!, body: { decision, tokenKind } });
     },
-    members: async (link) => (await json<{ members: Awaited<ReturnType<Services["members"]>> }>(link.server, labPath(link, "/members"), { token: link.token! })).members,
+    members: async (link) => (await json<{ members: Awaited<ReturnType<Services["members"]>> }>(link.server, pathOf("members", { id: link.id }), { token: link.token! })).members,
 
     pushRecords: async (link, records) => {
-      await json(link.server, labPath(link, "/records"), { token: link.token!, body: { records } });
+      await json(link.server, pathOf("pushRecords", { id: link.id }), { token: link.token!, body: { records } });
     },
     invite: async (link, { uses, days }) =>
-      (await json<{ invite: LabInvite }>(link.server, labPath(link, "/invites"), { token: link.token!, body: { ...(uses ? { uses } : {}), ...(days ? { days } : {}) } })).invite,
-    invites: async (link) => (await json<{ invites: LabInvite[] }>(link.server, labPath(link, "/invites"), { token: link.token! })).invites,
+      (await json<{ invite: LabInvite }>(link.server, pathOf("createInvite", { id: link.id }), { token: link.token!, body: { ...(uses ? { uses } : {}), ...(days ? { days } : {}) } })).invite,
+    invites: async (link) => (await json<{ invites: LabInvite[] }>(link.server, pathOf("listInvites", { id: link.id }), { token: link.token! })).invites,
     revokeInvite: async (link, id) => {
-      await json(link.server, labPath(link, `/invites/${encodeURIComponent(id)}`), { token: link.token!, method: "DELETE" });
+      await json(link.server, pathOf("revokeInvite", { id: link.id, inviteId: id }), { token: link.token!, method: "DELETE" });
     },
     acceptInvite: async ({ server, id, code, person }) => {
-      const joined = await json<{ lab: { id: string; name: string }; token: string; tokenKind?: "personal" | "team" }>(server, `/v1/labs/${encodeURIComponent(id)}/invites/accept`, { body: { code, person } });
+      const joined = await json<{ lab: { id: string; name: string }; token: string; tokenKind?: "personal" | "team" }>(server, pathOf("acceptInvite", { id }), { body: { code, person } });
       await store.set(REMOVED_KEY, null);
       return { server: trimmed(server), id: joined.lab.id, name: joined.lab.name, token: joined.token, tokenKind: joined.tokenKind ?? "personal", role: "member" };
     },
     removeMember: async (link, did) => {
-      await json(link.server, labPath(link, `/members/${encodeURIComponent(did)}`), { token: link.token!, method: "DELETE" });
+      await json(link.server, pathOf("removeMember", { id: link.id, did }), { token: link.token!, method: "DELETE" });
     },
     removedFrom: async () => ((await store.get(REMOVED_KEY)) as string | null) ?? null,
     forgetRemoved: () => store.set(REMOVED_KEY, null),
     pullRecords: async (link, after) => {
       const page = await json<{ records: DgRecord[]; next?: string | number; done: boolean; now?: string }>(
         link.server,
-        labPath(link, `/records?limit=500${after ? `&after=${encodeURIComponent(after)}` : ""}`),
+        `${pathOf("pullRecords", { id: link.id })}?limit=500${after ? `&after=${encodeURIComponent(after)}` : ""}`,
         { token: link.token! },
       );
       // The server counts its place as a number. Here it is only ever handed back, so it is kept as text.
@@ -201,11 +200,11 @@ export const createServices = ({
     },
 
     uploadPaper: async (link, body) => {
-      await json(link.server, labPath(link, "/papers"), { token: link.token!, body });
+      await json(link.server, pathOf("uploadPaper", { id: link.id }), { token: link.token!, body });
     },
-    labPapers: async (link) => (await json<{ papers: Awaited<ReturnType<Services["labPapers"]>> }>(link.server, labPath(link, "/papers"), { token: link.token! })).papers,
+    labPapers: async (link) => (await json<{ papers: Awaited<ReturnType<Services["labPapers"]>> }>(link.server, pathOf("labPapers", { id: link.id }), { token: link.token! })).papers,
     paperFile: async (link, paper) => {
-      const response = await open(link.server, labPath(link, `/papers/${encodeURIComponent(paper)}/file`), { token: link.token! });
+      const response = await open(link.server, pathOf("paperFile", { id: link.id, paperId: paper }), { token: link.token! });
       const bytes = new Uint8Array(await response.arrayBuffer());
       let binary = "";
       for (let at = 0; at < bytes.length; at += CHUNK) binary += String.fromCharCode(...bytes.subarray(at, at + CHUNK));
@@ -217,13 +216,13 @@ export const createServices = ({
       };
     },
     leaveBreadcrumb: async (link, { paper, person }) => {
-      await json(link.server, labPath(link, `/papers/${encodeURIComponent(paper)}/breadcrumbs`), { token: link.token!, body: { person } });
+      await json(link.server, pathOf("leaveBreadcrumb", { id: link.id, paperId: paper }), { token: link.token!, body: { person } });
     },
 
     ask: async ({ link, question, units, grounded, provider, onDelta }) => {
       // The server picks the address for a provider itself, so a base URL is not sent.
       const own = provider ? { kind: provider.provider, model: provider.model, key: provider.key } : undefined;
-      const response = await open(link.server, "/v1/ai/ask", { token: link.token!, body: { question, units, grounded, ...(own ? { provider: own } : {}) } });
+      const response = await open(link.server, pathOf("ask"), { token: link.token!, body: { question, units, grounded, ...(own ? { provider: own } : {}) } });
       let answer: Awaited<ReturnType<Services["ask"]>> | null = null;
       let failure: string | null = null;
       await readLines(response, (line) => {

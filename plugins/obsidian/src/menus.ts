@@ -17,6 +17,7 @@ import {
   openRuns,
   openSettings,
   openSide,
+  showSidePanels,
   readNotebook,
 } from "./actions.ts";
 import type DiscourseGraphsPlugin from "./main.ts";
@@ -49,6 +50,7 @@ export const fillMenu = (plugin: DiscourseGraphsPlugin, menu: Menu, here?: Surfa
   add("Context", "panel-right", () => openSide(plugin, "context"), "context");
   add("Boundary", "layers", () => openBoundary(plugin), "boundary");
   add("My profile", "circle-user", () => openProfile(plugin), "profile");
+  add("Put the side panels back", "panel-right-open", () => showSidePanels(plugin));
   group("Find and read");
   add("Find a unit…", "text-search", () => findUnit(plugin));
   add("Read a PDF…", "file-text", () => openPdf(plugin));

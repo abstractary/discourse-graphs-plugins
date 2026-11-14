@@ -214,3 +214,20 @@ test("a relation says whether this person asserted it", async () => {
   const view = await call("canvas.open", { id: canvas.id });
   assert.equal(Object.values(view.relations)[0]!.mine, true);
 });
+
+test("copies of one type count as one filter entry, and any copy's id filters by it", async () => {
+  const { call, core, store, emit, arrive } = await makeCore();
+  const grammar = await call("grammar.get", {});
+  const claim = grammar.nodeTypes.find((type) => type.base === "claim")!;
+  await call("node.create", { title: "Mine, typed with my own Claim", type: claim.id });
+  // Another device's copy of Claim, and a unit made with it, as a paper's reading brings them.
+  const stamp = { space: core.info.space.id, by: { id: "did:plc:elsewhere", name: "Elsewhere" } };
+  const copy = { ...claim, id: `${stamp.by.id}#copy`, by: stamp.by, editedBy: stamp.by, at: "2030-01-01T00:00:00.000Z", editedAt: "2030-01-01T00:00:00.000Z" };
+  const theirs = createNode({ ...stamp, title: "Theirs, typed with a copy of Claim", type: copy.id });
+  store.records.push(copy, theirs);
+  emit({ type: "records-changed" });
+  await arrive(theirs);
+  const all = await call("search.query", { limit: 50 });
+  assert.deepEqual(all.types.filter((entry) => entry.label === claim.label).map((entry) => entry.count), [2]);
+  for (const id of [claim.id, copy.id]) assert.equal((await call("search.query", { types: [id], limit: 50 })).total, 2);
+});

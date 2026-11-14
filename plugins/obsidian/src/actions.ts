@@ -2,7 +2,7 @@
 import { MarkdownView, Notice, type Editor } from "obsidian";
 import { askForName, startCapture } from "@dg/native/capture-menu.ts";
 import type DiscourseGraphsPlugin from "./main.ts";
-import { frontCanvas, loadedSurfaces, VIEW, type SurfaceView } from "./views.ts";
+import { standSidePanels, frontCanvas, loadedSurfaces, VIEW, type SurfaceView } from "./views.ts";
 
 /** The quick finder. A link it inserts goes where the cursor was in the note. */
 export const findUnit = async (plugin: DiscourseGraphsPlugin, intent?: "link"): Promise<void> => {
@@ -79,6 +79,13 @@ export const importCrate = async (plugin: DiscourseGraphsPlugin, path: string): 
 export const openSide = async (plugin: DiscourseGraphsPlugin, surface: "search" | "context"): Promise<void> => {
   await plugin.ensureCore();
   await plugin.adapter!.host.openSurface({ route: { surface }, placement: "side" });
+};
+
+/** Search, Context, Library and Boundary each get their tab in the right sidebar again, and the sidebar opens. */
+export const showSidePanels = async (plugin: DiscourseGraphsPlugin): Promise<void> => {
+  await plugin.ensureCore();
+  await standSidePanels(plugin, { again: true });
+  plugin.app.workspace.rightSplit.expand();
 };
 
 export const openSettings = (plugin: DiscourseGraphsPlugin): void => {

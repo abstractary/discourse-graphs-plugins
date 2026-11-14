@@ -217,8 +217,25 @@ export const searchFeature = (context: Context) => {
     const typeCounts = new Map<string, number>();
     const creditCounts = new Map<string, { count: number; label: string; kind: "person" | "lab"; mine?: true }>();
     const me = context.me().id;
+    // Several records can stand for one type: each device and each paper's reading can bring its own
+    // copy of "Claim". A person filters by the type's name, so every copy counts under one entry.
+    const byLabel = new Map(context.nodeTypes().map((type) => [type.label.toLowerCase(), type.id]));
+    const facets = new Map<string, string>();
+    const facetFor = (id: DgId | undefined): string => {
+      if (!id) return "none";
+      let facet = facets.get(id);
+      if (facet === undefined) {
+        const type = context.typeOf(id);
+        facet = type ? (byLabel.get(type.label.toLowerCase()) ?? type.id) : "none";
+        facets.set(id, facet);
+      }
+      return facet;
+    };
+    const facetOf = (node: NodeRecord): string => facetFor(node.type);
+    // A filter may name any copy of a type, such as one kept from before the copies were merged.
+    const wanted = types?.map((id) => (id === "none" ? id : facetFor(id)));
     for (const { node } of matched) {
-      const type = node.type && context.typeOf(node.type) ? node.type : "none";
+      const type = facetOf(node);
       typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1);
       const credit = context.creditFor(node);
       const known = creditCounts.get(credit.id);
@@ -231,8 +248,7 @@ export const searchFeature = (context: Context) => {
     }
 
     const kept = matched.filter(({ node }) => {
-      const type = node.type && context.typeOf(node.type) ? node.type : "none";
-      if (types?.length && !types.includes(type)) return false;
+      if (wanted?.length && !wanted.includes(facetOf(node))) return false;
       if (credits?.length && !credits.includes(context.creditFor(node).id)) return false;
       return true;
     });

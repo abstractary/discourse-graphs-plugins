@@ -18,6 +18,7 @@ import {
   openRuns,
   readNotebook,
   setMyName,
+  showSidePanels,
 } from "./actions.ts";
 import type DiscourseGraphsPlugin from "./main.ts";
 import { frontCanvas } from "./views.ts";
@@ -147,6 +148,12 @@ export const registerCommands = (plugin: DiscourseGraphsPlugin): void => {
     name: "Toggle link badges",
     icon: "tag",
     callback: () => void plugin.ensureCore().then((core) => core.toggleBadges()),
+  });
+  plugin.addCommand({
+    id: "show-side-panels",
+    name: "Put the side panels back",
+    icon: "panel-right-open",
+    callback: () => void showSidePanels(plugin),
   });
   plugin.addCommand({
     id: "open-context",

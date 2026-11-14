@@ -3,6 +3,7 @@ import { hashesMatch, newSecret, openToken, readLab, requireAdmin, requireMember
 import type { Invite, JoinRequest, Lab, TokenKind } from './auth.ts';
 import { ApiError, requirePerson, requireString } from './http.ts';
 import type { Context, Route } from './http.ts';
+import { at } from './routes.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
 
@@ -236,36 +237,33 @@ function removeMember({ req, params }: Context, store: Store): unknown {
 
 export function labRoutes(store: Store): Route[] {
   return [
-    { method: 'POST', path: '/v1/labs', handler: (context) => createLab(context, store) },
+    { ...at('createLab'), handler: (context) => createLab(context, store) },
     {
-      method: 'GET',
-      path: '/v1/labs/:id',
+      ...at('findLab'),
       handler: ({ params }) => {
         const { id, name } = labOr404(store, params.id);
         return { id, name };
       },
     },
-    { method: 'POST', path: '/v1/labs/:id/join', handler: (context) => askToJoin(context, store) },
-    { method: 'GET', path: '/v1/labs/:id/join/:requestId', handler: (context) => pollJoin(context, store) },
+    { ...at('askToJoin'), handler: (context) => askToJoin(context, store) },
+    { ...at('pollJoin'), handler: (context) => pollJoin(context, store) },
     {
-      method: 'GET',
-      path: '/v1/labs/:id/members',
+      ...at('members'),
       handler: ({ req, params }) => ({ members: requireMember(req, store, params.id).lab.members }),
     },
     {
-      method: 'GET',
-      path: '/v1/labs/:id/requests',
+      ...at('requests'),
       handler: ({ req, params }) => {
         const { lab } = requireAdmin(req, store, params.id);
         const pending = lab.requests.filter((request) => request.state === 'pending');
         return { requests: pending.map(({ id, person, at }) => ({ id, person, at })) };
       },
     },
-    { method: 'POST', path: '/v1/labs/:id/requests/:requestId', handler: (context) => decide(context, store) },
-    { method: 'POST', path: '/v1/labs/:id/invites', handler: (context) => createInvite(context, store) },
-    { method: 'GET', path: '/v1/labs/:id/invites', handler: (context) => listInvites(context, store) },
-    { method: 'POST', path: '/v1/labs/:id/invites/accept', handler: (context) => acceptInvite(context, store) },
-    { method: 'DELETE', path: '/v1/labs/:id/invites/:inviteId', handler: (context) => deleteInvite(context, store) },
-    { method: 'DELETE', path: '/v1/labs/:id/members/:did', handler: (context) => removeMember(context, store) },
+    { ...at('decide'), handler: (context) => decide(context, store) },
+    { ...at('createInvite'), handler: (context) => createInvite(context, store) },
+    { ...at('listInvites'), handler: (context) => listInvites(context, store) },
+    { ...at('acceptInvite'), handler: (context) => acceptInvite(context, store) },
+    { ...at('revokeInvite'), handler: (context) => deleteInvite(context, store) },
+    { ...at('removeMember'), handler: (context) => removeMember(context, store) },
   ];
 }

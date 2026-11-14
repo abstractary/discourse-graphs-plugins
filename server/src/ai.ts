@@ -2,6 +2,7 @@ import { requireAnyMember } from './auth.ts';
 import type { Config } from './config.ts';
 import { ApiError, isObject, logFailure, openNdjson, readLines } from './http.ts';
 import type { Context, Route } from './http.ts';
+import { ROUTES, at } from './routes.ts';
 import type { Store } from './store.ts';
 
 const ANTHROPIC_DEFAULT_MODEL = 'claude-sonnet-5-5';
@@ -303,7 +304,7 @@ async function ask({ req, res, readJson }: Context, config: Config, store: Store
     else askSearch(body.question, units, stream);
   } catch (error) {
     if (!stream.signal.aborted) {
-      if (!(error instanceof ApiError)) logFailure('POST /v1/ai/ask', error);
+      if (!(error instanceof ApiError)) logFailure(`POST ${ROUTES.ask.path}`, error);
       const message = error instanceof ApiError ? error.message : 'Something went wrong on the server. Try again.';
       stream.write({ type: 'error', message });
     }
@@ -312,5 +313,5 @@ async function ask({ req, res, readJson }: Context, config: Config, store: Store
 }
 
 export function aiRoutes(config: Config, store: Store): Route[] {
-  return [{ method: 'POST', path: '/v1/ai/ask', handler: (context) => ask(context, config, store) }];
+  return [{ ...at('ask'), handler: (context) => ask(context, config, store) }];
 }

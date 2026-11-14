@@ -23,7 +23,7 @@ import { capture, extractGraph, findUnit, importCrate, openBoundary, openCanvas,
 import type DiscourseGraphsPlugin from "./main.ts";
 import { fillMenu } from "./menus.ts";
 import { writeReport } from "./panels.ts";
-import { surfaceFrame, type SurfaceView } from "./views.ts";
+import { loadedSurfaces, surfaceFrame, type SurfaceView } from "./views.ts";
 import { firstRun, offer, walkthrough, walkthroughBase } from "./walkthrough.ts";
 
 declare const __CANVAS_BUILD__: string;
@@ -227,7 +227,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
         await new Promise((done) => window.setTimeout(done, 500));
       },
       leaveCanvas: async () => {
-        for (const leaf of plugin.app.workspace.getLeavesOfType(VIEW)) if ((leaf.view as SurfaceView).route.surface === "canvas") leaf.detach();
+        for (const leaf of loadedSurfaces(plugin.app.workspace)) if ((leaf.view as SurfaceView).route.surface === "canvas") leaf.detach();
         await sleep(600);
       },
       closeAll: () => {
@@ -294,14 +294,14 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       canvasReveal: (selector: string) => probe.reveal(selector),
       // Which tabs show what, and side by side or not, for checking the reader lands beside the canvas.
       layout: () =>
-        plugin.app.workspace.getLeavesOfType(VIEW).map((leaf) => {
+        loadedSurfaces(plugin.app.workspace).map((leaf) => {
           const view = leaf.view as SurfaceView;
           const box = view.containerEl.getBoundingClientRect();
           return { surface: view.route.surface, id: view.route.id ?? null, title: view.getDisplayText(), header: view.containerEl.querySelector(".view-header-title")?.textContent ?? null, x: Math.round(box.left), width: Math.round(box.width), shown: view.containerEl.offsetParent !== null };
         }),
       skin: () => plugin.ensureCore().then((core) => core.info.skin),
       frameWidth: (width: number | null) => {
-        const frame = (plugin.app.workspace.getLeavesOfType(VIEW).map((leaf) => leaf.view as SurfaceView).find((view) => view.route.surface === "canvas"))?.frame;
+        const frame = (loadedSurfaces(plugin.app.workspace).map((leaf) => leaf.view as SurfaceView).find((view) => view.route.surface === "canvas"))?.frame;
         if (frame) frame.style.width = width ? `${width}px` : "100%";
       },
       summary: async () => {
@@ -369,7 +369,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       },
       focusOutside: (ref: string) => driver.focusOutside({ ref }),
       afterFocus: () => {
-        const leaf = plugin.app.workspace.getLeavesOfType(VIEW).find((item) => (item.view as SurfaceView).route.surface === "canvas");
+        const leaf = loadedSurfaces(plugin.app.workspace).find((item) => (item.view as SurfaceView).route.surface === "canvas");
         if (leaf) void plugin.app.workspace.revealLeaf(leaf);
       },
       ctx: contextProbe,

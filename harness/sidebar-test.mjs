@@ -22,10 +22,10 @@ try {
   await click("canvas", '[data-dg="side-toggle"]');
   check("side.opens-on-places", await until(() => has("canvas", '[data-dg="side-places"]'), 4000));
   check("side.floats-by-default", (await at("canvas", "count", '.shell[data-side="floating"]')) === 1);
-  check("side.says-where-you-are", ((await at("canvas", "text", '[data-dg="side-here"]')) ?? "").includes("People test"), await at("canvas", "text", '[data-dg="side-here"]'));
-  check("side.marks-the-open-canvas", ((await at("canvas", "text", '.side-row[aria-current="page"]')) ?? "").startsWith("People test"), await at("canvas", "text", '.side-row[aria-current="page"]'));
+  check("side.library-is-the-library-panel", await has("canvas", '[data-dg="side-places"] [data-dg="library-canvases"]'));
+  check("side.marks-the-open-canvas", ((await at("canvas", "text", '.repo-main[aria-current="page"]')) ?? "").includes("People test"), await at("canvas", "text", '.repo-main[aria-current="page"]'));
   const places = await call("repository.canvases", {});
-  check("side.lists-every-canvas", (await at("canvas", "count", ".side-row")) === places.length, `${await at("canvas", "count", ".side-row")} of ${places.length}`);
+  check("side.lists-every-canvas", (await at("canvas", "count", ".side-places .repo-main")) === places.length, `${await at("canvas", "count", ".side-places .repo-main")} of ${places.length}`);
   await shot("01-places-floating");
 
   await click("canvas", '[data-dg="side-tab-units"]');
@@ -37,7 +37,8 @@ try {
 
   // Floating, it goes when the canvas is clicked.
   const pane = await at("canvas", "locate", ".react-flow__pane");
-  await t.clickAt(pane.x + pane.width - 60, pane.y + pane.height - 120);
+  // Top right: the small map sits bottom right.
+  await t.clickAt(pane.x + pane.width - 60, pane.y + 60);
   check("side.floating-goes-on-a-canvas-click", await until(async () => !(await has("canvas", '[data-dg="side"]')), 4000));
   // It comes back on the tab it was on.
   await click("canvas", '[data-dg="side-toggle"]');
@@ -57,11 +58,11 @@ try {
   await click("canvas", '[data-dg="side-tab-places"]');
   const other = places.find((canvas) => canvas.id !== board.id && canvas.kind === "canvas" && canvas.workspace.kind === "own");
   if (other) {
-    await click("canvas", '[data-dg="side-find"]');
+    await click("canvas", '[data-dg="canvases-search"]');
     await t.type(other.title);
     await sleep(500);
-    await click("canvas", `.side-row[title=${q(other.title)}]`);
-    check("side.going-somewhere-moves-the-mark", await until(async () => ((await at("canvas", "text", '.side-row[aria-current="page"]')) ?? "").startsWith(other.title), 6000), other.title);
+    await click("canvas", `[data-dg=${q(`canvases-open-${other.title}`)}]`);
+    check("side.going-somewhere-moves-the-mark", await until(async () => ((await at("canvas", "text", '.repo-main[aria-current="page"]')) ?? "").includes(other.title), 6000), other.title);
     check("side.title-follows", await until(async () => ((await at("canvas", "text", '[data-dg="canvas-menu"]')) ?? "").startsWith(other.title.slice(0, 12)), 6000));
   }
   await sleep(600);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasDiff, HolonCanvas, HolonEvent, ReleaseSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { usePlace } from "../shared/place.ts";
 import { Icon, Mark } from "../shared/ui.tsx";
 import { DiffView, Flag, Preview, counted, when } from "../shared/holon-parts.tsx";
 import { Thumb } from "../shared/Thumb.tsx";
@@ -55,7 +56,8 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
   const inScope = (value: Scope): number => (canvases ?? []).filter((c) => value === "everyone" || c.mine || (value === "lab" && Boolean(c.lab))).length;
   const titleOf = (id: string) => canvases?.find((c) => c.id === id)?.title ?? "a canvas";
 
-  const show = (id: string) => void call("canvas.show", { id }).catch(report);
+  const place = usePlace();
+  const show = (id: string) => (place.go ? place.go(id) : void call("canvas.show", { id }).catch(report));
   /** One group per workspace: yours first, then your lab's, then anyone else's. */
   const groups = useMemo(() => {
     const rank = { own: 0, lab: 1, other: 2 } as const;
@@ -135,7 +137,7 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
         {held.map((c) => (
           <li key={c.id} data-open={open === c.id}>
             <div className="repo-row">
-              <button type="button" className="repo-main" data-dg={`canvases-open-${c.title}`} data-kind={c.kind} onClick={() => show(c.id)}>
+              <button type="button" className="repo-main" aria-current={c.id === place.current ? "page" : undefined} data-dg={`canvases-open-${c.title}`} data-kind={c.kind} onClick={() => show(c.id)}>
                 <Thumb thumb={c.thumb} />
                 <span className="repo-text">
                 <span className="cvs-title">{c.title}</span>

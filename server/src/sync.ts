@@ -1,6 +1,7 @@
 import { requireMember } from './auth.ts';
 import { ApiError } from './http.ts';
 import type { Context, Route } from './http.ts';
+import { at } from './routes.ts';
 import { canonical, hashOf } from './store.ts';
 import type { Store } from './store.ts';
 
@@ -74,7 +75,7 @@ function pullRecords({ req, params, query }: Context, store: Store): unknown {
 
 export function syncRoutes(store: Store): Route[] {
   return [
-    { method: 'POST', path: '/v1/labs/:id/records', handler: (context) => pushRecords(context, store) },
-    { method: 'GET', path: '/v1/labs/:id/records', handler: (context) => pullRecords(context, store) },
+    { ...at('pushRecords'), handler: (context) => pushRecords(context, store) },
+    { ...at('pullRecords'), handler: (context) => pullRecords(context, store) },
   ];
 }

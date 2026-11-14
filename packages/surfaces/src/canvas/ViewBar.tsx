@@ -1,7 +1,8 @@
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { Icon } from "../shared/ui.tsx";
 
-export const ViewBar = () => {
+/** Zoom, and whether the small map shows. */
+export const ViewBar = ({ map, onMap }: { map: boolean; onMap: (shown: boolean) => void }) => {
   const flow = useReactFlow();
   const { zoom } = useViewport();
   return (
@@ -21,6 +22,9 @@ export const ViewBar = () => {
       </button>
       <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => void flow.zoomIn({ duration: 120 })}>
         <Icon name="plus" />
+      </button>
+      <button type="button" className="map-toggle" data-dg="minimap-toggle" aria-pressed={map} aria-label="Map of this canvas" title={map ? "Hide the map" : "Show the map"} onClick={() => onMap(!map)}>
+        Map
       </button>
     </div>
   );

@@ -1,3 +1,4 @@
+import { pathOf } from "@dg/contract/routes.ts";
 import { trimmedUrl as trimmed } from "@dg/contract/urls.ts";
 import { mergeIdentifiers, parseIdentifier, sameIdentifier } from "@dg/contract/scholarly.ts";
 import type {
@@ -829,7 +830,7 @@ export const createScholarly = ({
   const notifications: Services["notifications"] = async ({ server, about }) => {
     let response: Response;
     try {
-      response = await send(`${trimmed(server)}/v1/notify/inbox${about ? `?about=${encodeURIComponent(about)}` : ""}`, {
+      response = await send(`${trimmed(server)}${pathOf("notifications")}${about ? `?about=${encodeURIComponent(about)}` : ""}`, {
         method: "GET",
         headers: { accept: "application/json" },
       });

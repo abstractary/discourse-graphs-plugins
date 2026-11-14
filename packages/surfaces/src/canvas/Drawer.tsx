@@ -63,12 +63,13 @@ export const Drawer = ({
 
   const types = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const unit of Object.values(units)) if (unit.type && unit.typeLabel) seen.set(unit.type, unit.typeLabel);
+    for (const unit of Object.values(units)) // By name: several records can stand for one type, and a person picks the name.
+    for (const unit of Object.values(units)) if (unit.type && unit.typeLabel) seen.set(unit.typeLabel.toLowerCase(), unit.typeLabel);
     return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [units]);
   const needle = query.trim().toLowerCase();
   const shows = (unit: AvailableUnit | undefined): unit is AvailableUnit =>
-    Boolean(unit) && (!needle || unit!.title.toLowerCase().includes(needle)) && (!type || unit!.type === type);
+    Boolean(unit) && (!needle || unit!.title.toLowerCase().includes(needle)) && (!type || unit!.typeLabel?.toLowerCase() === type);
   const segments = (data?.segments ?? []).map((segment) => ({ ...segment, shown: segment.units.map((id) => units[id]).filter(shows) })).filter((segment) => segment.shown.length);
 
   const toggle = (id: string) => setSelected((old) => (old.includes(id) ? old.filter((other) => other !== id) : [...old, id]));

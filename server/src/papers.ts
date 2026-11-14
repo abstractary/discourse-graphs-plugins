@@ -2,6 +2,7 @@ import type { ServerResponse } from 'node:http';
 import { requireMember } from './auth.ts';
 import { ApiError, decodeBase64, isObject, requirePerson, requireString } from './http.ts';
 import type { Context, Route } from './http.ts';
+import { at } from './routes.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
 import type { Person } from './types.ts';
@@ -111,17 +112,16 @@ async function leaveBreadcrumb({ req, params, readJson }: Context, store: Store)
 
 export function paperRoutes(store: Store): Route[] {
   return [
-    { method: 'POST', path: '/v1/labs/:id/papers', handler: (context) => uploadPaper(context, store) },
+    { ...at('uploadPaper'), handler: (context) => uploadPaper(context, store) },
     {
-      method: 'GET',
-      path: '/v1/labs/:id/papers',
+      ...at('labPapers'),
       handler: ({ req, params }) => {
         requireMember(req, store, params.id);
         return { papers: readIndex(store, params.id).papers };
       },
     },
-    { method: 'GET', path: '/v1/labs/:id/papers/:paperId', handler: (context) => getPaper(context, store) },
-    { method: 'GET', path: '/v1/labs/:id/papers/:paperId/file', handler: (context) => getFile(context, store) },
-    { method: 'POST', path: '/v1/labs/:id/papers/:paperId/breadcrumbs', handler: (context) => leaveBreadcrumb(context, store) },
+    { ...at('getPaper'), handler: (context) => getPaper(context, store) },
+    { ...at('paperFile'), handler: (context) => getFile(context, store) },
+    { ...at('leaveBreadcrumb'), handler: (context) => leaveBreadcrumb(context, store) },
   ];
 }

@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
       - run: npm run check-types
       - run: npm run check-boundaries
+      # The server's copy of the route table and the one in docs/services.md match packages/contract/src/routes.ts.
+      - run: npm run check:routes
       # Prints the dependency matrix and fails on a cycle between modules.
       - run: npm run dsm
       - run: npm test

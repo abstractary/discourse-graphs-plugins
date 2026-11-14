@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasSummary, DeviceView, LabView, PaperSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
+import { PlaceContext, usePlace, type Place } from "../shared/place.ts";
 import { Icon, LibraryMark, Mark, Problem } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
 import { Repository } from "./Repository.tsx";
@@ -21,6 +22,7 @@ const whenEdited = (at: string): string => {
 type Tab = "canvases" | "papers" | "folders" | "lab";
 
 const Papers = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+  const place = usePlace();
   const { call, on } = connection;
   const [papers, setPapers] = useState<PaperSummary[] | null>(null);
   const [inLab, setInLab] = useState(false);
@@ -42,7 +44,7 @@ const Papers = ({ connection, report }: { connection: Connection; report: (error
       <ul className="cvs-list">
         {(papers ?? []).map((paper) => (
           <li key={paper.id}>
-            <button type="button" data-dg={`paper-open-${paper.title}`} onClick={() => void call("canvas.show", { id: paper.canvas }).catch(report)}>
+            <button type="button" data-dg={`paper-open-${paper.title}`} onClick={() => (place.go ? place.go(paper.canvas) : void call("canvas.show", { id: paper.canvas }).catch(report))}>
               <span className="cvs-title">{paper.title}<LibraryMark library={paper.library} /></span>
               <span className="cvs-meta">{counted(paper.units, "unit")}, {paper.model}, read {whenEdited(paper.at)}{paper.labPaper ? ", in the lab" : ""}</span>
             </button>
@@ -201,6 +203,7 @@ const LabSettings = ({ connection, lab, onChange, report }: { connection: Connec
 };
 
 const Lab = ({ connection, report }: { connection: Connection; report: (error: unknown) => void }) => {
+  const place = usePlace();
   const { call, on } = connection;
   const [lab, setLab] = useState<LabView | null>(null);
   const [saved, setSaved] = useState("");
@@ -307,7 +310,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
         <ul className="cvs-list" data-dg="lab-papers">
           {lab.papers.map((paper) => (
             <li key={paper.id}>
-              <button type="button" data-dg={`lab-paper-${paper.title}`} onClick={() => void call("canvas.show", { id: paper.canvas }).catch(report)}>
+              <button type="button" data-dg={`lab-paper-${paper.title}`} onClick={() => (place.go ? place.go(paper.canvas) : void call("canvas.show", { id: paper.canvas }).catch(report))}>
                 <span className="cvs-title">{paper.title}</span>
                 <span className="cvs-meta">Uploaded by {paper.uploadedBy.name}, extracted by {paper.extractedBy.name}{paper.hasFile ? ", file included" : ""}</span>
                 {paper.breadcrumbs.length > 0 ? <span className="cvs-meta" data-dg="lab-breadcrumbs">Read by {paper.breadcrumbs.map(({ name }) => name).join(", ")}</span> : null}
@@ -338,7 +341,15 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 /** Everything a person keeps, in one place, the same in each base. */
-export const App = ({ connection }: { connection: Connection }) => {
+export const App = ({ connection, place }: { connection: Connection; /** Set when the Library sits inside a canvas. */ place?: Place }) => (
+  <PlaceContext.Provider value={place ?? NOWHERE}>
+    <Shelves connection={connection} />
+  </PlaceContext.Provider>
+);
+
+const NOWHERE: Place = {};
+
+const Shelves = ({ connection }: { connection: Connection }) => {
   const [tab, setTab] = useState<Tab>("canvases");
   const [notice, setNotice] = useState("");
   const report = useCallback((error: unknown) => {

@@ -72,7 +72,7 @@ void connect().then((connection) => {
       <Grammar connection={connection} />
     ) : (
       <ReactFlowProvider>
-        <Canvas connection={connection} Search={Search} />
+        <Canvas connection={connection} Search={Search} Library={Library} />
       </ReactFlowProvider>
     )}
     </PeopleContext.Provider>,

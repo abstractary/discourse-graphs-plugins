@@ -1,3 +1,4 @@
+import { standSidePanels } from "./views.ts";
 import { Plugin } from "obsidian";
 import type { CoreForAdapter } from "@dg/contract/core.ts";
 import { zoteroState } from "./actions.ts";
@@ -68,7 +69,7 @@ export default class DiscourseGraphsPlugin extends Plugin {
     // A vault with no records has no nodes to badge, and loading alone shouldn't write any.
     this.app.workspace.onLayoutReady(() => {
       void this.adapter!.host.listRecords({ limit: 1 }).then((stored) => {
-        if (stored.ok && stored.value.items.length > 0) void this.ensureCore();
+        if (stored.ok && stored.value.items.length > 0) void this.ensureCore().then(() => standSidePanels(this));
       });
       window.setTimeout(() => void firstRun(this), OFFER_DELAY_MS);
     });
@@ -89,3 +90,4 @@ export default class DiscourseGraphsPlugin extends Plugin {
     return __TEST_HOOKS__ ? (this.hooks ??= testHooks(this)) : undefined;
   }
 }
+

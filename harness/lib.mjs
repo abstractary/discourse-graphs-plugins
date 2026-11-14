@@ -45,8 +45,13 @@ export const tools = (host, { wait: { timeout: patience = 20000, every = 350, st
   };
   /** A drag between two points with the button held, in eight steps. */
   const drag = async (from, to) => {
+    // A person's pointer rests on a thing before pressing. A handle only takes a link once it has been hovered.
+    await mouse("mouseMoved", from[0] + 6, from[1] + 2);
+    await sleep(120);
     await mouse("mouseMoved", ...from);
+    await sleep(160);
     await mouse("mousePressed", ...from, 1);
+    await sleep(60);
     for (let step = 1; step <= 8; step += 1) {
       await mouse("mouseMoved", from[0] + ((to[0] - from[0]) * step) / 8, from[1] + ((to[1] - from[1]) * step) / 8, 1);
     }

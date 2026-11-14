@@ -9,6 +9,8 @@
     "test:server": "npm test --workspace @dg/server",
     "check-types": "tsc --noEmit",
     "check-boundaries": "node scripts/check-boundaries.mjs",
+    "gen:routes": "node scripts/gen-routes.mjs",
+    "check:routes": "node scripts/gen-routes.mjs --check",
     "dsm": "node scripts/dsm.mjs && node scripts/dsm.mjs scholarly",
     "sim": "node harness/four-vaults.ts --strict",
     "build": "DG_RELEASE=1 node scripts/build.mjs",

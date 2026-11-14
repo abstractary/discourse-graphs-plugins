@@ -1,6 +1,7 @@
 import { identifierUrl } from "@dg/contract/scholarly.ts";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import {
+  MiniMap,
   Background,
   ConnectionMode,
   Panel,
@@ -17,6 +18,7 @@ import type { CanvasItem, CanvasRecord, NodeTypeRecord, TidyMode, WithoutId } fr
 import { PDF_CANVAS_FIXED } from "@dg/contract/surface.ts";
 import type { CanvasCommand, CanvasItemView, CanvasView, Credit, NodeSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
+import type { Place } from "../shared/place.ts";
 import { Icon, Mark, plain, type IconName } from "../shared/ui.tsx";
 import { scoreLabel, scoresFor } from "@dg/layout/centrality.ts";
 import { AiBar } from "./AiBar.tsx";
@@ -61,7 +63,7 @@ type TypeMenu = { node: string; x: number; y: number };
 type EdgeTip = { x: number; y: number; credit: Credit };
 
 /** `Search` is the search panel, which the sidebar shows whole. It is handed in, since one panel does not import another. */
-export const App = ({ connection, Search }: { connection: Connection; Search: ComponentType<{ connection: Connection }> }) => {
+export const App = ({ connection, Search, Library }: { connection: Connection; Search: ComponentType<{ connection: Connection }>; Library: ComponentType<{ connection: Connection; place?: Place }> }) => {
   const { call, on, route } = connection;
   const [tidyAt, setTidyAt] = useState<Anchor | null>(null);
   const [fieldsAt, setFieldsAt] = useState<Anchor | null>(null);
@@ -818,6 +820,21 @@ export const App = ({ connection, Search }: { connection: Connection; Search: Co
     return scoresFor(measure, ids, leaningOf(links, false));
   }, [edges, measure, nodes]);
 
+  // A picked card shows what it touches: its links and the cards at their other ends stay bright
+  // and the rest steps back, for as long as it is the one picked.
+  const near = useMemo(() => {
+    const picked = nodes.filter((node) => node.selected);
+    if (picked.length !== 1) return null;
+    const at = picked[0]!.id;
+    const links = edges.filter((edge) => edge.source === at || edge.target === at);
+    if (links.length === 0) return null;
+    return { cards: new Set([at, ...links.flatMap((edge) => [edge.source, edge.target])]), links: new Set(links.map((edge) => edge.id)) };
+  }, [nodes, edges]);
+  const shownEdges = useMemo(
+    () => (near ? edges.map((edge) => ({ ...edge, className: [edge.className, near.links.has(edge.id) ? "near" : "far"].filter(Boolean).join(" ") })) : edges),
+    [edges, near],
+  );
+
   const litHere = useMemo(() => holon.lit.length > 0 && nodes.some((node) => holon.lit.includes((node.data as CardData).node?.id ?? "")), [holon.lit, nodes]);
   const shown = useMemo(
     () =>
@@ -829,11 +846,12 @@ export const App = ({ connection, Search }: { connection: Connection; Search: Co
         // Lit from another panel, such as a gap in the boundary panel. Nothing dims for units shown elsewhere.
         const lit = litHere ? (summary && holon.lit.includes(summary.id) ? "lit" : "dim") : "";
         const arriving = summary && fresh.includes(summary.id) ? "arrived" : "";
-        const classes = [followed && summary?.id === followed ? "followed" : "", lit, arriving].filter(Boolean).join(" ");
+        const touched = near ? (near.cards.has(node.id) ? "near" : "far") : "";
+        const classes = [followed && summary?.id === followed ? "followed" : "", lit, arriving, touched].filter(Boolean).join(" ");
         const edited = editing === node.id ? { ...marked, data: { ...marked.data, editing: true } } : marked;
         return classes ? { ...edited, className: classes } : edited;
       }),
-    [nodes, followed, grounded, measure, scores, holon.lit, litHere, fresh, editing],
+    [nodes, followed, grounded, measure, scores, holon.lit, litHere, fresh, editing, near],
   );
 
   const pickedNodes = nodes.flatMap((node) => {
@@ -1251,7 +1269,7 @@ export const App = ({ connection, Search }: { connection: Connection; Search: Co
           <ReactFlow
           multiSelectionKeyCode={MULTI_SELECT_KEYS}
             nodes={shown}
-            edges={edges}
+            edges={shownEdges}
             nodeTypes={nodeTypes}
             connectionMode={ConnectionMode.Loose}
             connectionRadius={36}
@@ -1323,11 +1341,27 @@ export const App = ({ connection, Search }: { connection: Connection; Search: Co
           >
             <Background gap={24} size={1} />
             <Panel position="bottom-left">
-              <ViewBar />
+              <ViewBar map={holon.prefs.miniMap !== false} onMap={(miniMap) => void call("prefs.set", { miniMap }).catch(report)} />
             </Panel>
-            <Panel position="bottom-right">
+            <Panel position="bottom-center">
               <Legend edges={edges} labels={view?.relations ?? {}} />
             </Panel>
+            {holon.prefs.miniMap === false ? null : (
+              <MiniMap
+                position="bottom-right"
+                pannable
+                zoomable
+                ariaLabel="Map of this canvas. The frame is what you see. Drag it to move."
+                nodeColor={(node) => (node.data as CardData).node?.color ?? "var(--dg-muted)"}
+                nodeClassName={(node) => (near ? (near.cards.has(node.id) ? "near" : "far") : "")}
+                nodeStrokeWidth={0}
+                nodeBorderRadius={6}
+                bgColor="var(--dg-panel)"
+                maskColor="color-mix(in srgb, var(--dg-page) 72%, transparent)"
+                maskStrokeColor="var(--dg-accent)"
+                maskStrokeWidth={6}
+              />
+            )}
           </ReactFlow>
           {aiOn && view ? (
             <AiBar
@@ -1373,8 +1407,8 @@ export const App = ({ connection, Search }: { connection: Connection; Search: Co
               if (!holon.prefs.sidePinned) setSide(null);
             }}
             onPlace={(ids) => void placeGroup(ids)}
-            report={report}
             Search={Search}
+            Library={Library}
           />
         ) : null}
         {edgeTip ? (

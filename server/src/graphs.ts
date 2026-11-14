@@ -1,5 +1,6 @@
 import { ApiError, isObject } from './http.ts';
 import type { Context, Route } from './http.ts';
+import { at } from './routes.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
 import type { Graph } from './types.ts';
@@ -87,7 +88,7 @@ function listGraphs({ query }: Context, store: Store): unknown {
 
 export function graphRoutes(store: Store): Route[] {
   return [
-    { method: 'POST', path: '/v1/graphs', handler: (context) => storeGraph(context, store) },
-    { method: 'GET', path: '/v1/graphs', handler: (context) => listGraphs(context, store) },
+    { ...at('storeGraph'), handler: (context) => storeGraph(context, store) },
+    { ...at('listGraphs'), handler: (context) => listGraphs(context, store) },
   ];
 }

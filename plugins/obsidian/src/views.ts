@@ -164,3 +164,38 @@ export const frontCanvas = (plugin: DiscourseGraphsPlugin): string | undefined =
   loadedSurfaces(plugin.app.workspace)
     .map((leaf) => leaf.view as SurfaceView)
     .find((view) => view.route.surface === "canvas" && view.route.id && view.containerEl.offsetParent !== null)?.route.id;
+
+/** The panels that keep a person company beside whatever they are working in. */
+export const SIDE_PANELS = ["search", "context", "canvases", "boundary"] as const satisfies readonly SurfaceRoute["surface"][];
+const SEEDED_KEY = "discourse-graphs-local:side-panels-seeded";
+
+const sidePanelsOpen = (plugin: DiscourseGraphsPlugin): Set<string> =>
+  new Set(
+    plugin.app.workspace.getLeavesOfType(VIEW).flatMap((leaf) => {
+      // A tab Obsidian hasn't drawn yet still knows what it will show.
+      const route = (leaf.getViewState().state as { route?: SurfaceRoute } | undefined)?.route;
+      return route ? [route.surface] : [];
+    }),
+  );
+
+/**
+ * Gives each side panel a tab of its own in the right sidebar, as Obsidian's own Backlinks and
+ * Outline have, so its icon is there whether or not it was ever opened from a menu. Nothing is
+ * brought to the front and the sidebar is not opened. Obsidian keeps the tabs from then on, and a
+ * person who closes one has closed it: `again` puts back whichever are missing.
+ */
+export const standSidePanels = async (plugin: DiscourseGraphsPlugin, { again = false }: { again?: boolean } = {}): Promise<number> => {
+  const { app } = plugin;
+  if (!again && app.loadLocalStorage(SEEDED_KEY)) return 0;
+  const open = sidePanelsOpen(plugin);
+  let added = 0;
+  for (const surface of SIDE_PANELS) {
+    if (open.has(surface)) continue;
+    const leaf = app.workspace.getRightLeaf(false);
+    if (!leaf) break;
+    await leaf.setViewState({ type: VIEW, active: false, state: { route: { surface } } });
+    added += 1;
+  }
+  app.saveLocalStorage(SEEDED_KEY, "1");
+  return added;
+};

@@ -560,6 +560,8 @@ export type Prefs = {
   cardFields: CardField[];
   /** Whether the canvas sidebar stays open beside the canvas, or floats over it and goes. */
   sidePinned: boolean;
+  /** Whether a canvas shows a small map of itself, with a frame for the part in view. */
+  miniMap: boolean;
   /**
    * Whether Zotero is this person's PDF library. When on, the papers to read are Zotero's, opened where
    * Zotero keeps them, and a copy in the base of a paper Zotero holds is not listed beside it.

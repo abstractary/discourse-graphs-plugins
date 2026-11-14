@@ -230,7 +230,7 @@ In the picture, the relation at the top is still **Proposed**, because a teammat
 
 ![The Published work section after a lookup](media/published-work.png)
 
-A unit read from a paper has a **Published work** section in Context. **Look it up** asks the open registries about the paper: Crossref or DataCite (whichever registered its DOI), OpenAlex, PubMed, and the paper's own page. Only the paper's identifiers and title are sent. Nothing is asked until you click.
+A unit read from a paper has a **Published work** section in Context. **Look it up** asks the open registries about the paper: Crossref or DataCite (whichever registered its DOI), OpenAlex, PubMed, and the paper's own page. Only the paper's identifiers are sent, or its title when it has none a registry knows. Nothing is asked until you click.
 
 What comes back is kept with the paper and shows on every unit read from it:
 
@@ -522,27 +522,21 @@ Each has no default key. Give any of them a hotkey in Obsidian's Hotkeys setting
 
 ## What leaves your device
 
-Nothing, until you choose it.
+With no lab joined, no model set up and no server chosen, nothing leaves. [What leaves the device](../what-leaves-the-device.md) is the full account: one row for each destination, with what is sent, when, and whether it can be turned off. In short:
 
-| You do this | This goes | To |
-|---|---|---|
-| Join a lab and share a canvas | That canvas, its cards, the units on them, their sources, relations drawn there, and checks on those units. A unit whose card you take off stops being sent, except that removing it is sent | Your lab's server, and from there your labmates |
-| Join a lab at all | Your name, your id, the key your devices sign with, and that you are a member | Your lab's server |
-| Open a second device and let it in | That device's own key, with your first device's word for it | Your lab's server, with your other records |
-| Use a Zotero group as the lab's shelf | Nothing from the app. Each member opens the PDF from their own Zotero | — |
-| Ask AI with your own key | Your question and the units on that canvas | The model provider you chose. With a model on your own computer, nowhere |
-| Ask AI with your lab's model | The same | Your lab's server |
-| Extract graph, when no saved extraction sits beside the paper | The paper | The server you pick in the upload dialog. In a lab, only a server the lab's reach allows: by default this computer or the lab's own |
-| Extract graph, with a saved extraction | Nothing | Nowhere |
-| Search or bring in from Zotero | Your search words, to the Zotero app on this computer | Nowhere else |
-| Open a profile | Nothing | — |
-| Read a PDF or a notebook | Nothing | — |
-| Look a paper up | Its identifiers and title | doi.org, Crossref or DataCite, OpenAlex, PubMed, and the paper's own page |
-| Open an identifier | Nothing from the app. Your browser opens the link | Wherever it resolves |
-| Export or import a research crate | Nothing. The archive stays in your vault | — |
-| Announce a unit, after reading what will be sent | Your name and id, the unit's address and the paper's DOI | The inbox the paper's page names |
+- **In a lab,** the canvases shared with it, their cards and units, the sources, relations, notes, reactions and checks on them, and the lab's types go to your lab's server, and from there to your labmates. This happens by itself every few seconds. So do your name, your id and your devices' public records. A unit whose card you take off stops being sent, except that removing it is sent.
+- **Adding a paper to the lab's repository** sends its graph and details. The file goes only if you tick it.
+- **Ask AI with your own key** sends your question and the canvas's units to the provider you chose. With a model on your own computer, they go nowhere. Sent through your lab's server, your key goes to that server too.
+- **Ask AI with your lab's model** sends the same to your lab's server.
+- **Extract graph** sends the paper to the server you pick, unless a saved extraction sits beside it. If the paper has a DOI, its graph and DOI then go to the Discourse Graphs service, without the file.
+- **A lab's reach** refuses a server or a model provider outside the lab, unless the PI widens it. By default a lab allows this computer and the lab's own servers.
+- **Look it up** sends the paper's identifiers to doi.org, Crossref or DataCite, OpenAlex, PubMed and the paper's own page.
+- **Also start a draft on Zenodo** sends the crate and your Zenodo token to Zenodo. Exporting or importing a crate without it sends nothing.
+- **Announce a unit,** after you read it and press **Send**, sends your name and id, your lab server's address, the unit's id and the paper's DOI to the inbox the paper's page names.
+- **Zotero** is asked only on this computer.
+- **Reading a PDF or a notebook, and opening a profile,** send nothing. Opening an identifier sends nothing from the app: your browser opens the link.
 
-There is no telemetry. The usage log stays on your device and holds action names only.
+There is no telemetry. The usage log stays on your device. It holds each action's name, whether it worked, how long it took and when, and never what you wrote.
 
 **What is checked on the way in.** Every record is signed by the device that wrote it. A record that says a labmate wrote it and doesn't carry a signature from one of their devices is refused, and the Lab tab says whose and how many. A labmate can add what is known about your unit, such as where its PDF is. They can't reword it or remove it.
 

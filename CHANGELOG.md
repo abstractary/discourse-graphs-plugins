@@ -1,10 +1,17 @@
 # Changelog
 
+Each entry has up to two lists. **For people using it** is what changed in what you see and do. **Under the hood** is internals, tests and tooling.
+
 ## An MCP server that reads, and the refactor carried on (14 November 2026)
+
+**For people using it**
 
 - **New: an MCP server an agent can read a vault through.** `npm run mcp -- --vault <folder>` starts it on stdio. Six tools: search units, read one unit, read the argument under a claim, read canvases, read what was taken from a paper, and read the grammar. It reads only the vault owner's own work until they pass `--widen`, and a lab's shared work only as far as the lab's reach allows. It writes nothing but its own device record. It can't propose yet. See [docs/mcp.md](docs/mcp.md).
 - **Fixed: the local app keeps its device id and settings outside the vault,** beside its keys, and moves them there from the old file on first start.
 - **Fixed: the server refuses anything that hasn't a record's shape,** and the core checks what a lab sends before reading it. A lab's settings and a device's vouch are now validated.
+
+**Under the hood**
+
 - **Fixed: the core refuses a base that speaks another version of the host contract.**
 - **A failure keeps its kind on the way to a panel:** not found, read-only, conflict, no target or unavailable, where every failure used to arrive as "invalid". Panels don't act on the kind yet.
 - **The core's entry file defines no calls any more.** Units, canvases, capture and the mirroring of links into notes are features in their own files, and features reach each other through one typed registry in place of variables filled in later.
@@ -15,11 +22,16 @@
 
 ## Refactor and tracking (13 November 2026)
 
-Nothing a person sees changed, apart from four fixes.
+Nothing a person sees changed, apart from four fixes. Three are listed first. The fourth is to a check the project runs on itself.
+
+**For people using it**
 
 - **Fixed: values meant for one device no longer travel with a synced vault.** In Obsidian the link to a lab and the device's id are kept on the device, and moved there from the plugin's data file.
 - **Fixed: a revised record no longer carries the old signature's key name.**
 - **Fixed: the server tells two copies of a record apart by content, however the keys are ordered.**
+
+**Under the hood**
+
 - **Fixed: the boundary check reads imports in either quote style,** so it covers the server.
 - **The core's features share one shape.** Devices, relations and the screen plumbing moved out of the entry file into features of their own. The unit and canvas handlers are still there.
 - **The contract's records file is five files:** what a record is, JSON, titles, validation and the fold.
@@ -29,27 +41,44 @@ Nothing a person sees changed, apart from four fixes.
 
 ## Groundwork for agents (13 November 2026)
 
-- **A record names the key that signed it.** The name is signed over, and a labmate's vault checks the record against that key.
+**For people using it**
+
 - **A key can have the role `agent`.** What it signs is only ever a proposal: a unit, a relation or a check, set apart from the graph. It can't change or remove what a person wrote, can't let another device in, and nothing it signed is sent to a lab or taken in from one.
 - **Proposals can be accepted or turned down,** one at a time or a conversation at once, from the top of the Search panel. Accepting makes a record of your own that says which proposal it began as.
+
+**Under the hood**
+
+- **A record names the key that signed it.** The name is signed over, and a labmate's vault checks the record against that key.
 - **The core can run as an agent,** which is how the MCP server will use it. There is no server yet.
 - **In the simulation** an agent reads Mira's vault and proposes. 135 of 135 expectations hold.
 
 ## MCP design, walkthrough and guide (13 November 2026)
 
-- **[docs/mcp.md](docs/mcp.md): the MCP server's design.** Reached by going up from the core's 161 calls and down from nine things people would ask an agent. Ten tools: six read, three propose, one follows up. Every write is a proposal that lands in the person's own space. An agent is a device key with the role `agent`. Nine changes to the rest of the software are listed. Not built.
+**For people using it**
+
 - **The walkthrough** names invitations, the lab's shelf and signed work, and reading a PDF beside uploading a paper.
 - **The guide** says what joining a lab and adding a device send, what is checked on the way in, what happens on leaving, and where a device's key and id are kept.
+
+**Under the hood**
+
+- **[docs/mcp.md](docs/mcp.md): the MCP server's design.** Reached by going up from the core's 161 calls and down from nine things people would ask an agent. Ten tools: six read, three propose, one follows up. Every write is a proposal that lands in the person's own space. An agent is a device key with the role `agent`. Nine changes to the rest of the software are listed. Not built.
 - **The architecture page** has a table of the rules for records between people.
 
 ## Tidy fixes (13 November 2026)
 
+**For people using it**
+
 - **Tidy works on PDF canvases for every arrangement.** The headings that Kinds, Timeline, People, Papers and the rankings draw were being refused there as content not from the paper, which stopped the whole tidy.
 - **Old headings no longer come back.** On canvases made before versions named what they replace, a heading or card taken off could reappear, which stacked the headings of several arrangements on one canvas.
 - **The "cards cover another" notice clears when you tidy.**
+
+**Under the hood**
+
 - **Tried and removed:** a "Lines of thought" arrangement that grouped cards by community. Three versions were built and looked at on real papers. None read better than Logic, so it was taken out.
 
 ## Devices, removal that puts work away, and a simulation that replays (13 November 2026)
+
+**For people using it**
 
 - **A key per device.** A second computer asks to sign as you, and a device you already use lets it in. Labmates check that chain. Until it is let in, a new device shares nothing. A lost device is removed the same way. See **Your devices** on the Lab tab.
 - **Leaving a lab puts its shared work away.** On the device of someone removed, what the others shared leaves the graph and its notes go to the trash. Their own work and their own grammar stay. An invitation back returns it all.
@@ -58,13 +87,19 @@ Nothing a person sees changed, apart from four fixes.
 - **A log a sync tool has damaged still loads.** Half-written, joined, repeated or marked lines are skipped. Before this, one bad line stopped a vault from loading.
 - **Obsidian keeps its device id on the device.** It was in the plugin's data file, which travels with the vault, so two devices could write to one log.
 - **Refusals are named.** The Lab tab says whose records were refused, which is how an out-of-date app shows up. It also says when this computer's clock is off.
+- **Not built:** routing model work to a labmate's computer.
+
+**Under the hood**
+
 - **A labmate's record that arrives before their own record** is held and checked, where before it was let through.
 - **The simulation replays exactly.** Time, ids, keys and signatures come from the seed. It now has a second device for the PI, a file sync that damages logs, and an older and a newer app. 121 of 121 hold.
 - **A real Obsidian in a lab:** `harness/lab-real-test.mjs` runs the real app among simulated labmates.
 - **Research:** [docs/tooling.md](docs/tooling.md) lists open-source tools for contracts, testing and upkeep, with a first five to adopt.
-- **Not built:** routing model work to a labmate's computer. The role `agent` exists on a device key and nothing enforces it yet.
+- **Not enforced yet:** the role `agent` exists on a device key and nothing enforces it yet.
 
 ## Labs: invitations, inherited settings, signed records (13 November 2026)
+
+**For people using it**
 
 - **Invitations.** The PI makes a one-line invitation, good once for a week. Whoever pastes it into Join a lab is in at once. Asking with the lab's identifier still works.
 - **What the PI sets, members inherit:** the lab's shelf of papers, the model servers it offers and its first choice, and how far a paper's text may travel to be read by a model. Set on the Lab tab, carried on the lab's own record.
@@ -75,13 +110,18 @@ Nothing a person sees changed, apart from four fixes.
 - **Records are signed** by whoever wrote them and checked on arrival. A unit's words and its existence are its author's alone.
 - **Shelves.** A paper is on the lab's shelf (its Zotero group, or the lab's repository with no Zotero), in your own library, or in a labmate's. The PDF chooser lists the lab's shelf first, and a unit's facts say whose copy its paper is.
 - **Reach.** Reading a paper on a server outside what the lab allows is refused, with the reason.
+- **Not done:** a second device can't sign yet, so a person works in a lab from one device.
+
+**Under the hood**
+
 - **Server:** invitations, member removal with revoked tokens, and its own time in every record exchange.
-- **Not done:** a second device can't sign yet, so a person works in a lab from one device. The Lab tab's new controls are built and bundled, and were not driven in real Obsidian.
+- **Not driven in real Obsidian:** the Lab tab's new controls are built and bundled, and were not driven in real Obsidian.
 - **Tests:** `test/versions.test.ts`, `test/lab-share.test.ts`, and the simulation, which holds 95 of 95.
 
 ## Four vaults (13 November 2026)
 
-- **A simulation of four people, each with a vault, around one lab server:** `node harness/four-vaults.ts`. It runs the real core, sync loop and reference server in one process, plays a scripted story and a seeded random walk, and reports what held under convergence, privacy, intent, liveness, membership and integrity. See [docs/four-vaults.md](docs/four-vaults.md).
+**For people using it**
+
 - **Removals now reach labmates.** A card taken off a shared canvas, a unit its author removed, a shared canvas its owner removed and a relation taken back were never sent. They are now.
 - **Checks reach the person whose unit was checked,** and everyone else on the canvas.
 - **Evidence travels with its source,** so a labmate sees which paper it came from.
@@ -89,39 +129,60 @@ Nothing a person sees changed, apart from four fixes.
 - **A card whose unit was removed is not shown,** and removing a unit removes the lines drawn to it.
 - **A member accepted before the lab's record arrives** is joined when it does.
 - **Still open, by design decision:** edit counts outvote time, slow clocks lose, authorship is taken at its word, a PI can't remove a member, and each vault makes its own grammar.
+
+**Under the hood**
+
+- **A simulation of four people, each with a vault, around one lab server:** `node harness/four-vaults.ts`. It runs the real core, sync loop and reference server in one process, plays a scripted story and a seeded random walk, and reports what held under convergence, privacy, intent, liveness, membership and integrity. See [docs/four-vaults.md](docs/four-vaults.md).
 - **Tests:** `test/lab-share.test.ts`.
 
 ## Zotero as the PDF library (13 November 2026)
+
+**For people using it**
 
 - **A setting makes Zotero the PDF library.** Its PDFs are listed first, named for their references, and read where Zotero keeps them. Nothing is copied into the vault and nothing is written to Zotero.
 - **One work, one listing.** A vault copy of a paper Zotero holds is found by its identifiers and is not listed beside Zotero's.
 - **What is read from Zotero's file is that reference.** A highlight's source, or an extracted paper, carries the DOI, PMID and other identifiers Zotero has.
 - **One Zotero mark throughout:** on cards, in the Context panel, in Search, the PDF chooser, the reader's bar, the Library panel, the Paper map and the canvas menu.
 - **Checking again.** The reader counts highlights made in Zotero that aren't units yet and opens From Zotero at that reference.
-- **Run against the real Zotero for the first time** (10.0.9): 17 checks pass in real Obsidian. It found two faults the stand-in had hidden: a personal library's id is 0, which was read as "no library"; and a personal address was being used to recognise a source across people.
 - **A personal library's address now belongs to its owner.** It marks, matches and opens an item only for the person whose unit carries it. A group library's address works for every member.
+
+**Under the hood**
+
+- **Run against the real Zotero for the first time** (10.0.9): 17 checks pass in real Obsidian. It found two faults the stand-in had hidden: a personal library's id is 0, which was read as "no library"; and a personal address was being used to recognise a source across people.
 - **Tests:** `test/zotero-library.test.ts`, shaped like the real app's answers, and `harness/zotero-real-test.mjs`.
 
 ## Sign-off, and a notebook file a notebook can import (13 November 2026)
 
+**For people using it**
+
 - **Sign-off.** A unit can be marked as checked, or as needing work, with how it was checked. The mark is pinned to a hash of the unit, so it reads as made on an earlier version once the unit changes. Cards show it, tables can filter by it, and crates carry it.
 - **The `.eln` file is rebuilt around entries.** Each run is an experiment, each protocol a protocol and the graph a resource, each a folder with its own files. Before, the file listed loose files and a notebook would have imported no experiments.
-- **Checked against the ELN Consortium's own checker,** which now passes all five checks on the four re-issued files, and against eLabFTW's importer as its source reads. It has not been opened in a running notebook.
 - **A notebook's file is read here.** Exports from eLabFTW, RSpace, Kadi4Mat and PASTA come in as runs with their files hashed.
 - **Fixed on the way:** prefixed keys are spelled out in a crate's context, a packed file is read straight by its reference, and an entry's people are named from given and family names.
+
+**Under the hood**
+
+- **Checked against the ELN Consortium's own checker,** which now passes all five checks on the four re-issued files, and against eLabFTW's importer as its source reads. It has not been opened in a running notebook.
 - **Tests:** `test/checks.test.ts`, `test/eln.test.ts` with two real notebook exports as fixtures, and `harness/check-test.mjs` in real Obsidian.
 
 ## Pictures, a card's relations, candidates and native commands (13 November 2026)
+
+**For people using it**
 
 - **Pictures as evidence.** A picture dropped or pasted on a canvas is kept in the base and becomes an Output, pinned by a hash of its bytes. **Say what it shows** makes Evidence that rests on it. A changed file is shown as changed.
 - **What a card is related to.** A selected card lists its unit's relations and brings in the ones not on the canvas, with their links.
 - **Candidates.** A type can have a candidate tag. Tagged lines are listed in Search and become units there, and the line becomes a link.
 - **Commands.** Canvas actions are Obsidian commands, so they can be found and bound to keys.
 - **Dialogs are Obsidian modals**, and Escape closes them from inside.
+
+**Under the hood**
+
 - **The comparison page** now stands at 59%, and 83% of what is on by default in both official plugins.
 - **Tests:** `test/gather.test.ts`, and `harness/gather-test.mjs` in real Obsidian.
 
 ## Types, templates, tables and removing things (13 November 2026)
+
+**For people using it**
 
 - **Types and relations** is a new dialog. A lab adds and changes its own types on the nine kinds of unit, sets each type's abbreviation, note title and template, and says which types a relation may join. A type or relation in use can't be removed.
 - **Templates.** A new note starts from its type's template, with `{title}`, `{date}`, `{author}` and `{type}` filled in. Each kind has starter headings in the words a lab notebook uses.
@@ -129,17 +190,26 @@ Nothing a person sees changed, apart from four fixes.
 - **Schema files.** The grammar is saved and read as one JSON file, by name. The official plugin's schema export is read too. Reading adds what is missing and changes nothing.
 - **Removing.** A canvas can be removed by its maker, and a unit by its author. Units on a removed canvas stay.
 - **First authors.** A unit brought in from a crate keeps who first made it, with their ORCID iD.
+
+**Under the hood**
+
 - **The comparison page was re-scored:** 56% of today's capabilities, up from 42% on 6 November, and 76% of what is on by default in both official plugins.
 - **Tests:** `test/grammar.test.ts`, and `harness/grammar-test.mjs` in real Obsidian.
 
 ## Evidence crates: MIRA, files, a README and Zenodo (13 November 2026)
 
-- **A crate speaks MIRA.** Every unit in an exported crate is also typed in the MIRA schema and carries MIRA's properties, in the one metadata graph. `core/mira.ts` is the only file that knows the schema's names.
+**For people using it**
+
+- **A crate speaks MIRA.** Every unit in an exported crate is also typed in the MIRA schema and carries MIRA's properties, in the one metadata graph.
 - **A crate reads MIRA.** Importing a MATSUlab evidence bundle now gives evidence, the study that grounds it, its protocol, code, files and source, with their links. Before, it gave nine loose files. Arguments between units are read too.
 - **Files travel, checked.** An output's file is packed in the crate when the base holds it and it still matches the hash on record. Files a crate names are hashed on import.
 - **A README in every crate** tells each finding: what was observed, the figure, what it rests on, and how it was produced.
 - **Also start a draft on Zenodo**, in the export dialog. It reserves a DOI, writes it into the crate, uploads the crate to a draft, and never publishes. Not yet tried against the real service.
 - **Fixed on the way:** a run's `environment` was written without a definition; a repository cited without a file failed the validator's script check; an agent named in words got an id that wasn't one; a data file was typed as a folder.
+
+**Under the hood**
+
+- **One file knows MIRA's names:** `core/mira.ts` is the only file that knows the schema's names.
 - **Examples:** `examples/evidence-bundles/reissue.ts` re-issues the four MATSUlab bundles through the importer and exporter. `examples/disciplines/build.ts` records one real study each from biology, computer science and sociology. All seven crates pass the RO-Crate validator's required checks.
 - **Tests:** `test/evidence-crate.test.ts`, and `harness/evidence-test.mjs` in real Obsidian.
 - **The sandbox vault was cleared** of test leftovers with `scripts/clear-sandbox.py`.
@@ -147,6 +217,8 @@ Nothing a person sees changed, apart from four fixes.
 ## Unreleased (13 November 2026)
 
 ### Paper map and type colors (13 November 2026)
+
+**For people using it**
 
 - **Paper map.** A new view places papers by how tied they are: links people drew between their units, and one paper citing the other. Lines say whether the links support, oppose or both. Scopes: one canvas, only you, a lab, everyone. Open it from the Library, the panel menu, or the command "Open paper map".
 - **Type colors.** A new palette keeps green and red for Supports and Opposes, so evidence is blue and questions are violet. Cards carry a full-strength colored edge. Old default colors, ours and the official plugin's, now follow the palette. See `docs/color.md`.
@@ -159,6 +231,10 @@ Nothing a person sees changed, apart from four fixes.
 - **Canvas sidebar.** An icon left of the canvas title opens a sidebar with three tabs: Library (every workspace with its canvases and papers, the open one marked), Search units, and Units to place. It floats over the canvas, or stays beside it when pinned. The units drawer under the canvas moved into it; the strip at the bottom now opens that tab.
 - **Freehand lines** show a frame when selected, and who drew them and when. A selected relation line is drawn thicker.
 
+### Other unreleased changes
+
+**For people using it**
+
 - A **Cards** list on the canvas switches what every card shows: source and how it was read, authors, workspace, date and time made, identifiers. The Context panel heads with the same rows
 - **Look it up** asks Crossref or DataCite, OpenAlex, PubMed and the paper's own page for a paper's identifiers, venue and retractions
 - **Research crates:** export a canvas as an RO-Crate 1.3 archive or an `.eln` file, and import crates from here or from other tools
@@ -166,8 +242,6 @@ Nothing a person sees changed, apart from four fixes.
 - **Profiles:** a person's history for themselves, their lab work for their lab, and counts alone for anyone. Initials show a card on hover and open the profile on click
 - **From Zotero:** bring a reference in as a source, with the highlights chosen as units that quote their passages
 - Notes on a canvas say who wrote them and when
-- Removed the leftover unit-holon code and wording
-- `npm run dsm` prints the dependency matrix and fails on a cycle
 - **One word per object** ([docs/information-architecture.md](docs/information-architecture.md)): a workspace is a place with members, a lab is a workspace with one PI, a canvas people lay out is a "canvas", and a paper's reading is a "PDF canvas". "Node" is "unit" throughout
 - **PDF canvases can be polished and hold only their paper.** Reword or retype a card, link two, take one off, or highlight in the paper's PDF to add one. A reworded card says so and keeps the model's wording. Anything not from the paper is refused and offered **Build on it**, which makes a canvas of your own with the same cards
 - The canvas's **PDF** button opens the PDF most of its cards came from
@@ -175,9 +249,16 @@ Nothing a person sees changed, apart from four fixes.
 - The **Context** panel says each fact once, under clearer section labels. Its head shows who made the unit beside when, and the unit's own identifier, which copies on a click. Open access is a coloured mark and citations a number. A link to a canvas opens it and rings the unit's card for a moment
 - The Library groups canvases by workspace, and each row shows the papers it draws on and who did most on it. A canvas in your workspace can be moved to your lab's, after naming who will see it
 
+**Under the hood**
+
+- Removed the leftover unit-holon code and wording
+- `npm run dsm` prints the dependency matrix and fails on a cycle
+
 ## 0.1.0 (demo)
 
 The first version shared with the Discourse Graphs team.
+
+**For people using it**
 
 - One core, canvas and set of panels running inside Roam and Obsidian
 - Upload a paper, choosing the compute server, model and schema

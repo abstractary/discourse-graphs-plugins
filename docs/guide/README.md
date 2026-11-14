@@ -490,7 +490,7 @@ Obsidian → Settings → Discourse Graphs.
 
 | Section | What you can set |
 |---|---|
-| You | Your name. Your lab, with a button to join or start one |
+| You | Your name. Your lab, with a button to join or start one. Invitations, members, your devices and what the lab sets for everyone are on the Library's **Lab** tab |
 | Ask AI | Whose model answers, and the same fields as the form in the bar |
 | In your notes | The key that makes a unit from selected text (empty turns it off). Type badges on links. A button to Obsidian's hotkeys, filtered to this plugin |
 | Canvas | What Delete does on a link: ask, take it off this canvas, or withdraw the relation |
@@ -526,10 +526,13 @@ Nothing, until you choose it.
 
 | You do this | This goes | To |
 |---|---|---|
-| Join a lab and share a canvas | That canvas, its units and their relations | Your lab's server |
+| Join a lab and share a canvas | That canvas, its cards, the units on them, their sources, relations drawn there, and checks on those units. A unit whose card you take off stops being sent, except that removing it is sent | Your lab's server, and from there your labmates |
+| Join a lab at all | Your name, your id, the key your devices sign with, and that you are a member | Your lab's server |
+| Open a second device and let it in | That device's own key, with your first device's word for it | Your lab's server, with your other records |
+| Use a Zotero group as the lab's shelf | Nothing from the app. Each member opens the PDF from their own Zotero | — |
 | Ask AI with your own key | Your question and the units on that canvas | The model provider you chose. With a model on your own computer, nowhere |
 | Ask AI with your lab's model | The same | Your lab's server |
-| Extract graph, when no saved extraction sits beside the paper | The paper | The server you pick in the upload dialog |
+| Extract graph, when no saved extraction sits beside the paper | The paper | The server you pick in the upload dialog. In a lab, only a server the lab's reach allows: by default this computer or the lab's own |
 | Extract graph, with a saved extraction | Nothing | Nowhere |
 | Search or bring in from Zotero | Your search words, to the Zotero app on this computer | Nowhere else |
 | Open a profile | Nothing | — |
@@ -541,6 +544,10 @@ Nothing, until you choose it.
 
 There is no telemetry. The usage log stays on your device and holds action names only.
 
+**What is checked on the way in.** Every record is signed by the device that wrote it. A record that says a labmate wrote it and doesn't carry a signature from one of their devices is refused, and the Lab tab says whose and how many. A labmate can add what is known about your unit, such as where its PDF is. They can't reword it or remove it.
+
+**If you leave a lab or are removed,** what the others shared is put away on your device, and its notes go to the trash. What was already sent to you can't be unsent: it stays in the log file, unread.
+
 ## Where things are kept
 
 | Thing | Where |
@@ -550,7 +557,9 @@ There is no telemetry. The usage log stays on your device and holds action names
 | Canvases | Also mirrored as `.canvas` files Obsidian's own Canvas can open |
 | Dropped PDFs | `Paper files/` |
 | A model key | Obsidian's keychain, outside the vault |
-| Your signing key | The device. It can't yet be backed up |
+| Your signing key | The device. It can't be copied or backed up. Each further device makes its own, and a device you already use lets it in |
+| This device's id | The device, not the vault, so two devices never write one log |
+| Your link to a lab | The device |
 
 ## Words used here
 
@@ -558,6 +567,9 @@ There is no telemetry. The usage log stays on your device and holds action names
 - **Card:** a unit shown on a canvas.
 - **Staged:** a unit proposed by an extraction or an import that has no note yet.
 - **Proposed:** a relation someone else asserted that you haven't accepted.
+- **Shelf:** where a paper is held, which says who can open its PDF: the lab's, yours, or a labmate's.
+- **Reach:** how far a lab lets a paper's text travel to be read by a model.
+- **Let in:** what a device you already use does for a new one, so the new one can sign as you.
 - **Pin:** a link to one version of something.
 - **Drift:** a pin whose target has changed since.
 - **Gap:** something a rule noticed. It never blocks you.

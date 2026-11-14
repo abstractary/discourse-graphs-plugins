@@ -317,7 +317,7 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
     {
       id: "open-canvas",
       title: "Open the canvas",
-      body: "Every canvas is listed here, the same in Obsidian and Roam. Click Walkthrough canvas.",
+      body: "Every canvas is listed here, the same in every app this runs in. Click Walkthrough canvas.",
       target: () => ({ surface: "canvases", selector: '[data-dg="canvases-open-Walkthrough canvas"]' }),
       done: () => isShowing("canvas", ".card"),
       doIt: () => base.showCanvas(canvas),
@@ -325,7 +325,7 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
     {
       id: "card",
       title: "Cards",
-      body: "Each card is a unit. The chip shows its type, and the round mark shows who made it. Work shared from another lab shows that lab's square mark instead.",
+      body: "Each card is a unit. The chip shows its type, and the round mark shows who made it. A tick means someone has checked it. Work shared from another lab shows that lab's square mark instead.",
       target: () => ({ surface: "canvas", selector: `[data-dg=${JSON.stringify(`card-${SENTENCES.claim}`)}]` }),
     },
     {
@@ -359,7 +359,7 @@ export const startWalkthrough = async (base: WalkthroughBase): Promise<void> => 
     {
       id: "lab",
       title: "Papers and labs",
-      body: "Run \"Upload a paper\" to give a paper's claims and evidence a canvas of their own. Run \"Join or start a lab\" to share them. Inside a lab you see who made each thing. Anyone outside it sees your lab's square mark, and the lab's PI keeps custody of its work.",
+      body: "Run \"Read a PDF…\" to highlight passages into units, or \"Upload a paper\" to read a whole paper into a canvas of its own. Run \"Join or start a lab\" to share: paste an invitation from the lab's PI and you are in at once. A lab shares only the canvases you choose. You get its grammar, its shelf of papers and what its PI has set for everyone. What you write is signed by this device.",
     },
     {
       id: "finish",

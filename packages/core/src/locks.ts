@@ -8,7 +8,8 @@ import { PDF_CANVAS_FIXED } from "@dg/contract/surface.ts";
  * paper. A unit read from the paper can be reworded, retyped, related to
  * another of the paper's units, or taken off. A new unit joins by being
  * highlighted in the paper's own PDF. Units from anywhere else, stickies and
- * drawings are refused, and belong on a canvas built on this one.
+ * drawings are refused, and belong on a canvas built on this one. The headings
+ * Tidy draws round groups of cards are allowed: they arrange, and add nothing.
  */
 
 /** The paper a canvas is the reading of, when it is a PDF canvas. */
@@ -50,6 +51,9 @@ type Held = { dg?: { node?: DgId; relation?: DgId; canvas?: DgId }; fromNode?: D
 /** Whether a PDF canvas may take this new item: a card of one of the paper's units, or a relation between two of them. */
 export const mayJoin = (graph: Graph, paper: PaperRecord, item: object): boolean => {
   const { dg } = item as Held;
+  // A heading Tidy draws round a group of cards says how they are arranged. It adds nothing to what the paper says.
+  const drawn = item as { type?: string; guide?: boolean };
+  if (drawn.guide === true && drawn.type === "group" && !dg) return true;
   if (dg?.node) {
     const node = unitAt(graph, dg.node);
     return Boolean(node && ofPaper(graph, node, paper));

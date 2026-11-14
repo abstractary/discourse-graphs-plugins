@@ -94,7 +94,7 @@ The first time it loads, it asks whether you're joining a lab. Then try this:
 3. Click a card, then open the context panel to see its provenance.
 4. Select a few cards and press **Export**.
 5. Run **Upload a paper**, choose `demo/papers/lupus-nephritis-prediction.pdf` with **Demo replay**, and press **Extract graph**.
-6. To try a lab, run **Join or start a lab** in one app, and join with its identifier from the other.
+6. To try a lab, run **Join or start a lab** in one app. On the Library's **Lab** tab press **Make an invitation**, and paste the line into **Join a lab** in the other.
 7. Run **Start walkthrough** for a guided tour of the basics.
 
 ### Extraction models
@@ -196,7 +196,10 @@ Because both plugins share one core, a skill written once works in both. [docs/a
 | [Cards, identifiers and the scholarly record](docs/scholarly.md) | Card facts, registry lookups, RO-Crate, DataCite, Signposting and COAR Notify, with the dependency matrix |
 | [Information architecture](docs/information-architecture.md) | The objects, the one name each has, which frame is about which, where papers live across workspaces, and what is built |
 | [Zotero](docs/zotero.md) | What the existing Zotero plugins teach, the design for a long-lived integration, what is built and what to check first |
-| [LLM and MCP spec](docs/llm-and-mcp-spec.md) | Own-key AI as built, and the design for the MCP server and Jupyter |
+| [LLM and MCP spec](docs/llm-and-mcp-spec.md) | Own-key AI as built, and the design for Jupyter |
+| [MCP server design](docs/mcp.md) | Ten tools reached from what the core offers and what people ask for. Every write is a proposal. Not built |
+| [Four vaults](docs/four-vaults.md) | A simulation of people sharing a lab, what it found, how labs, signing and devices work now, and the research behind it |
+| [Tooling](docs/tooling.md) | Open-source tools for contracts, tests and upkeep, with a first five to adopt. Nothing adopted yet |
 | [Interface audit](docs/ui-audit.md) | What was found in the Obsidian interface, what was fixed and what is open |
 | [Architecture](docs/ARCHITECTURE.md) | Modules, boundaries and why they're where they are |
 | [Contract](docs/CONTRACT.md) | Records, identity, the host contract, and settled decisions |

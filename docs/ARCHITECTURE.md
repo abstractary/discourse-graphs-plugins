@@ -101,3 +101,20 @@ This is a demo, and these are the known edges:
 - Each lab member's token is a bearer token held in plugin storage.
 - Roam has no slot for custom sidebar content, so panels are injected into its sidebar.
 - `packages/core/src/index.ts` and `packages/surfaces/src/canvas/App.tsx` are each over 1,000 lines, and both should be split the way papers, units and labs already are.
+
+## Records between people
+
+Added 13 November 2026. The detail and the reasons are in [four-vaults.md](four-vaults.md).
+
+| Concern | Where it lives | The rule |
+|---|---|---|
+| Which version stands | `foldRecords` in [`contract/records.ts`](../packages/contract/src/records.ts) | Each version names the one it replaces. A version beats what it replaces. Of two made apart, the later stands, except that on a canvas an edit beats a removal, and for memberships and devices a removal beats an edit |
+| Who may change what | The same fold | An id carries its author's DID. A unit's words and existence are its author's. A labmate may add facts. Only a lab's custodian changes the lab, its grammar and its memberships |
+| Whose word a record is | [`core/signing.ts`](../packages/core/src/signing.ts) | Each version is signed by the device that wrote it. A device's key counts once a trusted device has vouched for it. Checked when records arrive from a lab |
+| What a vault sends | `shareable` in [`core/labs.ts`](../packages/core/src/labs.ts) | What is on a shared canvas and what it needs to make sense, including what was taken away. Every version of a card, so "made apart" reads the same everywhere |
+| Time and chance | `clock` and `entropy` in [`contract/ids.ts`](../packages/contract/src/ids.ts) | A base leaves them alone. A lab server's time corrects a wrong clock. A simulation replaces both, with seeded keys, and replays byte for byte |
+| Reading a log off disk | [`contract/log.ts`](../packages/contract/src/log.ts) | Whole records only. A line a sync tool damaged is skipped and counted, never repaired |
+| What a lab sets for everyone | `LabSettings` on the lab's record | Only the PI writes it. Every member holds it |
+
+The simulation that keeps these honest is `node harness/four-vaults.ts`. The planned MCP server is one more signing device with a narrower role: see [mcp.md](mcp.md).
+

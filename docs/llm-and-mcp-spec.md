@@ -107,6 +107,8 @@ Two choices worth knowing:
 
 ## 3. The MCP server
 
+> **Superseded on 13 November 2026 by [mcp.md](mcp.md).** That design was reached after labs gained invitations, signed records, device keys and a reach setting. It has ten tools where this section has sixteen, makes an agent a device key with a role, and lists what the rest of the software must change. This section is kept for its list of things to investigate, which still stands.
+
 ### 3.1 Purpose
 
 Let an agent a person already uses (Claude, ChatGPT, Claude Code, Cursor and others) read their discourse graph and propose additions to it. On the market map this is the largest reach gain measured: 91 of 236 products within two hops, in all eight groups.

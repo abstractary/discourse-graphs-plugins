@@ -63,6 +63,11 @@ test("a PDF canvas can be polished, and takes nothing that isn't its paper's", a
   const own = await call("node.create", { title: "My own claim" } as never);
   await assert.rejects(call("canvas.write", { canvas: paper.canvas, upserts: [{ z: 99, item: { type: "text", text: own.title, x: 0, y: 0, width: 200, height: 60, dg: { node: own.id } } as never }] }), refused);
   await assert.rejects(call("units.put", { canvas: paper.canvas, nodes: [own.id] }), refused);
+  // The headings Tidy draws round groups of cards arrange the paper's cards and add nothing to them. A plain frame is still someone's own.
+  const heading = await call("canvas.write", { canvas: paper.canvas, upserts: [{ z: 0, item: { type: "group", guide: true, label: "A line of thought", x: 0, y: 0, width: 400, height: 300 } as never }] });
+  await call("canvas.write", { canvas: paper.canvas, upserts: [{ id: heading.ids[0]!, z: 0, item: { type: "group", guide: true, label: "A line of thought", x: 40, y: 0, width: 400, height: 300 } as never }] });
+  await call("canvas.write", { canvas: paper.canvas, removes: heading.ids });
+  await assert.rejects(call("canvas.write", { canvas: paper.canvas, upserts: [{ z: 0, item: { type: "group", label: "My own frame", x: 0, y: 0, width: 400, height: 300 } as never }] }), refused);
   await assert.rejects(call("canvas.placeUnits", { canvas: paper.canvas, places: [{ node: own.id, x: 0, y: 0, width: 200, height: 60 }] }), refused);
   // A card can't be repointed at another unit.
   await assert.rejects(call("canvas.write", { canvas: paper.canvas, upserts: [{ id: card.id, z: card.z, item: { ...item, dg: { node: own.id } } as never }] }), refused);

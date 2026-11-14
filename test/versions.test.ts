@@ -131,3 +131,13 @@ test("on a canvas an edit made apart from a removal stands, and for access the r
   const membership = foldRecords({ records: [lab, joined, ended, apart, undone], localSpace: "s" }).documents.get(joined.id) as { removed?: boolean };
   assert.equal(membership.removed, true);
 });
+
+test("a card from before versions were linked can still be taken off", () => {
+  // Made, then moved, by an app that didn't yet say which version each replaced. Then taken off by this one.
+  const made = { v: 2, id: "did:plc:mira#3ddddddddddd2", kind: "canvas-item", space: "s", at: at(0), by: mira, rev: 1, editedAt: at(0), editedBy: mira, canvas: "c", z: 1, item: { id: "i", type: "group", label: "Evidence", x: 0, y: 0, width: 1, height: 1 } } as unknown as DgRecord;
+  const movedOld = { ...made, rev: 2, editedAt: at(1), z: 2 } as DgRecord;
+  const taken = revise({ record: movedOld as never, changes: { removed: true } as never, by: mira, at: at(5) }) as DgRecord;
+  for (const records of [[made, movedOld, taken], [taken, made, movedOld]]) {
+    assert.equal((foldRecords({ records, localSpace: "s" }).documents.get(made.id) as { removed?: boolean }).removed, true);
+  }
+});

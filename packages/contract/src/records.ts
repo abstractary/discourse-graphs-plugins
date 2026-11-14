@@ -1254,12 +1254,20 @@ export const foldRecords = ({
   for (const record of records) {
     if (isKnownRecord(record) && isDocument(record) && record.prev && stands(record)) replaced.add(`${record.id}|${record.prev}`);
   }
+  // Versions from before each named what it replaced say so only by their count of edits: among
+  // those, a later count replaced every earlier one. Without this, an old first version would
+  // still look like one nobody had replaced, and a card taken off would come back.
+  const unnamedTop = new Map<DgId, number>();
+  for (const record of records) {
+    if (isKnownRecord(record) && isDocument(record) && !record.prev && stands(record)) unnamedTop.set(record.id, Math.max(unnamedTop.get(record.id) ?? 0, record.rev));
+  }
   const winners = new Map<DgId, DgRecord>();
   for (const record of records) {
     // A newer client's kinds are kept in the log but never read as something else.
     if (!isKnownRecord(record)) continue;
     if (!stands(record)) continue;
     if (isDocument(record) && replaced.has(`${record.id}|${versionKey(record)}`)) continue;
+    if (isDocument(record) && !record.prev && record.rev < (unnamedTop.get(record.id) ?? 0)) continue;
     const current = winners.get(record.id);
     if (!current || compareVersions(record, current) > 0) {
       winners.set(record.id, record);

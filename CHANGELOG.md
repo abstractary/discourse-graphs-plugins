@@ -1,5 +1,19 @@
 # Changelog
 
+## MCP design, walkthrough and guide (13 November 2026)
+
+- **[docs/mcp.md](docs/mcp.md): the MCP server's design.** Reached by going up from the core's 161 calls and down from nine things people would ask an agent. Ten tools: six read, three propose, one follows up. Every write is a proposal that lands in the person's own space. An agent is a device key with the role `agent`. Nine changes to the rest of the software are listed. Not built.
+- **The walkthrough** names invitations, the lab's shelf and signed work, and reading a PDF beside uploading a paper.
+- **The guide** says what joining a lab and adding a device send, what is checked on the way in, what happens on leaving, and where a device's key and id are kept.
+- **The architecture page** has a table of the rules for records between people.
+
+## Tidy fixes (13 November 2026)
+
+- **Tidy works on PDF canvases for every arrangement.** The headings that Kinds, Timeline, People, Papers and the rankings draw were being refused there as content not from the paper, which stopped the whole tidy.
+- **Old headings no longer come back.** On canvases made before versions named what they replace, a heading or card taken off could reappear, which stacked the headings of several arrangements on one canvas.
+- **The "cards cover another" notice clears when you tidy.**
+- **Tried and removed:** a "Lines of thought" arrangement that grouped cards by community. Three versions were built and looked at on real papers. None read better than Logic, so it was taken out.
+
 ## Devices, removal that puts work away, and a simulation that replays (13 November 2026)
 
 - **A key per device.** A second computer asks to sign as you, and a device you already use lets it in. Labmates check that chain. Until it is let in, a new device shares nothing. A lost device is removed the same way. See **Your devices** on the Lab tab.

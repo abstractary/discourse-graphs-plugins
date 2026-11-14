@@ -1215,11 +1215,15 @@ export const App = ({ connection }: { connection: Connection }) => {
       .catch(report);
   }, [freeSpot, startingPoint, write, nextZ, report, record]);
 
-  const mode: TidyMode = view?.canvas.layout?.mode ?? "logic";
+  // A canvas can carry an arrangement this app no longer has. It is read as Logic.
+  const stored = view?.canvas.layout?.mode;
+  const mode: TidyMode = stored && MODES.some((entry) => entry.mode === stored) ? stored : "logic";
 
   /** One write for the whole layout, so a teammate sees it land at once. */
   const tidyUp = useCallback((chosen: TidyMode) => {
     setTidyAt(null);
+    // Whatever was covering what, it is about to be put right.
+    setCrowded(0);
     if (!view) return;
     const cards: Card[] = flow.getNodes().flatMap((node) => {
       if (node.type !== "card" && node.type !== "note") return [];

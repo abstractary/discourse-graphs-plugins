@@ -4,6 +4,7 @@ import type { AiStatus, CanvasView } from "@dg/contract/surface.ts";
 import { AiSetup } from "../shared/AiSetup.tsx";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, plain } from "../shared/ui.tsx";
+import { messageOf } from "../shared/words.ts";
 
 type Answer = { text: string; citations: string[]; mode?: "model" | "search-only"; model?: string; source?: "own" | "lab" | "none"; stopped?: boolean };
 
@@ -92,7 +93,7 @@ export const AiBar = ({
       });
     } catch (error) {
       setAnswer(null);
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
     } finally {
       setBusy(false);
     }

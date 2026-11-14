@@ -158,7 +158,7 @@ const Shell = () => {
         <main className="ws-main" data-reading={Boolean(reading)}>
           {main.kind === "canvas" ? (
             <ReactFlowProvider key={main.id ?? "last"}>
-              <Canvas connection={mainConnection} />
+              <Canvas connection={mainConnection} Search={Search} />
             </ReactFlowProvider>
           ) : main.kind === "run" ? (
             <div className="ws-scroll"><Run key={main.id ?? "all"} connection={mainConnection} /></div>

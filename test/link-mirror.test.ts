@@ -1,54 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
-import type { ExtractionGraph, Services } from "@dg/contract/services.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
-
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
+import type { MemoryStore } from "@dg/contract/memory-host.ts";
+import type { ExtractionGraph } from "@dg/contract/services.ts";
+import { makeCore } from "./support.ts";
 
 const demo = JSON.parse(readFileSync("demo/papers/lupus-nephritis-prediction.graph.json", "utf8")) as ExtractionGraph;
 
-const setup = async (textForEveryUnit = false) => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store, textForEveryUnit });
-  const services = { servers: async () => [], extract: async () => demo, storeGraph: async () => {}, link: async () => null, pushRecords: async () => {}, pullRecords: async () => ({ records: [], done: true }) } as unknown as Services;
-  const core = await createCore({ host: host as never, services });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("id" in message) pending.get(message.id)?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  return { call, core, store, host };
-};
+const setup = (textForEveryUnit = false) => makeCore({ memory: { textForEveryUnit }, services: { extract: async () => demo } });
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 // A note also carries plain facts (its type, the day it was made). These tests are about the links, which are lists.
 const linksIn = (properties: Record<string, unknown> | undefined): Record<string, string[]> => Object.fromEntries(Object.entries(properties ?? {}).filter(([, value]) => Array.isArray(value))) as Record<string, string[]>;
-const propsOf = (store: ReturnType<typeof createMemoryStore>, ref: string) => linksIn((store.texts.get(ref) as { properties?: Record<string, unknown> } | undefined)?.properties);
+const propsOf = (store: MemoryStore, ref: string) => linksIn((store.texts.get(ref) as { properties?: Record<string, unknown> } | undefined)?.properties);
 
 test("a relation shows on both notes as link properties, and goes when the relation does", async () => {
-  const { call, core, store } = await setup();
+  const { call, core, store, settle } = await setup();
   const grammar = await call("grammar.get", {} as never);
   const typeOf = (base: string) => grammar.nodeTypes.find((type) => type.base === base)!.id;
   const claim = await core.capture({ text: "Entropy predicts error", type: typeOf("claim") });
@@ -74,7 +40,7 @@ test("a relation shows on both notes as link properties, and goes when the relat
 });
 
 test("where the base wants it, every unit read from a paper gets a note, and its relations show there", async () => {
-  const { call, store } = await setup(true);
+  const { call, store, settle } = await setup(true);
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
   await settle();
   await settle();
@@ -94,7 +60,7 @@ test("where the base wants it, every unit read from a paper gets a note, and its
 });
 
 test("without that, a unit read from a paper stays without a note", async () => {
-  const { call } = await setup();
+  const { call, settle } = await setup();
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
   await settle();
   const view = await call("canvas.open", { id: paper.canvas });

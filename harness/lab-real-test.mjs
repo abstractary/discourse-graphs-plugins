@@ -3,7 +3,9 @@
 // stopping, and what the Lab tab draws.
 //   npm run build:test, then: node harness/lab-real-test.mjs   (Obsidian open on the sandbox vault)
 // The sandbox person joins a throwaway lab run by a simulated PI, works in it, and is taken out again.
-// It skips if the sandbox is already in a lab, and puts the vault back as it found it.
+// It skips if the sandbox is already in a lab.
+// Leaves the vault in no lab, with its own unit taken back. The lab's units that reached the vault stay in its
+// records, put away with the lab: core has no call that forgets a lab's work.
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,7 +15,7 @@ import { openWorld } from "./vaults/world.ts";
 
 const RUN = String(Date.now()).slice(-5);
 const t = await session({ out: resolve("reports/lab-real"), reload: !process.env.DG_NO_RELOAD });
-const { s, check, note, until, shot, at, click, has, call } = t;
+const { s, check, note, until, shot, at, click, has, call, cleanup } = t;
 await s("s.test(true)");
 
 const before = await call("lab.view");
@@ -47,7 +49,6 @@ const online = async (vault, work) => {
   }
 };
 const typeOf = async (who, base) => (await who("grammar.get", {})).nodeTypes.find((type) => type.base === base && !type.removed).id;
-const made = [];
 
 try {
   const lab = await online(mira, () => mira.call("lab.register", { server: world.server, name: `Real Lab ${RUN}` }));
@@ -97,7 +98,7 @@ try {
 
   // The real person adds to the shared canvas. It reaches the simulated labmates, signed.
   const mine = await call("node.create", { title: `From the real Obsidian ${RUN}`, type: grammar.nodeTypes.find((type) => type.base === "evidence" && !type.removed).id });
-  made.push(mine.id);
+  cleanup("the unit made in Obsidian", () => call("node.remove", { id: mine.id }));
   await call("canvas.write", { canvas: canvas.id, upserts: [{ z: 2, item: { type: "text", text: mine.title, x: 300, y: 0, width: 240, height: 90, dg: { node: mine.id } } }] });
   const reached = await until(async () => {
     await world.settle(["Mira", "Tomas"]);
@@ -142,7 +143,7 @@ try {
   check("remove.the-notice-goes-once-read", !(await has("canvases", '[data-dg="lab-removed"]')));
 } finally {
   clearInterval(tick);
-  for (const id of made) await call("node.remove", { id }).catch(() => undefined);
+  await cleanup.run();
   await call("lab.acknowledge").catch(() => undefined);
   await s("s.closeAll()").catch(() => undefined);
   await world.close();

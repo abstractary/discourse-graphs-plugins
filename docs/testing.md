@@ -114,6 +114,8 @@ The scripts drive Obsidian through its command line tool, which is in `/Applicat
 
 Replace `obsidian` with `roam` to run a suite in the other base.
 
+Every suite but `labs-test.mjs` and `papers-test.mjs`, which need Roam running beside Obsidian, takes its checks, waiting, mouse and keyboard from `harness/lib.mjs`. A suite says what it makes as it makes it, with `cleanup`, `makeUnit` or `makeCanvas`, and takes it back in a `finally`, so a run that stops part-way cleans up too. The comment at the top of each suite says what it still leaves. Core marks a removed unit or canvas as removed and keeps its record, so the records folder grows with every run.
+
 Seeding with `harness/matsulab.mjs` also needs the MATSUlab evidence bundles. Set `MATSULAB_BUNDLES` to their folder in a checkout of `MATSUlab-issue-exchange-analysis`.
 
 The conformance suite runs inside each app. It's the same 37 checks in both, written once in `packages/contract/src/conformance.ts`:

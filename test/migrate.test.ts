@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
 import type { ExistingGraph } from "@dg/core/migrate.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
+import { makeCore } from "./support.ts";
 
 const existing = (): ExistingGraph => ({
   nodeTypes: [
@@ -29,9 +28,7 @@ const existing = (): ExistingGraph => ({
 });
 
 const setup = async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  return createCore({ host, titleFormat: (abbreviation) => `[[${abbreviation}]] - {content}` });
+  return (await makeCore({ titleFormat: (abbreviation) => `[[${abbreviation}]] - {content}` })).core;
 };
 
 const nodesOf = (core: Awaited<ReturnType<typeof setup>>) =>
@@ -100,9 +97,7 @@ test("a node with an unknown type is reported, not guessed", async () => {
 });
 
 test("an imported node keeps the date its text first appeared", async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  const core = await createCore({ host });
+  const { core } = await makeCore();
   const graph = existing();
   graph.nodes[0]!.createdAt = "2023-04-01T10:00:00.000Z";
   await core.importExisting({ existing: graph });

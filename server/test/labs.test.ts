@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { createLab, joinLab, readAllData, startTestServer } from './helpers.ts';
+import { rec, createLab, joinLab, readAllData, startTestServer } from './helpers.ts';
 import type { LabFixture, TestServer } from './helpers.ts';
 
 const person = { did: 'did:plc:new', name: 'New Person' };
@@ -162,7 +162,7 @@ test('a member cannot reach another lab, on any route', async (t) => {
     for (const path of ['members', 'requests', 'records', 'papers', 'papers/p1', 'papers/p1/file']) {
       assert.equal((await server.get(`${base}/${path}`, token)).status, 403, path);
     }
-    assert.equal((await server.post(`${base}/records`, { records: [1] }, token)).status, 403);
+    assert.equal((await server.post(`${base}/records`, { records: [rec(1)] }, token)).status, 403);
     assert.equal((await server.post(`${base}/papers`, { paper: { id: 'p' }, graph: {} }, token)).status, 403);
     assert.equal((await server.post(`${base}/papers/p1/breadcrumbs`, { person }, token)).status, 403);
     assert.equal((await server.post(`${base}/requests/r1`, { decision: 'accept' }, token)).status, 403);
@@ -410,7 +410,7 @@ test('removing a member takes them off the list and their token says why', async
   const lab = await createLab(server);
   const member = await joinLab(server, lab);
   const other = await joinLab(server, lab, 'did:plc:other');
-  await server.post(`/v1/labs/${lab.id}/records`, { records: ['kept'] }, member);
+  await server.post(`/v1/labs/${lab.id}/records`, { records: [rec('kept')] }, member);
 
   const removed = await server.del(removePath(lab.id, 'did:plc:member'), lab.adminToken);
   assert.equal(removed.status, 200);
@@ -423,7 +423,7 @@ test('removing a member takes them off the list and their token says why', async
   const tries = [
     await server.get(`${base}/members`, member),
     await server.get(`${base}/records`, member),
-    await server.post(`${base}/records`, { records: ['late'] }, member),
+    await server.post(`${base}/records`, { records: [rec('late')] }, member),
     await server.get(`${base}/papers`, member),
     await server.get(`${base}/requests`, member),
     await server.post('/v1/ai/ask', { question: 'Why?', units: [] }, member),
@@ -438,7 +438,7 @@ test('removing a member takes them off the list and their token says why', async
   assert.equal(((await (await server.get(`${base}/members`, 'made-up-token')).json()) as any).error.code, 'wrong-token');
 
   const { records } = (await (await server.get(`${base}/records`, other)).json()) as any;
-  assert.deepEqual(records, ['kept'], 'their work stays, and the others carry on');
+  assert.deepEqual(records, [rec('kept')], 'their work stays, and the others carry on');
 
   const stored = JSON.parse(readFileSync(labFile(server, lab.id), 'utf8'));
   assert.equal(stored.removed.length, 1);

@@ -16,7 +16,7 @@ import type { HolonPart, HolonRef, HolonView, Prefs } from "@dg/contract/surface
 import { arrange } from "@dg/layout/modes.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, Mark, plain } from "../shared/ui.tsx";
-import { BaseChip, Flag, KIND_WORD, LEVEL_WORD, PartRow, counted } from "./parts.tsx";
+import { BaseChip, Flag, KIND_WORD, LEVEL_WORD, PartRow, counted } from "../shared/holon-parts.tsx";
 
 /**
  * The holon explorer: for holons nobody has made a canvas for yet, and for the

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import type { RepositoryCanvas, UnitsAvailable } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon } from "../shared/ui.tsx";
-import { App as Search } from "../search/App.tsx";
 import { Drawer } from "./Drawer.tsx";
 
 /**
@@ -112,6 +111,7 @@ export const Sidebar = ({
   onGo,
   onPlace,
   report,
+  Search,
 }: {
   connection: Connection;
   current: string | undefined;
@@ -124,6 +124,8 @@ export const Sidebar = ({
   onGo: (id: string) => void;
   onPlace: (units: string[]) => void;
   report: (error: unknown) => void;
+  /** The search panel, shown whole in its tab. Handed in, since one panel does not import another. */
+  Search: ComponentType<{ connection: Connection }>;
 }) => (
   <aside className="side" data-dg="side" data-pinned={pinned ? "" : undefined} aria-label="Library, search units and units to place">
     <header className="side-head">

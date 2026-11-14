@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AI_PROVIDERS, OPENAI_COMPATIBLE, providerOf, type AiModel, type AiProviderKind, type AiRoute, type AiSettings, type AiSource } from "@dg/contract/llm.ts";
 import type { Connection } from "./rpc.ts";
+import { messageOf } from "./words.ts";
 
 const KEPT: Record<AiSettings["keptIn"], string> = {
   keychain: "The key is kept in this device's keychain. It is never written to your notes, and it doesn't sync.",
@@ -72,7 +73,7 @@ export const AiSetup = ({ connection, onDone, onCancel }: { connection: Connecti
       } catch (error) {
         if (mine !== loads.current) return;
         setModels(null);
-        setListProblem(error instanceof Error ? error.message : String(error));
+        setListProblem(messageOf(error));
       } finally {
         if (mine === loads.current) setLoading(false);
       }
@@ -104,7 +105,7 @@ export const AiSetup = ({ connection, onDone, onCancel }: { connection: Connecti
       if (!tried.ok) throw new Error(`Saved, but the test call failed. ${tried.message}`);
       onDone();
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
     } finally {
       setBusy(false);
     }

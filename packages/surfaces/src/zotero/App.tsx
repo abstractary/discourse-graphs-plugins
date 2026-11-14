@@ -3,7 +3,7 @@ import type { LibraryStatus } from "@dg/contract/scholarly.ts";
 import { identifierLabel } from "@dg/contract/scholarly.ts";
 import type { LibraryHit, LibraryItemView } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon } from "../shared/ui.tsx";
+import { Icon, Problem } from "../shared/ui.tsx";
 
 /**
  * From Zotero: find a reference, see the highlights made on it, and bring in
@@ -207,7 +207,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         </>
       ) : null}
 
-      {problem ? <p className="problem" role="alert" data-dg="zotero-problem">{problem}</p> : null}
+      <Problem text={problem} dg="zotero-problem" />
       {view ? (
         <div className="row end">
           <button type="button" onClick={close}>Cancel</button>

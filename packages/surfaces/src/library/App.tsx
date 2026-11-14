@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasSummary, DeviceView, LabView, PaperSummary } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon, LibraryMark, Mark } from "../shared/ui.tsx";
+import { Icon, LibraryMark, Mark, Problem } from "../shared/ui.tsx";
 import { LabJoin } from "../shared/LabJoin.tsx";
 import { Repository } from "./Repository.tsx";
-import { counted } from "../shared/words.ts";
+import { counted, messageOf } from "../shared/words.ts";
 
 const DAY = 86_400_000;
 const CHECK_MS = 4000;
@@ -342,7 +342,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [tab, setTab] = useState<Tab>("canvases");
   const [notice, setNotice] = useState("");
   const report = useCallback((error: unknown) => {
-    setNotice(error instanceof Error ? error.message : String(error));
+    setNotice(messageOf(error));
   }, []);
   const props = { connection, report };
   return (
@@ -352,7 +352,7 @@ export const App = ({ connection }: { connection: Connection }) => {
           <button key={id} type="button" role="tab" aria-selected={tab === id} data-dg={`library-${id}`} onClick={() => { setTab(id); setNotice(""); }}>{label}</button>
         ))}
       </nav>
-      {notice ? <p className="problem" role="alert">{notice}</p> : null}
+      <Problem text={notice} />
       {tab === "canvases" ? <Repository {...props} /> : null}
       {tab === "papers" ? <Papers {...props} /> : null}
       {tab === "folders" ? <Folders {...props} /> : null}

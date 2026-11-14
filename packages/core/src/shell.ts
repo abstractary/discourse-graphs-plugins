@@ -1,10 +1,6 @@
-import type { Result } from "@dg/contract/host.ts";
 import type { Context, Handlers } from "./context.ts";
+import { refuse, value } from "./refuse.ts";
 
-const value = <T>(result: Result<T>): T => {
-  if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`);
-  return result.value;
-};
 
 /**
  * What a panel asks of the base around it: open another panel or a dialog,
@@ -32,7 +28,7 @@ export const shellFeature = (context: Context) => {
       return [...own, ...offered.map((server) => ({ id: `lab:${server.url}`, name: server.name, url: server.url, kind: "lab" as const }))];
     },
     "server.add": async (server) => {
-      if (!context.services) throw new Error("No services are set up here.");
+      if (!context.services) throw refuse("unavailable", "No services are set up here.");
       return context.services.addServer(server);
     },
     "server.remove": async ({ id }) => {
@@ -40,11 +36,11 @@ export const shellFeature = (context: Context) => {
       return null;
     },
     "server.check": async ({ url }) => {
-      if (!context.services) throw new Error("No services are set up here.");
+      if (!context.services) throw refuse("unavailable", "No services are set up here.");
       return context.services.check(url);
     },
     "server.options": async ({ url }) => {
-      if (!context.services) throw new Error("No services are set up here.");
+      if (!context.services) throw refuse("unavailable", "No services are set up here.");
       const [models, schemas] = await Promise.all([context.services.models(url), context.services.schemas(url)]);
       return { models, schemas };
     },
@@ -60,7 +56,6 @@ export const shellFeature = (context: Context) => {
       if (!anchor) throw new Error("This node has no text in this space.");
       value(await context.host.reveal({ ref: anchor.ref, placement }));
       return null;
-    },
-  };
+    } };
   return { handlers };
 };

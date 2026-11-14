@@ -27,6 +27,17 @@ const FORBIDDEN = {
   local: ["obsidian", "react", "@xyflow/react"],
 };
 
+/** A plugin reaches the core through its entry file, and types against what the contract names for it. */
+const CORE_ENTRY = "@dg/core/index.ts";
+
+/**
+ * Imports past the core's entry that stand because the entry doesn't export these names:
+ * `browserKeys` from identity.ts and the `ExistingGraph` type from migrate.ts. A line here
+ * that no longer matches an import fails the check, so the list can only shrink.
+ */
+const PAST_THE_ENTRY = new Set([]);
+const pastTheEntry = new Set();
+
 const walk = (folder) =>
   readdirSync(folder).flatMap((name) => {
     if (name === "node_modules" || name === "data") return [];
@@ -51,11 +62,20 @@ for (const [module, allowed] of Object.entries(ALLOWED)) {
       if ((FORBIDDEN[module] ?? []).some((name) => specifier === name || specifier.startsWith(`${name}/`))) {
         problems.push(`${file} imports ${specifier}, which ${module} may not use`);
       }
+      if (module.startsWith("plugins/") && scope === "@dg/core" && specifier !== CORE_ENTRY) {
+        const known = `${file.split("\\").join("/")} ${specifier}`;
+        if (PAST_THE_ENTRY.has(known)) pastTheEntry.add(known);
+        else problems.push(`${file} imports ${specifier}: a plugin may import from @dg/core only ${CORE_ENTRY}`);
+      }
       if (specifier.startsWith(".") && /\.\.\/\.\.\/\.\.\//.test(specifier) && !specifier.includes("harness/")) {
         problems.push(`${file} reaches outside its module with ${specifier}`);
       }
     }
   }
+}
+
+for (const known of PAST_THE_ENTRY) {
+  if (!pastTheEntry.has(known)) problems.push(`${known}: this import is gone, so take its line out of PAST_THE_ENTRY`);
 }
 
 if (problems.length > 0) {

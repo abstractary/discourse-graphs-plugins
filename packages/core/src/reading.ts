@@ -23,6 +23,7 @@ import type { Context, Handlers } from "./context.ts";
 import { cidOfBytes } from "./process.ts";
 import { mustBeOfPaper, readingOf, refusal } from "./locks.ts";
 import { paperOfWork, standsFor } from "./work.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * Reading PDFs into the graph, and the units waiting to go on a canvas.
@@ -373,7 +374,7 @@ export const readingFeature = (context: Context) => {
       fresh.push(node);
       let target = canvas;
       if (newCanvas?.trim()) target = (await context.makeCanvas(newCanvas.trim())).id;
-      if (target && !context.canvasOf(target)) throw new Error("That canvas is gone.");
+      if (target && !context.canvasOf(target)) throw refuse("not-found", "That canvas is gone.");
       // A PDF canvas takes a highlight only from its own paper's file.
       const reading = target ? readingOf(context.graph(), target) : undefined;
       if (reading && paperOf(file)?.id !== reading.id) throw refusal(reading);
@@ -474,7 +475,7 @@ export const readingFeature = (context: Context) => {
     },
 
     "canvas.placeUnits": async ({ canvas, places }) => {
-      if (!context.canvasOf(canvas)) throw new Error("That canvas is gone.");
+      if (!context.canvasOf(canvas)) throw refuse("not-found", "That canvas is gone.");
       mustBeOfPaper(context.graph(), canvas, places.map((place) => place.node));
       const cards = cardsOn(canvas);
       const stamp = context.stamp();
@@ -524,7 +525,7 @@ export const readingFeature = (context: Context) => {
 
     // A column beside what's there. An open canvas then brings them to where the person is looking.
     "units.put": async ({ canvas, nodes: ids }) => {
-      if (!context.canvasOf(canvas)) throw new Error("That canvas is gone.");
+      if (!context.canvasOf(canvas)) throw refuse("not-found", "That canvas is gone.");
       mustBeOfPaper(context.graph(), canvas, ids);
       const cards = cardsOn(canvas);
       const wanted = [...new Set(ids)].filter((id) => context.nodeOf(id) && !context.nodeOf(id)!.removed);

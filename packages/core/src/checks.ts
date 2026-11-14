@@ -71,6 +71,7 @@ export const checkFeature = (context: Context) => {
   };
 
   /** How the unit stands, from its marks: one "needs work" on this version outweighs any number of checks. */
+  context.offers.checks = { stateOf: (unit) => stateOf(unit), checksOf: (unit) => checksOf(unit), standing };
   const stateOf = (unit: DgId): CheckState | undefined => {
     const checks = checksOf(unit);
     if (checks.length === 0) return undefined;

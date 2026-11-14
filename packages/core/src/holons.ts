@@ -926,5 +926,7 @@ export const holonFeature = (context: Context) => {
     "prefs.get": async () => prefs(),
     "prefs.set": async (changes) => setPrefs(changes),
   };
+  context.offers.prefs = prefs;
+  context.offers.followNote = followNote;
   return { handlers, followNote, focusCanvas, holonCanvas, prefs, setPrefs, locate: async (id: DgId) => locateHolon(await input(), id) };
 };

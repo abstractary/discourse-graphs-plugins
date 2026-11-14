@@ -1,4 +1,5 @@
 // The paper map and the type colors, in real Obsidian, on the sandbox vault.
+// Leaves nothing: it only reads and looks.
 import { resolve } from "node:path";
 import { session, sleep } from "./lib.mjs";
 

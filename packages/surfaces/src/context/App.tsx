@@ -9,6 +9,7 @@ import type { ContextEntry, NodeSummary, NodeView, RelationOption, SimilarUnit }
 import type { Connection } from "../shared/rpc.ts";
 import { Chip, Icon, LibraryMark, plain, Mark } from "../shared/ui.tsx";
 import { Method } from "./Method.tsx";
+import { messageOf } from "../shared/words.ts";
 
 type Group = { label: string; entries: ContextEntry[] };
 
@@ -413,7 +414,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       const next = await call("node.view", { id });
       if (focusRef.current === id) setView(next);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : String(error));
+      setNotice(messageOf(error));
     }
   }, [call]);
 

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CanvasDiff, HolonCanvas, HolonEvent, ReleaseSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, Mark } from "../shared/ui.tsx";
-import { DiffView, Flag, Preview, counted, when } from "../holon/parts.tsx";
+import { DiffView, Flag, Preview, counted, when } from "../shared/holon-parts.tsx";
+import { Thumb } from "../shared/Thumb.tsx";
 
 type Scope = "everyone" | "lab" | "mine";
 const SCOPES: { value: Scope; label: string; hint: string }[] = [
@@ -10,29 +11,6 @@ const SCOPES: { value: Scope; label: string; hint: string }[] = [
   { value: "lab", label: "Lab", hint: "Canvases in your lab's workspace, and your own" },
   { value: "mine", label: "Yours", hint: "Canvases you made" },
 ];
-
-/**
- * A canvas as a picture of itself: every card where it really sits, coloured
- * by its unit's type, with the links between them. Two canvases with the same
- * name look different, and a paper's canvas looks unlike a hand-built one.
- */
-export const Thumb = ({ thumb }: { thumb: RepositoryCanvas["thumb"] }) => {
-  if (thumb.cards.length === 0) return <span className="thumb thumb-empty" aria-hidden="true" />;
-  const pad = Math.max(thumb.width, thumb.height) * 0.04;
-  const centre = (card: RepositoryCanvas["thumb"]["cards"][number]) => [card.x + card.w / 2, card.y + card.h / 2] as const;
-  return (
-    <svg className="thumb" viewBox={`${-pad} ${-pad} ${thumb.width + pad * 2} ${thumb.height + pad * 2}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      {thumb.links.map(([from, to], position) => {
-        const [x1, y1] = centre(thumb.cards[from]!);
-        const [x2, y2] = centre(thumb.cards[to]!);
-        return <line key={position} x1={x1} y1={y1} x2={x2} y2={y2} vectorEffect="non-scaling-stroke" />;
-      })}
-      {thumb.cards.map((card, position) => (
-        <rect key={position} data-base={card.base} x={card.x} y={card.y} width={card.w} height={card.h} rx={Math.min(card.w, card.h) * 0.12} />
-      ))}
-    </svg>
-  );
-};
 
 /**
  * The Library's Canvases tab, grouped by the workspace each canvas lives in.

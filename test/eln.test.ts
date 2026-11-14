@@ -1,37 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
 import { createNode, type JsonObject, type NodeRecord } from "@dg/contract/records.ts";
-import type { SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
 import { ensureProcessTypes, unitCid } from "@dg/core/process.ts";
 import { ELN_SPEC } from "@dg/core/rocrate.ts";
 import { unzip } from "@dg/core/zip.ts";
+import { makeCore } from "./support.ts";
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
-const setup = async (store = createMemoryStore()) => {
-  const { host, emit } = createMemoryHost({ store });
+const setup = async () => {
   const files = new Map<string, string>();
-  const base = { ...host, saveFile: async ({ name, dataBase64 }: { name: string; dataBase64: string }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }) };
-  const core = await createCore({ host: base });
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = { send: (message) => void ("id" in message && pending.get(message.id)?.(message)), onMessage: (handler) => ((listener = handler), () => {}) };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = `r${(next += 1)}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
-  return { core, call, store, host, emit, files };
+  const made = await makeCore({ wrap: (host) => ({ ...host, saveFile: async ({ name, dataBase64 }) => (files.set(name, dataBase64), { ok: true as const, value: { where: `saved/${name}` } }) }) });
+  return { ...made, files };
 };
 
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -41,7 +20,7 @@ const sha256 = async (bytes: Uint8Array): Promise<string> => [...new Uint8Array(
 /** A bench day: a protocol, a run that followed it with a gel picture, what the gel shows, and the claim it supports. */
 const bench = async () => {
   const kit = await setup();
-  const { call, host, emit, core } = kit;
+  const { call, host, emit, core, arrive } = kit;
   const stamp = { space: kit.store.spaceId, by: { id: core.identity().did, name: "Test Person" } };
   const types = ensureProcessTypes({ nodeTypes: (await call("grammar.get", {})).nodeTypes, stamp });
   const protocol = createNode({ ...stamp, title: "Western blot for the 42 kDa protein", type: types.types.protocol.id, facts: { version: "2", steps: ["Run the gel", "Transfer", "Probe with the antibody"], materials: ["Anti-GFP antibody (RRID:AB_2313773)"] } });
@@ -54,14 +33,15 @@ const bench = async () => {
   });
   await host.putRecords({ records: [...types.created, protocol, run] });
   emit({ type: "records-changed" });
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await arrive(...types.created, protocol, run);
   const canvas = await call("canvas.create", { title: "Knockout check" });
   const { unit: gel } = await call("image.add", { canvas: canvas.id, file: { name: "gel.png", mediaType: "image/png", dataBase64: PNG } });
   // The picture is this run's output.
   const output = core.graph().documents.get(gel.id) as NodeRecord;
-  await host.putRecords({ records: [{ ...output, rev: output.rev + 1, prov: { generatedBy: run.id } }] });
+  const revised = { ...output, rev: output.rev + 1, prov: { generatedBy: run.id } };
+  await host.putRecords({ records: [revised] });
   emit({ type: "records-changed" });
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await arrive(revised);
   const evidence = await call("output.observe", { output: gel.id, title: "The 42 kDa band is absent in the knockout", canvas: canvas.id });
   const { nodeTypes, relationTypes } = await call("grammar.get", {});
   const claim = await call("node.create", { title: "The knockout removes the protein", type: nodeTypes.find((type) => type.label === "Claim")!.id });

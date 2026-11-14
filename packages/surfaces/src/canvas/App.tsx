@@ -1,45 +1,53 @@
-import { CARD_FIELDS, CARD_FIELD_IDS, identifierUrl } from "@dg/contract/scholarly.ts";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { identifierUrl } from "@dg/contract/scholarly.ts";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import {
   Background,
   ConnectionMode,
-  MarkerType,
   Panel,
   ReactFlow,
   applyEdgeChanges,
   applyNodeChanges,
   useReactFlow,
-  useViewport,
-  type Connection as FlowConnection,
   type Edge,
   type EdgeChange,
-  type FinalConnectionState,
   type Node,
   type NodeChange,
 } from "@xyflow/react";
-import { getStroke } from "perfect-freehand";
 import type { CanvasItem, CanvasRecord, NodeTypeRecord, TidyMode, WithoutId } from "@dg/contract/records.ts";
 import { PDF_CANVAS_FIXED } from "@dg/contract/surface.ts";
-import type { CanvasCommand, CanvasItemView, CanvasView, Credit, LinkDelete, NodeSummary, RelatedUnit, RelationOption, RepositoryCanvas, SearchHit } from "@dg/contract/surface.ts";
+import type { CanvasCommand, CanvasItemView, CanvasView, Credit, NodeSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Chip, Icon, Mark, plain, type IconName } from "../shared/ui.tsx";
+import { Icon, Mark, plain, type IconName } from "../shared/ui.tsx";
 import { scoreLabel, scoresFor } from "@dg/layout/centrality.ts";
-import { sidesFor } from "@dg/layout/edges.ts";
-import { relationColor } from "../shared/relations.ts";
 import { AiBar } from "./AiBar.tsx";
-import { Thumb } from "../library/Repository.tsx";
+import { Thumb } from "../shared/Thumb.tsx";
 import { ExportMenu } from "./ExportMenu.tsx";
 import { Legend } from "./Legend.tsx";
 import { MODES, arrange, leaningOf, measureOf, type Card, type RelationLink } from "@dg/layout/modes.ts";
 import { ActionsContext, nodeTypes, type Actions, type Box, type CardData } from "./nodes.tsx";
 import { HolonBar, isHolon, useHolonCanvas } from "./holons.tsx";
-import { DRAG_TYPE, Drawer, useUnitsDrawer } from "./Drawer.tsx";
+import { DRAG_TYPE } from "../shared/drag.ts";
+import { Drawer, useUnitsDrawer } from "./Drawer.tsx";
 import { Sidebar, type SideTab } from "./Sidebar.tsx";
 import { useHistory } from "./history.ts";
-import { useFit } from "./fit.ts";
-import { LinkAskDialog, type LinkAsk } from "./LinkAsk.tsx";
-import { CLIP_TYPE, clipFromTransfer, writeClip, type Clip } from "./clipboard.ts";
-import { MOD, Marked } from "../search/parts.tsx";
+import { useFit } from "../shared/fit.ts";
+import { CARD_WIDTH, NOTE, cardHeight, clamp, nodeOfItem, toEdge, toNode, withoutId, type Anchor, type FlowNode } from "./items.ts";
+import { useCanvasWriter } from "./useCanvasWriter.ts";
+import { AddBox } from "./AddBox.tsx";
+import { InkLayer } from "./Ink.tsx";
+import { RelatedMenu, useRelated } from "./Related.tsx";
+import { ViewBar } from "./ViewBar.tsx";
+import { RelationMenu, useLinking, type Linking } from "./linking.tsx";
+import { FieldsMenu, TypeMenu } from "./menus.tsx";
+import { TidyMenu, planTidy, useCrowding } from "./tidy.tsx";
+import { useArrivals } from "./useArrivals.ts";
+import { useBarKeys } from "./useBarKeys.ts";
+import { useClipboard } from "./useClipboard.ts";
+import { useDelete } from "./useDelete.ts";
+import { LinkAskDialog } from "./LinkAsk.tsx";
+import { clipOf, textOfClip, type Clip } from "./clipboard.ts";
+import { MOD } from "../shared/keys.ts";
+import { messageOf } from "../shared/words.ts";
 
 const MOD_KEY = MOD === "Ctrl" ? "Ctrl+" : MOD;
 
@@ -49,124 +57,11 @@ const TIP_WIDTH = 160;
 // Shift is what most drawing tools use to add to a selection.
 const MULTI_SELECT_KEYS = ["Meta", "Control", "Shift"];
 
-const CARD_WIDTH = 240;
-const NOTE = { width: 200, height: 80 };
-const GAP = 24;
-
-/** Median research titles run about 70 characters, and some twice that. */
-const cardHeight = (title: string): number => Math.max(64, 34 + 18 * Math.ceil(title.length / 34));
-
-type FlowData = Record<string, unknown>;
-type FlowNode = Node<FlowData>;
-
-const withoutId = (item: CanvasItem): WithoutId<CanvasItem> => {
-  const { id: _id, ...rest } = item;
-  return rest as WithoutId<CanvasItem>;
-};
-
-const toNode = ({ id, z, item, credit, at }: CanvasItemView, view: CanvasView): FlowNode | null => {
-  if ("fromNode" in item) return null;
-  const base = { id, position: { x: item.x, y: item.y }, zIndex: z };
-  const sized = { ...base, width: item.width, height: item.height };
-  if (item.type === "stroke") return { ...sized, type: "ink", data: { path: item.path, credit, at } };
-  if (item.type === "group") {
-    const fixed = item.guide ? { draggable: false, selectable: false, focusable: false, deletable: false } : {};
-    return { ...sized, ...fixed, type: "zone", zIndex: -1, data: { label: item.label ?? "", guide: item.guide ?? false } };
-  }
-  if (item.type === "text" && item.dg) {
-    return {
-      ...base,
-      width: item.width,
-      type: "card",
-      data: {
-        node: view.nodes[item.dg.node],
-        text: item.text,
-        minHeight: item.height,
-        ...(view.social[item.dg.node] ? { social: view.social[item.dg.node] } : {}),
-      },
-    };
-  }
-  // Another canvas held inside this one: it opens in place, like going into a holon.
-  if (item.type === "file" && item.dg?.canvas) {
-    return { ...base, width: item.width, type: "nested", data: { canvas: item.dg.canvas, file: item.file, minHeight: Math.min(item.height, 120) } };
-  }
-  const text = item.type === "text" ? item.text : item.type === "file" ? item.file : item.url;
-  return { ...sized, type: "note", data: { text, credit, at } };
-};
-
-const toEdge = ({ id, item }: CanvasItemView, view: CanvasView, boxes: Map<string, Box>): Edge | null => {
-  if (!("fromNode" in item)) return null;
-  const relation = item.dg ? view.relations[item.dg.relation] : undefined;
-  // A declined relation is history. Nobody should have to read past it.
-  if (relation?.state === "rejected" || relation?.state === "withdrawn") return null;
-  const from = boxes.get(item.fromNode);
-  const to = boxes.get(item.toNode);
-  const [sourceHandle, targetHandle] = from && to ? sidesFor(from, to) : ["r", "l"];
-  const kind = relation?.kind ?? "";
-  const color = relationColor(kind);
-  return {
-    id,
-    source: item.fromNode,
-    target: item.toNode,
-    sourceHandle,
-    targetHandle,
-    ...(relation?.label || item.label ? { label: relation?.label ?? item.label } : {}),
-    labelBgPadding: [4, 2],
-    labelBgBorderRadius: 3,
-    style: { stroke: color },
-    labelStyle: { fill: color },
-    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
-    className: relation?.state === "pending" ? "edge-pending" : "",
-    data: { ...(kind ? { kind } : {}), ...(relation ? { credit: relation.credit } : {}), ...(item.dg ? { relation: item.dg.relation } : {}) },
-  };
-};
-
-const pathFrom = (outline: number[][]): string => {
-  if (outline.length === 0) return "";
-  const round = (value: number): number => Math.round(value * 10) / 10;
-  const [first, ...rest] = outline;
-  return `M${round(first![0]!)} ${round(first![1]!)}${rest.map(([x, y]) => `L${round(x!)} ${round(y!)}`).join("")}Z`;
-};
-
-const clamp = (value: number, low: number, high: number): number => Math.max(low, Math.min(value, Math.max(low, high)));
-
-const nodeOfItem = (entry: CanvasItemView | undefined): string | undefined =>
-  (entry?.item as { dg?: { node?: string } } | undefined)?.dg?.node;
-
-type End = { item: string; node: string };
-type RelationMenu = { source: End; target: End; options: RelationOption[]; x: number; y: number };
 type TypeMenu = { node: string; x: number; y: number };
-/** A connection dropped on empty canvas, waiting for the node it should reach. */
-type Linking = { from: End | null; item: string; at: { x: number; y: number } };
-type Anchor = { left: number; top: number };
 type EdgeTip = { x: number; y: number; credit: Credit };
 
-const ViewBar = () => {
-  const flow = useReactFlow();
-  const { zoom } = useViewport();
-  return (
-    <div className="view-bar">
-      <button type="button" aria-label="Zoom out" title="Zoom out" onClick={() => void flow.zoomOut({ duration: 120 })}>
-        <Icon name="minus" />
-      </button>
-      <button
-        type="button"
-        className="level"
-        data-dg="fit"
-        aria-label="Fit to view"
-        title="Fit to view"
-        onClick={() => void flow.fitView({ maxZoom: 1, padding: 0.12, duration: 180 })}
-      >
-        {Math.round(zoom * 100)}%
-      </button>
-      <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => void flow.zoomIn({ duration: 120 })}>
-        <Icon name="plus" />
-      </button>
-    </div>
-  );
-};
-
-export const App = ({ connection }: { connection: Connection }) => {
+/** `Search` is the search panel, which the sidebar shows whole. It is handed in, since one panel does not import another. */
+export const App = ({ connection, Search }: { connection: Connection; Search: ComponentType<{ connection: Connection }> }) => {
   const { call, on, route } = connection;
   const [tidyAt, setTidyAt] = useState<Anchor | null>(null);
   const [fieldsAt, setFieldsAt] = useState<Anchor | null>(null);
@@ -203,25 +98,11 @@ export const App = ({ connection }: { connection: Connection }) => {
   const moreButton = useRef<HTMLButtonElement>(null);
   const [naming, setNaming] = useState(false);
   const [canvasName, setCanvasName] = useState("");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchHit[]>([]);
-  const [active, setActive] = useState(0);
-  const [relationMenu, setRelationMenu] = useState<RelationMenu | null>(null);
   const [typeMenu, setTypeMenu] = useState<TypeMenu | null>(null);
-  /** A card's relations, open beside it. `list` is null while it is being read. */
-  const [relatedMenu, setRelatedMenu] = useState<{ node: string; item: string; x: number; y: number; list: RelatedUnit[] | null } | null>(null);
   const [notice, setNotice] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
-  const [linkAsk, setLinkAsk] = useState<LinkAsk | null>(null);
-  /** Relations Delete should also withdraw, decided before the delete runs. */
-  const withdrawing = useRef<string[]>([]);
-  /** Where the pointer last was over the canvas, so a paste lands there. */
-  const pointer = useRef<{ x: number; y: number } | null>(null);
-  /** Units this canvas is placing itself, which record their own undo step. */
-  const placingHere = useRef(new Set<string>());
   const [followed, setFollowed] = useState<string | null>(null);
   const dragging = useRef(new Set<string>());
-  const ink = useRef<number[][]>([]);
   const items = useRef(new Map<string, CanvasItemView>());
   const fitted = useRef<string | null>(null);
   const shell = useRef<HTMLDivElement>(null);
@@ -233,7 +114,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [fixedAsk, setFixedAsk] = useState(false);
   const refreshRef = useRef<() => Promise<void>>(async () => {});
   const report = useCallback((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = messageOf(error);
     if (message.startsWith(PDF_CANVAS_FIXED)) {
       // Nothing was saved, so the canvas is drawn again as it stands.
       setFixedAsk(true);
@@ -275,9 +156,6 @@ export const App = ({ connection }: { connection: Connection }) => {
     lastSide.current = tab;
     setSide(tab);
   }, []);
-  /** Units just put on this canvas, waiting for their cards to draw; `fromHere` when this canvas placed them. */
-  const [arrived, setArrived] = useState<{ units: string[]; fromHere: boolean }>({ units: [], fromHere: true });
-  const [fresh, setFresh] = useState<string[]>([]);
   const canvasesRef = useRef(canvases);
   canvasesRef.current = canvases;
 
@@ -345,35 +223,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const hasCanvas = canvases.length > 0;
   // Labels show while they fit, then icons, then a More menu, measured on this bar.
   const fit = useFit(bar, [hasCanvas, current, canvases, notice, aiOn]);
-  // The bar is one tab stop; arrow keys move along it, as a toolbar's should.
-  const barFocus = useRef(0);
-  const barButtons = (): HTMLButtonElement[] =>
-    Array.from(bar.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []).filter((button) => button.offsetParent !== null);
-  const rememberBarFocus = (event: React.FocusEvent) => {
-    const at = barButtons().indexOf(event.target as HTMLButtonElement);
-    if (at >= 0) barFocus.current = at;
-  };
-  const moveAlongBar = (event: React.KeyboardEvent) => {
-    const list = barButtons();
-    const at = list.indexOf(document.activeElement as HTMLButtonElement);
-    if (at < 0 || !list.length) return;
-    const to =
-      event.key === "ArrowRight" ? (at + 1) % list.length
-      : event.key === "ArrowLeft" ? (at - 1 + list.length) % list.length
-      : event.key === "Home" ? 0
-      : event.key === "End" ? list.length - 1
-      : null;
-    if (to === null) return;
-    event.preventDefault();
-    list[to]!.focus();
-  };
-  useEffect(() => {
-    const list = barButtons();
-    const keep = Math.min(barFocus.current, list.length - 1);
-    list.forEach((button, index) => {
-      button.tabIndex = index === keep ? 0 : -1;
-    });
-  });
+  const barKeys = useBarKeys(bar);
   useEffect(() => {
     const box = area.current;
     if (!box) return undefined;
@@ -389,73 +239,9 @@ export const App = ({ connection }: { connection: Connection }) => {
     return () => observer.disconnect();
   }, [flow, hasCanvas]);
 
-  const nextZ = useCallback(
-    (): number => Math.max(0, ...[...items.current.values()].map((entry) => entry.z)) + 1,
-    [],
-  );
-
-  const write = useCallback(
-    async (args: {
-      upserts?: { id?: string; item: WithoutId<CanvasItem>; z: number }[];
-      removes?: string[];
-      restores?: string[];
-    }) => {
-      if (!current) return { ids: [] as string[] };
-      setNotice("");
-      return call("canvas.write", { canvas: current, ...args });
-    },
-    [call, current],
-  );
-
-  /** Finds room near a spot, so a new item never lands on top of an old one. */
-  const freeSpot = useCallback(
-    (start: { x: number; y: number }, size: { width: number; height: number }, ignore?: Set<string>) => {
-      const taken = flow.getNodes().flatMap((node) =>
-        node.type === "ink" || ignore?.has(node.id)
-          ? []
-          : [{
-              x: node.position.x,
-              y: node.position.y,
-              width: node.measured?.width ?? node.width ?? 0,
-              height: node.measured?.height ?? node.height ?? 0,
-            }],
-      );
-      const clear = (x: number, y: number): boolean =>
-        taken.every(
-          (box) =>
-            x + size.width + GAP <= box.x ||
-            x >= box.x + box.width + GAP ||
-            y + size.height + GAP <= box.y ||
-            y >= box.y + box.height + GAP,
-        );
-      for (let ring = 0; ring < 24; ring += 1) {
-        for (let dy = -ring; dy <= ring; dy += 1) {
-          for (let dx = -ring; dx <= ring; dx += 1) {
-            if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-            const x = start.x + dx * (size.width / 2 + GAP);
-            const y = start.y + dy * (size.height / 2 + GAP);
-            if (clear(x, y)) return { x: Math.round(x), y: Math.round(y) };
-          }
-        }
-      }
-      return { x: Math.round(start.x), y: Math.round(start.y) };
-    },
-    [flow],
-  );
-
-  const startingPoint = useCallback(
-    (size: { width: number; height: number }) => {
-      const picked = flow.getNodes().filter((node) => node.selected && node.type !== "ink");
-      if (picked.length === 1) {
-        const [node] = picked;
-        return { x: node!.position.x + (node!.measured?.width ?? CARD_WIDTH) + 48, y: node!.position.y };
-      }
-      const box = area.current!.getBoundingClientRect();
-      const point = flow.screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 2 });
-      return { x: point.x - size.width / 2, y: point.y - size.height / 2 };
-    },
-    [flow],
-  );
+  const clearNotice = useCallback(() => setNotice(""), []);
+  const writer = useCanvasWriter({ connection, current, items, area, record, onWrite: clearNotice });
+  const { write, freeSpot, startingPoint, nextZ } = writer;
 
   const updateItem = useCallback(
     (id: string, change: (item: CanvasItem) => CanvasItem, label: string) => {
@@ -507,6 +293,8 @@ export const App = ({ connection }: { connection: Connection }) => {
     const box = shell.current!.getBoundingClientRect();
     return { x: clamp(x - box.left, 6, box.width - width - 6), y: clamp(y - box.top, 6, box.height - height - 6) };
   }, []);
+
+  const related = useRelated({ connection, writer, current, inFrame, report });
 
   const actions = useMemo<Actions>(
     () => ({
@@ -560,15 +348,9 @@ export const App = ({ connection }: { connection: Connection }) => {
         const spot = freeSpot({ x: (card?.position.x ?? 0) - CARD_WIDTH - 80, y: card?.position.y ?? 0 }, size);
         void call("output.observe", { output, title, canvas: current, ...spot }).catch(report);
       },
-      related: (node, item, anchor) => {
-        const { x, y } = inFrame(anchor.left, anchor.bottom + 4, 320, 320);
-        setRelatedMenu({ node, item, x, y, list: null });
-        void call("unit.related", { id: node, ...(current ? { canvas: current } : {}) })
-          .then((list) => setRelatedMenu((open) => (open && open.node === node ? { ...open, list } : open)))
-          .catch(report);
-      },
+      related: related.open,
     }),
-    [call, report, updateItem, inFrame, holon.prefs.cardFields, route.pinned, switchTo, rename, current, flow, freeSpot],
+    [call, report, updateItem, inFrame, holon.prefs.cardFields, route.pinned, switchTo, rename, current, flow, freeSpot, related.open],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
@@ -578,93 +360,16 @@ export const App = ({ connection }: { connection: Connection }) => {
     setEdges((previous) => applyEdgeChanges(changes, previous));
   }, []);
 
-  const askRelation = useCallback(
-    async (source: End, target: End, screen: { x: number; y: number }) => {
-      const options = await call("relation.options", { source: source.node, target: target.node });
-      const { x, y } = inFrame(screen.x - 85, screen.y - 60, 170, 180);
-      setRelationMenu({ source, target, options, x: x + 85, y: y + 60 });
-    },
-    [call, inFrame],
-  );
-
-  const onConnect = useCallback(
-    async (link: FlowConnection) => {
-      const from = items.current.get(link.source);
-      const to = items.current.get(link.target);
-      if (!from || !to || link.source === link.target) return;
-      const fromNode = nodeOfItem(from);
-      const toNode_ = nodeOfItem(to);
-      if (!fromNode || !toNode_) {
-        const { ids } = await write({ upserts: [{ item: { fromNode: from.id, toNode: to.id }, z: nextZ() }] });
-        record({ label: "Drew an arrow", undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) });
-        return;
-      }
-      const a = flow.getNode(link.source);
-      const b = flow.getNode(link.target);
-      const middle = flow.flowToScreenPosition({
-        x: ((a?.position.x ?? 0) + (b?.position.x ?? 0)) / 2 + CARD_WIDTH / 2,
-        y: ((a?.position.y ?? 0) + (b?.position.y ?? 0)) / 2 + 40,
-      });
-      await askRelation({ item: from.id, node: fromNode }, { item: to.id, node: toNode_ }, middle);
-    },
-    [askRelation, flow, nextZ, write, record],
-  );
-
-  /** Dropping a connection on empty canvas starts the next card of the argument. */
-  const onConnectEnd = useCallback(
-    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
-      if (state.isValid || state.toNode || !state.fromNode) return;
-      const point = "changedTouches" in event ? event.changedTouches[0]! : event;
-      const entry = items.current.get(state.fromNode.id);
-      const node = nodeOfItem(entry);
-      setLinking({
-        from: node ? { item: state.fromNode.id, node } : null,
-        item: state.fromNode.id,
-        at: flow.screenToFlowPosition({ x: point.clientX, y: point.clientY }),
-      });
-      const { x, y } = inFrame(point.clientX, point.clientY, 380, 300);
-      setAddAt({ left: x, top: y });
-    },
-    [flow, inFrame],
-  );
-
-  const chooseRelation = async (option: RelationOption): Promise<void> => {
-    if (!relationMenu) return;
-    const { source, target } = relationMenu;
-    const [from, to] = option.flipped ? [target, source] : [source, target];
-    setRelationMenu(null);
-    try {
-      const ends = { type: option.type, source: from.node, target: to.node };
-      const relation = await call("relation.assert", ends);
-      const z = nextZ();
-      const edge = (id: string) => ({ fromNode: from.item, toNode: to.item, dg: { relation: id } });
-      const { ids } = await write({ upserts: [{ item: edge(relation.id), z }] });
-      const item = ids[0]!;
-      // Undo takes back a relation this made. One that was already there stays.
-      let asserted: string | null = relation.made ? relation.id : null;
-      record({
-        label: `Linked: ${option.label}`,
-        undo: async () => {
-          await write({ removes: [item] });
-          if (asserted) await call("relation.withdraw", { id: asserted });
-        },
-        redo: async () => {
-          await write({ restores: [item] });
-          if (!relation.made) return;
-          asserted = (await call("relation.assert", ends)).id;
-          await write({ upserts: [{ id: item, item: edge(asserted), z }] });
-        },
-      });
-    } catch (error) {
-      report(error);
-    }
-  };
+  const onLoose = useCallback((loose: Linking, at: Anchor) => {
+    setLinking(loose);
+    setAddAt(at);
+  }, []);
+  const links = useLinking({ connection, writer, items, inFrame, onLoose, report });
+  const { askRelation, onConnect, onConnectEnd } = links;
 
   const closeAdd = useCallback(() => {
     setAddAt(null);
     setLinking(null);
-    setQuery("");
-    setActive(0);
   }, []);
 
   const addCard = async (node: NodeSummary): Promise<void> => {
@@ -699,8 +404,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     [on, call, report],
   );
 
-  const createNode = async (type?: string): Promise<void> => {
-    const title = query.trim();
+  const createNode = async (title: string, type?: string): Promise<void> => {
     if (!title) return;
     // A PDF canvas takes new units only from its paper, by highlighting. Nothing is made, so nothing is left loose.
     if (viewRef.current?.paper && viewRef.current.canvas.id === current) {
@@ -714,6 +418,9 @@ export const App = ({ connection }: { connection: Connection }) => {
       report(error);
     }
   };
+
+  const arrivals = useArrivals({ connection, writer, items, area, nodes, current, currentRef, report });
+  const { fresh } = arrivals;
 
   /**
    * Units from the drawer, laid out together the way Tidy's Logic mode would,
@@ -751,7 +458,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     };
     const origin = at ? { x: Math.round(at.x - Math.min(size.width, CARD_WIDTH) / 2), y: Math.round(at.y - 20) } : freeSpot(startingPoint(size), size);
     try {
-      for (const box of laid) placingHere.current.add(box.id);
+      arrivals.expect(laid.map((box) => box.id));
       const { ids: written } = await call("canvas.placeUnits", {
         canvas: current,
         places: laid.map((box) => ({ node: box.id, x: origin.x + box.x - left, y: origin.y + box.y - top, width: box.width, height: box.height })),
@@ -786,29 +493,6 @@ export const App = ({ connection }: { connection: Connection }) => {
       report(error);
     }
   };
-  const picturesRef = useRef(addPictures);
-  picturesRef.current = addPictures;
-
-  /** Brings units a card is related to onto the canvas, beside it. Their links are drawn with them. */
-  const placeRelated = async (units: NodeSummary[]): Promise<void> => {
-    if (!current || !relatedMenu || units.length === 0) return;
-    const card = flow.getNode(relatedMenu.item);
-    let y = card?.position.y ?? 0;
-    const x = (card?.position.x ?? 0) + (card?.measured?.width ?? CARD_WIDTH) + 100;
-    const places = units.map((unit) => {
-      const size = { width: CARD_WIDTH, height: cardHeight(unit.title) };
-      const spot = freeSpot({ x, y }, size);
-      y = spot.y + size.height + 30;
-      return { node: unit.id, ...spot, ...size };
-    });
-    setRelatedMenu(null);
-    try {
-      const { ids } = await call("canvas.placeUnits", { canvas: current, places });
-      record({ label: units.length === 1 ? "Placed 1 related unit" : `Placed ${units.length} related units`, undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) });
-    } catch (error) {
-      report(error);
-    }
-  };
 
   const addText = async (text: string, at: { x: number; y: number } | null): Promise<void> => {
     const spot = at ? { x: Math.round(at.x), y: Math.round(at.y) } : freeSpot(startingPoint(NOTE), NOTE);
@@ -820,138 +504,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     }
   };
 
-  const prefsRef = useRef(holon.prefs);
-  prefsRef.current = holon.prefs;
-  /** The delete about to run follows a remembered choice, so the status can offer to ask again. */
-  const fromRemembered = useRef(false);
-
-  /**
-   * Delete on a link asks whether the relation is only coming off this canvas
-   * or being withdrawn, unless the person made one answer their default. Links
-   * that go because a card went are only taken off.
-   */
-  const beforeDelete = useCallback(
-    async ({ edges: lost }: { nodes: FlowNode[]; edges: Edge[] }): Promise<boolean> => {
-      withdrawing.current = [];
-      fromRemembered.current = false;
-      const shown_ = viewRef.current;
-      const chosen = lost.flatMap((edge) => {
-        const relation = (edge.data as { relation?: string } | undefined)?.relation;
-        const known = relation ? shown_?.relations[relation] : undefined;
-        return edge.selected && relation && known && (known.state === "active" || known.state === "pending") ? [{ id: relation, ...known }] : [];
-      });
-      if (!chosen.length) return true;
-      const mine = [...new Set(chosen.filter((relation) => relation.mine).map((relation) => relation.id))];
-      const decide = (choice: LinkDelete) => {
-        withdrawing.current = choice === "withdraw" ? mine : [];
-      };
-      const preference = prefsRef.current.linkDelete;
-      if (preference !== "ask") {
-        decide(preference);
-        fromRemembered.current = true;
-        return true;
-      }
-      return new Promise<boolean>((resolve) => {
-        setLinkAsk({
-          links: chosen.map((relation) => ({
-            label: relation.label,
-            from: shown_?.nodes[relation.source]?.title ?? "",
-            to: shown_?.nodes[relation.target]?.title ?? "",
-          })),
-          mine: mine.length,
-          others: [...new Set(chosen.filter((relation) => !relation.mine).map((relation) => (relation.credit.kind === "lab" ? `its author in ${relation.credit.name}` : relation.credit.name)))],
-          answer: (choice, remember) => {
-            setLinkAsk(null);
-            if (choice === "cancel") return resolve(false);
-            if (remember) void call("prefs.set", { linkDelete: choice }).catch(report);
-            decide(choice);
-            resolve(true);
-          },
-        });
-      });
-    },
-    [call, report],
-  );
-
-  /** Takes items off the canvas, and withdraws the relations Delete was told to. Undo asserts them again. */
-  const removeItems = async (ids: string[], label?: string): Promise<void> => {
-    if (!ids.length) return;
-    const pulled = withdrawing.current;
-    withdrawing.current = [];
-    const remembered = fromRemembered.current;
-    fromRemembered.current = false;
-    const ends = new Map(pulled.flatMap((id) => (viewRef.current?.relations[id] ? [[id, viewRef.current.relations[id]!] as const] : [])));
-    const drawn = ids.flatMap((id) => {
-      const entry = items.current.get(id);
-      const relation = entry && "fromNode" in entry.item ? (entry.item as { dg?: { relation?: string } }).dg?.relation : undefined;
-      return entry && relation && ends.has(relation) ? [{ id, z: entry.z, item: withoutId(entry.item), relation }] : [];
-    });
-    const linksOnly = ids.every((id) => {
-      const entry = items.current.get(id);
-      return entry && "fromNode" in entry.item;
-    });
-    // The relation each withdrawn one is now, since undo asserts a fresh one.
-    const now = new Map(pulled.map((id) => [id, id]));
-    const withdraw = async () => {
-      for (const id of now.values()) await call("relation.withdraw", { id });
-    };
-    try {
-      await write({ removes: ids });
-      await withdraw();
-      const count = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
-      record({
-        label:
-          label ??
-          (pulled.length
-            ? `Withdrew ${count(pulled.length, "relation", "relations")}`
-            : linksOnly
-              ? `Took ${count(ids.length, "link", "links")} off this canvas`
-              : `Removed ${count(ids.length, "item", "items")}`),
-        ...(remembered ? { remembered: true } : {}),
-        undo: async () => {
-          await write({ restores: ids });
-          for (const [original, end] of ends) {
-            const again = await call("relation.assert", { type: end.type, source: end.source, target: end.target });
-            now.set(original, again.id);
-            const edges = drawn.filter((edge) => edge.relation === original);
-            if (edges.length) {
-              await write({
-                upserts: edges.map((edge) => ({ id: edge.id, z: edge.z, item: { ...edge.item, dg: { relation: again.id } } as WithoutId<CanvasItem> })),
-              });
-            }
-          }
-        },
-        redo: async () => {
-          await write({ removes: ids });
-          await withdraw();
-        },
-      });
-    } catch (error) {
-      report(error);
-    }
-  };
-
-  /** The selection, with the links between its cards, as a canvas clip. */
-  const clipOfSelection = (): Clip | null => {
-    const chosen = flow.getNodes().filter((node) => node.selected);
-    if (!chosen.length || !currentRef.current) return null;
-    const ids = new Set(chosen.map((node) => node.id));
-    const entries = [...items.current.values()].filter(
-      (entry) => ids.has(entry.id) || ("fromNode" in entry.item && ids.has(entry.item.fromNode) && ids.has(entry.item.toNode)),
-    );
-    return { v: 1, canvas: currentRef.current, items: entries.map(({ id, z, item }) => ({ id, z, item })) };
-  };
-
-  const textOfClip = (clip: Clip): string =>
-    clip.items
-      .flatMap(({ item }) => {
-        if ("fromNode" in item) return [];
-        const unit = (item as { dg?: { node?: string } }).dg?.node;
-        const title = unit ? viewRef.current?.nodes[unit]?.title : undefined;
-        return [plain(title ?? (item.type === "text" ? item.text : item.type === "file" ? item.file : item.type === "link" ? item.url : ""))];
-      })
-      .filter(Boolean)
-      .join("\n");
+  const { linkAsk, beforeDelete, removeItems } = useDelete({ connection, writer, items, view: viewRef, prefs: holon.prefs, report });
 
   /**
    * Puts a clip's items here, keeping their layout, at the pointer if it's over
@@ -983,7 +536,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     const written: string[] = [];
     try {
       if (units.length) {
-        for (const { item } of units) placingHere.current.add(unitOf(item)!);
+        arrivals.expect(units.map(({ item }) => unitOf(item)!));
         const { ids } = await call("canvas.placeUnits", {
           canvas: current,
           places: units.map(({ item }) => ({ node: unitOf(item)!, ...moved(item), width: item.width, height: item.height })),
@@ -1024,181 +577,19 @@ export const App = ({ connection }: { connection: Connection }) => {
     }
   };
 
-  // Copy, cut and paste go through the clipboard, so they work between canvases and tabs.
-  const clipboard = useRef({ clipOfSelection, textOfClip, pasteClip, removeItems, addText });
-  clipboard.current = { clipOfSelection, textOfClip, pasteClip, removeItems, addText };
-  useEffect(() => {
-    const typing = (event: Event): boolean => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest?.("input, textarea, [contenteditable='true']")) return true;
-      const selection = window.getSelection();
-      return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
-    };
-    const copy = (event: ClipboardEvent, cut: boolean): void => {
-      if (typing(event) || !event.clipboardData) return;
-      const clip = clipboard.current.clipOfSelection();
-      if (!clip) return;
-      event.preventDefault();
-      writeClip(event.clipboardData, clip, clipboard.current.textOfClip(clip));
-      const count = clip.items.filter((entry) => !("fromNode" in entry.item)).length;
-      if (cut) void clipboard.current.removeItems(clip.items.map((entry) => entry.id), `Cut ${count === 1 ? "1 item" : `${count} items`}`);
-      else setNotice(count === 1 ? "Copied 1 item" : `Copied ${count} items`);
-    };
-    const onCopy = (event: ClipboardEvent) => copy(event, false);
-    const onCut = (event: ClipboardEvent) => copy(event, true);
-    const onPaste = (event: ClipboardEvent): void => {
-      if (typing(event)) return;
-      const at = pointer.current ? flow.screenToFlowPosition(pointer.current) : null;
-      const clip = clipFromTransfer(event.clipboardData);
-      if (clip) {
-        event.preventDefault();
-        void clipboard.current.pasteClip(clip, at);
-        return;
-      }
-      const pasted = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
-      if (pasted.length) {
-        event.preventDefault();
-        void picturesRef.current(pasted, at);
-        return;
-      }
-      const text = event.clipboardData?.getData("text/plain").trim();
-      if (text) {
-        event.preventDefault();
-        void clipboard.current.addText(text, at);
-      }
-    };
-    // A keyboard copy with nothing selected as text still copies the cards.
-    const onKey = (event: KeyboardEvent): void => {
-      const mod = event.metaKey || event.ctrlKey;
-      const key = event.key.toLowerCase();
-      if (!mod || event.altKey || event.shiftKey || (key !== "c" && key !== "x")) return;
-      if (typing(event) || !clipboard.current.clipOfSelection()) return;
-      event.preventDefault();
-      document.execCommand(key === "c" ? "copy" : "cut");
-    };
-    document.addEventListener("copy", onCopy);
-    document.addEventListener("cut", onCut);
-    document.addEventListener("paste", onPaste);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("copy", onCopy);
-      document.removeEventListener("cut", onCut);
-      document.removeEventListener("paste", onPaste);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [flow]);
-
-  // Units put here from another panel, such as a PDF highlight, come into view.
-  useEffect(() => on("units-placed", ({ canvas, units }) => {
-    if (canvas !== currentRef.current) return;
-    const fromHere = units.every((unit) => placingHere.current.has(unit));
-    for (const unit of units) placingHere.current.delete(unit);
-    setArrived({ units, fromHere });
-    if (fromHere) return;
-    // Units sent from another panel, such as search, are an edit to this canvas too. The step is
-    // recorded now, in order; which cards it takes off is worked out when it's undone.
-    let taken: string[] = [];
-    record({
-      label: units.length === 1 ? "Put 1 unit here" : `Put ${units.length} units here`,
-      undo: async () => {
-        const entries = [...items.current.values()];
-        const cards = entries.filter((entry) => units.includes(nodeOfItem(entry) ?? "")).map((entry) => entry.id);
-        const links = entries.filter((entry) => "fromNode" in entry.item && (cards.includes(entry.item.fromNode) || cards.includes(entry.item.toNode))).map((entry) => entry.id);
-        taken = [...cards, ...links];
-        await write({ removes: taken });
-      },
-      redo: () => write({ restores: taken }),
-    });
-  }), [on, record, write]);
-  useEffect(() => {
-    const { units: arriving, fromHere } = arrived;
-    if (!arriving.length) return;
-    const cards = flow.getNodes().filter((node) => arriving.includes((node.data as CardData).node?.id ?? ""));
-    // Their drawn sizes decide where they fit, so wait until each has been measured.
-    if (cards.length < arriving.length || cards.some((node) => !node.measured?.height)) return;
-    setArrived({ units: [], fromHere: true });
-    setFresh(arriving);
-    // Pan only as far as it takes to bring them in, so the rest of the argument stays in view.
-    const box = area.current?.getBoundingClientRect();
-    if (box) {
-      const viewport = flow.getViewport();
-      const MARGIN = 32;
-      const corners = cards.map((node) => {
-        const at = flow.flowToScreenPosition(node.position);
-        return { left: at.x, top: at.y, right: at.x + (node.measured?.width ?? CARD_WIDTH) * viewport.zoom, bottom: at.y + (node.measured?.height ?? 80) * viewport.zoom };
-      });
-      const left = Math.min(...corners.map((c) => c.left));
-      const right = Math.max(...corners.map((c) => c.right));
-      const top = Math.min(...corners.map((c) => c.top));
-      const bottom = Math.max(...corners.map((c) => c.bottom));
-      const dx = right > box.right - MARGIN ? Math.max(box.right - MARGIN - right, box.left + MARGIN - left) : left < box.left + MARGIN ? box.left + MARGIN - left : 0;
-      const dy = bottom > box.bottom - MARGIN ? Math.max(box.bottom - MARGIN - bottom, box.top + MARGIN - top) : top < box.top + MARGIN ? box.top + MARGIN - top : 0;
-      const [only] = cards;
-      const entry = only ? items.current.get(only.id) : undefined;
-      if (!fromHere && cards.length > 1) {
-        // Several sent from another panel are laid out together, at their drawn sizes, in a clear spot in view.
-        const ids = new Set(cards.map((node) => node.id));
-        const boxes: Card[] = cards.map((node) => {
-          const summary = (node.data as CardData).node;
-          return {
-            id: node.id,
-            x: 0,
-            y: 0,
-            width: node.measured?.width ?? CARD_WIDTH,
-            height: node.measured?.height ?? 80,
-            ...(summary ? { at: summary.at, credit: { key: summary.credit.id, label: summary.credit.name }, ...(summary.paper ? { source: { key: summary.paper.id, label: summary.paper.label } } : {}), ...(summary.typeLabel ? { kind: { key: summary.typeLabel, label: summary.typeLabel } } : {}) } : {}),
-          };
-        });
-        const links: RelationLink[] = flow
-          .getEdges()
-          .filter((edge) => ids.has(edge.source) && ids.has(edge.target))
-          .map((edge) => ({ from: edge.source, to: edge.target, ...((edge.data as { kind?: string } | undefined)?.kind ? { kind: (edge.data as { kind: string }).kind } : {}) }));
-        const { places } = arrange({ mode: "logic", boxes, links, frame: { width: box.width, height: box.height }, previous: "kinds" });
-        const laid = boxes.map((card) => ({ ...card, ...(places.get(card.id) ?? { x: 0, y: 0 }) }));
-        const left = Math.min(...laid.map((card) => card.x));
-        const top = Math.min(...laid.map((card) => card.y));
-        const size = { width: Math.max(...laid.map((card) => card.x + card.width)) - left, height: Math.max(...laid.map((card) => card.y + card.height)) - top };
-        const spot = freeSpot(startingPoint(size), size, ids);
-        const upserts = laid.flatMap((card) => {
-          const known = items.current.get(card.id);
-          return known && !("fromNode" in known.item)
-            ? [{ id: card.id, z: known.z, item: withoutId({ ...known.item, x: Math.round(spot.x + card.x - left), y: Math.round(spot.y + card.y - top) }) }]
-            : [];
-        });
-        void write({ upserts }).catch(report);
-      } else if (!fromHere && cards.length === 1 && only && entry && !("fromNode" in entry.item)) {
-        // One card sent from another panel, such as a highlight, comes to where the person is looking,
-        // and never onto another card: where it already sits counts only if that spot is clear.
-        const size = { width: only.measured?.width ?? CARD_WIDTH, height: only.measured?.height ?? 80 };
-        const spot = freeSpot(dx || dy ? startingPoint(size) : only.position, size, new Set([only.id]));
-        if (spot.x !== Math.round(only.position.x) || spot.y !== Math.round(only.position.y)) {
-          void write({ upserts: [{ id: only.id, z: entry.z, item: withoutId({ ...entry.item, ...spot }) }] }).catch(report);
-        }
-      } else if (dx || dy) void flow.setViewport({ x: viewport.x + dx, y: viewport.y + dy, zoom: viewport.zoom }, { duration: 280 });
-    }
-  }, [arrived, nodes, flow, freeSpot, startingPoint, write, report]);
-  // A link elsewhere pointed at a unit here: bring its card into view and mark it for a moment.
-  useEffect(() => on("reveal-unit", ({ canvas, unit }) => {
-    if (canvas !== currentRef.current) return;
-    void call("canvas.revealed", { id: canvas }).catch(() => null);
-    setArrived({ units: [unit], fromHere: true });
-  }), [on, call]);
-  useEffect(() => {
-    if (!current) return;
-    void call("canvas.revealed", { id: current }).then((unit) => (unit && currentRef.current === current ? setArrived({ units: [unit], fromHere: true }) : undefined)).catch(() => undefined);
-  }, [call, current]);
-  useEffect(() => {
-    if (!fresh.length) return;
-    const timer = window.setTimeout(() => setFresh([]), 1800);
-    return () => window.clearTimeout(timer);
-  }, [fresh]);
+  const clipboardPointer = useClipboard({
+    copy: () => {
+      const clip = clipOf(flow.getNodes().filter((node) => node.selected).map((node) => node.id), items.current, currentRef.current);
+      return clip ? { clip, text: textOfClip(clip, viewRef.current) } : null;
+    },
+    cut: (ids, label) => void removeItems(ids, label),
+    paste: (clip, at) => void pasteClip(clip, at),
+    pictures: (files, at) => void addPictures(files, at),
+    text: (text, at) => void addText(text, at),
+    notify: setNotice,
+  });
 
   const adding = addAt !== null;
-  useEffect(() => {
-    if (!adding) return;
-    setActive(0);
-    void call("search.query", { text: query, limit: 8 }).then(({ hits }) => setResults(hits)).catch(report);
-  }, [adding, query, call, report]);
 
   const openAdd = useCallback(() => {
     const button = addButton.current?.getBoundingClientRect();
@@ -1225,70 +616,12 @@ export const App = ({ connection }: { connection: Connection }) => {
     // Whatever was covering what, it is about to be put right.
     setCrowded(0);
     if (!view) return;
-    const cards: Card[] = flow.getNodes().flatMap((node) => {
-      if (node.type !== "card" && node.type !== "note") return [];
-      const summary = (node.data as CardData).node;
-      return [{
-        id: node.id,
-        x: node.position.x,
-        y: node.position.y,
-        width: node.measured?.width ?? node.width ?? CARD_WIDTH,
-        height: node.measured?.height ?? node.height ?? 80,
-        note: node.type === "note",
-        ...(summary
-          ? {
-              at: summary.at,
-              credit: { key: summary.credit.id, label: summary.credit.name }, ...(summary.paper ? { source: { key: summary.paper.id, label: summary.paper.label } } : {}),
-              ...(summary.typeLabel ? { kind: { key: summary.typeLabel, label: summary.typeLabel } } : {}),
-            }
-          : {}),
-      }];
-    });
-    const links: RelationLink[] = flow.getEdges().map((edge) => ({
-      from: edge.source,
-      to: edge.target,
-      ...(typeof edge.label === "string" ? { label: edge.label } : {}),
-      ...((edge.data as { kind?: string } | undefined)?.kind ? { kind: (edge.data as { kind: string }).kind } : {}),
-    }));
-    const picked = flow.getNodes().find((node) => node.selected && node.type === "card")?.id;
-    const followedCard = flow.getNodes().find((node) => (node.data as CardData).node?.id === followed)?.id;
-    const focus = picked ?? followedCard ?? view.canvas.layout?.focus;
-    if (chosen === "focus" && !focus) {
+    const plan = planTidy({ chosen, view, nodes: flow.getNodes(), edges: flow.getEdges(), items: items.current, frame: area.current?.getBoundingClientRect(), followed });
+    if (!plan) {
       setNotice("Select a card first");
       return;
     }
-    const frame = area.current?.getBoundingClientRect();
-    const { places, guides } = arrange({
-      mode: chosen,
-      boxes: cards,
-      links,
-      frame: frame?.width ? { width: frame.width, height: frame.height } : { width: 800, height: 800 },
-      previous: view.canvas.layout?.mode ?? "logic",
-      ...(focus ? { focus } : {}),
-    });
-    const moves = cards.flatMap(({ id }) => {
-      const entry = items.current.get(id);
-      const spot = places.get(id);
-      if (!entry || !spot || "fromNode" in entry.item) return [];
-      return [{ id, z: entry.z, item: withoutId({ ...entry.item, ...spot }) }];
-    });
-    const back = moves.flatMap(({ id }) => {
-      const entry = items.current.get(id);
-      return entry ? [{ id, z: entry.z, item: withoutId(entry.item) }] : [];
-    });
-    // A heading that stays keeps its item, so pressing Tidy again changes nothing.
-    const oldGuides = [...items.current.values()].filter(({ item }) => (item as { guide?: boolean }).guide);
-    const kept = new Map<string, string>();
-    const headings = guides.map((guide) => {
-      const same = oldGuides.find(({ id, item }) => (item as { label?: string }).label === guide.label && !kept.has(id));
-      if (same) kept.set(same.id, guide.label);
-      return { ...(same ? { id: same.id } : {}), z: 0, item: { type: "group" as const, guide: true, ...guide } };
-    });
-    const gone = oldGuides.filter(({ id }) => !kept.has(id)).map(({ id }) => id);
-    const movedHeadings = oldGuides.filter(({ id }) => kept.has(id)).map(({ id, z, item }) => ({ id, z, item: withoutId(item) }));
-    const before = view.canvas.layout ?? { mode: "logic" as const };
-    const next = { mode: chosen, ...(chosen === "focus" && focus ? { focus } : {}) };
-    const label = MODES.find((entry) => entry.mode === chosen)!.label;
+    const { moves, back, headings, gone, movedHeadings, kept, before, next, label } = plan;
     void write({ upserts: [...moves, ...headings], removes: gone })
       .then(async ({ ids }) => {
         await call("canvas.setLayout", { id: view.canvas.id, layout: next });
@@ -1333,56 +666,9 @@ export const App = ({ connection }: { connection: Connection }) => {
     setFieldsAt((open) => (open ? null : { left: x, top: y }));
   }, [inFrame]);
 
-  // Cards grow when they show more. Nothing is moved for the person; they are told, and offered Tidy.
   const shownFields = holon.prefs.cardFields.join(",");
-  const lastFields = useRef<string | null>(null);
-  const nodesRef = useRef(nodes);
-  nodesRef.current = nodes;
-  const countCovering = useCallback(() => {
-    const boxes = nodesRef.current
-      .filter((node) => node.type === "card" && node.measured?.height)
-      .map((node) => ({ left: node.position.x, top: node.position.y, right: node.position.x + (node.measured?.width ?? CARD_WIDTH), bottom: node.position.y + node.measured!.height! }));
-    let covering = 0;
-    boxes.forEach((a, index) => {
-      if (boxes.some((b, other) => other !== index && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom && (a.top > b.top || (a.top === b.top && index > other)))) covering += 1;
-    });
-    setCrowded(covering);
-  }, []);
-  useEffect(() => {
-    const before = lastFields.current;
-    lastFields.current = shownFields;
-    if (before === null || before === shownFields) return;
-    const timer = window.setTimeout(countCovering, 500);
-    return () => window.clearTimeout(timer);
-  }, [shownFields, countCovering]);
-  // A canvas laid out when its cards showed less can open with cards over each other. Say so once it is drawn.
-  useEffect(() => {
-    setCrowded(0);
-    if (!canvasId || needsLayout) return;
-    const timer = window.setTimeout(countCovering, 1500);
-    return () => window.clearTimeout(timer);
-  }, [canvasId, needsLayout, countCovering]);
-
-  // The list stays open while its switches are used, and closes on a click anywhere else.
-  useEffect(() => {
-    if (!fieldsAt) return;
-    const close = (event: PointerEvent) => {
-      const target = event.target as Element | null;
-      if (target?.closest('[data-dg="card-fields-menu"], [data-dg="card-fields"]')) return;
-      setFieldsAt(null);
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setFieldsAt(null);
-      fieldsButton.current?.focus();
-    };
-    document.addEventListener("pointerdown", close, true);
-    document.addEventListener("keydown", escape);
-    return () => {
-      document.removeEventListener("pointerdown", close, true);
-      document.removeEventListener("keydown", escape);
-    };
-  }, [fieldsAt]);
+  useCrowding({ nodes, fields: shownFields, canvas: canvasId, needsLayout, onCount: setCrowded });
+  const closeFields = useCallback(() => setFieldsAt(null), []);
 
   // What the base's command palette or a hotkey asks of this canvas. Each does what its button does.
   const commandRef = useRef<(name: CanvasCommand) => void>(() => {});
@@ -1406,12 +692,12 @@ export const App = ({ connection }: { connection: Connection }) => {
     setMenu(false);
     setMoreOpen(false);
     setNaming(false);
-    setRelationMenu(null);
+    links.close();
     setTypeMenu(null);
-    setRelatedMenu(null);
+    related.close();
     setTidyAt(null);
     closeAdd();
-  }, [closeAdd]);
+  }, [closeAdd, links.close, related.close]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -1467,36 +753,25 @@ export const App = ({ connection }: { connection: Connection }) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [actions, addNote, aiOn, closeMenus, flow, mode, openAdd, tidyUp, undo, redo]);
 
-  const finishStroke = (): void => {
-    const raw = ink.current;
-    ink.current = [];
-    setTool("select");
-    if (raw.length < 2) return;
-    const xs = raw.map(([x]) => x!);
-    const ys = raw.map(([, y]) => y!);
-    const x = Math.floor(Math.min(...xs)) - 4;
-    const y = Math.floor(Math.min(...ys)) - 4;
-    const outline = getStroke(raw.map(([px, py]) => [px! - x, py! - y]), { size: 5, thinning: 0.4 });
-    void write({
-      upserts: [{
-        item: {
-          type: "stroke",
-          x,
-          y,
-          width: Math.ceil(Math.max(...xs)) - x + 4,
-          height: Math.ceil(Math.max(...ys)) - y + 4,
-          path: pathFrom(outline),
-        },
-        z: nextZ(),
-      }],
-    })
-      .then(({ ids }) => record({ label: "Drew a line", undo: () => write({ removes: ids }), redo: () => write({ restores: ids }) }))
-      .catch(report);
-  };
-
-  const inkPoint = (event: React.PointerEvent): number[] => {
-    const point = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    return [point.x, point.y];
+  const setType = (type: NodeTypeRecord): void => {
+    if (!typeMenu) return;
+    const target = typeMenu.node;
+    setTypeMenu(null);
+    const before = viewRef.current?.nodes[target]?.type ?? null;
+    if (before === type.id) return;
+    // A new type renames the note too, so the step is recorded as it starts.
+    const typing = call("node.setType", { id: target, type: type.id });
+    const step = {
+      label: `Made it a ${type.label}`,
+      ready: typing,
+      undo: () => call("node.setType", { id: target, type: before }),
+      redo: () => call("node.setType", { id: target, type: type.id }),
+    };
+    record(step);
+    typing.catch((error: unknown) => {
+      drop(step);
+      report(error);
+    });
   };
 
   const switchCanvas = (id: string): void => {
@@ -1629,7 +904,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   return (
     <ActionsContext.Provider value={actions}>
       <div className="shell" ref={shell} data-side={side ? (holon.prefs.sidePinned ? "pinned" : "floating") : undefined}>
-        <header className="bar" ref={bar} data-fit={fit} role="toolbar" aria-label="Canvas" onKeyDown={moveAlongBar} onFocus={rememberBarFocus}>
+        <header className="bar" ref={bar} data-fit={fit} role="toolbar" aria-label="Canvas" onKeyDown={barKeys.onKeyDown} onFocus={barKeys.onFocus}>
           <button type="button" className="tool side-toggle" data-dg="side-toggle" aria-label="Library, search units and units to place" aria-expanded={side !== null} title="Library, search units and units to place" onClick={() => (side ? setSide(null) : openSide(lastSide.current))}>
             <Icon name="sidebar" />
           </button>
@@ -1944,106 +1219,9 @@ export const App = ({ connection }: { connection: Connection }) => {
             }}
           />
         ) : null}
-        {fieldsAt ? (
-          <div className="popover menu fields-menu" role="menu" aria-label="What every card shows" data-dg="card-fields-menu" style={fieldsAt}>
-            <h3>Show on every card</h3>
-            {CARD_FIELDS.map(({ id, label, hint }) => {
-              const shown = holon.prefs.cardFields.includes(id);
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="menuitemcheckbox"
-                  aria-checked={shown}
-                  data-dg={`card-field-${id}`}
-                  title={hint}
-                  onClick={() => {
-                    const next = shown ? holon.prefs.cardFields.filter((field) => field !== id) : [...holon.prefs.cardFields, id];
-                    void call("prefs.set", { cardFields: CARD_FIELD_IDS.filter((field) => next.includes(field)) }).catch(report);
-                  }}
-                >
-                  <span className="tick" aria-hidden="true">{shown ? <Icon name="check" /> : null}</span>
-                  <span className="fields-text">
-                    <strong>{label}</strong>
-                    <span>{hint}</span>
-                  </span>
-                </button>
-              );
-            })}
-            <p>The context panel always shows them all.</p>
-          </div>
-        ) : null}
-        {tidyAt ? (
-          <div className="popover tidy-menu" role="menu" aria-label="Tidy modes" style={tidyAt}>
-            {(["Arrange by", "Centrality"] as const).map((group) => (
-              <div key={group} role="group" aria-label={group}>
-                <h3>{group}</h3>
-                {MODES.filter((entry) => entry.group === group).map((entry) => (
-                  <button
-                    key={entry.mode}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={entry.mode === mode}
-                    data-dg={`tidy-${entry.mode}`}
-                    onClick={() => tidyUp(entry.mode)}
-                  >
-                    <strong>{entry.label}</strong>
-                    <span>{entry.hint}</span>
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : null}
-        {addAt ? (
-          <div className="popover add-popover" role="dialog" aria-label="Add a unit" style={addAt}>
-            <input
-              autoFocus
-              data-dg="node-search"
-              aria-label="Find or name a unit"
-              placeholder={linking ? "Find or name the next unit" : "Find or name a unit"}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "ArrowDown") setActive((old) => Math.min(old + 1, results.length - 1));
-                if (event.key === "ArrowUp") setActive((old) => Math.max(old - 1, 0));
-                if (event.key === "Escape") closeAdd();
-                if (event.key === "Enter" && results[active]) void addCard(results[active]!.node);
-              }}
-            />
-            <ul>
-              {results.map((hit, index) => (
-                <li key={hit.node.id}>
-                  <button
-                    type="button"
-                    data-dg={`result-${hit.node.title}`}
-                    data-active={index === active}
-                    onClick={() => void addCard(hit.node)}
-                  >
-                    <Chip node={hit.node} />
-                    <span className="result-text">
-                      <span className="result-title"><Marked text={hit.node.title} marks={hit.titleMarks} /></span>
-                      {hit.match ? (
-                        <span className="result-match"><Marked text={hit.match.snippet} marks={hit.match.marks} /></span>
-                      ) : null}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {query.trim() ? (
-              <div className="create-row">
-                <span>Create “{query.trim()}” as</span>
-                {nodeTypeList.map((type) => (
-                  <button key={type.id} type="button" data-dg={`create-${type.label}`} onClick={() => void createNode(type.id)}>
-                    {type.label}
-                  </button>
-                ))}
-                <button type="button" data-dg="create-untyped" onClick={() => void createNode()}>No type yet</button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {fieldsAt ? <FieldsMenu connection={connection} at={fieldsAt} fields={holon.prefs.cardFields} button={fieldsButton} onClose={closeFields} report={report} /> : null}
+        {tidyAt ? <TidyMenu at={tidyAt} mode={mode} onPick={tidyUp} /> : null}
+        {addAt ? <AddBox connection={connection} at={addAt} next={linking !== null} types={nodeTypeList} onPick={(node) => void addCard(node)} onCreate={(title, type) => void createNode(title, type)} onClose={closeAdd} report={report} /> : null}
         <div
           ref={area}
           className={measure ? "area links-quiet" : "area"}
@@ -2051,12 +1229,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             event.preventDefault();
             if ([...event.dataTransfer.types].includes(DRAG_TYPE)) event.dataTransfer.dropEffect = "copy";
           }}
-          onPointerMove={(event) => {
-            pointer.current = { x: event.clientX, y: event.clientY };
-          }}
-          onPointerLeave={() => {
-            pointer.current = null;
-          }}
+          {...clipboardPointer}
           onDrop={(event) => {
             event.preventDefault();
             const dropped = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith("image/"));
@@ -2175,20 +1348,7 @@ export const App = ({ connection }: { connection: Connection }) => {
               <span>Press <kbd>N</kbd> to add a unit, then drag from its edge to connect the next.</span>
             </div>
           ) : null}
-          {tool === "draw" ? (
-            <div
-              className="ink-layer"
-              data-dg="ink-layer"
-              onPointerDown={(event) => {
-                event.currentTarget.setPointerCapture(event.pointerId);
-                ink.current = [inkPoint(event)];
-              }}
-              onPointerMove={(event) => {
-                if (ink.current.length > 0) ink.current.push(inkPoint(event));
-              }}
-              onPointerUp={finishStroke}
-            />
-          ) : null}
+          {tool === "draw" ? <InkLayer writer={writer} onDone={() => setTool("select")} report={report} /> : null}
         </div>
         <Drawer
           data={drawerData}
@@ -2214,6 +1374,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             }}
             onPlace={(ids) => void placeGroup(ids)}
             report={report}
+            Search={Search}
           />
         ) : null}
         {edgeTip ? (
@@ -2223,84 +1384,9 @@ export const App = ({ connection }: { connection: Connection }) => {
           </div>
         ) : null}
         {linkAsk ? <LinkAskDialog ask={linkAsk} /> : null}
-        {relationMenu ? (
-          <div className="popover menu relation-menu" role="menu" style={{ left: relationMenu.x, top: relationMenu.y }}>
-            {relationMenu.options.length === 0 ? (
-              <p>The grammar has no relation for these two units. Check that both have a type.</p>
-            ) : (
-              relationMenu.options.map((option) => (
-                <button key={`${option.type}-${option.flipped}`} type="button" role="menuitem" data-dg={`relation-${option.label}`} onClick={() => void chooseRelation(option)}>
-                  {option.label}
-                </button>
-              ))
-            )}
-            <button type="button" role="menuitem" className="quiet" onClick={() => setRelationMenu(null)}>Cancel</button>
-          </div>
-        ) : null}
-        {relatedMenu ? (
-          <div className="popover related-menu" role="dialog" aria-label="What this is related to" data-dg="related-menu" style={{ left: relatedMenu.x, top: relatedMenu.y }}>
-            {relatedMenu.list === null ? (
-              <p className="note">Looking…</p>
-            ) : relatedMenu.list.length === 0 ? (
-              <p className="note">Nothing is related to this yet. Drag from its edge to another card to say how they relate.</p>
-            ) : (
-              <>
-                <ul>
-                  {relatedMenu.list.map((related) => (
-                    <li key={related.relation} data-here={related.here}>
-                      <span className="related-how">{related.label}{related.state === "pending" ? ", proposed" : ""}</span>
-                      <span className="related-what">{plain(related.unit.title)}</span>
-                      {related.here ? (
-                        <span className="related-here">On this canvas</span>
-                      ) : (
-                        <button type="button" data-dg={`related-add-${related.unit.title}`} onClick={() => void placeRelated([related.unit])}>Add</button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                {relatedMenu.list.filter((related) => !related.here).length > 1 ? (
-                  <button type="button" className="related-all" data-dg="related-add-all" onClick={() => void placeRelated(relatedMenu.list!.filter((related) => !related.here).map((related) => related.unit))}>
-                    Add all {relatedMenu.list.filter((related) => !related.here).length} that aren't here
-                  </button>
-                ) : null}
-              </>
-            )}
-          </div>
-        ) : null}
-        {typeMenu ? (
-          <div className="popover menu" role="menu" style={{ left: typeMenu.x, top: typeMenu.y }}>
-            {nodeTypeList.map((type) => (
-              <button
-                key={type.id}
-                type="button"
-                role="menuitem"
-                data-dg={`type-${type.label}`}
-                onClick={() => {
-                  const target = typeMenu.node;
-                  setTypeMenu(null);
-                  const before = viewRef.current?.nodes[target]?.type ?? null;
-                  if (before === type.id) return;
-                  // A new type renames the note too, so the step is recorded as it starts.
-                  const typing = call("node.setType", { id: target, type: type.id });
-                  const step = {
-                    label: `Made it a ${type.label}`,
-                    ready: typing,
-                    undo: () => call("node.setType", { id: target, type: before }),
-                    redo: () => call("node.setType", { id: target, type: type.id }),
-                  };
-                  record(step);
-                  typing.catch((error: unknown) => {
-                    drop(step);
-                    report(error);
-                  });
-                }}
-              >
-                {type.label}
-              </button>
-            ))}
-            <button type="button" role="menuitem" className="quiet" onClick={() => setTypeMenu(null)}>Cancel</button>
-          </div>
-        ) : null}
+        {links.menu ? <RelationMenu menu={links.menu} onPick={(option) => void links.choose(option)} onClose={links.close} /> : null}
+        {related.menu ? <RelatedMenu menu={related.menu} onPlace={(units) => void related.place(units)} /> : null}
+        {typeMenu ? <TypeMenu at={typeMenu} types={nodeTypeList} onPick={setType} onClose={() => setTypeMenu(null)} /> : null}
       </div>
     </ActionsContext.Provider>
   );

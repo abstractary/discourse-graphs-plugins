@@ -275,5 +275,6 @@ export const searchFeature = (context: Context) => {
     },
   };
 
+  context.offers.textChanged = invalidate;
   return { handlers, invalidate, readNotes };
 };

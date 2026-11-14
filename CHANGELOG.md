@@ -1,5 +1,18 @@
 # Changelog
 
+## An MCP server that reads, and the refactor carried on (14 November 2026)
+
+- **New: an MCP server an agent can read a vault through.** `npm run mcp -- --vault <folder>` starts it on stdio. Six tools: search units, read one unit, read the argument under a claim, read canvases, read what was taken from a paper, and read the grammar. It reads only the vault owner's own work until they pass `--widen`, and a lab's shared work only as far as the lab's reach allows. It writes nothing but its own device record. It can't propose yet. See [docs/mcp.md](docs/mcp.md).
+- **Fixed: the local app keeps its device id and settings outside the vault,** beside its keys, and moves them there from the old file on first start.
+- **Fixed: the server refuses anything that hasn't a record's shape,** and the core checks what a lab sends before reading it. A lab's settings and a device's vouch are now validated.
+- **Fixed: the core refuses a base that speaks another version of the host contract.**
+- **A failure keeps its kind on the way to a panel:** not found, read-only, conflict, no target or unavailable, where every failure used to arrive as "invalid". Panels don't act on the kind yet.
+- **The core's entry file defines no calls any more.** Units, canvases, capture and the mirroring of links into notes are features in their own files, and features reach each other through one typed registry in place of variables filled in later.
+- **The Obsidian plugin is eight files** where it was one of 1,356 lines, and plugins import only the core's entry file.
+- **The canvas component is 1,393 lines** where it was 2,307, with its writer, add box, ink, tidy, clipboard, linking and menus in files of their own. No panel imports another.
+- **Every unit test starts from one set-up** and waits on the thing itself, not on the clock.
+- **One new dependency:** the MCP project's TypeScript SDK, for development and for the server.
+
 ## Refactor and tracking (13 November 2026)
 
 Nothing a person sees changed, apart from four fixes.

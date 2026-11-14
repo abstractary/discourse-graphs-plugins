@@ -1,44 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { fail, type Host } from "@dg/contract/host.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
+import { createMemoryHost } from "@dg/contract/memory-host.ts";
 import { createLab, createNode, type CanvasItemRecord, type DgRecord } from "@dg/contract/records.ts";
-import type { SurfaceEvent, SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
-import { createCore } from "@dg/core/index.ts";
 import { fold, readable, wordsOf } from "@dg/core/search.ts";
+import { makeCore } from "./support.ts";
 
 // Finding units by their words, renaming them, and putting them on a canvas from another panel.
 const setup = async (overrides: Partial<Host> = {}) => {
-  const store = createMemoryStore();
-  const { host, emit } = createMemoryHost({ store });
-  const opened: unknown[] = [];
-  const core = await createCore({ host: { ...host, openSurface: async (args) => (opened.push(args), { ok: true, value: null }), ...overrides } });
-  const events: SurfaceEvent[] = [];
-  const pending = new Map<string, (message: SurfaceMessage) => void>();
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("event" in message) events.push(message as SurfaceEvent);
-      if ("id" in message) pending.get(String(message.id))?.(message);
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]): Promise<SurfaceMethods[M]["result"]> =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      const id = `r${next}`;
-      pending.set(id, (message) => {
-        const reply = message as { ok: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok) resolve(reply.result as never);
-        else reject(new Error(reply.error?.message));
-      });
-      listener({ id, method, params } as SurfaceMessage);
-    });
+  const made = await makeCore({ watchSurfaces: true, wrap: (host) => ({ ...host, ...overrides }) });
+  const { core, store, emit } = made;
   const type = (label: string) => core.nodeTypes().find((item) => item.label.toLowerCase() === label)!.id;
   const refOf = (title: string) => [...store.texts.entries()].find(([, text]) => text.title.endsWith(title))![0];
   /** Writes a unit's note the way a person would, in the base. */
@@ -47,8 +18,7 @@ const setup = async (overrides: Partial<Host> = {}) => {
     store.texts.get(ref)!.body = body;
     emit({ type: "text-changed", ref });
   };
-  const settle = () => new Promise((done) => setTimeout(done, 20));
-  return { core, call, events, store, emit, opened, type, write, settle, refOf };
+  return { ...made, type, write, refOf };
 };
 
 const titles = (results: { hits: { node: { title: string } }[] }) => results.hits.map((hit) => hit.node.title);
@@ -122,6 +92,7 @@ test("a PDF passage is searched, and filters by type and by person count what th
 test("an empty search lists the newest work first, and results say which canvases hold them", async () => {
   const { call, type } = await setup();
   const first = await call("node.create", { title: "Older", type: type("claim") });
+  // A real wait: the two units have to be made at different times to be put in order.
   await new Promise((done) => setTimeout(done, 5));
   await call("node.create", { title: "Newer", type: type("claim") });
   const canvas = await call("canvas.create", { title: "Argument" });
@@ -134,6 +105,7 @@ test("an empty search lists the newest work first, and results say which canvase
 test("search sorts by title or by when units were made", async () => {
   const { call, type } = await setup();
   await call("node.create", { title: "Beta", type: type("claim") });
+  // A real wait: the two units have to be made at different times to be put in order.
   await new Promise((done) => setTimeout(done, 5));
   await call("node.create", { title: "Alpha", type: type("claim") });
   assert.deepEqual(titles(await call("search.query", { sort: "title", limit: 10 })), ["Alpha", "Beta"]);
@@ -159,7 +131,7 @@ test("a person renames their own unit and its note, but not a teammate's", async
     // A base refuses a name another note already has.
     renameText: async (args) => (refuse ? fail("conflict", "Taken") : memoryRename!(args)),
   });
-  const memoryRename: Host["renameText"] | undefined = (await import("@dg/contract/memory-host.ts")).createMemoryHost({ store }).host.renameText;
+  const memoryRename: Host["renameText"] | undefined = createMemoryHost({ store }).host.renameText;
   const mine = await call("node.create", { title: "Old wording", type: type("claim") });
   assert.equal(mine.mine, true);
   const ref = refOf("Old wording");
@@ -198,7 +170,7 @@ test("a type can be taken away again, for undo, and the note loses its prefix", 
 });
 
 test("a link to a unit goes in at the cursor, and only for a unit with a note", async () => {
-  const { call, core, type, store, refOf } = await setup();
+  const { call, core, type, store, refOf, settle } = await setup();
   const target = await call("node.create", { title: "Linked claim", type: type("claim") });
   await call("node.create", { title: "Writing here", type: type("question") });
   store.cursor = refOf("Writing here");
@@ -206,7 +178,7 @@ test("a link to a unit goes in at the cursor, and only for a unit with a note", 
   assert.match(store.texts.get(refOf("Writing here"))!.body, /\[\[CLM - Linked claim\]\]/);
   const staged = createNode({ space: "here", by: { id: core.identity().did, name: "Me" }, title: "No note", facts: { anchor: { exact: "words" } } } as never);
   store.records.push(staged);
-  await new Promise((done) => setTimeout(done, 20));
+  await settle();
   await assert.rejects(call("node.insertLink", { id: staged.id }), /no note/);
 });
 

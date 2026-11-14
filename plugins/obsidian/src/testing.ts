@@ -19,8 +19,12 @@ import {
 } from "../../../harness/tools.ts";
 import { readExisting } from "./existing.ts";
 import { ROOT, SURFACE_VIEW, type ObsidianHost } from "./host.ts";
+import { capture, extractGraph, findUnit, importCrate, openBoundary, openCanvas, openCanvases, openDialog, openHolons, openPdf, openRuns, openSettings, openSide } from "./actions.ts";
 import type DiscourseGraphsPlugin from "./main.ts";
-import type { SurfaceView } from "./main.ts";
+import { fillMenu } from "./menus.ts";
+import { writeReport } from "./panels.ts";
+import { surfaceFrame, type SurfaceView } from "./views.ts";
+import { firstRun, offer, walkthrough, walkthroughBase } from "./walkthrough.ts";
 
 declare const __CANVAS_BUILD__: string;
 
@@ -30,14 +34,14 @@ const SETTLE_MS = 1700;
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 export const testHooks = (plugin: DiscourseGraphsPlugin) => {
-  const probe = createFrameProbe(() => plugin.surfaceFrame());
-  const contextProbe = createFrameProbe(() => plugin.surfaceFrame("context"));
-  const canvasesProbe = createFrameProbe(() => plugin.surfaceFrame("canvases"));
-  const holonProbe = createFrameProbe(() => plugin.surfaceFrame("holon"));
-  const boundaryProbe = createFrameProbe(() => plugin.surfaceFrame("boundary"));
-  const pdfProbe = createFrameProbe(() => plugin.surfaceFrame("pdf"));
+  const probe = createFrameProbe(() => surfaceFrame(plugin));
+  const contextProbe = createFrameProbe(() => surfaceFrame(plugin, "context"));
+  const canvasesProbe = createFrameProbe(() => surfaceFrame(plugin, "canvases"));
+  const holonProbe = createFrameProbe(() => surfaceFrame(plugin, "holon"));
+  const boundaryProbe = createFrameProbe(() => surfaceFrame(plugin, "boundary"));
+  const pdfProbe = createFrameProbe(() => surfaceFrame(plugin, "pdf"));
   const dialogProbe = createFrameProbe(() => plugin.dialogFrame);
-  const searchProbe = createFrameProbe(() => plugin.surfaceFrame("search"));
+  const searchProbe = createFrameProbe(() => surfaceFrame(plugin, "search"));
   let caller: ReturnType<typeof surfaceCaller> | null = null;
   const probes = new Map<string, ReturnType<typeof createFrameProbe>>();
 
@@ -129,7 +133,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
     });
     const started = Date.now();
     const results = await runSuite({ setup });
-    await plugin.writeReport("report-conformance", {
+    await writeReport(plugin, "report-conformance", {
       host: "obsidian",
       seconds: (Date.now() - started) / 1000,
       passed: results.filter((result) => result.pass).length,
@@ -157,7 +161,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       (item) => item.kind === "anchor" && item.node === report?.claim,
     ) as { ref: string } | undefined;
     const text = anchor ? await host.readText({ ref: anchor.ref }) : null;
-    await plugin.writeReport("report-panel-verify", {
+    await writeReport(plugin, "report-panel-verify", {
       anchor: anchor?.ref ?? null,
       titleInBase: text?.ok ? text.value.title : null,
       revealed: anchor
@@ -184,17 +188,17 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
         }
         return on;
       },
-      walkthrough: () => plugin.walkthrough(),
+      walkthrough: () => walkthrough(plugin),
       offer: async () => {
         await plugin.local.set("walkthrough-offered", null);
         plugin.testMode = false;
-        await plugin.offer();
+        await offer(plugin);
         plugin.testMode = true;
       },
-      removeExamples: () => plugin.walkthroughBase().then(removeWalkthroughExamples),
+      removeExamples: () => walkthroughBase(plugin).then(removeWalkthroughExamples),
       setLocal: (key: string, value: unknown) => plugin.local.set(key, value),
       getLocal: (key: string) => plugin.local.get(key),
-      openCanvases: () => plugin.openCanvases(),
+      openCanvases: () => openCanvases(plugin),
       exportRecords: () => exportRecords(host),
       importRecords: (records: DgRecord[]) => importAndAccept({ host, records }),
       fileOpen: () => plugin.app.workspace.getActiveFile()?.basename ?? null,
@@ -214,7 +218,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       },
       searchBase: (title: string) => plugin.app.vault.getMarkdownFiles().filter((item) => item.basename.includes(title)).map((item) => item.path),
       open: (id?: string) => {
-        if (!id) return plugin.openCanvas();
+        if (!id) return openCanvas(plugin);
         return host.openSurface({ route: { surface: "canvas", id }, placement: "main" });
       },
       // Text opens beside the canvas, so getting back only means closing that pane.
@@ -241,33 +245,33 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       scroll: () => probe.scroll(),
       drawn: () => probe.drawn(),
       style: (selector: string, prop: string) => probe.style(selector, prop),
-      openHolons: (id?: string) => plugin.openHolons(id),
+      openHolons: (id?: string) => openHolons(plugin, id),
       holonText: (selector: string) => holonProbe.text(selector),
       holonCount: (selector: string) => holonProbe.count(selector),
       holonLocate: (selector: string) => holonProbe.locate(selector),
       holonTheme: () => holonProbe.theme(),
-      openBoundary: () => plugin.openBoundary(),
+      openBoundary: () => openBoundary(plugin),
       boundaryText: (selector: string) => boundaryProbe.text(selector),
       boundaryTheme: () => boundaryProbe.theme(),
-      openLibrary: () => plugin.openCanvases(),
+      openLibrary: () => openCanvases(plugin),
       /** Any panel by its surface name: `at("run", "text", selector)`. */
-      at: (surface: Parameters<DiscourseGraphsPlugin["surfaceFrame"]>[0], method: "text" | "count" | "locate" | "value", selector: string) => {
+      at: (surface: Parameters<typeof surfaceFrame>[1], method: "text" | "count" | "locate" | "value", selector: string) => {
         const key = String(surface);
-        if (!probes.has(key)) probes.set(key, surface === ("dialog" as never) ? dialogProbe : createFrameProbe(() => plugin.surfaceFrame(surface)));
+        if (!probes.has(key)) probes.set(key, surface === ("dialog" as never) ? dialogProbe : createFrameProbe(() => surfaceFrame(plugin, surface)));
         return probes.get(key)![method](selector);
       },
-      openRuns: (id?: string) => plugin.openRuns(id),
-      extractGraph: (path: string) => plugin.extractGraph(path),
-      importCrate: (path: string) => plugin.importCrate(path),
-      openSide: (surface: "search" | "context") => plugin.openSide(surface),
-      openSettings: () => plugin.openSettings(),
-      findUnit: (intent?: "link") => plugin.findUnit(intent),
+      openRuns: (id?: string) => openRuns(plugin, id),
+      extractGraph: (path: string) => extractGraph(plugin, path),
+      importCrate: (path: string) => importCrate(plugin, path),
+      openSide: (surface: "search" | "context") => openSide(plugin, surface),
+      openSettings: () => openSettings(plugin),
+      findUnit: (intent?: "link") => findUnit(plugin, intent),
       boundaryCount: (selector: string) => boundaryProbe.count(selector),
       boundaryLocate: (selector: string) => boundaryProbe.locate(selector),
       libraryText: (selector: string) => canvasesProbe.text(selector),
       libraryCount: (selector: string) => canvasesProbe.count(selector),
       libraryLocate: (selector: string) => canvasesProbe.locate(selector),
-      openPdf: (ref?: string) => plugin.openPdf(ref),
+      openPdf: (ref?: string) => openPdf(plugin, ref),
       pdfText: (selector: string) => pdfProbe.text(selector),
       pdfCount: (selector: string) => pdfProbe.count(selector),
       pdfLocate: (selector: string) => pdfProbe.locate(selector),
@@ -312,12 +316,12 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       writeOutside: (record: DgRecord) => driver.writeRecordOutside({ record }),
       visible: (ref: string) => driver.isVisible({ ref }),
       usage: async () => {
-        const core = await plugin.ensureCore();
+        const core = await plugin.wiring.wholeCore();
         await core.flushUsage();
         return (await host.getLocal({ key: "usage" })) as unknown;
       },
       theme: () => (document.body.classList.contains("theme-dark") ? "dark" : "light"),
-      core: () => plugin.ensureCore(),
+      core: () => plugin.wiring.wholeCore(),
       existing: () => readExisting(plugin.app),
       hostCount: (selector: string) => document.querySelectorAll(selector).length,
       hostText: (selector: string) => document.querySelector(selector)?.textContent ?? null,
@@ -336,7 +340,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
         const file = plugin.app.vault.getMarkdownFiles().find((item) => item.basename === title);
         return file ? (/^dg-id:\s*(\S+)/m.exec(await plugin.app.vault.read(file))?.[1] ?? null) : null;
       },
-      runCapture: (mode: "selection" | "page") => plugin.capture(mode),
+      runCapture: (mode: "selection" | "page") => capture(plugin, mode),
       openNote: async (ref: string) => host.reveal({ ref, placement: "main" }),
       writePage: async (title: string, lines: string[]) => {
         const made = await host.createText({ title, body: lines.join("\n\n") });
@@ -377,7 +381,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       showMenu: async (variant: "plain" | "section" | "label" | "full" = "full") => {
         try {
           const menu = new Menu();
-          if (variant === "full") plugin.fillMenu(menu);
+          if (variant === "full") fillMenu(plugin, menu);
           if (variant === "plain") menu.addItem((item) => item.setTitle("Plain").onClick(() => {}));
           if (variant === "section") menu.addItem((item) => item.setTitle("Sectioned").setSection("discourse-graphs").onClick(() => {}));
           if (variant === "label") menu.addItem((item) => item.setTitle("Label").setIsLabel(true));
@@ -410,16 +414,16 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
         const text = await host.readText({ ref });
         return text.ok ? text.value.body : null;
       },
-      openDialog: (surface: "upload" | "welcome") => plugin.openDialog(surface),
-      syncNow: () => plugin.sync?.now(),
+      openDialog: (surface: "upload" | "welcome") => openDialog(plugin, surface),
+      syncNow: () => plugin.wiring.sync()?.now(),
       firstRun: async () => {
         await plugin.local.set("welcome-shown", null);
-        await plugin.firstRun(true);
+        await firstRun(plugin, true);
       },
       fingerprint: async () =>
         fingerprint(await Promise.all(plugin.app.vault.getMarkdownFiles().map(async (file) => `${file.path}\n${await plugin.app.vault.read(file)}`))),
       importExisting: async (dryRun: boolean) =>
-        (await plugin.ensureCore()).importExisting({ existing: await readExisting(plugin.app), dryRun }),
+        (await plugin.wiring.wholeCore()).importExisting({ existing: await readExisting(plugin.app), dryRun }),
       call: async (method: SurfaceMethod, params: unknown) => {
         caller ??= surfaceCaller(await plugin.ensureCore());
         return caller(method, params);
@@ -428,11 +432,11 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   };
 
   const exportExchange = async (): Promise<void> => {
-    await plugin.writeReport("exchange", await exportRecords(plugin.adapter!.host));
+    await writeReport(plugin, "exchange", await exportRecords(plugin.adapter!.host));
   };
 
   const importExchange = async (records: DgRecord[]): Promise<void> => {
-    await plugin.writeReport(
+    await writeReport(plugin, 
       "report-exchange",
       await importAndAccept({ host: plugin.adapter!.host, records }),
     );
@@ -457,7 +461,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
     const foldStart = performance.now();
     foldRecords({ records: all, localSpace: stamp.space });
     const foldMs = performance.now() - foldStart;
-    await plugin.writeReport("report-measure", {
+    await writeReport(plugin, "report-measure", {
       host: "obsidian",
       added: count,
       total: all.length,

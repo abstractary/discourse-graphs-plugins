@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { ComputeServer } from "@dg/contract/services.ts";
 import type { LabView } from "@dg/contract/surface.ts";
 import type { Connection } from "./rpc.ts";
+import { Problem } from "./ui.tsx";
+import { messageOf } from "./words.ts";
 
 /** Joining or starting a lab, used on first run and from the Library. */
 export const LabJoin = ({ connection, onChange }: { connection: Connection; onChange: (view: LabView) => void }) => {
@@ -21,7 +23,7 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
     });
   }, [call]);
 
-  const report = (error: unknown): void => setNotice(error instanceof Error ? error.message : String(error));
+  const report = (error: unknown): void => setNotice(messageOf(error));
   // An invitation is one pasted line with the server, the lab and a code in it. An identifier is a few words.
   const invited = mode === "join" && /^https?:\/\/\S+\/join\/\S+#\S+$/.test(text.trim());
 
@@ -90,7 +92,7 @@ export const LabJoin = ({ connection, onChange }: { connection: Connection; onCh
           ? "With an invitation you are in at once. With only the identifier, your lab's PI sees your request and accepts it."
           : "You become the lab's custodian, and you accept the people who ask to join."}
       </p>
-      {notice ? <p className="problem" role="alert">{notice}</p> : null}
+      <Problem text={notice} />
       <button type="button" className="primary" data-dg="lab-go" disabled={busy || !text.trim()} onClick={() => void go()}>
         {invited ? "Join the lab" : mode === "join" ? "Ask to join" : "Start the lab"}
       </button>

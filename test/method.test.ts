@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCore } from "@dg/core/index.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
-import type { SurfaceEvent, SurfaceMessage, SurfaceMethod, SurfaceMethods, SurfacePort } from "@dg/contract/surface.ts";
+import { makeCore } from "./support.ts";
 
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const PNG2 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -18,37 +16,8 @@ const notebook = ({ png = PNG, source = "plot(df)" }: { png?: string; source?: s
   ],
 });
 
-type Call = <M extends SurfaceMethod>(method: M, params: SurfaceMethods[M]["params"]) => Promise<SurfaceMethods[M]["result"]>;
-
 const setup = async () => {
-  const store = createMemoryStore();
-  const { host } = createMemoryHost({ store });
-  const core = await createCore({ host });
-  const pending = new Map<string, { resolve: (value: never) => void; reject: (error: Error) => void }>();
-  const events: SurfaceEvent[] = [];
-  let listener: (message: SurfaceMessage) => void = () => {};
-  const port: SurfacePort = {
-    send: (message) => {
-      if ("event" in message) events.push(message as SurfaceEvent);
-      if ("id" in message) {
-        const reply = message as { ok?: boolean; result?: unknown; error?: { message: string } };
-        if (reply.ok === false) pending.get(message.id)?.reject(new Error(reply.error?.message));
-        else pending.get(message.id)?.resolve(reply.result as never);
-      }
-    },
-    onMessage: (handler) => {
-      listener = handler;
-      return () => {};
-    },
-  };
-  core.connectSurface({ port });
-  let next = 0;
-  const call: Call = (method, params) =>
-    new Promise((resolve, reject) => {
-      next += 1;
-      pending.set(`m${next}`, { resolve: resolve as never, reject });
-      listener({ id: `m${next}`, method, params } as SurfaceMessage);
-    });
+  const { core, call, events, store, host } = await makeCore();
   const save = async (body: unknown, name = "intensity.ipynb"): Promise<string> => {
     const written = await host.writeAsset({ asset: { name, mime: "application/x-ipynb+json", dataUrl: `data:application/x-ipynb+json;base64,${Buffer.from(JSON.stringify(body)).toString("base64")}` } });
     if (!written.ok) throw new Error("no asset");

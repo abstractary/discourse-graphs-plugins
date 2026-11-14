@@ -34,6 +34,7 @@ import { baseOf, cidOfBytes, ensureProcessTypes, protocolCids, provenanceOf } fr
 import { CRATE_VERSIONS, LICENSE_CHOICES, cratePreview, crateReadme, toRoCrate, type CrateCheck, type CrateEntry, type CrateFile } from "./rocrate.ts";
 import { ZENODO, toZenodo } from "./zenodo.ts";
 import { unzip, zip } from "./zip.ts";
+import { refuse } from "./refuse.ts";
 
 /**
  * Research crates in and out. Going out, a canvas or a set of units becomes
@@ -795,7 +796,7 @@ export const crateFeature = (context: Context, { secrets, checksOf = () => [] }:
     },
     "crate.deposit": async ({ sandbox = false, ...params }): Promise<CrateDeposited> => {
       const place = sandbox ? ZENODO.sandbox : ZENODO.live;
-      if (!context.services) throw new Error(`${place.name} can't be reached from here.`);
+      if (!context.services) throw refuse("unavailable", `${place.name} can't be reached from here.`);
       const token = await secrets?.get(tokenId(sandbox));
       if (!token) throw new Error(`Add a token for ${place.name} first.`);
       const gathered = await gather(params);

@@ -40,7 +40,9 @@ Point `--vault` at an Obsidian vault that has the Discourse Graphs plugin. The a
 - A nested canvas becomes a file node, so Obsidian shows it inside its parent.
 - The mirror is written from the log and never read back, so edit canvases in DG, not in the mirror.
 
-**Its own files.** Its device id and settings are in `discourse-graph/local-app.json`.
+**An agent can read the same vault.** `npm run mcp -- --vault <folder>` starts the MCP server on stdio. It only reads, and only the vault owner's own work until they pass `--widen`. See [docs/mcp.md](../docs/mcp.md).
+
+**Its own files.** Its device id and settings are kept outside the vault, beside its keys in `~/.discourse-graphs/local-app/`, so a tool that syncs the vault doesn't carry them to another computer.
 
 ## Identity
 

@@ -4,10 +4,10 @@ import * as plc from "@did-plc/lib";
 import * as dagCbor from "@ipld/dag-cbor";
 import { CID } from "multiformats/cid";
 import { sha256 } from "multiformats/hashes/sha2";
-import { createCore } from "@dg/core/index.ts";
 import { addCustodian, createIdentity, createLabIdentity, memoryKeys } from "@dg/core/identity.ts";
-import { createMemoryHost, createMemoryStore } from "@dg/contract/memory-host.ts";
+import { createMemoryStore } from "@dg/contract/memory-host.ts";
 import { isUnitId, isTid, splitUnitId, tid } from "@dg/contract/ids.ts";
+import { makeCore } from "./support.ts";
 
 test("TIDs meet the AT Protocol syntax and always rise", () => {
   const ids = Array.from({ length: 2000 }, tid);
@@ -51,8 +51,7 @@ test("joining a lab ranks the PI's key above the member's, in a valid operation"
   assert.equal(second!.prev, cid.toString());
 });
 
-const core = (store = createMemoryStore(), keys = memoryKeys()) =>
-  createCore({ host: createMemoryHost({ store }).host, keys });
+const core = async (store = createMemoryStore(), keys = memoryKeys()) => (await makeCore({ store, keys })).core;
 
 test("every record gets a DID and TID id, with no duplicates", async () => {
   const ready = await core();
@@ -84,12 +83,12 @@ test("a member joins by choice, and the PI can then withdraw their relation", as
   const store = createMemoryStore();
   const pi = await core(store);
   await pi.createLab("Akamatsu Lab");
-  const { host: otherHost } = createMemoryHost({ store });
-  const member = await createCore({
-    host: { ...otherHost, describe: async () => {
+  const { core: member } = await makeCore({
+    store,
+    wrap: (otherHost) => ({ ...otherHost, describe: async () => {
       const info = await otherHost.describe();
       return info.ok ? { ...info, value: { ...info.value, person: { id: "someone-else", name: "Student" } } } : info;
-    } },
+    } }),
     keys: memoryKeys(),
   });
   assert.ok(member.identity().availableLab, "the lab is offered");

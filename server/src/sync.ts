@@ -22,11 +22,23 @@ function parseCount(value: string | null, name: string, fallback: number): numbe
   return Number(value);
 }
 
+function looksLikeRecord(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const record = value as { id?: unknown; kind?: unknown; at?: unknown; by?: { id?: unknown } };
+  const text = (item: unknown): boolean => typeof item === 'string' && item.length > 0 && item.length < 2048;
+  return text(record.id) && text(record.kind) && text(record.at) && typeof record.by === 'object' && record.by !== null && text(record.by.id);
+}
+
 async function pushRecords({ req, params, readJson }: Context, store: Store): Promise<unknown> {
   requireMember(req, store, params.id);
   const { records } = await readJson();
   if (!Array.isArray(records)) {
     throw new ApiError(400, 'bad-records', 'Send "records" as an array.');
+  }
+  // The server passes records along without reading them, but it only keeps what has a record's shape.
+  const odd = records.findIndex((record) => !looksLikeRecord(record));
+  if (odd !== -1) {
+    throw new ApiError(400, 'bad-record', `Item ${odd} isn't a record. Each needs "id", "kind", "at" and "by".`);
   }
   // Read after the await, so two pushes at once cannot overwrite each other.
   const log = readLog(store, params.id);

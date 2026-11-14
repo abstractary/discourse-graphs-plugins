@@ -3,6 +3,7 @@ import type { ProposalGroup, ProposalItem, Candidate, NodeView, SearchCarry, Sea
 import type { Connection } from "../shared/rpc.ts";
 import { Highlighted, Icon, plain } from "../shared/ui.tsx";
 import { DRAG_TYPE, HitBody, MOD, useOpenCanvas, useSearch } from "./parts.tsx";
+import { messageOf } from "../shared/words.ts";
 
 /**
  * Unit search, in a side panel that stays while a person works. Results show
@@ -152,7 +153,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [preview, setPreview] = useState<NodeView | null>(null);
   const [notice, setNotice] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  const report = useCallback((error: unknown) => setNotice(error instanceof Error ? error.message : String(error)), []);
+  const report = useCallback((error: unknown) => setNotice(messageOf(error)), []);
 
   const carry = useCallback((query: SearchCarry) => {
     setText(query.text ?? "");

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComputeServer, ServerOption } from "@dg/contract/services.ts";
 import type { LabView, SavedExtraction } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
-import { Icon } from "../shared/ui.tsx";
-import { sizeOf } from "../shared/words.ts";
+import { Icon, Problem } from "../shared/ui.tsx";
+import { sizeOf, messageOf } from "../shared/words.ts";
 
 const ACCEPTED = ".pdf,.doc,.docx,.md,.txt,.json,.jsonld";
 const isSaved = (name: string): boolean => /\.(json|jsonld)$/i.test(name);
@@ -52,7 +52,7 @@ const AddServer = ({ connection, onDone, onCancel }: { connection: Connection; o
       if (!name) setName(info.name);
       return true;
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
       return false;
     }
   };
@@ -80,7 +80,7 @@ const AddServer = ({ connection, onDone, onCancel }: { connection: Connection; o
         <input data-dg="server-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Lab workstation" />
       </label>
       {result ? <p className="note" data-dg="server-result">{result}</p> : null}
-      {problem ? <p className="problem" role="alert">{problem}</p> : null}
+      <Problem text={problem} />
       <div className="row end">
         <button type="button" onClick={onCancel}>Back</button>
         <button type="button" data-dg="server-test" onClick={() => void test()}>Test</button>
@@ -146,7 +146,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         setModel((options.models.find((item) => item.default) ?? options.models[0])?.id ?? "");
         setSchema((options.schemas.find((item) => item.default) ?? options.schemas[0])?.id ?? "");
       })
-      .catch((error: unknown) => setProblem(error instanceof Error ? error.message : String(error)));
+      .catch((error: unknown) => setProblem(messageOf(error)));
   }, [call, server]);
 
   useEffect(() => {
@@ -176,7 +176,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         setAgain(false);
       }
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
     }
   };
 
@@ -200,7 +200,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       await call("dialog.close", {});
     } catch (error) {
       setStatus(null);
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(messageOf(error));
     }
   };
 
@@ -324,7 +324,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       ) : null}
 
       {useSaved ? null : <p className="note">If this paper has a DOI, its extraction and DOI are kept on Discourse Graphs. The file isn't. With no DOI, nothing is kept there.</p>}
-      {problem ? <p className="problem" role="alert" data-dg="upload-problem">{problem}</p> : null}
+      <Problem text={problem} dg="upload-problem" />
       <div className="row end">
         <button type="button" className="primary" data-dg="upload-go" disabled={!file || (useSaved ? false : !hasBytes || !model || !schema)} onClick={() => void extract()}>Extract graph</button>
       </div>

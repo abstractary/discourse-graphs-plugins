@@ -1,4 +1,6 @@
 import type { CanvasItem } from "@dg/contract/records.ts";
+import type { CanvasItemView, CanvasView } from "@dg/contract/surface.ts";
+import { plain } from "../shared/ui.tsx";
 
 /**
  * What a canvas copies: its items as they are, so a paste on any canvas, in
@@ -34,3 +36,25 @@ export const clipFromTransfer = (data: DataTransfer | null): Clip | null => {
     return null;
   }
 };
+
+/** The picked items, with the links between them, as a canvas clip. */
+export const clipOf = (picked: string[], items: Map<string, CanvasItemView>, canvas: string | undefined): Clip | null => {
+  if (!picked.length || !canvas) return null;
+  const ids = new Set(picked);
+  const entries = [...items.values()].filter(
+    (entry) => ids.has(entry.id) || ("fromNode" in entry.item && ids.has(entry.item.fromNode) && ids.has(entry.item.toNode)),
+  );
+  return { v: 1, canvas, items: entries.map(({ id, z, item }) => ({ id, z, item })) };
+};
+
+/** A clip as lines of text: each unit's title, each note's words. */
+export const textOfClip = (clip: Clip, view: CanvasView | null): string =>
+  clip.items
+    .flatMap(({ item }) => {
+      if ("fromNode" in item) return [];
+      const unit = (item as { dg?: { node?: string } }).dg?.node;
+      const title = unit ? view?.nodes[unit]?.title : undefined;
+      return [plain(title ?? (item.type === "text" ? item.text : item.type === "file" ? item.file : item.type === "link" ? item.url : ""))];
+    })
+    .filter(Boolean)
+    .join("\n");

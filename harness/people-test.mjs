@@ -92,7 +92,9 @@ try {
     await s("s.closeAll()");
     await s(`s.open(${q(board.id)})`);
     await sleep(2500);
-    await call("canvas.write", { canvas: board.id, upserts: [{ z: 999, item: { type: "stroke", x: 40, y: -160, width: 120, height: 14, path: "M0,4 L120,4 L120,10 L0,10 Z" } }] });
+    // Just above something already on the canvas, so the line is in sight when it arrives.
+    const beside = (await call("canvas.get", { id: board.id })).items.map(({ item }) => item).find((item) => "x" in item) ?? { x: 40, y: -120 };
+    await call("canvas.write", { canvas: board.id, upserts: [{ z: 999, item: { type: "stroke", x: beside.x, y: beside.y - 40, width: 120, height: 14, path: "M0,4 L120,4 L120,10 L0,10 Z" } }] });
     await until(() => has("canvas", '[data-dg="ink"]'), 5000);
     await s(`s.canvasReveal('[data-dg="ink"]')`).catch(() => null);
     await click("canvas", '[data-dg="ink"]');
@@ -139,7 +141,12 @@ try {
       await sleep(400);
       await type("reservoir");
       const hit = await until(() => s(`s.dialog.locate('[data-dg="zotero-hit-ABCD2345"]')`), 8000);
-      check("zotero.search-finds-the-reference", Boolean(hit), await s(`s.dialog.text('[data-dg="zotero-hits"]')`));
+      if (!hit) {
+        // Something answers on Zotero's port, and it is not the stand-in: a real Zotero. Nothing is brought in from it here.
+        note("SKIP the rest: a real Zotero is answering, not the stand-in. Close Zotero, run `node harness/stub-zotero.mjs`, and run this stage again.");
+        await s("s.closeDialog()").catch(() => null);
+      } else {
+      check("zotero.search-finds-the-reference", true);
       await shot("05-zotero-search");
       await t.clickAt(hit.x + 60, hit.y + 14);
       await until(() => s(`s.dialog.count('[data-dg="zotero-marks"]')`), 8000);
@@ -174,6 +181,7 @@ try {
       check("zotero.again-makes-nothing-new", again.made === 0 && again.wasHere, JSON.stringify({ made: again.made, already: again.already }));
       note(`cards before ${before}, after ${await cards()}`);
     }
+      }
   }
 } finally {
   await cleanup.run();

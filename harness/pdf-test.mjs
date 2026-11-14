@@ -212,7 +212,9 @@ try {
   const dragged = next.units[loose.units[0]];
   const area = await s(`s.locate(".area")`);
   const frame = await s(`s.locate("html")`);
-  const drop = { x: area.x - frame.x + area.width * 0.82, y: area.y - frame.y + area.height * 0.3 };
+  // Far enough in from the right edge that the whole card fits. A card dropped half out of sight
+  // is brought into view, which moves it from under the pointer, and that is meant.
+  const drop = { x: area.x - frame.x + Math.min(area.width * 0.82, area.width - 220), y: area.y - frame.y + area.height * 0.3 };
   const types = await s(`s.dragTo(${q(`[data-dg="drawer-seg-${loose.title}"] [data-dg="drawer-unit-${dragged.title}"]`)}, ${q(drop)})`);
   const landed = await until(() => s(`s.locate(${q(`[data-dg="card-${dragged.title}"]`)})`));
   const off = landed ? Math.hypot(landed.x + Math.min(landed.width, 240) / 2 - (drop.x + frame.x), landed.y - (drop.y + frame.y)) : Infinity;

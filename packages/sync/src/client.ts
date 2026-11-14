@@ -5,6 +5,7 @@ import type { LineOf, PullRecordsResponse, PushRecordsRequest, RequestOf, Respon
 import type { DgRecord } from "@dg/contract/records.ts";
 import { createScholarly } from "./scholarly.ts";
 import { createZenodo } from "./zenodo.ts";
+import { createAtRepo } from "./atrepo.ts";
 import { createZotero } from "./zotero.ts";
 
 const SERVERS_KEY = "compute-servers";
@@ -232,5 +233,6 @@ export const createServices = ({
     ...createScholarly({ fetch: outside ?? send }),
     zotero: createZotero({ fetch: outside ?? send }),
     deposit: createZenodo({ fetch: outside ?? send }),
+    repo: createAtRepo({ fetch: outside ?? send }),
   };
 };

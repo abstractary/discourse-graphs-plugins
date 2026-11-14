@@ -2,6 +2,21 @@
 
 Each entry has up to two lists. **For people using it** is what changed in what you see and do. **Under the hood** is internals, tests and tooling.
 
+## Publishing to your own AT Protocol account (14 November 2026)
+
+**For people using it**
+
+- **New: Publish, in the canvas menu.** Connect an AT Protocol account (a Bluesky one works) with an app password, see exactly which of your units and links would be sent, and press Publish twice. They become public records in your own repository. Only what you wrote goes; a labmate's unit on the same canvas is left out, and the dialog says so.
+- **Each record keeps its unit's id** at a new public address, and a link between two public units names them where they now are.
+- **Publishing again sends only what changed. Take back removes a record** from your repository; copies others made are theirs.
+- **Records go out under stand-in names** (`org.discoursegraphs.sandbox.*`) until the public names are agreed, so nothing published now claims to be final.
+- **The app password is used once and not kept.** [What leaves the device](docs/what-leaves-the-device.md) has the new row.
+
+**Under the hood**
+
+- **Proved against a real network on this machine:** `harness/publish-proof.ts` and `harness/publish-test.mjs` run a PLC directory and a PDS from `@atproto/dev-env`, with nothing stubbed. The record ids the repository computes match the ones computed here, byte for byte.
+- **Not done yet from the AT Protocol design:** a signing key of DG's own in the DID document, a recovery key, one encoding for signatures, and splitting records two people write. Publishing does not depend on them, because the account's server signs what it is sent.
+
 ## Failures a person can act on, and one scheme for calls (14 November 2026)
 
 **For people using it**

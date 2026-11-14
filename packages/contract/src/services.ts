@@ -166,6 +166,26 @@ export type Services = {
     open: (args: { server: string; token: string; metadata: Record<string, unknown> }) => Promise<{ id: string; bucket: string; page: string; doi?: string }>;
     upload: (args: { bucket: string; token: string; name: string; bytes: Uint8Array }) => Promise<{ checksum?: string; size?: number }>;
   };
+  /**
+   * A person's public repository on the AT Protocol network. Only ever called on a person's own click.
+   * `host` is the server that keeps the repository. A password is used once, to open a session, and is
+   * never kept: what is kept is the session's refresh token.
+   */
+  repo: {
+    /** Where an account's repository is kept, from its handle. */
+    find: (args: { handle: string }) => Promise<{ did: string; host: string }>;
+    open: (args: { host: string; identifier: string; password: string }) => Promise<RepoSession>;
+    renew: (args: { host: string; refresh: string }) => Promise<RepoSession>;
+    /** All of `writes` in one commit, or none of them. */
+    write: (args: { host: string; access: string; repo: string; writes: RepoWrite[] }) => Promise<{ uri: string; cid: string }[]>;
+    /** One collection of anyone's repository, as the public reads it. No session is needed. */
+    list: (args: { host: string; repo: string; collection: string }) => Promise<{ uri: string; cid: string; value: Record<string, unknown> }[]>;
+  };
   /** The notifications a server's inbox holds, newest first. `about` narrows to one work or unit by its IRI. */
   notifications: (args: { server: string; about?: string }) => Promise<NotificationSummary[]>;
 };
+
+export type RepoSession = { did: string; handle: string; access: string; refresh: string };
+export type RepoWrite =
+  | { action: "create" | "update"; collection: string; rkey: string; value: Record<string, unknown> }
+  | { action: "delete"; collection: string; rkey: string };

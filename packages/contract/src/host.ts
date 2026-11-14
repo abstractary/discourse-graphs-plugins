@@ -117,6 +117,8 @@ export type SurfaceName =
   | "upload"
   /** Bringing a source and its highlights in from Zotero. `id` is the canvas to put them on. */
   | "zotero"
+  /** Publishing a canvas to the person's public repository. `id` is the canvas. */
+  | "publish"
   | "welcome"
   | "node"
   | "view"

@@ -3,12 +3,12 @@ import type { IncomingMessage } from 'node:http';
 import { ApiError } from './http.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
-import type { Person } from './types.ts';
+import type { LabMember, LabRole, Person, TokenKind } from './wire.gen.ts';
 
-export type TokenKind = 'personal' | 'team';
-export type Role = 'admin' | 'member';
+export type { TokenKind };
+export type Role = LabRole;
 
-export type Member = Person & { role: Role; tokenKind: TokenKind };
+export type Member = LabMember;
 
 // The role sits on the token, not the person. A join request can name any did, so
 // a request that copies the admin's did must not inherit the admin's powers.

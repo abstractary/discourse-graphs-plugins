@@ -4,7 +4,6 @@ import { mergeIdentifiers, parseIdentifier, sameIdentifier } from "@dg/contract/
 import type {
   Identifier,
   Notification,
-  NotificationSummary,
   Signposts,
   WorkAuthor,
   WorkMetadata,
@@ -12,6 +11,7 @@ import type {
   WorkUpdate,
 } from "@dg/contract/scholarly.ts";
 import type { Services } from "@dg/contract/services.ts";
+import type { NotificationsResponse } from "@dg/contract/wire.ts";
 
 /**
  * Reads one published work from the open registries and its landing page, and
@@ -841,7 +841,7 @@ export const createScholarly = ({
       const failed = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
       throw new Error(failed?.error?.message ?? `The server answered ${response.status}.`);
     }
-    return list(rec(await response.json()).notifications) as NotificationSummary[];
+    return list(rec(await response.json()).notifications) as NotificationsResponse<Notification>["notifications"];
   };
 
   return { lookupWork, signposts, sendNotification, notifications };

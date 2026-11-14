@@ -9,7 +9,10 @@
  * A path template names its parts with `:name`. A last part written `*name` takes the rest of
  * the path, slashes included, because a DOI has a slash in it. Query strings are not part of a
  * template: the caller adds them.
+ *
+ * What each route takes and answers with is in `wire.ts`, under the same names.
  */
+import type { Wire } from "./wire.ts";
 
 export type RouteMethod = "GET" | "POST" | "DELETE" | "OPTIONS";
 
@@ -79,6 +82,11 @@ export const ROUTES = {
 } as const satisfies Record<string, RouteEntry>;
 
 export type RouteName = keyof typeof ROUTES;
+
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+type Holds<Check extends true> = Check;
+/** Does not compile when a route has no line in `Wire`, or `Wire` has a line that is no route. */
+export type EveryRouteHasShapes = Holds<Same<RouteName, keyof Wire>>;
 
 /** The names a path template asks for: `"id" | "requestId"` for `/v1/labs/:id/join/:requestId`. */
 type ParamsOf<Path extends string> = Path extends `${string}:${infer Name}/${infer Rest}`

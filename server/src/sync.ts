@@ -1,9 +1,10 @@
 import { requireMember } from './auth.ts';
 import { ApiError } from './http.ts';
-import type { Context, Route } from './http.ts';
+import type { Context, Route, Sent } from './http.ts';
 import { at } from './routes.ts';
 import { canonical, hashOf } from './store.ts';
 import type { Store } from './store.ts';
+import type { PullRecordsResponse, PushRecordsRequest, PushRecordsResponse } from './wire.gen.ts';
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 1000;
@@ -30,9 +31,9 @@ function looksLikeRecord(value: unknown): boolean {
   return text(record.id) && text(record.kind) && text(record.at) && typeof record.by === 'object' && record.by !== null && text(record.by.id);
 }
 
-async function pushRecords({ req, params, readJson }: Context, store: Store): Promise<unknown> {
+async function pushRecords({ req, params, readJson }: Context, store: Store): Promise<PushRecordsResponse> {
   requireMember(req, store, params.id);
-  const { records } = await readJson();
+  const { records }: Sent<PushRecordsRequest> = await readJson();
   if (!Array.isArray(records)) {
     throw new ApiError(400, 'bad-records', 'Send "records" as an array.');
   }
@@ -58,7 +59,7 @@ async function pushRecords({ req, params, readJson }: Context, store: Store): Pr
   return { stored, now: new Date().toISOString() };
 }
 
-function pullRecords({ req, params, query }: Context, store: Store): unknown {
+function pullRecords({ req, params, query }: Context, store: Store): PullRecordsResponse<unknown> {
   requireMember(req, store, params.id);
   const after = parseCount(query.get('after'), 'after', 0);
   const limit = Math.min(parseCount(query.get('limit'), 'limit', DEFAULT_LIMIT), MAX_LIMIT);

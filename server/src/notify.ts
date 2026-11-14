@@ -6,6 +6,7 @@ import type { Context, Route } from './http.ts';
 import { ROUTES, at } from './routes.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
+import type { NotificationRow, RootResponse } from './wire.gen.ts';
 
 export const INBOX_REL = 'http://www.w3.org/ns/ldp#inbox';
 
@@ -23,16 +24,7 @@ type StoredNotification = { key: string; receivedAt: string; notification: Recor
 
 type NotifyLog = { notifications: StoredNotification[] };
 
-export type NotificationSummary = {
-  id: string;
-  types: string[];
-  about: string[];
-  context?: string;
-  from: string;
-  actor?: string;
-  receivedAt: string;
-  notification: Record<string, unknown>;
-};
+export type NotificationSummary = NotificationRow;
 
 export function inboxUrl(base: string): string {
   return base + ROUTES.notifications.path;
@@ -249,7 +241,7 @@ function inboxOptions({ res }: Context): void {
 }
 
 // The front door only says where things are, and where the inbox is.
-function root({ req, res }: Context, config: Config): unknown {
+function root({ req, res }: Context, config: Config): RootResponse {
   const base = publicBase(req, config.publicUrl);
   res.setHeader('Link', inboxLink(base));
   return { name: 'Discourse Graphs reference server', info: `${base}${ROUTES.info.path}`, inbox: inboxUrl(base) };

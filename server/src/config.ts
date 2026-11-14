@@ -1,9 +1,10 @@
 import { join } from 'node:path';
+import type { HostKind } from './wire.gen.ts';
 
 const SERVER_ROOT = join(import.meta.dirname, '..');
 const KINDS = ['local', 'managed', 'custom'];
 
-export type ServerKind = 'local' | 'managed' | 'custom';
+export type ServerKind = HostKind;
 
 export type Config = {
   port: number;

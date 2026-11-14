@@ -200,7 +200,7 @@ Types, boundaries, the dependency matrix, both unit suites, the simulation and t
 The audit lists everything. The largest:
 
 - `canvas/App.tsx` is down from 2,300 lines to 1,150. What is left in it places, pastes and adds cards and handles keys.
-- A unit is now reached through `unit.*` and the overview through `overview.*`. Other namespaces still mix `get`, `view` and `open` for a read, and one id parameter has several names. "whole" survives in identifiers and one record field.
+- Calls follow one scheme: a namespace to a noun, `get` for one and `list` for many, `show` for what changes the screen, `accept` and `reject` for a decision, and `id` for the subject of a call. The old word for the overview is gone from the code. A canvas tied to a question or claim names it in `whole`; a log written before 14 November 2026 says `holon`, and is read under the new name.
 - Routes are declared once, in `contract/routes.ts`. The shapes that cross are still declared on both sides, and three of twenty disagree: the server's info, an invitation, and a unit sent with a question.
 - In the Obsidian plugin only the test hooks take the whole core, by a name that says so. Everything else, the walkthrough included, takes the contract's narrower seam.
 - The server has no rate limits. It now refuses anything without a record's shape.

@@ -1,5 +1,24 @@
 import type { AiCall } from "./llm.ts";
 import type { DgRecord } from "./records.ts";
+import type {
+  AiAnswer,
+  AiUnit,
+  ExtractionGraph,
+  HostKind,
+  JoinRequest,
+  LabMember,
+  LabName,
+  LabPaper,
+  LabRole,
+  ListedInvite,
+  NewInvite,
+  Person,
+  PollJoinResponse,
+  ServerInfo,
+  ServerOption,
+  SharedPaper,
+  TokenKind,
+} from "./wire.ts";
 import type { Identifier, LibraryAnnotation, LibraryFile, LibraryItem, LibraryStatus, Notification, NotificationSummary, Signposts, WorkMetadata } from "./scholarly.ts";
 
 /**
@@ -7,84 +26,43 @@ import type { Identifier, LibraryAnnotation, LibraryFile, LibraryItem, LibrarySt
  * depends on this shape and never on the network, so it runs the same with a
  * real server, a test double, or none at all.
  */
-/** `lab` is a server the lab offers its members, inherited from the lab's settings. */
-export type ServerKind = "local" | "managed" | "custom" | "lab";
+/** `lab` is a server the lab offers its members, inherited from the lab's settings. A server never says it of itself. */
+export type ServerKind = HostKind | "lab";
 
 export type ComputeServer = { id: string; name: string; url: string; kind: ServerKind };
 
-export type ServerInfo = {
-  name: string;
-  kind: ServerKind;
-  version: string;
-  demo?: boolean;
-  ai?: { mode: "model" | "search-only"; model?: string };
-};
-
-export type ServerOption = { id: string; label: string; description?: string; default?: boolean };
-
-export type ExtractedNode = {
-  id: string;
-  type: string;
-  text: string;
-  description?: string;
-  doi?: string;
-  url?: string;
-  anchor?: string;
-};
-
-export type ExtractedEdge = { relation: string; subject: string; object: string; anchor?: string };
-
-export type ExtractionGraph = {
-  source?: string;
-  models?: string[];
-  paper?: { title?: string; doi?: string; url?: string; license?: string; authors?: { name: string }[] };
-  nodes: ExtractedNode[];
-  edges: ExtractedEdge[];
-};
-
-export type Person = { did: string; name: string };
+/**
+ * The shapes a server sends and takes are written once, in `wire.ts`, next to the route table.
+ * They are handed on from here under the names the rest of the code already uses.
+ */
+export type {
+  AiAnswer,
+  AiUnit,
+  ExtractedEdge,
+  ExtractedNode,
+  ExtractionGraph,
+  HostKind,
+  JoinRequest,
+  LabInvite,
+  LabMember,
+  LabPaper,
+  ListedInvite,
+  NewInvite,
+  Person,
+  ServerInfo,
+  ServerOption,
+  SharedPaper,
+} from "./wire.ts";
 
 export type LabLink = {
   server: string;
   id: string;
   name: string;
   token?: string;
-  tokenKind?: "personal" | "team";
-  role?: "admin" | "member";
+  tokenKind?: TokenKind;
+  role?: LabRole;
   /** Waiting on the lab's decision. */
   pending?: { requestId: string; secret: string };
-};
-
-export type JoinRequest = { id: string; person: Person; at: string };
-
-export type LabMember = Person & { role: "admin" | "member"; tokenKind?: string };
-
-/** A standing invitation. Whoever holds its code joins at once. The code is shown only when it is made. */
-export type LabInvite = { id: string; createdAt?: string; expiresAt: string; usesLeft: number; code?: string };
-
-export type LabPaper = {
-  id: string;
-  title: string;
-  doi?: string;
-  filename: string;
-  model: string;
-  schema: string;
-  server: string;
-  canvas: string;
-  uploadedBy: Person;
-  extractedBy: Person;
-  uploadedAt: string;
-  hasFile: boolean;
-  breadcrumbs: (Person & { at: string })[];
-};
-
-export type AiUnit = { id: string; type: string; title: string; description?: string; anchor?: string; paper?: string };
-
-export type AiAnswer = {
-  answer: string;
-  citations: string[];
-  mode: "model" | "search-only";
-  model?: string;
 };
 
 export type Services = {
@@ -110,19 +88,21 @@ export type Services = {
   link: () => Promise<LabLink | null>;
   saveLink: (link: LabLink | null) => Promise<void>;
   createLab: (args: { server: string; name: string; person: Person; labDid: string }) => Promise<LabLink>;
-  findLab: (args: { server: string; id: string }) => Promise<{ id: string; name: string }>;
+  findLab: (args: { server: string; id: string }) => Promise<LabName>;
   requestToJoin: (args: { server: string; id: string; person: Person }) => Promise<LabLink>;
   /** Asks whether a request was decided. Returns the updated link. */
-  checkRequest: (link: LabLink) => Promise<{ link: LabLink | null; state: "pending" | "accepted" | "declined" }>;
+  checkRequest: (link: LabLink) => Promise<{ link: LabLink | null; state: PollJoinResponse["state"] }>;
   requests: (link: LabLink) => Promise<JoinRequest[]>;
-  decide: (link: LabLink, args: { requestId: string; decision: "accept" | "decline"; tokenKind?: "personal" | "team" }) => Promise<void>;
+  decide: (link: LabLink, args: { requestId: string; decision: "accept" | "decline"; tokenKind?: TokenKind }) => Promise<void>;
   members: (link: LabLink) => Promise<LabMember[]>;
 
   pushRecords: (link: LabLink, records: DgRecord[]) => Promise<void>;
   /** `now` is the server's own time, so a device can tell when its clock is off. */
   pullRecords: (link: LabLink, after?: string) => Promise<{ records: DgRecord[]; next?: string; done: boolean; now?: string }>;
-  invite: (link: LabLink, args: { uses?: number; days?: number }) => Promise<LabInvite>;
-  invites: (link: LabLink) => Promise<LabInvite[]>;
+  /** The new invitation, with its code: the only time the code is shown. */
+  invite: (link: LabLink, args: { uses?: number; days?: number }) => Promise<NewInvite>;
+  /** The invitations that still work, each with when it was made and who made it, and without its code. */
+  invites: (link: LabLink) => Promise<ListedInvite[]>;
   revokeInvite: (link: LabLink, id: string) => Promise<void>;
   acceptInvite: (args: { server: string; id: string; code: string; person: Person }) => Promise<LabLink>;
   removeMember: (link: LabLink, did: string) => Promise<void>;
@@ -133,7 +113,7 @@ export type Services = {
 
   uploadPaper: (
     link: LabLink,
-    args: { paper: Omit<LabPaper, "uploadedAt" | "hasFile" | "breadcrumbs">; graph: ExtractionGraph; fileBase64?: string; mediaType?: string },
+    args: { paper: SharedPaper; graph: ExtractionGraph; fileBase64?: string; mediaType?: string },
   ) => Promise<void>;
   labPapers: (link: LabLink) => Promise<LabPaper[]>;
   paperFile: (link: LabLink, paper: string) => Promise<{ name: string; mediaType: string; dataBase64: string }>;

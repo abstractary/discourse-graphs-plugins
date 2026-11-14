@@ -2,10 +2,29 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { hashesMatch, newSecret, openToken, readLab, requireAdmin, requireMember, sealToken, writeLab } from './auth.ts';
 import type { Invite, JoinRequest, Lab, TokenKind } from './auth.ts';
 import { ApiError, requirePerson, requireString } from './http.ts';
-import type { Context, Route } from './http.ts';
+import type { Context, Route, Sent } from './http.ts';
 import { at } from './routes.ts';
 import { hashOf } from './store.ts';
 import type { Store } from './store.ts';
+import type {
+  AcceptInviteRequest,
+  AcceptInviteResponse,
+  AskToJoinRequest,
+  AskToJoinResponse,
+  CreateInviteRequest,
+  CreateInviteResponse,
+  CreateLabRequest,
+  CreateLabResponse,
+  DecideRequest,
+  DecideResponse,
+  LabName,
+  ListInvitesResponse,
+  MembersResponse,
+  PollJoinResponse,
+  RemoveMemberResponse,
+  RequestsResponse,
+  RevokeInviteResponse,
+} from './wire.gen.ts';
 
 const SUFFIX_LETTERS = 'abcdefghijklmnopqrstuvwxyz0123456789';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -77,8 +96,8 @@ function badInvite(): ApiError {
   return new ApiError(403, 'bad-invite', 'This invite does not work. Ask the lab admin for a new invite.');
 }
 
-async function createLab({ readJson }: Context, store: Store): Promise<unknown> {
-  const body = await readJson();
+async function createLab({ readJson }: Context, store: Store): Promise<CreateLabResponse> {
+  const body: Sent<CreateLabRequest> = await readJson();
   const name = requireString(body.name, 'name');
   const person = requirePerson(body.person);
   const token = newSecret();
@@ -95,9 +114,10 @@ async function createLab({ readJson }: Context, store: Store): Promise<unknown> 
   return { lab: { id, name }, token };
 }
 
-async function askToJoin({ params, readJson }: Context, store: Store): Promise<unknown> {
+async function askToJoin({ params, readJson }: Context, store: Store): Promise<AskToJoinResponse> {
   labOr404(store, params.id);
-  const person = requirePerson((await readJson()).person);
+  const body: Sent<AskToJoinRequest> = await readJson();
+  const person = requirePerson(body.person);
   const lab = labOr404(store, params.id);
   const requestId = randomBytes(9).toString('base64url');
   const secret = newSecret();
@@ -115,7 +135,7 @@ async function askToJoin({ params, readJson }: Context, store: Store): Promise<u
   return { requestId, secret };
 }
 
-function pollJoin({ params, query }: Context, store: Store): unknown {
+function pollJoin({ params, query }: Context, store: Store): PollJoinResponse {
   const lab = labOr404(store, params.id);
   const request = requestOr404(lab, params.requestId);
   const secret = query.get('secret');
@@ -133,9 +153,9 @@ function pollJoin({ params, query }: Context, store: Store): unknown {
   };
 }
 
-async function decide({ req, params, readJson }: Context, store: Store): Promise<unknown> {
+async function decide({ req, params, readJson }: Context, store: Store): Promise<DecideResponse> {
   requireAdmin(req, store, params.id);
-  const body = await readJson();
+  const body: Sent<DecideRequest> = await readJson();
   if (body.decision !== 'accept' && body.decision !== 'decline') {
     throw new ApiError(400, 'bad-decision', 'Send "decision" as "accept" or "decline".');
   }
@@ -149,12 +169,12 @@ async function decide({ req, params, readJson }: Context, store: Store): Promise
   if (body.decision === 'accept') accept(lab, request, kind);
   else decline(request);
   writeLab(store, lab);
-  return { id: request.id, state: request.state, tokenKind: request.tokenKind };
+  return { id: request.id, state: body.decision === 'accept' ? 'accepted' : 'declined', tokenKind: request.tokenKind };
 }
 
-async function createInvite({ req, params, readJson }: Context, store: Store): Promise<unknown> {
+async function createInvite({ req, params, readJson }: Context, store: Store): Promise<CreateInviteResponse> {
   requireAdmin(req, store, params.id);
-  const body = await readJson();
+  const body: Sent<CreateInviteRequest> = await readJson();
   const uses = parseWhole(body.uses, 'uses', DEFAULT_INVITE_USES, MAX_INVITE_USES);
   const days = parseWhole(body.days, 'days', DEFAULT_INVITE_DAYS, MAX_INVITE_DAYS);
   const tokenKind = parseTokenKind(body.tokenKind);
@@ -176,13 +196,13 @@ async function createInvite({ req, params, readJson }: Context, store: Store): P
   return { invite: { id: invite.id, code, expiresAt: invite.expiresAt, usesLeft: invite.usesLeft } };
 }
 
-function listInvites({ req, params }: Context, store: Store): unknown {
+function listInvites({ req, params }: Context, store: Store): ListInvitesResponse {
   const { lab } = requireAdmin(req, store, params.id);
   const invites = liveInvites(lab).map(({ id, createdAt, expiresAt, usesLeft, by }) => ({ id, createdAt, expiresAt, usesLeft, by }));
   return { invites };
 }
 
-function deleteInvite({ req, params }: Context, store: Store): unknown {
+function deleteInvite({ req, params }: Context, store: Store): RevokeInviteResponse {
   const { lab } = requireAdmin(req, store, params.id);
   const invites = lab.invites ?? [];
   if (!invites.some((invite) => invite.id === params.inviteId)) {
@@ -193,9 +213,9 @@ function deleteInvite({ req, params }: Context, store: Store): unknown {
   return { id: params.inviteId };
 }
 
-async function acceptInvite({ params, readJson }: Context, store: Store): Promise<unknown> {
+async function acceptInvite({ params, readJson }: Context, store: Store): Promise<AcceptInviteResponse> {
   labOr404(store, params.id);
-  const body = await readJson();
+  const body: Sent<AcceptInviteRequest> = await readJson();
   const codeHash = hashOf(requireString(body.code, 'code'));
   const person = requirePerson(body.person);
   // Read after the await, so two people using the last use at once cannot both get in.
@@ -213,7 +233,7 @@ async function acceptInvite({ params, readJson }: Context, store: Store): Promis
   return { lab: { id: lab.id, name: lab.name }, token, tokenKind: invite.tokenKind, role: 'member' };
 }
 
-function removeMember({ req, params }: Context, store: Store): unknown {
+function removeMember({ req, params }: Context, store: Store): RemoveMemberResponse {
   const { lab, token } = requireAdmin(req, store, params.id);
   const { did } = params;
   if (did === token.did) {
@@ -240,7 +260,7 @@ export function labRoutes(store: Store): Route[] {
     { ...at('createLab'), handler: (context) => createLab(context, store) },
     {
       ...at('findLab'),
-      handler: ({ params }) => {
+      handler: ({ params }): LabName => {
         const { id, name } = labOr404(store, params.id);
         return { id, name };
       },
@@ -249,11 +269,11 @@ export function labRoutes(store: Store): Route[] {
     { ...at('pollJoin'), handler: (context) => pollJoin(context, store) },
     {
       ...at('members'),
-      handler: ({ req, params }) => ({ members: requireMember(req, store, params.id).lab.members }),
+      handler: ({ req, params }): MembersResponse => ({ members: requireMember(req, store, params.id).lab.members }),
     },
     {
       ...at('requests'),
-      handler: ({ req, params }) => {
+      handler: ({ req, params }): RequestsResponse => {
         const { lab } = requireAdmin(req, store, params.id);
         const pending = lab.requests.filter((request) => request.state === 'pending');
         return { requests: pending.map(({ id, person, at }) => ({ id, person, at })) };

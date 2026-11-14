@@ -12,8 +12,8 @@ const setup = () => makeCore({ watchSurfaces: true, services: { extract: async (
 
 test("a person sees all of their own work, told as a history", async () => {
   const { call } = await setup();
-  const claim = await call("node.create", { title: "Reservoirs need memory" } as never);
-  await call("node.rename", { id: claim.id, title: "Reservoirs need fading memory" });
+  const claim = await call("unit.create", { title: "Reservoirs need memory" } as never);
+  await call("unit.rename", { id: claim.id, title: "Reservoirs need fading memory" });
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
 
   const profile = await call("profile.view", {});
@@ -41,7 +41,7 @@ test("a person sees all of their own work, told as a history", async () => {
 
 test("what everyone sees is counts alone", async () => {
   const { call } = await setup();
-  await call("node.create", { title: "A secret hypothesis about spectral radius" } as never);
+  await call("unit.create", { title: "A secret hypothesis about spectral radius" } as never);
   const profile = await call("profile.view", {});
   const said = JSON.stringify(profile.public);
   assert.equal(profile.public.written, 1);

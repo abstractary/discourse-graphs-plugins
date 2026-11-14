@@ -62,7 +62,7 @@ test("papers are tied by links people drew, in the scope where they drew them", 
   const [claim] = await unitsOn(call, lupus.canvas, "claim");
   const evidence = await unitsOn(call, sle.canvas, "evidence");
   const mine = await call("canvas.create", { title: "Synthesis" });
-  await call("units.put", { canvas: mine.id, nodes: [claim!.id, evidence[0]!.id, evidence[1]!.id] });
+  await call("unit.put", { canvas: mine.id, nodes: [claim!.id, evidence[0]!.id, evidence[1]!.id] });
   const options = await call("relation.options", { source: evidence[0]!.id, target: claim!.id });
   const supports = options.find((option) => option.label === "Supports" && !option.flipped)!, opposes = options.find((option) => option.label === "Opposes" && !option.flipped)!;
   assert.ok(supports && opposes, `evidence can support and oppose a claim: ${options.map(({ label }) => label).join(", ")}`);

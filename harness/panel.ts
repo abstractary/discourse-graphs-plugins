@@ -112,8 +112,8 @@ const run = async (): Promise<void> => {
   let claim: NodeSummary | undefined;
   let evidence: NodeSummary | undefined;
   await check("panel.create-nodes", async () => {
-    claim = await call("node.create", { title: `Panel claim ${stamp}`, type: typeOf("claim").id });
-    evidence = await call("node.create", { title: `Panel evidence ${stamp}`, type: typeOf("evidence").id });
+    claim = await call("unit.create", { title: `Panel claim ${stamp}`, type: typeOf("claim").id });
+    evidence = await call("unit.create", { title: `Panel evidence ${stamp}`, type: typeOf("evidence").id });
     return "created in the base through the port";
   });
 
@@ -157,16 +157,16 @@ const run = async (): Promise<void> => {
   });
 
   await check("panel.view-reads-the-base", async () => {
-    const view = await call("node.view", { id: claim!.id });
+    const view = await call("unit.get", { id: claim!.id });
     if (view.body === null) throw new Error("no text came back from the base");
     if (view.context.length !== 1) throw new Error("context missing the relation");
     return `state ${view.context[0]!.state}`;
   });
 
   await check("panel.no-host-refs-reach-the-surface", async () => {
-    const seen = JSON.stringify(await call("node.view", { id: claim!.id }));
+    const seen = JSON.stringify(await call("unit.get", { id: claim!.id }));
     if (seen.includes('"ref"') || seen.includes('"anchor"')) throw new Error("a host ref leaked");
-    return "none in node.view";
+    return "none in unit.get";
   });
 
   await check("panel.reveal-in-base", async () => {
@@ -176,7 +176,7 @@ const run = async (): Promise<void> => {
 
   const started = performance.now();
   const rounds = 200;
-  for (let i = 0; i < rounds; i += 1) await call("node.query", { limit: 5 });
+  for (let i = 0; i < rounds; i += 1) await call("unit.list", { limit: 5 });
   const latencyMs = (performance.now() - started) / rounds;
 
   document.body.textContent = "";

@@ -176,7 +176,7 @@ try {
   await clickPanel('[data-dg="relate-search"]');
   await type(unrelated.title.slice(0, 24));
   cleanup("the relation made in the panel", async () => {
-    const made = (await call("node.view", { id: claim.id })).context.find((entry) => entry.other.id === unrelated.id && entry.state === "active");
+    const made = (await call("unit.get", { id: claim.id })).context.find((entry) => entry.other.id === unrelated.id && entry.state === "active");
     if (made) await call("relation.withdraw", { id: made.relation.id });
   });
   await sleep(500);

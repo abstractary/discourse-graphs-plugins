@@ -54,7 +54,7 @@ test("where the base wants it, every unit read from a paper gets a note, and its
   const titles = [...store.texts.values()].map((text) => text.title);
   assert.equal(new Set(titles).size, titles.length);
   const before = store.texts.size;
-  await call("node.create", { title: "One more" } as never);
+  await call("unit.create", { title: "One more" } as never);
   await settle();
   assert.equal(store.texts.size, before + 1, "nothing is made twice");
 });

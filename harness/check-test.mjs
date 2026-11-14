@@ -18,13 +18,13 @@ try {
   await s("s.test(true)");
   // A run from before the cleanups were kept in a list may have left these.
   for (const canvas of (await call("canvas.list")).filter((item) => /^Sign-off \d{5}$/.test(item.title))) await call("canvas.remove", { id: canvas.id }).catch(() => undefined);
-  for (const unit of await call("node.query", { text: "Blot of knockout and wild type", limit: 50 })) await call("node.remove", { id: unit.id }).catch(() => undefined);
+  for (const unit of await call("unit.list", { text: "Blot of knockout and wild type", limit: 50 })) await call("unit.remove", { id: unit.id }).catch(() => undefined);
 
   const grammar = await call("grammar.get");
   const runType = grammar.nodeTypes.find((item) => item.base === "run");
   const board = await makeCanvas(`Sign-off ${RUN}`);
   const unit = await makeUnit({ title: TITLE, type: runType.id });
-  await call("units.export", { nodes: [unit.id], target: { kind: "canvas", id: board.id } });
+  await call("unit.export", { nodes: [unit.id], target: { kind: "canvas", id: board.id } });
   await s("s.closeAll()");
   await s(`s.open(${q(board.id)})`);
   await until(async () => ((await at("canvas", "count", ".react-flow__node")) ?? 0) === 1, 8000);
@@ -68,7 +68,7 @@ try {
   }
 
   // ---------------------------------------------------------------- A mark holds for the words it was made on
-  await call("node.rename", { id: unit.id, title: `${TITLE}, repeated` });
+  await call("unit.rename", { id: unit.id, title: `${TITLE}, repeated` });
   const stale = await until(() => has("context", '[data-dg="ctx-check-stale"]'), 10000);
   check("context.says-the-unit-changed-since", stale, await at("context", "text", '[data-dg="ctx-checks"]'));
   check("card.shows-it-changed", await until(() => has("canvas", `[data-dg="check-${TITLE}, repeated"][data-state="changed"]`), 8000));

@@ -43,8 +43,8 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### Units, relations and grammar ([#7](https://github.com/abstractary/discourse-graphs-plugins/issues/7))
 
-- [#21](https://github.com/abstractary/discourse-graphs-plugins/issues/21) One name for one idea in the calls a panel makes · refactor · Refactor
-- [#27](https://github.com/abstractary/discourse-graphs-plugins/issues/27) Retire the old word for Overview and Boundary from the code · refactor · Refactor
+- [#21](https://github.com/abstractary/discourse-graphs-plugins/issues/21) One name for one idea in the calls a panel makes · refactor · Refactor · partly done: units and the overview renamed; verbs and id names remain
+- [#27](https://github.com/abstractary/discourse-graphs-plugins/issues/27) Retire the old word for Overview and Boundary from the code · refactor · Refactor · partly done: the calls and the event; identifiers and a record field remain
 - [#28](https://github.com/abstractary/discourse-graphs-plugins/issues/28) Failures that keep their codes, and none that vanish · refactor · Refactor · partly done: panels do not act on the codes yet
 
 ### Reading and papers ([#8](https://github.com/abstractary/discourse-graphs-plugins/issues/8))
@@ -69,12 +69,11 @@ Every feature belongs to one of fourteen areas. Each area is a **topic issue** i
 
 ### Reference server ([#15](https://github.com/abstractary/discourse-graphs-plugins/issues/15))
 
-- [#22](https://github.com/abstractary/discourse-graphs-plugins/issues/22) One table of routes for the client, the server and the docs · refactor · Refactor
+- [#22](https://github.com/abstractary/discourse-graphs-plugins/issues/22) One table of routes for the client, the server and the docs · refactor · Refactor · partly done: paths in one table; shapes still on both sides
 
 ### Docs, tests and upkeep ([#16](https://github.com/abstractary/discourse-graphs-plugins/issues/16))
 
 - [#25](https://github.com/abstractary/discourse-graphs-plugins/issues/25) Real-app tests: one set of helpers, and leave the vault as found · test · Refactor
-- [#31](https://github.com/abstractary/discourse-graphs-plugins/issues/31) One account of what leaves the device, and a changelog a person can read · documentation · Refactor
 - [#41](https://github.com/abstractary/discourse-graphs-plugins/issues/41) Several real Obsidians at once, and a real file-sync tool · test · Collaboration
 
 Areas with no open work item today: Labs and sync, Identity and devices, Method, runs and checks, Publishing and the scholarly record, Zotero. Their topic issues list what is planned.

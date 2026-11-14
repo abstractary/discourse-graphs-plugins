@@ -425,7 +425,7 @@ const lab = async (ana, ben) => {
   check("reaction.reaches-the-lab", Boolean(seen), await ana.s(`s.text('[data-dg="react-disagree-${unit.title}"]')`));
   check("note.shows-on-the-card", (await until(() => ana.s(`s.count('[data-dg="notes-${unit.title}"]')`), 4000)) === 1);
   await host_shot(ana, "reactions-on-card");
-  const opened = await ana.s(`s.call("node.view", { id: ${q(unit.id)} })`);
+  const opened = await ana.s(`s.call("unit.get", { id: ${q(unit.id)} })`);
   check("reaction.names-who", opened.social?.who.disagree?.[0] === ben.person || opened.social?.who.disagree?.[0]?.name === ben.person, q(opened.social?.who));
 
   // Leaving a breadcrumb is a choice made on closing.

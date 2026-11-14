@@ -122,7 +122,7 @@ test("a card's facts say what it was read from, how, by whom, where and when", a
   assert.ok(claim.card.identifiers.some(({ scheme, value }) => scheme === "doi" && value === DOI.toLowerCase()), JSON.stringify(claim.card.identifiers));
 
   // A unit a person writes was read from nothing, and is credited to them.
-  const made = await call("node.create", { title: "My own claim" } as never);
+  const made = await call("unit.create", { title: "My own claim" } as never);
   assert.equal(made.card.source, undefined);
   assert.equal(made.card.authors.role, "maker");
   assert.deepEqual(made.card.identifiers, []);
@@ -139,7 +139,7 @@ test("the card fields a person shows are kept, in card order, and unknown ones a
 
 test("a person can add and take away a unit's identifiers", async () => {
   const { call } = await setup();
-  const made = await call("node.create", { title: "An antibody we used" } as never);
+  const made = await call("unit.create", { title: "An antibody we used" } as never);
   const added = await call("unit.identify", { node: made.id, add: ["RRID:AB_2313773", "https://doi.org/10.5281/zenodo.123"] });
   assert.deepEqual(added.card.identifiers.map(identifierCurie), ["doi:10.5281/zenodo.123", "RRID:AB_2313773"]);
   const fewer = await call("unit.identify", { node: made.id, remove: [{ scheme: "doi", value: "10.5281/zenodo.123" }] });
@@ -151,7 +151,7 @@ test("looking a paper up keeps what the registries say, and sends only identifie
   const { call, sent, core } = await setup();
   const { units, paper } = await extracted(call);
   const claim = units.find((unit) => unit.base === "claim")!;
-  const before = await call("node.view", { id: claim.id });
+  const before = await call("unit.get", { id: claim.id });
   assert.equal(before.provenance.work?.target, "paper");
   assert.equal(before.provenance.work?.standing, undefined);
 
@@ -169,7 +169,7 @@ test("looking a paper up keeps what the registries say, and sends only identifie
   assert.notEqual(record.title, "A registry title");
   assert.deepEqual(record.identifiers?.map(({ scheme }) => scheme), ["pmid", "openalex"]);
 
-  const after = await call("node.view", { id: claim.id });
+  const after = await call("unit.get", { id: claim.id });
   assert.equal(after.node.card.retracted, true);
   assert.ok(after.node.card.identifiers.some(({ scheme }) => scheme === "pmid"));
   assert.equal(after.provenance.work?.standing?.citedBy, 12);

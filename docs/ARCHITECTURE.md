@@ -97,16 +97,16 @@ export const thingFeature = (context: Context, deps: { /* what it needs that isn
 
 | Feature | File | Calls |
 |---|---|---|
-| A unit by itself: find, make, rename, retype, remove, view | `nodes.ts` | `node.*` |
-| Capture from a note, and a renamed note renaming its unit | `capture.ts` | none: used by the base and by `node.create` |
+| A unit by itself: find, make, rename, retype, remove, view | `nodes.ts` | `unit.*` |
+| Capture from a note, and a renamed note renaming its unit | `capture.ts` | none: used by the base and by `unit.create` |
 | Canvases: list, open, write, build on | `canvases.ts` | `canvas.*` |
 | Relations mirrored into notes as link properties | `mirror.ts` | none: runs after every change |
-| Units: folders, reactions, notes, export | `units.ts` | `units.*`, `folder.*`, `unit.react`, `unit.note` |
+| Units: folders, reactions, notes, export | `units.ts` | `unit.*`, `folder.*`, `unit.react`, `unit.note` |
 | Relations | `relations.ts` | `relation.*` |
 | Grammar: types, templates, schema files, tables | `grammar.ts` | `grammar.*`, `table.open` |
-| Reading PDFs | `reading.ts` | `pdf.*`, `units.available`, `canvas.placeUnits` |
+| Reading PDFs | `reading.ts` | `pdf.*`, `unit.available`, `canvas.placeUnits` |
 | Papers and extraction | `papers.ts` | `paper.*` |
-| Paper map, similar units, search | `papermap.ts`, `similar.ts`, `search.ts` | `papers.*`, `node.similar`, `search.*` |
+| Paper map, similar units, search | `papermap.ts`, `similar.ts`, `search.ts` | `papers.*`, `unit.similar`, `search.*` |
 | Method, runs and notebooks | `method.ts`, `process.ts` | `process.*`, `run.*`, `notebook.*` |
 | Pictures, outputs, related units, candidates | `gather.ts` | `image.add`, `unit.image`, `candidate.*` |
 | Checks | `checks.ts` | `unit.check`, `unit.uncheck` |
@@ -118,7 +118,7 @@ export const thingFeature = (context: Context, deps: { /* what it needs that isn
 | Zotero | `library.ts` | `zotero.*` |
 | Published work, announcements, profiles | `works.ts`, `notify.ts`, `profile.ts` | `work.*`, `notify.*`, `profile.*` |
 | Crates and publishing | `crate.ts`, `rocrate.ts`, `mira.ts`, `datacite.ts`, `zenodo.ts` | `crate.*`, `deposit.*` |
-| Overview and Boundary | `holons.ts` | `holon.*` |
+| Overview and Boundary | `holons.ts` | `overview.*` |
 | What a panel asks of the base | `shell.ts` | `panel.*`, `dialog.*`, `link.open`, `server.*` |
 | Shared small conversions | `bytes.ts` | none |
 | Failures that keep their kind | `refuse.ts` | none |
@@ -200,8 +200,8 @@ Types, boundaries, the dependency matrix, both unit suites, the simulation and t
 The audit lists everything. The largest:
 
 - `canvas/App.tsx` is down from 2,300 lines to 1,400, with its writer, add box, ink, tidy, clipboard, linking and menus in files of their own. The toolbar and the canvas menu are still in it.
-- The calls a panel can make are named inconsistently: `node.*`, `unit.*` and `units.*` all reach a unit.
-- The client and the server each declare the shapes that cross between them.
+- A unit is now reached through `unit.*` and the overview through `overview.*`. Other namespaces still mix `get`, `view` and `open` for a read, and one id parameter has several names. "holon" survives in identifiers and one record field.
+- Routes are declared once, in `contract/routes.ts`. The shapes that cross are still declared on both sides, and three of twenty disagree: the server's info, an invitation, and a unit sent with a question.
 - The Obsidian plugin's lab sync, walkthrough and test hooks still take the whole core where the rest of it takes the contract's narrower seam.
 - The server has no rate limits. It now refuses anything without a record's shape.
 - The MCP server reads and does not yet propose, and a paper's text by page is not kept.

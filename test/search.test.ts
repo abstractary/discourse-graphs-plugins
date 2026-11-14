@@ -31,9 +31,9 @@ test("words fold the way people type them", () => {
 
 test("a title match ranks above the same words in a note, and every word must be found", async () => {
   const { call, type, write } = await setup();
-  await call("node.create", { title: "Interferon rises before autoantibodies", type: type("claim") });
-  await call("node.create", { title: "A cohort of 200 patients", type: type("evidence") });
-  await call("node.create", { title: "Unrelated question", type: type("question") });
+  await call("unit.create", { title: "Interferon rises before autoantibodies", type: type("claim") });
+  await call("unit.create", { title: "A cohort of 200 patients", type: type("evidence") });
+  await call("unit.create", { title: "Unrelated question", type: type("question") });
   write("A cohort of 200 patients", "Serum interferon was measured at every visit.");
 
   const found = await call("search.query", { text: "interferon", limit: 10 });
@@ -53,7 +53,7 @@ test("a title match ranks above the same words in a note, and every word must be
 
 test("a note edited in the base is searched by its new words", async () => {
   const { call, type, write, settle } = await setup();
-  await call("node.create", { title: "A protocol", type: type("evidence") });
+  await call("unit.create", { title: "A protocol", type: type("evidence") });
   write("A protocol", "Spin at 400 g.");
   assert.equal((await call("search.query", { text: "centrifuge", limit: 5 })).total, 0);
   write("A protocol", "Centrifuge at 400 g for ten minutes.");
@@ -91,12 +91,12 @@ test("a PDF passage is searched, and filters by type and by person count what th
 
 test("an empty search lists the newest work first, and results say which canvases hold them", async () => {
   const { call, type } = await setup();
-  const first = await call("node.create", { title: "Older", type: type("claim") });
+  const first = await call("unit.create", { title: "Older", type: type("claim") });
   // A real wait: the two units have to be made at different times to be put in order.
   await new Promise((done) => setTimeout(done, 5));
-  await call("node.create", { title: "Newer", type: type("claim") });
+  await call("unit.create", { title: "Newer", type: type("claim") });
   const canvas = await call("canvas.create", { title: "Argument" });
-  await call("units.put", { canvas: canvas.id, nodes: [first.id] });
+  await call("unit.put", { canvas: canvas.id, nodes: [first.id] });
   const listed = await call("search.query", { limit: 10 });
   assert.deepEqual(titles(listed), ["Newer", "Older"]);
   assert.deepEqual(listed.hits[1]!.canvases, [{ id: canvas.id, title: "Argument" }]);
@@ -104,15 +104,15 @@ test("an empty search lists the newest work first, and results say which canvase
 
 test("search sorts by title or by when units were made", async () => {
   const { call, type } = await setup();
-  await call("node.create", { title: "Beta", type: type("claim") });
+  await call("unit.create", { title: "Beta", type: type("claim") });
   // A real wait: the two units have to be made at different times to be put in order.
   await new Promise((done) => setTimeout(done, 5));
-  await call("node.create", { title: "Alpha", type: type("claim") });
+  await call("unit.create", { title: "Alpha", type: type("claim") });
   assert.deepEqual(titles(await call("search.query", { sort: "title", limit: 10 })), ["Alpha", "Beta"]);
   assert.deepEqual(titles(await call("search.query", { sort: "created", limit: 10 })), ["Alpha", "Beta"]);
   const canvas = await call("canvas.create", { title: "Where" });
   const beta = (await call("search.query", { text: "beta", limit: 1 })).hits[0]!;
-  await call("units.put", { canvas: canvas.id, nodes: [beta.node.id] });
+  await call("unit.put", { canvas: canvas.id, nodes: [beta.node.id] });
   assert.deepEqual((await call("search.query", { text: "beta", limit: 1 })).hits[0]!.canvases, [{ id: canvas.id, title: "Where" }]);
 });
 
@@ -132,10 +132,10 @@ test("a person renames their own unit and its note, but not a teammate's", async
     renameText: async (args) => (refuse ? fail("conflict", "Taken") : memoryRename!(args)),
   });
   const memoryRename: Host["renameText"] | undefined = createMemoryHost({ store }).host.renameText;
-  const mine = await call("node.create", { title: "Old wording", type: type("claim") });
+  const mine = await call("unit.create", { title: "Old wording", type: type("claim") });
   assert.equal(mine.mine, true);
   const ref = refOf("Old wording");
-  const renamed = await call("node.rename", { id: mine.id, title: "  New   wording " });
+  const renamed = await call("unit.rename", { id: mine.id, title: "  New   wording " });
   assert.equal(renamed.title, "New wording");
   assert.equal(store.texts.get(ref)!.title, "CLM - New wording");
   await settle();
@@ -143,54 +143,54 @@ test("a person renames their own unit and its note, but not a teammate's", async
   assert.deepEqual(titles(await call("search.query", { text: "wording", limit: 5 })), ["New wording"]);
 
   refuse = true;
-  await assert.rejects(call("node.rename", { id: mine.id, title: "Taken" }), /already a note called "Taken"/);
+  await assert.rejects(call("unit.rename", { id: mine.id, title: "Taken" }), /already a note called "Taken"/);
   refuse = false;
-  assert.equal((await call("node.view", { id: mine.id })).node.title, "New wording");
-  await assert.rejects(call("node.rename", { id: mine.id, title: "   " }), /needs a title/);
+  assert.equal((await call("unit.get", { id: mine.id })).node.title, "New wording");
+  await assert.rejects(call("unit.rename", { id: mine.id, title: "   " }), /needs a title/);
 
   const theirs = createNode({ space: "their-space", by: { id: "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa", name: "Ana Ruiz" }, title: "Ana's claim" });
   store.records.push(theirs);
   emit({ type: "records-changed" });
   await settle();
-  const view = await call("node.view", { id: theirs.id });
+  const view = await call("unit.get", { id: theirs.id });
   assert.equal(view.node.mine, undefined);
-  await assert.rejects(call("node.rename", { id: theirs.id, title: "Mine now" }), /Only Ana Ruiz can rename/);
+  await assert.rejects(call("unit.rename", { id: theirs.id, title: "Mine now" }), /Only Ana Ruiz can rename/);
   void createLab;
 });
 
 test("a type can be taken away again, for undo, and the note loses its prefix", async () => {
   const { call, type, store, refOf } = await setup();
-  const made = await call("node.create", { title: "Typed" });
+  const made = await call("unit.create", { title: "Typed" });
   const ref = refOf("Typed");
-  await call("node.setType", { id: made.id, type: type("claim") });
+  await call("unit.setType", { id: made.id, type: type("claim") });
   assert.equal(store.texts.get(ref)!.title, "CLM - Typed");
-  const back = await call("node.setType", { id: made.id, type: null });
+  const back = await call("unit.setType", { id: made.id, type: null });
   assert.equal(back.type, undefined);
   assert.equal(store.texts.get(ref)!.title, "Typed");
 });
 
 test("a link to a unit goes in at the cursor, and only for a unit with a note", async () => {
   const { call, core, type, store, refOf, settle } = await setup();
-  const target = await call("node.create", { title: "Linked claim", type: type("claim") });
-  await call("node.create", { title: "Writing here", type: type("question") });
+  const target = await call("unit.create", { title: "Linked claim", type: type("claim") });
+  await call("unit.create", { title: "Writing here", type: type("question") });
   store.cursor = refOf("Writing here");
-  await call("node.insertLink", { id: target.id });
+  await call("unit.insertLink", { id: target.id });
   assert.match(store.texts.get(refOf("Writing here"))!.body, /\[\[CLM - Linked claim\]\]/);
   const staged = createNode({ space: "here", by: { id: core.identity().did, name: "Me" }, title: "No note", facts: { anchor: { exact: "words" } } } as never);
   store.records.push(staged);
   await settle();
-  await assert.rejects(call("node.insertLink", { id: staged.id }), /no note/);
+  await assert.rejects(call("unit.insertLink", { id: staged.id }), /no note/);
 });
 
 test("units put on a canvas from search go beside what's there, and ones already on it are lit", async () => {
   const { call, type, store, events } = await setup();
-  const a = await call("node.create", { title: "Claim A", type: type("claim") });
-  const b = await call("node.create", { title: "Evidence B", type: type("evidence") });
+  const a = await call("unit.create", { title: "Claim A", type: type("claim") });
+  const b = await call("unit.create", { title: "Evidence B", type: type("evidence") });
   const canvas = await call("canvas.create", { title: "Board" });
   await call("relation.assert", { type: (await call("relation.options", { source: b.id, target: a.id }))[0]!.type, source: b.id, target: a.id });
-  const first = await call("units.put", { canvas: canvas.id, nodes: [a.id] });
+  const first = await call("unit.put", { canvas: canvas.id, nodes: [a.id] });
   assert.deepEqual(first, { placed: [a.id], already: [] });
-  const second = await call("units.put", { canvas: canvas.id, nodes: [a.id, b.id] });
+  const second = await call("unit.put", { canvas: canvas.id, nodes: [a.id, b.id] });
   assert.deepEqual(second, { placed: [b.id], already: [a.id] });
   const items = new Map<string, CanvasItemRecord>();
   for (const record of store.records as DgRecord[]) if (record.kind === "canvas-item" && record.canvas === canvas.id) items.set(record.id, record);
@@ -206,11 +206,11 @@ test("units put on a canvas from search go beside what's there, and ones already
 
 test("a relation says whether this person asserted it", async () => {
   const { call, type } = await setup();
-  const a = await call("node.create", { title: "A", type: type("claim") });
-  const b = await call("node.create", { title: "B", type: type("evidence") });
+  const a = await call("unit.create", { title: "A", type: type("claim") });
+  const b = await call("unit.create", { title: "B", type: type("evidence") });
   const canvas = await call("canvas.create", { title: "Mine" });
   await call("relation.assert", { type: (await call("relation.options", { source: b.id, target: a.id }))[0]!.type, source: b.id, target: a.id });
-  await call("units.put", { canvas: canvas.id, nodes: [a.id, b.id] });
+  await call("unit.put", { canvas: canvas.id, nodes: [a.id, b.id] });
   const view = await call("canvas.open", { id: canvas.id });
   assert.equal(Object.values(view.relations)[0]!.mine, true);
 });
@@ -219,7 +219,7 @@ test("copies of one type count as one filter entry, and any copy's id filters by
   const { call, core, store, emit, arrive } = await makeCore();
   const grammar = await call("grammar.get", {});
   const claim = grammar.nodeTypes.find((type) => type.base === "claim")!;
-  await call("node.create", { title: "Mine, typed with my own Claim", type: claim.id });
+  await call("unit.create", { title: "Mine, typed with my own Claim", type: claim.id });
   // Another device's copy of Claim, and a unit made with it, as a paper's reading brings them.
   const stamp = { space: core.info.space.id, by: { id: "did:plc:elsewhere", name: "Elsewhere" } };
   const copy = { ...claim, id: `${stamp.by.id}#copy`, by: stamp.by, editedBy: stamp.by, at: "2030-01-01T00:00:00.000Z", editedAt: "2030-01-01T00:00:00.000Z" };

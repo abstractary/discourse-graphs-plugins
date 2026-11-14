@@ -24,7 +24,7 @@ test("a new space gets the default grammar once", async () => {
 
 test("creating a node writes text, a node and an anchor", async () => {
   const { call, type, store } = await setup();
-  const node = await call("node.create", { title: "Actin scales", type: type("claim") });
+  const node = await call("unit.create", { title: "Actin scales", type: type("claim") });
   assert.equal(node.title, "Actin scales");
   assert.equal(node.abbreviation, "CLM");
   assert.equal(node.hasText, true);
@@ -33,8 +33,8 @@ test("creating a node writes text, a node and an anchor", async () => {
 
 test("relation options follow the grammar in both directions", async () => {
   const { call, type, relation } = await setup();
-  const evidence = await call("node.create", { title: "E", type: type("evidence") });
-  const claim = await call("node.create", { title: "C", type: type("claim") });
+  const evidence = await call("unit.create", { title: "E", type: type("evidence") });
+  const claim = await call("unit.create", { title: "C", type: type("claim") });
   const forward = await call("relation.options", { source: evidence.id, target: claim.id });
   assert.deepEqual(forward.map((option) => [option.label, option.flipped]).sort(), [["Opposes", false], ["Supports", false]]);
   const backward = await call("relation.options", { source: claim.id, target: evidence.id });
@@ -44,18 +44,18 @@ test("relation options follow the grammar in both directions", async () => {
 
 test("an untyped node offers no relations until it has a type", async () => {
   const { call, type, store } = await setup();
-  const thought = await call("node.create", { title: "A thought" });
-  const claim = await call("node.create", { title: "C", type: type("claim") });
+  const thought = await call("unit.create", { title: "A thought" });
+  const claim = await call("unit.create", { title: "C", type: type("claim") });
   assert.deepEqual(await call("relation.options", { source: thought.id, target: claim.id }), []);
-  await call("node.setType", { id: thought.id, type: type("evidence") });
+  await call("unit.setType", { id: thought.id, type: type("evidence") });
   assert.equal((await call("relation.options", { source: thought.id, target: claim.id })).length, 2);
   assert.ok([...store.texts.values()].some((text) => text.title === "EVD - A thought"));
 });
 
 test("asserting the same relation twice stores it once", async () => {
   const { call, type, relation, store } = await setup();
-  const evidence = await call("node.create", { title: "E", type: type("evidence") });
-  const claim = await call("node.create", { title: "C", type: type("claim") });
+  const evidence = await call("unit.create", { title: "E", type: type("evidence") });
+  const claim = await call("unit.create", { title: "C", type: type("claim") });
   const args = { type: relation("supports"), source: evidence.id, target: claim.id };
   const first = await call("relation.assert", args);
   const second = await call("relation.assert", args);
@@ -77,8 +77,8 @@ test("moving one card writes one record", async () => {
 
 test("removing an edge from a canvas leaves the relation standing", async () => {
   const { call, type, relation, core } = await setup();
-  const evidence = await call("node.create", { title: "E", type: type("evidence") });
-  const claim = await call("node.create", { title: "C", type: type("claim") });
+  const evidence = await call("unit.create", { title: "E", type: type("evidence") });
+  const claim = await call("unit.create", { title: "C", type: type("claim") });
   const assertion = await call("relation.assert", { type: relation("supports"), source: evidence.id, target: claim.id });
   const canvas = await call("canvas.create", { title: "Map" });
   const box = { type: "text", y: 0, width: 100, height: 50 } as const;
@@ -107,23 +107,23 @@ test("strokes persist but stay out of plain JSON Canvas", async () => {
 
 test("a rename in the base reaches the node and any open surface", async () => {
   const { call, type, store, emit, events, settle } = await setup();
-  const node = await call("node.create", { title: "Old", type: type("claim") });
+  const node = await call("unit.create", { title: "Old", type: type("claim") });
   const [ref] = [...store.texts.keys()];
   events.length = 0;
   store.texts.get(ref!)!.title = "CLM - New";
   emit({ type: "text-renamed", ref: ref!, title: "CLM - New" });
   await settle();
-  assert.equal((await call("node.view", { id: node.id })).node.title, "New");
+  assert.equal((await call("unit.get", { id: node.id })).node.title, "New");
   assert.ok(events.some((event) => "event" in event && event.event === "graph-changed"));
 });
 
 test("a rename that drops the prefix keeps the whole title", async () => {
   const { call, type, store, emit, settle } = await setup();
-  const node = await call("node.create", { title: "Old", type: type("claim") });
+  const node = await call("unit.create", { title: "Old", type: type("claim") });
   const [ref] = [...store.texts.keys()];
   emit({ type: "text-renamed", ref: ref!, title: "Something else" });
   await settle();
-  assert.equal((await call("node.view", { id: node.id })).node.title, "Something else");
+  assert.equal((await call("unit.get", { id: node.id })).node.title, "Something else");
 });
 
 test("records from elsewhere arrive through the cursor", async () => {
@@ -140,27 +140,27 @@ test("records from elsewhere arrive through the cursor", async () => {
 
 test("a removed text is reported without losing the node", async () => {
   const { call, type, store, emit, settle } = await setup();
-  const node = await call("node.create", { title: "Gone", type: type("claim") });
+  const node = await call("unit.create", { title: "Gone", type: type("claim") });
   const [ref] = [...store.texts.keys()];
   store.texts.delete(ref!);
   emit({ type: "text-removed", ref: ref! });
   await settle();
-  const view = await call("node.view", { id: node.id });
+  const view = await call("unit.get", { id: node.id });
   assert.equal(view.node.hasText, false);
   assert.equal(view.body, null);
 });
 
 test("a text that comes back clears the warning on open surfaces", async () => {
   const { call, type, store, emit, events, settle } = await setup();
-  const node = await call("node.create", { title: "Back", type: type("claim") });
+  const node = await call("unit.create", { title: "Back", type: type("claim") });
   const [ref] = [...store.texts.keys()];
   emit({ type: "text-removed", ref: ref! });
   await settle();
-  assert.equal((await call("node.view", { id: node.id })).node.hasText, false);
+  assert.equal((await call("unit.get", { id: node.id })).node.hasText, false);
   events.length = 0;
   emit({ type: "text-renamed", ref: ref!, title: "CLM - Back" });
   await settle();
-  assert.equal((await call("node.view", { id: node.id })).node.hasText, true);
+  assert.equal((await call("unit.get", { id: node.id })).node.hasText, true);
   assert.ok(events.some((event) => "event" in event && event.event === "graph-changed"));
 });
 
@@ -175,8 +175,8 @@ test("a grammar seeded twice, as two offline devices would, shows each type once
   assert.equal(nodeTypes.length, 4);
   assert.equal(relationTypes.length, 5);
   const secondClaim = other.find((item) => item.label === "Claim")!;
-  const evidence = await call("node.create", { title: "E", type: type("evidence") });
-  const claim = await call("node.create", { title: "C", type: secondClaim.id });
+  const evidence = await call("unit.create", { title: "E", type: type("evidence") });
+  const claim = await call("unit.create", { title: "C", type: secondClaim.id });
   const options = await call("relation.options", { source: evidence.id, target: claim.id });
   assert.deepEqual(options.map((option) => option.label).sort(), ["Opposes", "Supports"]);
 });
@@ -189,17 +189,17 @@ test("nodes from another space match the grammar by base type", async () => {
   store.records.push({ v: 2, id: "partner-evidence-type", kind: "node-type", space: "partner", at: theirs.at, by: foreign.by, rev: 2, editedAt: theirs.at, editedBy: foreign.by, label: "Result", base: "evidence" } as NodeTypeRecord);
   emit({ type: "records-changed" });
   await settle();
-  const claim = await call("node.create", { title: "C", type: type("claim") });
+  const claim = await call("unit.create", { title: "C", type: type("claim") });
   const options = await call("relation.options", { source: theirs.id, target: claim.id });
   assert.deepEqual(options.map((option) => option.label).sort(), ["Opposes", "Supports"]);
-  assert.equal((await call("node.view", { id: theirs.id })).node.hasText, false);
+  assert.equal((await call("unit.get", { id: theirs.id })).node.hasText, false);
   assert.equal(core.badgeFor({ ref: "nothing" }), null);
 });
 
 test("badges are ready synchronously, and count only active relations", async () => {
   const { call, core, type, relation, store } = await setup();
-  const evidence = await call("node.create", { title: "E", type: type("evidence") });
-  const claim = await call("node.create", { title: "C", type: type("claim") });
+  const evidence = await call("unit.create", { title: "E", type: type("evidence") });
+  const claim = await call("unit.create", { title: "C", type: type("claim") });
   const ref = [...store.texts.keys()][0]!;
   assert.equal(core.badgeFor({ ref })?.count, 0);
   const made = await call("relation.assert", { type: relation("supports"), source: evidence.id, target: claim.id });
@@ -213,7 +213,7 @@ test("badges are ready synchronously, and count only active relations", async ()
 
 test("a person can turn badges off, and the choice stays on this device", async () => {
   const { call, core, type, store } = await setup();
-  await call("node.create", { title: "E", type: type("evidence") });
+  await call("unit.create", { title: "E", type: type("evidence") });
   const ref = [...store.texts.keys()][0]!;
   let changes = 0;
   core.onGraphChange(() => {
@@ -238,8 +238,8 @@ test("a badge opens the context panel on its node without moving the page", asyn
       return host.openSurface(args);
     },
   }));
-  const first = await call("node.create", { title: "First", type: type("claim") });
-  const second = await call("node.create", { title: "Second", type: type("claim") });
+  const first = await call("unit.create", { title: "First", type: type("claim") });
+  const second = await call("unit.create", { title: "Second", type: type("claim") });
   const secondRef = [...store.texts.keys()][1]!;
   await call("focus.set", { node: first.id });
   const shown = await core.showContext({ ref: secondRef });
@@ -259,13 +259,13 @@ test("a type shared by another lab never changes how titles are written here", a
   emit({ type: "records-changed" });
   await settle();
   assert.equal(core.nodeTypes().find((item) => item.label === "Claim")?.id, ours);
-  const made = await call("node.create", { title: "Local format", type: core.nodeTypes().find((item) => item.label === "Claim")!.id });
+  const made = await call("unit.create", { title: "Local format", type: core.nodeTypes().find((item) => item.label === "Claim")!.id });
   assert.ok(![...store.texts.values()].some(({ title }) => title.startsWith("[[")), made.title);
 });
 
 test("credit shows the contributor inside a lab, and the lab from outside it", async () => {
   const { call, core, type, emit, store, settle } = await setup();
-  const mine = await call("node.create", { title: "Mine", type: type("claim") });
+  const mine = await call("unit.create", { title: "Mine", type: type("claim") });
   assert.deepEqual([mine.credit.kind, mine.credit.id], ["person", core.identity().did]);
   await core.createLab("Home Lab");
   const home = core.identity().lab!.did;
@@ -277,7 +277,7 @@ test("credit shows the contributor inside a lab, and the lab from outside it", a
   store.records.push(colleague, stranger, lab, solo);
   emit({ type: "records-changed" });
   await settle();
-  const credit = async (title: string) => (await call("node.query", { text: title, limit: 1 }))[0]!.credit;
+  const credit = async (title: string) => (await call("unit.list", { text: title, limit: 1 }))[0]!.credit;
   assert.deepEqual([(await credit("colleague")).kind, (await credit("colleague")).name], ["person", "Ana Ruiz"]);
   assert.deepEqual([(await credit("another lab")).kind, (await credit("another lab")).name], ["lab", "Away Lab"]);
   assert.equal((await credit("no lab")).kind, "person");
@@ -285,9 +285,9 @@ test("credit shows the contributor inside a lab, and the lab from outside it", a
 
 test("a new name reaches work done before it was set", async () => {
   const { call, core, type } = await setup();
-  const before = await call("node.create", { title: "Early", type: type("claim") });
+  const before = await call("unit.create", { title: "Early", type: type("claim") });
   await core.setName("Dana Lee");
-  assert.equal((await call("node.query", { text: "Early", limit: 1 }))[0]!.credit.name, "Dana Lee");
+  assert.equal((await call("unit.list", { text: "Early", limit: 1 }))[0]!.credit.name, "Dana Lee");
   assert.equal(core.personName(), "Dana Lee");
   const stored = core.graph().documents.get(before.id) as { by: { name: string } };
   assert.notEqual(stored.by.name, "Dana Lee", "the record itself is history, and stays as it was");
@@ -316,13 +316,13 @@ test("two canvases can share a name without sharing a home", async () => {
 
 test("removing examples takes back only what they made", async () => {
   const { call, core, type, store } = await setup();
-  const keep = await call("node.create", { title: "Keep me", type: type("claim") });
-  const made = await call("node.create", { title: "Example", type: type("claim") });
+  const keep = await call("unit.create", { title: "Keep me", type: type("claim") });
+  const made = await call("unit.create", { title: "Example", type: type("claim") });
   const canvas = await call("canvas.create", { title: "Example canvas" });
   const texts = store.texts.size;
   await core.removeExamples({ texts: [], nodes: [made.id], relations: [], canvases: [canvas.id] });
   assert.equal(store.texts.size, texts - 2);
-  assert.deepEqual((await call("node.query", { limit: 10 })).map(({ id }) => id), [keep.id]);
+  assert.deepEqual((await call("unit.list", { limit: 10 })).map(({ id }) => id), [keep.id]);
   assert.deepEqual(await call("canvas.list", {}), []);
   assert.ok(!(await core.atRecords()).some(({ uri }) => uri.endsWith(made.id.split("#")[1]!)));
 });
@@ -338,22 +338,22 @@ test("a saved layout travels with the canvas", async () => {
 
 test("the usage log holds operations and never content", async () => {
   const { call, core, host, type } = await setup();
-  await call("node.create", { title: "Unpublished finding", type: type("claim") });
+  await call("unit.create", { title: "Unpublished finding", type: type("claim") });
   await core.flushUsage();
   const stored = await host.getLocal({ key: "usage" });
   assert.ok(stored.ok);
   const text = JSON.stringify(stored.ok ? stored.value : null);
-  assert.ok(text.includes("surface:node.create"));
+  assert.ok(text.includes("surface:unit.create"));
   assert.ok(text.includes("createText"));
   assert.ok(!text.includes("Unpublished"));
 });
 
 test("the surface never receives a host ref", async () => {
   const { call, type, relation, store } = await setup();
-  const evidence = await call("node.create", { title: "E", type: type("evidence") });
-  const claim = await call("node.create", { title: "C", type: type("claim") });
+  const evidence = await call("unit.create", { title: "E", type: type("evidence") });
+  const claim = await call("unit.create", { title: "C", type: type("claim") });
   await call("relation.assert", { type: relation("supports"), source: evidence.id, target: claim.id });
-  const seen = JSON.stringify([await call("node.view", { id: claim.id }), await call("node.query", { limit: 10 })]);
+  const seen = JSON.stringify([await call("unit.get", { id: claim.id }), await call("unit.list", { limit: 10 })]);
   for (const ref of store.texts.keys()) assert.ok(!seen.includes(ref));
 });
 
@@ -374,8 +374,8 @@ test("a remounted panel can return to the last canvas", async () => {
 
 test("records made elsewhere stay pending until accepted", async () => {
   const { call, core, store, emit, type, relation, settle } = await setup();
-  const evidence = await call("node.create", { title: "E", type: type("evidence") });
-  const claim = await call("node.create", { title: "C", type: type("claim") });
+  const evidence = await call("unit.create", { title: "E", type: type("evidence") });
+  const claim = await call("unit.create", { title: "C", type: type("claim") });
   const theirs = assertRelation({ space: "partner", by: { id: "p", name: "P" }, type: relation("supports"), source: evidence.id, target: claim.id });
   store.records.push(theirs);
   emit({ type: "records-changed" });

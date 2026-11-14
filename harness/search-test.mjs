@@ -94,8 +94,8 @@ await s(`s.setPrefs({ linkDelete: "ask" })`);
 // Two units of this person's, with a relation between them, on a canvas of their own.
 const grammar = await s(`s.call("grammar.get", {})`);
 const typeId = (label) => grammar.nodeTypes.find((t) => t.label === label).id;
-const A = await s(`s.call("node.create", { title: "ST claim about mediators", type: ${q(typeId("Claim"))} })`);
-const B = await s(`s.call("node.create", { title: "ST evidence from the cohort", type: ${q(typeId("Evidence"))} })`);
+const A = await s(`s.call("unit.create", { title: "ST claim about mediators", type: ${q(typeId("Claim"))} })`);
+const B = await s(`s.call("unit.create", { title: "ST evidence from the cohort", type: ${q(typeId("Evidence"))} })`);
 const option = (await s(`s.call("relation.options", { source: ${q(B.id)}, target: ${q(A.id)} })`)).find((o) => !o.flipped);
 await s(`s.call("relation.assert", { type: ${q(option.type)}, source: ${q(B.id)}, target: ${q(A.id)} })`);
 const canvasNamed = async (title) => {
@@ -107,7 +107,7 @@ const canvasNamed = async (title) => {
 };
 const board = await canvasNamed("Search test");
 const target = await canvasNamed("Paste target");
-await s(`s.call("units.put", { canvas: ${q(board)}, nodes: ${q([A.id, B.id])} })`);
+await s(`s.call("unit.put", { canvas: ${q(board)}, nodes: ${q([A.id, B.id])} })`);
 // The two cards sit apart whatever facts cards are showing, so the link between them can be clicked.
 {
   const card = (await view(board)).items.find((item) => item.item.dg?.node === B.id);
@@ -238,29 +238,29 @@ const editing = await until(() => s(`s.count('[data-dg="card-title-edit"]')`).th
 await press("a", { meta: true, commands: ["selectAll"] });
 await typeText("ST claim about soluble mediators");
 await press("Enter");
-const renamed = await until(async () => ((await s(`s.call("node.view", { id: ${q(A.id)} })`)).node.title === "ST claim about soluble mediators" ? true : null));
+const renamed = await until(async () => ((await s(`s.call("unit.get", { id: ${q(A.id)} })`)).node.title === "ST claim about soluble mediators" ? true : null));
 const file = await s(`s.searchBase("ST claim about soluble mediators")`);
 check("card.renames-own-unit-and-note", editing && renamed && file.length === 1, JSON.stringify(file));
 await press("z", { meta: true });
-const unrenamed = await until(async () => ((await s(`s.call("node.view", { id: ${q(A.id)} })`)).node.title === "ST claim about mediators" ? true : null));
+const unrenamed = await until(async () => ((await s(`s.call("unit.get", { id: ${q(A.id)} })`)).node.title === "ST claim about mediators" ? true : null));
 check("undo.renames-back", unrenamed, await status());
 await press("z", { meta: true, shift: true });
-const redone = await until(async () => ((await s(`s.call("node.view", { id: ${q(A.id)} })`)).node.title === "ST claim about soluble mediators" ? true : null));
+const redone = await until(async () => ((await s(`s.call("unit.get", { id: ${q(A.id)} })`)).node.title === "ST claim about soluble mediators" ? true : null));
 check("redo.renames-again", redone, await status());
 await press("z", { meta: true });
-await until(async () => ((await s(`s.call("node.view", { id: ${q(A.id)} })`)).node.title === "ST claim about mediators" ? true : null));
+await until(async () => ((await s(`s.call("unit.get", { id: ${q(A.id)} })`)).node.title === "ST claim about mediators" ? true : null));
 
 // A teammate's unit, and a relation a teammate asserted between two of their units, from what core reports.
 const me = (await s(`s.call("identity.get", {})`)).did;
-const available = await s(`s.call("units.available", { canvas: ${q(board)} })`);
+const available = await s(`s.call("unit.available", { canvas: ${q(board)} })`);
 let theirRelation = null;
 for (const link of available.relations) {
   if (link.source === link.target) continue;
-  const entry = (await s(`s.call("node.view", { id: ${q(link.source)} })`)).context.find(
+  const entry = (await s(`s.call("unit.get", { id: ${q(link.source)} })`)).context.find(
     (c) => c.other.id === link.target && c.relation.source !== c.relation.target && (c.state === "active" || c.state === "pending") && c.relation.by.id !== me,
   );
   if (!entry) continue;
-  await s(`s.call("units.put", { canvas: ${q(board)}, nodes: ${q([link.source, link.target])} })`);
+  await s(`s.call("unit.put", { canvas: ${q(board)}, nodes: ${q([link.source, link.target])} })`);
   if (await until(async () => ((await view(board)).items.some((item) => item.item.dg?.relation === entry.relation.id) ? true : null), 3000)) {
     theirRelation = entry.relation;
     break;
@@ -276,7 +276,7 @@ check("card.teammates-unit-stays-theirs", !theirs.mine && refused && (await s(`s
 
 // ---- Deleting a link ----
 const edgeOf = async (canvas, relation) => (await view(canvas)).items.find((item) => item.item.dg?.relation === relation)?.id;
-const relationOf = async () => (await s(`s.call("node.view", { id: ${q(A.id)} })`)).context.find((c) => c.other.id === B.id && c.state === "active")?.relation.id;
+const relationOf = async () => (await s(`s.call("unit.get", { id: ${q(A.id)} })`)).context.find((c) => c.other.id === B.id && c.state === "active")?.relation.id;
 let rel = await relationOf();
 /** Clicks a link where no card covers it: a link's label can sit under a card. */
 const pickEdge = async (canvas, relation) => {
@@ -309,7 +309,7 @@ await until(() => s(`s.count('[data-dg="link-delete"]')`).then((n) => n === 1));
 await click("s", '[data-dg="link-delete-remember"]');
 await click("s", '[data-dg="link-delete-withdraw"]');
 const withdrawn = await until(async () => {
-  const context = (await s(`s.call("node.view", { id: ${q(A.id)} })`)).context;
+  const context = (await s(`s.call("unit.get", { id: ${q(A.id)} })`)).context;
   return context.find((c) => c.relation.id === rel)?.state === "withdrawn" ? true : null;
 });
 check("link.withdraws-and-remembers", withdrawn && (await s("s.prefs()")).linkDelete === "withdraw", await status());

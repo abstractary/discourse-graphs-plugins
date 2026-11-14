@@ -20,8 +20,8 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
 
-  useEffect(() => void call("holon.focus.get", {}).then(setFocus), [call]);
-  useEffect(() => on("holon-focus-changed", ({ ref, canvas }) => setFocus({ ref, canvas })), [on]);
+  useEffect(() => void call("overview.focus.get", {}).then(setFocus), [call]);
+  useEffect(() => on("overview-focus-changed", ({ ref, canvas }) => setFocus({ ref, canvas })), [on]);
   useEffect(() => on("graph-changed", () => setVersion((v) => v + 1)), [on]);
   useEffect(() => on("highlight", ({ units }) => setLit(units)), [on]);
   // The selected question, claim or evidence is what the panel is about. With none selected, it is the canvas's own.
@@ -29,7 +29,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   const follow = useCallback(
     (node: string | null) => {
       if (!node) return setPicked(null);
-      void call("holon.locate", { id: node }).then((ref) => setPicked(ref && ref.level !== "lab" ? ref : null)).catch(() => setPicked(null));
+      void call("overview.locate", { id: node }).then((ref) => setPicked(ref && ref.level !== "lab" ? ref : null)).catch(() => setPicked(null));
     },
     [call],
   );
@@ -38,7 +38,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   const subject = picked ?? focus?.ref ?? null;
   useEffect(() => {
     if (!subject) return setView(null);
-    void call("holon.view", { ref: subject, stance }).then(setView).catch((e: Error) => setNotice(e.message));
+    void call("overview.get", { ref: subject, stance }).then(setView).catch((e: Error) => setNotice(e.message));
   }, [call, subject?.id, subject?.level, stance, version]);
 
   const pick = useCallback(
@@ -52,7 +52,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   const open = useCallback(
     async (ref: HolonRef) => {
       try {
-        const { id } = await call("holon.canvas", { ref });
+        const { id } = await call("overview.canvas", { ref });
         if (onShowCanvas) onShowCanvas(id);
         else await call("canvas.show", { id });
       } catch (error) {

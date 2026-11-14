@@ -219,16 +219,16 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   useEffect(() => on("highlight", ({ units }) => setLit(new Set(units))), [on]);
   useEffect(() => on("prefs-changed", ({ prefs: next }) => setPrefs(next)), [on]);
   useEffect(() => void call("prefs.get", {}).then(setPrefs), [call]);
-  useEffect(() => void call("holon.roots", {}).then(setRoots).catch((e: Error) => setError(e.message)), [call, version]);
+  useEffect(() => void call("overview.list", {}).then(setRoots).catch((e: Error) => setError(e.message)), [call, version]);
   useEffect(() => {
-    if (start.locate) void call("holon.locate", { id: start.locate }).then((found) => found && setRef(found));
+    if (start.locate) void call("overview.locate", { id: start.locate }).then((found) => found && setRef(found));
   }, [call, start.locate]);
   const current = ref ?? roots?.find((r) => r.holds > 0)?.ref ?? roots?.[0]?.ref ?? null;
   useEffect(() => {
     if (!current) return;
-    void call("holon.view", { ref: current, stance: "lab" }).then(setView).catch((e: Error) => setError(e.message));
+    void call("overview.get", { ref: current, stance: "lab" }).then(setView).catch((e: Error) => setError(e.message));
     // The boundary panel follows what this tab shows.
-    void call("holon.focus.set", { ref: current }).catch(() => undefined);
+    void call("overview.focus.set", { ref: current }).catch(() => undefined);
   }, [call, current?.id, current?.level, version]);
 
   const go = useCallback(
@@ -246,7 +246,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   // A holon with a canvas opens there; one without stays here until someone makes one.
   const openInside = useCallback(
     async (next: HolonRef) => {
-      const target = await call("holon.view", { ref: next, stance: "lab" });
+      const target = await call("overview.get", { ref: next, stance: "lab" });
       if (target.canvas.id) showCanvas(target.canvas.id);
       else go(next);
     },
@@ -261,7 +261,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   );
   const makeCanvas = async () => {
     if (!current) return;
-    const { id } = await call("holon.canvas", { ref: current });
+    const { id } = await call("overview.canvas", { ref: current });
     showCanvas(id);
   };
 

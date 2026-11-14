@@ -54,7 +54,7 @@ try {
   const lab = await online(mira, () => mira.call("lab.register", { server: world.server, name: `Real Lab ${RUN}` }));
   const forTomas = (await online(mira, () => mira.call("lab.invite", {}))).invite;
   await online(tomas, () => tomas.call("lab.acceptInvite", { invite: forTomas }));
-  const claim = await mira.call("node.create", { title: `Actin follows tension ${RUN}`, type: await typeOf(mira.call, "claim") });
+  const claim = await mira.call("unit.create", { title: `Actin follows tension ${RUN}`, type: await typeOf(mira.call, "claim") });
   const canvas = await mira.call("canvas.create", { title: `Real lab canvas ${RUN}` });
   await mira.call("canvas.write", { canvas: canvas.id, upserts: [{ z: 1, item: { type: "text", text: claim.title, x: 0, y: 0, width: 240, height: 90, dg: { node: claim.id } } }] });
   await mira.call("canvas.share", { id: canvas.id });
@@ -97,12 +97,12 @@ try {
   await shot("lab-tab-member");
 
   // The real person adds to the shared canvas. It reaches the simulated labmates, signed.
-  const mine = await call("node.create", { title: `From the real Obsidian ${RUN}`, type: grammar.nodeTypes.find((type) => type.base === "evidence" && !type.removed).id });
-  cleanup("the unit made in Obsidian", () => call("node.remove", { id: mine.id }));
+  const mine = await call("unit.create", { title: `From the real Obsidian ${RUN}`, type: grammar.nodeTypes.find((type) => type.base === "evidence" && !type.removed).id });
+  cleanup("the unit made in Obsidian", () => call("unit.remove", { id: mine.id }));
   await call("canvas.write", { canvas: canvas.id, upserts: [{ z: 2, item: { type: "text", text: mine.title, x: 300, y: 0, width: 240, height: 90, dg: { node: mine.id } } }] });
   const reached = await until(async () => {
     await world.settle(["Mira", "Tomas"]);
-    return (await tomas.call("node.query", { text: mine.title, limit: 1 }))[0];
+    return (await tomas.call("unit.list", { text: mine.title, limit: 1 }))[0];
   }, 25000);
   check("sync.obsidians-work-reaches-the-others", reached?.title === mine.title, reached?.title);
   check("sync.and-is-credited-to-its-person", reached?.credit.name === joined.identity.name, q(reached?.credit));
@@ -112,15 +112,15 @@ try {
   // The plugin is turned off and on again in the middle of things, as an update does.
   await t.host.reload();
   await s("s.test(true)");
-  const again = await mira.call("node.create", { title: `Made while Obsidian restarted ${RUN}`, type: await typeOf(mira.call, "claim") });
+  const again = await mira.call("unit.create", { title: `Made while Obsidian restarted ${RUN}`, type: await typeOf(mira.call, "claim") });
   await mira.call("canvas.write", { canvas: canvas.id, upserts: [{ z: 3, item: { type: "text", text: again.title, x: 600, y: 0, width: 240, height: 90, dg: { node: again.id } } }] });
   await mira.sync();
-  const caught = await until(async () => (await call("node.query", { text: again.title, limit: 1 }))[0], 25000);
+  const caught = await until(async () => (await call("unit.list", { text: again.title, limit: 1 }))[0], 25000);
   check("restart.obsidian-catches-up-after-the-plugin-restarts", caught?.title === again.title, caught?.title);
   check("restart.it-is-still-in-the-lab", Boolean((await call("lab.view")).link?.token));
 
   // The PI takes the real person out.
-  await call("node.remove", { id: mine.id }).catch(() => undefined);
+  await call("unit.remove", { id: mine.id }).catch(() => undefined);
   await sleep(4500);
   await online(mira, () => mira.call("lab.remove", { did: joined.identity.did }));
   const out = await until(async () => {

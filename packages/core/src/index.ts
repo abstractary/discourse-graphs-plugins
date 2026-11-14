@@ -932,7 +932,7 @@ export const createCore = async ({
   const handlers: Handlers = {
     ...grammar.handlers,
     ...devices.handlers,
-    ...proposalFeature(context, { createUnit: (args) => handlers["node.create"](args) }).handlers,
+    ...proposalFeature(context, { createUnit: (args) => handlers["unit.create"](args) }).handlers,
     ...gather.handlers,
     ...checks.handlers,
     ...holons.handlers,

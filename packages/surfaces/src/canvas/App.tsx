@@ -272,12 +272,12 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       const after = title.replace(/\s+/g, " ").trim();
       if (!before || !after || after === before) return;
       // Recorded as it starts: renaming a note can take a moment while the base updates its links.
-      const renaming = call("node.rename", { id: node, title: after });
+      const renaming = call("unit.rename", { id: node, title: after });
       const step = {
         label: `Renamed “${plain(after)}”`,
         ready: renaming,
-        undo: () => call("node.rename", { id: node, title: before }),
-        redo: () => call("node.rename", { id: node, title: after }),
+        undo: () => call("unit.rename", { id: node, title: before }),
+        redo: () => call("unit.rename", { id: node, title: after }),
       };
       record(step);
       try {
@@ -339,7 +339,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
         const url = identifierUrl(id);
         if (url) void call("link.open", { url }).catch(report);
       },
-      readPassage: (node) => void call("node.view", { id: node }).then((seen) => (seen.provenance.pdf ? call("pdf.show", { ref: seen.provenance.pdf.ref, unit: node }) : null)).catch(report),
+      readPassage: (node) => void call("unit.get", { id: node }).then((seen) => (seen.provenance.pdf ? call("pdf.show", { ref: seen.provenance.pdf.ref, unit: node }) : null)).catch(report),
       openLibrary: (url) => void call("link.open", { url }).catch(report),
       image: (node) => call("unit.image", { id: node }).catch(() => null),
       observe: (output, item, title) => {
@@ -401,7 +401,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
   useEffect(
     () =>
       on("place-node", ({ node }) => {
-        void call("node.view", { id: node }).then((view_) => placeRef.current(view_.node)).catch(report);
+        void call("unit.get", { id: node }).then((view_) => placeRef.current(view_.node)).catch(report);
       }),
     [on, call, report],
   );
@@ -415,7 +415,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       return;
     }
     try {
-      await addCard(await call("node.create", { title, ...(type ? { type } : {}) }));
+      await addCard(await call("unit.create", { title, ...(type ? { type } : {}) }));
     } catch (error) {
       report(error);
     }
@@ -762,12 +762,12 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     const before = viewRef.current?.nodes[target]?.type ?? null;
     if (before === type.id) return;
     // A new type renames the note too, so the step is recorded as it starts.
-    const typing = call("node.setType", { id: target, type: type.id });
+    const typing = call("unit.setType", { id: target, type: type.id });
     const step = {
       label: `Made it a ${type.label}`,
       ready: typing,
-      undo: () => call("node.setType", { id: target, type: before }),
-      redo: () => call("node.setType", { id: target, type: type.id }),
+      undo: () => call("unit.setType", { id: target, type: before }),
+      redo: () => call("unit.setType", { id: target, type: type.id }),
     };
     record(step);
     typing.catch((error: unknown) => {

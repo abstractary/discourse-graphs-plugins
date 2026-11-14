@@ -21,7 +21,7 @@ export const useUnitsDrawer = ({ connection, current, report }: { connection: Co
   const timer = useRef<number | undefined>(undefined);
   const load = useCallback(() => {
     if (!current) return setData(null);
-    void call("units.available", { canvas: current }).then(setData).catch(report);
+    void call("unit.available", { canvas: current }).then(setData).catch(report);
   }, [call, current, report]);
   useEffect(load, [load]);
   // A burst of writes, such as a placed group, reads once.

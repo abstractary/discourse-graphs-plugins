@@ -714,7 +714,7 @@ const CutPopup = ({
       setTypes(ordered);
       if (remembered.type === null && !remembered.chosen) setType(ordered.find((t) => t.base === "evidence")?.id ?? null);
     }).catch(report);
-    void Promise.all([call("canvas.summaries", {}), call("holon.focus.get", {}), call("canvas.last", {})]).then(([list, focus, last]) => {
+    void Promise.all([call("canvas.summaries", {}), call("overview.focus.get", {}), call("canvas.last", {})]).then(([list, focus, last]) => {
       setCanvases(list);
       const front = focus.canvas ?? last;
       setBeside(front);

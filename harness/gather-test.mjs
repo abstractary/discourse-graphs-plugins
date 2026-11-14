@@ -24,7 +24,7 @@ try {
   // A run that stopped early leaves its canvas, units and picture behind. They go before this one starts.
   for (const canvas of (await call("canvas.list")).filter((item) => /^Bench \d{5}$/.test(item.title))) await call("canvas.remove", { id: canvas.id }).catch(() => undefined);
   for (const text of ["gel ", "The 42 kDa band is absent in the knockout ", "The protein is lost ", "Load sets the assembly rate "]) {
-    for (const unit of await call("node.query", { text, limit: 50 })) if (new RegExp(`^${text}\\d{5}$`).test(unit.title)) await call("node.remove", { id: unit.id }).catch(() => undefined);
+    for (const unit of await call("unit.list", { text, limit: 50 })) if (new RegExp(`^${text}\\d{5}$`).test(unit.title)) await call("unit.remove", { id: unit.id }).catch(() => undefined);
   }
   for (const name of existsSync(`${VAULT}/Discourse pictures`) ? readdirSync(`${VAULT}/Discourse pictures`) : []) if (/^gel \d{5}( \d+)?\.png$/.test(name)) rmSync(`${VAULT}/Discourse pictures/${name}`, { force: true });
   for (const name of readdirSync(VAULT)) if (/^Meeting \d{5}\.md$/.test(name)) rmSync(`${VAULT}/${name}`, { force: true });
@@ -36,7 +36,7 @@ try {
   });
   const board = await makeCanvas(`Bench ${RUN}`);
   cleanup("the units this run made", async () => {
-    for (const id of made) await call("node.remove", { id }).catch((error) => t.note(`cleanup: couldn't remove ${id}: ${error}`));
+    for (const id of made) await call("unit.remove", { id }).catch((error) => t.note(`cleanup: couldn't remove ${id}: ${error}`));
   });
   await s("s.closeAll()");
   await s(`s.open(${q(board.id)})`);
@@ -71,7 +71,7 @@ try {
   // ---------------------------------------------------------------- A card's relations
   const grammar = await call("grammar.get");
   const typeOf = (label) => grammar.nodeTypes.find((item) => item.label === label);
-  const claim = await call("node.create", { title: `The protein is lost ${RUN}`, type: typeOf("Claim").id });
+  const claim = await call("unit.create", { title: `The protein is lost ${RUN}`, type: typeOf("Claim").id });
   made.push(claim.id);
   if (evidence) await call("relation.assert", { type: grammar.relationTypes.find((item) => item.label === "Supports").id, source: evidence.id, target: claim.id });
   await click("canvas", `[data-dg="card-${SAID}"]`);
@@ -109,7 +109,7 @@ try {
   if (make) await t.clickAt(make.x + make.width / 2, make.y + make.height / 2);
   const swapped = await until(async () => /\[\[CLM - Load sets the assembly rate/.test(readFileSync(daily, "utf8")) && readFileSync(daily, "utf8"), 10000);
   check("candidate.line-becomes-a-link", Boolean(swapped), readFileSync(daily, "utf8"));
-  const promoted = (await call("node.query", { text: LINE, limit: 5 })).find((unit) => unit.title === LINE);
+  const promoted = (await call("unit.list", { text: LINE, limit: 5 })).find((unit) => unit.title === LINE);
   if (promoted) made.push(promoted.id);
   check("candidate.is-now-a-claim", promoted?.base === "claim", JSON.stringify(promoted)?.slice(0, 120));
 

@@ -281,7 +281,7 @@ try {
     await sleep(500);
     await click("context", '[data-dg="ctx-similar-find"]');
     const elsewhere = await until(() => at("context", "text", '[data-dg="ctx-similar"] .rows'));
-    const similar = await call("node.similar", { id: edge.id });
+    const similar = await call("unit.similar", { id: edge.id });
     check("elsewhere.finds-other-papers", similar.length >= 1 && similar.every((item) => item.node.paper?.label !== "Carroll 2020"), similar.map((item) => `${item.node.paper?.label ?? "own"}: ${item.node.title.slice(0, 40)} [${item.shared.join(" ")}]`).join(" | "));
     check("elsewhere.shows-what-they-share", /Shares:/.test(elsewhere ?? ""), (elsewhere ?? "").slice(0, 160));
     await shot("27-elsewhere");

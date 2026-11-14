@@ -93,7 +93,7 @@ export const ExportMenu = ({
         onDone(`Saved ${made.name} to ${made.where}: ${packed(made)}`);
         return;
       }
-      const result = await call("units.export", { nodes, target: targetOf(destination, title.trim() || "New folder") });
+      const result = await call("unit.export", { nodes, target: targetOf(destination, title.trim() || "New folder") });
       onDone(`Exported ${nodes.length} ${nodes.length === 1 ? "unit" : "units"}${result.made > 0 ? `, ${result.made} new` : ""}`);
       if (result.canvas) void call("canvas.show", { id: result.canvas });
     } catch (error) {

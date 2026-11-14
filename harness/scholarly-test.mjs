@@ -117,7 +117,7 @@ try {
     }, 40000);
     check("lookup.registries-answer", Boolean(checked), checked ?? (await at("context", "text", '[data-dg="ctx-work"]')));
     const held = (await call("paper.list")).find((item) => item.filename === FILE);
-    const view = await call("node.view", { id: Object.values((await call("canvas.open", { id: paper.canvas })).nodes).find((node) => node.title === EVIDENCE).id });
+    const view = await call("unit.get", { id: Object.values((await call("canvas.open", { id: paper.canvas })).nodes).find((node) => node.title === EVIDENCE).id });
     const ids = view.node.card.identifiers.map(({ scheme, value }) => `${scheme}:${value}`);
     note(`identifiers: ${ids.join(", ")}`);
     note(`standing: ${JSON.stringify(view.provenance.work?.standing)}`);

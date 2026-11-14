@@ -18,7 +18,7 @@ const watchRoute = (port: SurfacePort, onShown: (id: string) => void): SurfacePo
   onMessage: (listener) =>
     port.onMessage((message) => {
       const call = message as { method?: string; params?: { canvas?: string; ref?: string; data?: boolean } };
-      if (call.method === "holon.focus.set" && call.params?.canvas) onShown(call.params.canvas);
+      if (call.method === "overview.focus.set" && call.params?.canvas) onShown(call.params.canvas);
       if (call.method === "pdf.open" && call.params?.ref && call.params.data !== false) onShown(call.params.ref);
       listener(message);
     }),

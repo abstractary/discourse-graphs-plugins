@@ -56,7 +56,7 @@ test("a lab adds its own type on one of the nine kinds, changes it, and can't ma
 test("a type in use can't be removed, and one taken out of use is no longer offered", async () => {
   const { call, core } = await setup();
   const type = await call("grammar.saveNodeType", { label: "Hypothesis", base: "claim" });
-  const unit = await call("node.create", { title: "Load matters", type: type.id });
+  const unit = await call("unit.create", { title: "Load matters", type: type.id });
   assert.equal((await call("grammar.get", {})).uses?.[type.id], 1);
   await assert.rejects(call("grammar.removeNodeType", { id: type.id }), /1 unit has this type/);
 
@@ -84,9 +84,9 @@ test("a new relation says what it may join, and is then offered between those ty
   await assert.rejects(call("grammar.saveRelationType", { label: "Extends", complement: "", rules: [] }), /both ways/);
   await assert.rejects(call("grammar.saveRelationType", { label: "Extends", complement: "Extended by", rules: [{ source: "nope", target: typeOf("Claim").id }] }), /types that are in use/);
 
-  const first = await call("node.create", { title: "A rose", type: typeOf("Evidence").id });
-  const second = await call("node.create", { title: "A rose again", type: typeOf("Evidence").id });
-  const claim = await call("node.create", { title: "It rises", type: typeOf("Claim").id });
+  const first = await call("unit.create", { title: "A rose", type: typeOf("Evidence").id });
+  const second = await call("unit.create", { title: "A rose again", type: typeOf("Evidence").id });
+  const claim = await call("unit.create", { title: "It rises", type: typeOf("Claim").id });
   const between = await call("relation.options", { source: first.id, target: second.id });
   assert.ok(between.some((option) => option.label === "Replicates"));
   assert.ok(!(await call("relation.options", { source: first.id, target: claim.id })).some((option) => option.label === "Replicates"));
@@ -164,8 +164,8 @@ test("a new unit's note starts from its type's template, and carries the facts a
   const { nodeTypes } = await call("grammar.get", {});
   const claim = nodeTypes.find((type) => type.label === "Claim")!;
   await call("grammar.saveNodeType", { id: claim.id, label: "Claim", base: "claim", abbreviation: "CLM", template: "# {title}\n\nMade {date} by {author} as a {type}.\n\n## What it rests on\n" });
-  const unit = await call("node.create", { title: "Tension rises", type: claim.id });
-  await call("units.export", { nodes: [unit.id], target: { kind: "workspace" } });
+  const unit = await call("unit.create", { title: "Tension rises", type: claim.id });
+  await call("unit.export", { nodes: [unit.id], target: { kind: "workspace" } });
   const note = texts().find((text) => text.title === "CLM - Tension rises")!;
   assert.ok(note, texts().map((text) => text.title).join(" | "));
   assert.match(note.body ?? "", /# Tension rises\n\nMade \d{4}-\d{2}-\d{2} by Test Person as a Claim\.\n\n## What it rests on/);
@@ -183,7 +183,7 @@ test("a new unit's note starts from its type's template, and carries the facts a
 test("a canvas can be removed by its maker, and its units stay", async () => {
   const { call, core, texts } = await setup();
   const canvas = await call("canvas.create", { title: "Scratch" });
-  const unit = await call("node.create", { title: "Stays" });
+  const unit = await call("unit.create", { title: "Stays" });
   assert.ok(texts().some((text) => text.title.includes("Scratch")));
   await call("canvas.remove", { id: canvas.id });
   assert.ok(!(await call("canvas.list", {})).some((item) => item.id === canvas.id));
@@ -193,9 +193,9 @@ test("a canvas can be removed by its maker, and its units stay", async () => {
 
   // A unit goes the same way: off every canvas, its note to the trash, its record kept.
   const board = await call("canvas.create", { title: "Board" });
-  await call("units.export", { nodes: [unit.id], target: { kind: "canvas", id: board.id } });
+  await call("unit.export", { nodes: [unit.id], target: { kind: "canvas", id: board.id } });
   assert.equal(Object.keys((await call("canvas.open", { id: board.id })).nodes).length, 1);
-  await call("node.remove", { id: unit.id });
+  await call("unit.remove", { id: unit.id });
   assert.equal((core.graph().documents.get(unit.id) as NodeRecord).removed, true);
   assert.equal(Object.keys((await call("canvas.open", { id: board.id })).nodes).length, 0);
   assert.ok(!texts().some((text) => text.title.includes("Stays")));

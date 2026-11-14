@@ -23,9 +23,9 @@ const seeded = async (options: { widen?: boolean; modelHere?: boolean } = {}) =>
   const grammar = await call("grammar.get", {});
   const typeOf = (base: string) => grammar.nodeTypes.find((type) => type.base === base)!.id;
   const relation = (base: string) => grammar.relationTypes.find((type) => type.base === base)!.id;
-  const claim = await call("node.create", { title: "Shared boards help newcomers start", type: typeOf("claim") });
-  const support = await call("node.create", { title: "Newcomers with a board opened a first issue sooner", type: typeOf("evidence") });
-  const against = await call("node.create", { title: "One lab saw no change after adding a board", type: typeOf("evidence") });
+  const claim = await call("unit.create", { title: "Shared boards help newcomers start", type: typeOf("claim") });
+  const support = await call("unit.create", { title: "Newcomers with a board opened a first issue sooner", type: typeOf("evidence") });
+  const against = await call("unit.create", { title: "One lab saw no change after adding a board", type: typeOf("evidence") });
   await call("relation.assert", { type: relation("supports"), source: support.id, target: claim.id });
   await call("relation.assert", { type: relation("opposes"), source: against.id, target: claim.id });
   const canvas = await call("canvas.create", { title: "Onboarding" });

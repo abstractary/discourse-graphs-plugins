@@ -15,24 +15,24 @@ const setup = () => makeCore({ records });
 test("a canvas in front brings its holon into focus, and every panel hears it", async () => {
   const { call, events } = await setup();
   const question = unit("How does a shared issue board");
-  const { id } = await call("holon.canvas", { ref: { level: "question", id: question.id } });
-  await call("holon.focus.set", { canvas: id });
-  const focus = await call("holon.focus.get", {});
+  const { id } = await call("overview.canvas", { ref: { level: "question", id: question.id } });
+  await call("overview.focus.set", { canvas: id });
+  const focus = await call("overview.focus.get", {});
   assert.deepEqual(focus, { ref: { level: "question", id: question.id }, canvas: id });
-  assert.ok(events.some((e) => e.event === "holon-focus-changed" && e.ref?.id === question.id));
-  const where = await call("holon.ofCanvas", { id });
+  assert.ok(events.some((e) => e.event === "overview-focus-changed" && e.ref?.id === question.id));
+  const where = await call("overview.ofCanvas", { id });
   assert.deepEqual(where.path.map((p) => p.ref.level), ["lab", "question"]);
 });
 
 test("a holon's canvas opens if it has one, and is made once if it doesn't", async () => {
   const { call, store } = await setup();
   const question = unit("How does a shared issue board");
-  const existing = await call("holon.canvas", { ref: { level: "question", id: question.id } });
+  const existing = await call("overview.canvas", { ref: { level: "question", id: question.id } });
   assert.equal(existing.made, false, "the worked example arranged one");
   const claim = unit("29% of MATSUlab issues (n=445) were claimed as experiments.");
   const before = store.records.length;
-  const first = await call("holon.canvas", { ref: { level: "claim", id: claim.id } });
-  const again = await call("holon.canvas", { ref: { level: "claim", id: claim.id } });
+  const first = await call("overview.canvas", { ref: { level: "claim", id: claim.id } });
+  const again = await call("overview.canvas", { ref: { level: "claim", id: claim.id } });
   assert.equal(first.made, true);
   assert.equal(again.made, false);
   assert.equal(again.id, first.id);
@@ -44,13 +44,13 @@ test("a holon's canvas opens if it has one, and is made once if it doesn't", asy
 test("a loose canvas can be tied to a holon, and untied", async () => {
   const { call } = await setup();
   const { id } = await call("canvas.create", { title: "Scratch" });
-  const loose = await call("holon.ofCanvas", { id });
+  const loose = await call("overview.ofCanvas", { id });
   assert.equal(loose.ref, null);
   const claim = unit("Three undergraduate researchers");
   await call("canvas.setHolon", { id, holon: claim.id });
-  assert.equal((await call("holon.ofCanvas", { id })).ref?.id, claim.id);
+  assert.equal((await call("overview.ofCanvas", { id })).ref?.id, claim.id);
   await call("canvas.setHolon", { id, holon: null });
-  assert.equal((await call("holon.ofCanvas", { id })).ref, null);
+  assert.equal((await call("overview.ofCanvas", { id })).ref, null);
 });
 
 test("a highlight from one panel reaches the others; a choice is kept per device", async () => {

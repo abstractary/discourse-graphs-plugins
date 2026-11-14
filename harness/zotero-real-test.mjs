@@ -73,14 +73,14 @@ try {
   cleanup("the canvas", async () => {
     if (cut.canvas) await call("canvas.remove", { id: cut.canvas });
   });
-  cleanup("the unit", () => call("node.remove", { id: unit.id }));
+  cleanup("the unit", () => call("unit.remove", { id: unit.id }));
   check("unit.says-it-is-in-zotero", unit.card.library?.app === "zotero" && unit.card.library.what === "item", JSON.stringify(unit.card.library));
   check("unit.cites-the-reference", unit.card.source?.name === doc.library.label, `${unit.card.source?.name} vs ${doc.library.label}`);
-  const view = await call("node.view", { id: unit.id });
+  const view = await call("unit.get", { id: unit.id });
   const sourceId = view.provenance.pdf?.source ?? (await call("pdf.list")).find((item) => item.ref === doc.ref)?.source;
-  const source = sourceId ? (await call("node.view", { id: sourceId })).node : null;
+  const source = sourceId ? (await call("unit.get", { id: sourceId })).node : null;
   // The source unit goes whether this run made it or an earlier one did, as it always has here.
-  if (sourceId) cleanup("the source", () => call("node.remove", { id: sourceId }));
+  if (sourceId) cleanup("the source", () => call("unit.remove", { id: sourceId }));
   check("source.carries-the-references-identifiers", Boolean(source) && source.card.identifiers.length >= 1 && source.title === doc.title, JSON.stringify(source?.card.identifiers));
   await s("s.closeAll()");
   await s(`s.open(${q(cut.canvas)})`);

@@ -160,7 +160,7 @@ try {
       check("zotero.a-tagged-highlight-keeps-its-type", claim?.base === "claim", claim?.typeLabel);
       check("zotero.card-cites-the-source-and-says-by-hand", claim?.card.source?.name === "Carroll 2020" && claim?.card.source?.how === "manual", JSON.stringify(claim?.card.source));
       if (claim) {
-        const view = await call("node.view", { id: claim.id });
+        const view = await call("unit.get", { id: claim.id });
         check("zotero.passage-opens-in-zotero", /^zotero:\/\/open-pdf\/library\/items\/PDFA0001\?page=6&annotation=ANNO0002$/.test(view.provenance.library?.open ?? ""), view.provenance.library?.open);
         await s(`s.openSide("context")`);
         await call("focus.set", { node: claim.id });

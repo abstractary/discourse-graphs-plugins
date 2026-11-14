@@ -24,7 +24,7 @@ A **holon** is a whole that is also a part.
 
 ## One view, every level
 
-`holon.view` returns the same shape for every level (`HolonView` in `packages/contract/src/surface.ts`).
+`overview.get` returns the same shape for every level (`HolonView` in `packages/contract/src/surface.ts`).
 
 **Parts:** the holon's children.
 - Each part shows its type, its gap flags, its privacy and who made it.
@@ -98,7 +98,7 @@ The holarchy lives in the plugin's own panels, not in a separate app.
 - A nested canvas is a JSON Canvas `file` node with `dg.canvas`. The DG canvas shows it as a card that opens in place, and Obsidian's own Canvas shows the same node as the embedded canvas.
 
 **Where the code sits:**
-- **Core:** `packages/core/src/holons.ts` holds holon focus, `holon.canvas`, `canvas.setHolon`, `canvas.highlight` and `prefs`.
+- **Core:** `packages/core/src/holons.ts` holds holon focus, `overview.canvas`, `canvas.setHolon`, `canvas.highlight` and `prefs`.
 - **Canvas tab:** `packages/surfaces/src/canvas/holons.tsx`.
 - **Boundary panel:** `packages/surfaces/src/boundary/`.
 - **Library repository:** `packages/surfaces/src/library/Repository.tsx`.

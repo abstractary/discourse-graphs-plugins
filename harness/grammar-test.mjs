@@ -58,11 +58,11 @@ try {
   let unit;
   cleanup("the test unit's note", () => rmSync(`${VAULT}/HYP - Load sets the rate.md`, { force: true }));
   const dropUnit = cleanup("the test unit", async () => {
-    if (unit) await call("node.remove", { id: unit.id });
+    if (unit) await call("unit.remove", { id: unit.id });
   });
   if (made) {
-    unit = await call("node.create", { title: "Load sets the rate", type: made.id });
-    await call("units.export", { nodes: [unit.id], target: { kind: "workspace" } });
+    unit = await call("unit.create", { title: "Load sets the rate", type: made.id });
+    await call("unit.export", { nodes: [unit.id], target: { kind: "workspace" } });
     const file = `${VAULT}/HYP - Load sets the rate.md`;
     check("note.is-made", await until(async () => existsSync(file), 8000), file);
     const text = await until(async () => existsSync(file) && /dg-type:/.test(readFileSync(file, "utf8")) && readFileSync(file, "utf8"), 8000);

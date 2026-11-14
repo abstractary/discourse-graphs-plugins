@@ -276,7 +276,7 @@ export const readingFeature = (context: Context) => {
 
   const handlers: Pick<
     Handlers,
-    "pdf.list" | "pdf.library" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "pdf.follow" | "canvas.pdf" | "units.available" | "canvas.placeUnits" | "units.put"
+    "pdf.list" | "pdf.library" | "pdf.open" | "pdf.add" | "pdf.cut" | "pdf.uncut" | "pdf.show" | "pdf.follow" | "canvas.pdf" | "unit.available" | "canvas.placeUnits" | "unit.put"
   > = {
     "pdf.list": async () => {
       const all = (await files(true)).map(documentOf);
@@ -411,7 +411,7 @@ export const readingFeature = (context: Context) => {
       return null;
     },
 
-    "units.available": async ({ canvas }) => {
+    "unit.available": async ({ canvas }) => {
       const here = cardsOn(canvas);
       const canvases = context
         .documents("canvas")
@@ -524,7 +524,7 @@ export const readingFeature = (context: Context) => {
     },
 
     // A column beside what's there. An open canvas then brings them to where the person is looking.
-    "units.put": async ({ canvas, nodes: ids }) => {
+    "unit.put": async ({ canvas, nodes: ids }) => {
       if (!context.canvasOf(canvas)) throw refuse("not-found", "That canvas is gone.");
       mustBeOfPaper(context.graph(), canvas, ids);
       const cards = cardsOn(canvas);

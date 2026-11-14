@@ -33,7 +33,7 @@ export const useHolonCanvas = ({
 
   const load = useCallback(async () => {
     if (!current) return setInfo(null);
-    setInfo(await call("holon.ofCanvas", { id: current }));
+    setInfo(await call("overview.ofCanvas", { id: current }));
   }, [call, current]);
   useEffect(() => void load().catch(report), [load, report]);
   useEffect(() => on("graph-changed", () => void load().catch(report)), [on, load, report]);
@@ -55,7 +55,7 @@ export const useHolonCanvas = ({
   const shownWidth = useRef(0);
   useEffect(() => {
     if (!current) return;
-    const tell = () => void call("holon.focus.set", { canvas: current }).catch(() => undefined);
+    const tell = () => void call("overview.focus.set", { canvas: current }).catch(() => undefined);
     tell();
     const observer = new ResizeObserver(([entry]) => {
       const width = entry?.contentRect.width ?? 0;
@@ -73,7 +73,7 @@ export const useHolonCanvas = ({
   const openInside = useCallback(
     async (ref: HolonRef) => {
       try {
-        const { id, made } = await call("holon.canvas", { ref });
+        const { id, made } = await call("overview.canvas", { ref });
         if (id === current) return;
         // A canvas on its own page moves by going to the other page.
         if (route.pinned) await call("canvas.show", { id });

@@ -50,7 +50,7 @@ const relationOf = async (vault: Vault, label: string): Promise<DgId> => {
   if (!found) throw new Error(`${vault.name} has no "${label}" relation.`);
   return found.id;
 };
-const unit = async (vault: Vault, title: string, base: string) => vault.call("node.create", { title, type: await typeOf(vault, base) });
+const unit = async (vault: Vault, title: string, base: string) => vault.call("unit.create", { title, type: await typeOf(vault, base) });
 const card = async (vault: Vault, canvas: DgId, node: { id: DgId; title: string }, x: number, y = 0): Promise<DgId> => {
   const { ids } = await vault.call("canvas.write", { canvas, upserts: [{ z: Math.round(x / 10) + 1, item: { type: "text", text: node.title, x, y, width: 240, height: 90, dg: { node: node.id } } as never }] });
   return ids[0]!;
@@ -127,7 +127,7 @@ const randomWalk = async (within: World, members: string[], canvas: DgId, steps:
       await act(`moves a card`, () => move(vault, canvas, held.id, Math.floor(random() * 2000), Math.floor(random() * 1000)));
     } else if (roll < 0.6) {
       const own = pick(Object.values(view.nodes).filter((node) => node.mine));
-      if (own) await act(`rewords "${own.title}"`, () => vault.call("node.rename", { id: own.id, title: `${own.title.replace(/ \(v\d+\)$/, "")} (v${step})` }));
+      if (own) await act(`rewords "${own.title}"`, () => vault.call("unit.rename", { id: own.id, title: `${own.title.replace(/ \(v\d+\)$/, "")} (v${step})` }));
     } else if (roll < 0.68) {
       const held = pick(cards)!;
       await act(`takes a card off`, () => vault.call("canvas.write", { canvas, removes: [held.id] }));
@@ -136,7 +136,7 @@ const randomWalk = async (within: World, members: string[], canvas: DgId, steps:
       if (a && b && a.id !== b.id) await act(`links "${a.title}" to "${b.title}"`, async () => vault.call("relation.assert", { type: await relationOf(vault, pick(["supports", "opposes"])!), source: a.id, target: b.id, draw: true }));
     } else if (roll < 0.84) {
       const own = pick(Object.values(view.nodes).filter((node) => node.mine));
-      if (own) await act(`removes "${own.title}"`, () => vault.call("node.remove", { id: own.id }));
+      if (own) await act(`removes "${own.title}"`, () => vault.call("unit.remove", { id: own.id }));
     } else {
       await act("exchanges with the lab", () => vault.sync());
     }
@@ -259,7 +259,7 @@ await stage("3. Mira shares a canvas, and Tomas gets it whole", async () => {
   expect("integrity", "Tomas's vault has one type in use for each kind of unit: the lab's", doubled.length === 0, `${all.length} type records in use; twice: ${[...new Set(doubled)].join(", ")}`);
   const labClaim = await typeOf(mira, "claim");
   expect("integrity", "the lab's Claim is the one Tomas now makes claims with", (await typeOf(tomas, "claim")) === labClaim);
-  const earlier = (await tomas.call("node.query", { text: "CANARY-Tomas", limit: 1 }))[0];
+  const earlier = (await tomas.call("unit.list", { text: "CANARY-Tomas", limit: 1 }))[0];
   expect("integrity", "a claim Tomas made before joining now reads as the lab's Claim", earlier?.typeLabel === "Claim" && earlier.base === "claim", `${earlier?.typeLabel} / ${earlier?.base}`);
 });
 
@@ -283,7 +283,7 @@ await stage("4. Tomas adds to Mira's canvas", async () => {
     const state = mira.core.graph().relations.get(second.id)?.state;
     expect("intent", "a relation Tomas takes back is taken back for Mira too", state === "withdrawn", `Mira has it as ${state}`);
   }
-  const refused = await tomas.call("node.rename", { id: ids.claim!, title: "Tomas rewrote this" }).then(() => "", (error: Error) => error.message);
+  const refused = await tomas.call("unit.rename", { id: ids.claim!, title: "Tomas rewrote this" }).then(() => "", (error: Error) => error.message);
   expect("intent", "Tomas can't reword Mira's claim", refused.includes("Only Mira"), refused || "it was allowed");
 });
 
@@ -336,7 +336,7 @@ await stage("5. Two people change the same thing while apart", async () => {
   const follow = await unit(tomas, "The doubling holds in a second cell line", "evidence");
   ids.follow = follow.id;
   await card(tomas, shared, follow, 960, 0);
-  await mira.call("node.remove", { id: ids.evidence! });
+  await mira.call("unit.remove", { id: ids.evidence! });
   await tomas.call("relation.assert", { type: await relationOf(tomas, "supports"), source: follow.id, target: ids.evidence!, draw: true }).catch(() => null);
   await world.settle(["Mira", "Tomas"]);
   await sameView(world, ["Mira", "Tomas"], shared, "a unit removed by its author while a labmate links to it ends the same for both");
@@ -464,14 +464,14 @@ await stage("6d. Mira lets an agent read her vault and propose", async () => {
   const toReal = await agent.call("relation.assert", { type: await relationOf(agent, "addresses"), source: found.id, target: ids.question! });
   await agent.call("unit.check", { unit: ids.question!, verdict: "needsWork", note: "AGENT The question doesn't say which membrane" });
   // It acts under Mira's name, so nothing in the app stops it trying to change her work.
-  await agent.call("node.rename", { id: ids.claim!, title: "AGENT rewrote Mira's claim" }).catch(() => undefined);
-  await agent.call("node.remove", { id: ids.question! }).catch(() => undefined);
+  await agent.call("unit.rename", { id: ids.claim!, title: "AGENT rewrote Mira's claim" }).catch(() => undefined);
+  await agent.call("unit.remove", { id: ids.question! }).catch(() => undefined);
   const before = await digest(mira, shared);
   await world.fileSync(agent, mira);
 
-  const claim = await mira.call("node.view", { id: ids.claim! });
-  expect("integrity", "an agent can't reword or remove what Mira wrote", !claim.node.title.includes("AGENT") && (await mira.call("node.view", { id: ids.question! }).then(() => true, () => false)), claim.node.title);
-  expect("integrity", "nothing an agent proposed is read as part of the argument", (await mira.call("node.query", { text: "AGENT", limit: 5 })).length === 0 && canonicalJson(await digest(mira, shared)) === canonicalJson(before) && ((await mira.call("node.view", { id: ids.question! })).checks ?? []).length === 0);
+  const claim = await mira.call("unit.get", { id: ids.claim! });
+  expect("integrity", "an agent can't reword or remove what Mira wrote", !claim.node.title.includes("AGENT") && (await mira.call("unit.get", { id: ids.question! }).then(() => true, () => false)), claim.node.title);
+  expect("integrity", "nothing an agent proposed is read as part of the argument", (await mira.call("unit.list", { text: "AGENT", limit: 5 })).length === 0 && canonicalJson(await digest(mira, shared)) === canonicalJson(before) && ((await mira.call("unit.get", { id: ids.question! })).checks ?? []).length === 0);
   const waiting = await mira.call("proposal.list", {});
   const group = waiting[0];
   expect("intent", "Mira sees what it proposed as one conversation: two units, two relations and a check", waiting.length === 1 && group?.agent === "Reading agent" && group.session === "Reading Carroll 2020" && group.items.map((item) => item.kind).join() === "unit,unit,relation,relation,check" && group.items.every((item) => item.state === "waiting"), JSON.stringify(group?.items.map((item) => `${item.kind}:${item.state}`)));
@@ -491,9 +491,9 @@ await stage("6d. Mira lets an agent read her vault and propose", async () => {
   const all = group!.items.map((item) => item.id);
   const after = await mira.call("proposal.decide", { ids: all, decision: "accept" });
   expect("intent", "accepting the conversation takes all five", after[0]!.items.every((item) => item.state === "accepted"), JSON.stringify(after[0]!.items.map((item) => item.state)));
-  const mine = (await mira.call("node.query", { text: "AGENT An echo", limit: 2 }))[0];
+  const mine = (await mira.call("unit.list", { text: "AGENT An echo", limit: 2 }))[0];
   expect("intent", "an accepted unit is Mira's own, and says where it began", mine?.credit.name === "Mira" && mine.mine === true && (mira.core.graph().documents.get(mine.id) as { acceptedFrom?: string }).acceptedFrom === found.id, JSON.stringify(mine?.credit));
-  const question = await mira.call("node.view", { id: ids.question! });
+  const question = await mira.call("unit.get", { id: ids.question! });
   expect("intent", "an accepted check is Mira's check, with the agent's reasons", question.checks?.length === 1 && question.checks[0]!.mine && question.checks[0]!.verdict === "needsWork" && /which membrane/.test(question.checks[0]!.note ?? ""), JSON.stringify(question.checks));
   const joined = [...mira.core.graph().relations.values()].filter(({ record, state }) => state === "active" && record.acceptedFrom && record.source === mine?.id);
   expect("intent", "an accepted relation joins Mira's units, not the agent's", joined.length === 1 && joined[0]!.record.target === ids.question, `${joined.length} relations`);
@@ -510,7 +510,7 @@ await stage("6d. Mira lets an agent read her vault and propose", async () => {
   await world.fileSync(agent, mira);
   const second = (await mira.call("proposal.list", {})).find((item) => item.session === "A second look")!;
   await mira.call("proposal.decide", { ids: second.items.map((item) => item.id), decision: "reject" });
-  expect("intent", "what Mira turns down is marked so, and stays out", (await mira.call("proposal.list", {})).find((item) => item.session === "A second look")!.items[0]!.state === "rejected" && (await mira.call("node.query", { text: "weaker claim", limit: 2 })).length === 0);
+  expect("intent", "what Mira turns down is marked so, and stays out", (await mira.call("proposal.list", {})).find((item) => item.session === "A second look")!.items[0]!.state === "rejected" && (await mira.call("unit.list", { text: "weaker claim", limit: 2 })).length === 0);
   await mira.call("device.remove", { id: asking!.id });
   agent.core.setSession("After it was removed");
   await unit(agent, "AGENT Proposed after the agent was taken out", "claim");
@@ -521,13 +521,13 @@ await stage("6d. Mira lets an agent read her vault and propose", async () => {
 await stage("7. Ines checks Mira's claim", async () => {
   await ines.call("unit.check", { unit: ids.claim!, verdict: "checked", way: "dataReanalyzed", note: "Reran the fits" });
   await world.settle(LAB);
-  const atMira = await mira.call("node.view", { id: ids.claim! });
+  const atMira = await mira.call("unit.get", { id: ids.claim! });
   expect("intent", "Mira sees that Ines checked her claim", atMira.checks?.some((check) => check.credit.name === "Ines" && !check.mine), `Mira sees ${atMira.checks?.length ?? 0} checks`);
-  await mira.call("node.rename", { id: ids.claim!, title: "Actin assembly rises with membrane tension up to a threshold" });
+  await mira.call("unit.rename", { id: ids.claim!, title: "Actin assembly rises with membrane tension up to a threshold" });
   await world.settle(LAB);
-  const atInes = await ines.call("node.view", { id: ids.claim! });
+  const atInes = await ines.call("unit.get", { id: ids.claim! });
   expect("intent", "after Mira rewords it, Ines sees her check is on the old wording", atInes.node.checked === "changed", `Ines sees: ${atInes.node.checked}, title "${atInes.node.title}"`);
-  const atTomas = await tomas.call("node.view", { id: ids.claim! });
+  const atTomas = await tomas.call("unit.get", { id: ids.claim! });
   expect("intent", "Tomas, a third person, sees the claim was checked and then changed", atTomas.node.checked === "changed", `Tomas sees: ${atTomas.node.checked}`);
 });
 
@@ -537,8 +537,8 @@ await stage("8. Tomas brings evidence from a paper in his Zotero", async () => {
   ids.cut = cut.node.id;
   await world.settle(LAB);
   await sameView(world, LAB, shared, "the evidence Tomas highlighted reaches everyone's canvas");
-  const mine = await tomas.call("node.view", { id: cut.node.id });
-  const theirs = await mira.call("node.view", { id: cut.node.id }).catch(() => null);
+  const mine = await tomas.call("unit.get", { id: cut.node.id });
+  const theirs = await mira.call("unit.get", { id: cut.node.id }).catch(() => null);
   expect("intent", "Tomas sees which paper it came from", Boolean(mine.node.paper?.label ?? mine.node.card.source), JSON.stringify(mine.node.paper?.label ?? mine.node.card.source ?? null));
   expect("intent", "Mira sees which paper Tomas's evidence came from", Boolean(theirs?.node.paper?.label ?? theirs?.node.card.source), theirs ? `her card's source: ${JSON.stringify(theirs.node.card.source ?? null)}` : "she can't open the unit");
   const sourceId = (tomas.core.graph().documents.get(cut.node.id) as { prov?: { sourceDocument?: DgId } }).prov?.sourceDocument;
@@ -555,7 +555,7 @@ await stage("8b. The lab's shelf and a person's own", async () => {
   expect("intent", "Tomas's PDFs are listed with the lab's shelf first, then his own library", canonicalJson(shelves) === canonicalJson(["Gauthier 2021.pdf: lab", "Carroll 2020.pdf: yours"]), shelves.join(" | "));
   const cut = await tomas.call("pdf.cut", { ref: GROUP_FILE, exact: "a fraction of the training data", page: 2, title: "NG-RC needs a fraction of the training data", type: await typeOf(tomas, "evidence"), canvas: shared });
   await world.settle(LAB);
-  const [atTomas, atMira, atInes] = await Promise.all([tomas, mira, ines].map((vault) => vault.call("node.view", { id: cut.node.id })));
+  const [atTomas, atMira, atInes] = await Promise.all([tomas, mira, ines].map((vault) => vault.call("unit.get", { id: cut.node.id })));
   expect("intent", "evidence read from the lab's shelf says so, for everyone", [atTomas, atMira, atInes].every((view) => view!.node.card.shelf?.kind === "lab" && view!.node.card.shelf.name === LAB_GROUP.name), [atTomas, atMira, atInes].map((view) => JSON.stringify(view!.node.card.shelf ?? null)).join(" "));
   expect("intent", "Mira, who is in the group, gets the Zotero mark and the way to the item", atMira!.node.card.library?.open === `zotero://select/groups/${LAB_GROUP.id}/items/GRPA0001`, JSON.stringify(atMira!.node.card.library ?? null));
   const opened = await mira.call("pdf.open", { ref: GROUP_FILE }).then((file) => atob(file.dataBase64).slice(0, 17), (error: Error) => error.message);
@@ -564,8 +564,8 @@ await stage("8b. The lab's shelf and a person's own", async () => {
   const none = await ines.call("pdf.open", { ref: GROUP_FILE }).then(() => "opened", (error: Error) => error.message);
   expect("intent", "Ines, with no Zotero, sees the reference and is told how to get the PDF", none !== "opened" && /Zotero/.test(none), none);
 
-  const own = await tomas.call("node.view", { id: ids.cut! });
-  const labmate = await mira.call("node.view", { id: ids.cut! });
+  const own = await tomas.call("unit.get", { id: ids.cut! });
+  const labmate = await mira.call("unit.get", { id: ids.cut! });
   expect("intent", "Tomas is told his other paper is not on the lab's shelf", own.node.card.shelf?.kind === "yours", JSON.stringify(own.node.card.shelf ?? null));
   expect("intent", "Mira is told that paper is Tomas's own copy", labmate.node.card.shelf?.kind === "person" && labmate.node.card.shelf.name === "Tomas", JSON.stringify(labmate.node.card.shelf ?? null));
   expect("intent", "and is still given its DOI, to find it herself", labmate.node.card.identifiers?.some((id) => id.scheme === "doi") ?? false, JSON.stringify(labmate.node.card.identifiers ?? []));
@@ -602,7 +602,7 @@ await stage("9b. An older app and a newer one in the same lab", async () => {
   expect("intent", "the older app still receives what the others make", holds(ines, "Made while Ines was behind"));
   // She updates. What she does next is signed, and carries her earlier work with it.
   ines.old = false;
-  await ines.call("node.rename", { id: stale.id, title: "Made on an app from before signing, since updated" });
+  await ines.call("unit.rename", { id: stale.id, title: "Made on an app from before signing, since updated" });
   await move(ines, shared, staleCard, 20, 1300);
   await world.settle(LAB);
   await sameView(world, LAB, shared, "once she updates, her work arrives and all three agree again");
@@ -645,7 +645,7 @@ await stage("10. A stranger, and a member who misbehaves", async () => {
   const forged = { ...claim, rev: claim.rev + 5, title: "Actin assembly has nothing to do with tension", editedAt: new Date().toISOString() };
   await fetch(`${world.server}/v1/labs/${labId}/records`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tomasToken}` }, body: JSON.stringify({ records: [forged] }) });
   await world.settle(LAB);
-  const title = (await mira.call("node.view", { id: ids.claim! })).node.title;
+  const title = (await mira.call("unit.get", { id: ids.claim! })).node.title;
   expect("integrity", "a member can't put words in another member's mouth", title !== forged.title, `Mira's own vault now shows her claim as "${title}"`);
   const told = (await online(ines, () => ines.call("lab.view", {}))).refused;
   expect("integrity", "the vaults that refused the forged record say that they did", told > 0, `Ines's lab panel counts ${told} refused`);
@@ -706,11 +706,11 @@ await stage("12b. Mira removes Tomas from the lab", async () => {
   const view = await online(tomas, () => tomas.call("lab.view", {}));
   expect("membership", "Tomas is told he was removed, and from which lab", view.removedFrom === "Tension Lab" && !view.link, JSON.stringify({ removedFrom: view.removedFrom, link: Boolean(view.link) }));
   expect("membership", "Tomas's own vault no longer says he is in the lab", !view.identity.lab, view.identity.lab?.name);
-  expect("intent", "Tomas keeps his own work", holds(tomas, "CANARY-Tomas") && (await tomas.call("node.query", { text: "CANARY-Tomas", limit: 1 })).length === 1);
+  expect("intent", "Tomas keeps his own work", holds(tomas, "CANARY-Tomas") && (await tomas.call("unit.list", { text: "CANARY-Tomas", limit: 1 })).length === 1);
   const ownClaim = (await tomas.call("grammar.get", {})).nodeTypes.find((type) => type.base === "claim" && !type.removed);
   expect("intent", "and has his own grammar back, to change as he likes", ownClaim?.by.id === tomas.did(), ownClaim?.by.name);
-  expect("privacy", "what the others shared is put away on his device", (await digest(tomas, walk.canvas)) === null && (await tomas.call("node.query", { text: "Actin assembly rises", limit: 1 })).length === 0);
-  await mira.call("node.create", { title: "Made after Tomas left" });
+  expect("privacy", "what the others shared is put away on his device", (await digest(tomas, walk.canvas)) === null && (await tomas.call("unit.list", { text: "Actin assembly rises", limit: 1 })).length === 0);
+  await mira.call("unit.create", { title: "Made after Tomas left" });
   const fresh = await unit(mira, "A claim made after Tomas left", "claim");
   await card(mira, walk.canvas, fresh, 100, 100);
   await world.settle(["Mira", "Ines"]);

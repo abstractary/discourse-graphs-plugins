@@ -107,13 +107,13 @@ test("bringing in makes one source and the chosen highlights, and doing it again
   assert.equal(claim.facts?.provenance?.method, "authored", "a person marked it");
 
   // The card says where it was read and that a person read it; the panel can open the passage in Zotero.
-  const view = await call("node.view", { id: claim.id });
+  const view = await call("unit.get", { id: claim.id });
   assert.equal(view.node.card.source?.name, "Carroll 2020");
   assert.equal(view.node.card.source?.how, "manual");
   assert.deepEqual(view.node.card.authors, { names: ["Thomas L. Carroll"], role: "paper" });
   assert.ok(view.node.card.identifiers.some(({ scheme }) => scheme === "doi"));
   assert.deepEqual(view.provenance.library, { app: "zotero", open: "zotero://open-pdf/library/items/PDFA0001?page=6&annotation=ANNO0002", what: "passage", exact: claim.facts!.anchor!.exact, comment: "This cuts against the edge-of-chaos story" });
-  assert.equal((await call("node.view", { id: source.id })).provenance.library?.what, "item");
+  assert.equal((await call("unit.get", { id: source.id })).provenance.library?.what, "item");
 
   const again = await call("zotero.import", { ref: REF, annotations: [{ key: "ANNO0001" }, { key: "ANNO0002" }, { key: "ANNO0004" }] });
   assert.deepEqual([again.made, again.already, again.wasHere], [1, 2, true]);
@@ -127,7 +127,7 @@ test("a source already in the graph by its DOI is the one a Zotero item joins", 
   const { call, core } = await setup();
   const types = await call("grammar.get", {});
   const sourceType = types.nodeTypes.find((type) => type.base === "source");
-  const mine = await call("node.create", { title: "Carroll's edge of chaos paper", ...(sourceType ? { type: sourceType.id } : {}) } as never);
+  const mine = await call("unit.create", { title: "Carroll's edge of chaos paper", ...(sourceType ? { type: sourceType.id } : {}) } as never);
   await call("unit.identify", { node: mine.id, add: ["10.1063/5.0038163"] });
   if (!sourceType) return;
   const made = await call("zotero.import", { ref: REF });

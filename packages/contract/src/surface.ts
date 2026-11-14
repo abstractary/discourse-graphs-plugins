@@ -878,18 +878,18 @@ export type CanvasUpsert = {
  * can't depend on a base.
  */
 export type SurfaceMethods = {
-  "node.view": { params: { id: DgId }; result: NodeView };
-  "node.query": { params: NodeQuery; result: NodeSummary[] };
+  "unit.get": { params: { id: DgId }; result: NodeView };
+  "unit.list": { params: NodeQuery; result: NodeSummary[] };
   /** Questions, claims and evidence in other papers and canvases that read close to this unit, closest first. */
-  "node.similar": { params: { id: DgId; limit?: number }; result: SimilarUnit[] };
-  "node.create": {
+  "unit.similar": { params: { id: DgId; limit?: number }; result: SimilarUnit[] };
+  "unit.create": {
     params: { title: string; type?: DgId };
     result: NodeSummary;
   };
   /** Null takes the type away again, for undo. */
-  "node.setType": { params: { id: DgId; type: DgId | null }; result: NodeSummary };
+  "unit.setType": { params: { id: DgId; type: DgId | null }; result: NodeSummary };
   /** Renames a unit and its note or page. Only its author can. */
-  "node.rename": { params: { id: DgId; title: string }; result: NodeSummary };
+  "unit.rename": { params: { id: DgId; title: string }; result: NodeSummary };
   /**
    * Marks a unit as checked, or as needing work, by the person asking. The mark is pinned to the unit
    * as it stands now. A person has one standing mark per unit: a new one replaces their last.
@@ -916,9 +916,9 @@ export type SurfaceMethods = {
    * Takes back a unit its author made. It leaves every canvas, its links stop counting, and its note
    * goes to the base's trash. The record stays, so nothing that named it loses its history.
    */
-  "node.remove": { params: { id: DgId }; result: null };
+  "unit.remove": { params: { id: DgId }; result: null };
   /** Puts a link to the unit's note at the last cursor in the base. */
-  "node.insertLink": { params: { id: DgId }; result: null };
+  "unit.insertLink": { params: { id: DgId }; result: null };
   /** Titles, note text and PDF passages, ranked, with what the results hold by type and by person or lab. */
   "search.query": { params: SearchQuery; result: SearchResults };
   /** Opens the search panel with this search in it. */
@@ -942,14 +942,14 @@ export type SurfaceMethods = {
   };
   "canvas.list": { params: Record<string, never>; result: CanvasRecord[] };
   /** One holon, drawn the same way at every level. */
-  "holon.view": { params: { ref: HolonRef; stance: Stance }; result: HolonView };
+  "overview.get": { params: { ref: HolonRef; stance: Stance }; result: HolonView };
   /** The holon in focus: the active canvas's holon, or the holon of the note being read. */
-  "holon.focus.get": { params: Record<string, never>; result: { ref: HolonRef | null; canvas: DgId | null } };
+  "overview.focus.get": { params: Record<string, never>; result: { ref: HolonRef | null; canvas: DgId | null } };
   /** A canvas tab or the explorer says which holon it's showing. */
-  "holon.focus.set": { params: { canvas?: DgId; ref?: HolonRef }; result: null };
-  "holon.ofCanvas": { params: { id: DgId }; result: CanvasHolon };
+  "overview.focus.set": { params: { canvas?: DgId; ref?: HolonRef }; result: null };
+  "overview.ofCanvas": { params: { id: DgId }; result: CanvasHolon };
   /** The holon's own canvas, made from its laid-out view if it has none yet. */
-  "holon.canvas": { params: { ref: HolonRef }; result: { id: DgId; made: boolean } };
+  "overview.canvas": { params: { ref: HolonRef }; result: { id: DgId; made: boolean } };
   /** Ties a canvas to a holon, so it becomes that holon's view. */
   "canvas.setHolon": { params: { id: DgId; holon: string | null }; result: null };
   /** Marks units on the open canvases. `brief` lets the mark go by itself after a moment, for pointing something out. */
@@ -957,9 +957,9 @@ export type SurfaceMethods = {
   "prefs.get": { params: Record<string, never>; result: Prefs };
   "prefs.set": { params: Partial<Prefs>; result: Prefs };
   /** The holon a unit opens as. A run or protocol opens as the evidence it stands behind. */
-  "holon.locate": { params: { id: DgId }; result: HolonRef | null };
+  "overview.locate": { params: { id: DgId }; result: HolonRef | null };
   /** The top of the holarchy: the labs and spaces in this graph. */
-  "holon.roots": { params: Record<string, never>; result: { ref: HolonRef; title: string; holds: number }[] };
+  "overview.list": { params: Record<string, never>; result: { ref: HolonRef; title: string; holds: number }[] };
   /** Every canvas, with its versions, forks, nesting and gaps. */
   "repository.canvases": { params: Record<string, never>; result: RepositoryCanvas[] };
   /** A canvas as it stood at a moment in its history. */
@@ -1007,9 +1007,9 @@ export type SurfaceMethods = {
    * Puts units on a canvas from another panel, such as search. They go beside what's there, and an
    * open canvas brings them to where the person is looking. Units already on it are only lit.
    */
-  "units.put": { params: { canvas: DgId; nodes: DgId[] }; result: { placed: DgId[]; already: DgId[] } };
+  "unit.put": { params: { canvas: DgId; nodes: DgId[] }; result: { placed: DgId[]; already: DgId[] } };
   /** Units not on this canvas yet, grouped by the other canvases and folders that hold them. */
-  "units.available": { params: { canvas: DgId }; result: UnitsAvailable };
+  "unit.available": { params: { canvas: DgId }; result: UnitsAvailable };
   /** PDFs the base holds: papers first, then the rest, newest first. */
   "pdf.list": { params: Record<string, never>; result: PdfDocument[] };
   /**
@@ -1169,7 +1169,7 @@ export type SurfaceMethods = {
   "paper.getFile": { params: { id: string }; result: { where: string } };
 
   /** Gives units their own notes or pages, then puts them where the person chose. */
-  "units.export": { params: { nodes: DgId[]; target: ExportTarget }; result: { canvas?: DgId; folder?: DgId; made: number } };
+  "unit.export": { params: { nodes: DgId[]; target: ExportTarget }; result: { canvas?: DgId; folder?: DgId; made: number } };
   "folder.list": { params: Record<string, never>; result: { id: DgId; title: string; units: number }[] };
   "folder.create": { params: { title: string }; result: { id: DgId; title: string; units: number } };
 
@@ -1274,7 +1274,7 @@ export type SurfaceResponse =
 
 export type SurfaceEvent =
   | { event: "graph-changed" }
-  | { event: "holon-focus-changed"; ref: HolonRef | null; canvas: DgId | null }
+  | { event: "overview-focus-changed"; ref: HolonRef | null; canvas: DgId | null }
   | { event: "highlight"; units: DgId[]; brief?: boolean }
   | { event: "prefs-changed"; prefs: Prefs }
   | { event: "focus-changed"; node: DgId | null }

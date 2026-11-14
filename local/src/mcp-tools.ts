@@ -74,7 +74,7 @@ export const readTools = ({ core, call, widen = false, modelHere = false }: { co
     return record?.kind === "node" && !record.removed && served(record.by.id) ? record : undefined;
   };
   const summaries = async (): Promise<Map<DgId, NodeSummary>> => {
-    const all = await call("node.query", { limit: 100000 });
+    const all = await call("unit.list", { limit: 100000 });
     return new Map(all.filter((unit) => nodeOf(unit.id)).map((unit) => [unit.id, unit]));
   };
   const compact = (unit: NodeSummary): Record<string, unknown> => ({
@@ -177,7 +177,7 @@ export const readTools = ({ core, call, widen = false, modelHere = false }: { co
       const id = String(args.id ?? "");
       const node = nodeOf(id);
       if (!node) throw new Error(`No unit ${id} that this agent may read. Find ids with dg_search.`);
-      const view = await call("node.view", { id });
+      const view = await call("unit.get", { id });
       const method = await call("process.method", { id }).catch(() => undefined);
       const passage = passageOf(node);
       return {

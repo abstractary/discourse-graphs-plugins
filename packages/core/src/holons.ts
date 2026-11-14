@@ -847,7 +847,7 @@ export const holonFeature = (context: Context) => {
   const setFocus = (next: { ref: HolonRef | null; canvas: DgId | null }) => {
     if (next.ref?.id === focus.ref?.id && next.ref?.level === focus.ref?.level && next.canvas === focus.canvas) return;
     focus = next;
-    context.send({ event: "holon-focus-changed", ...focus });
+    context.send({ event: "overview-focus-changed", ...focus });
   };
   const focusCanvas = async (canvas: DgId) => setFocus({ ref: canvasHolon(await input(), canvas).ref, canvas });
   /** A note was opened: its unit's holon comes into focus, unless it has none. */
@@ -880,21 +880,21 @@ export const holonFeature = (context: Context) => {
   };
   const handlers: Pick<
     Handlers,
-    | "holon.view" | "holon.locate" | "holon.roots" | "holon.focus.get" | "holon.focus.set" | "holon.ofCanvas" | "holon.canvas"
+    | "overview.get" | "overview.locate" | "overview.list" | "overview.focus.get" | "overview.focus.set" | "overview.ofCanvas" | "overview.canvas"
     | "repository.canvases" | "canvas.at" | "canvas.history" | "canvas.saveHolon" | "canvas.release" | "canvas.fork" | "canvas.diff"
     | "canvas.setHolon" | "canvas.highlight" | "prefs.get" | "prefs.set"
   > = {
-    "holon.view": async ({ ref, stance }) => holonView(await input(), ref, stance),
-    "holon.roots": async () => holonRoots(await input()),
-    "holon.locate": async ({ id }) => locateHolon(await input(), id),
-    "holon.focus.get": async () => focus,
-    "holon.focus.set": async ({ canvas, ref }) => {
+    "overview.get": async ({ ref, stance }) => holonView(await input(), ref, stance),
+    "overview.list": async () => holonRoots(await input()),
+    "overview.locate": async ({ id }) => locateHolon(await input(), id),
+    "overview.focus.get": async () => focus,
+    "overview.focus.set": async ({ canvas, ref }) => {
       if (canvas) await focusCanvas(canvas);
       else if (ref) setFocus({ ref, canvas: null });
       return null;
     },
-    "holon.ofCanvas": async ({ id }) => canvasHolon(await input(), id),
-    "holon.canvas": async ({ ref }) => holonCanvas(ref),
+    "overview.ofCanvas": async ({ id }) => canvasHolon(await input(), id),
+    "overview.canvas": async ({ ref }) => holonCanvas(ref),
     "repository.canvases": async () => repository(await input()),
     "canvas.at": async ({ id, at }) => canvasAt(await input(), id, at),
     "canvas.history": async ({ id }) => canvasHistory(await input(), id),

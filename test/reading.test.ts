@@ -64,7 +64,7 @@ test("a highlight becomes a staged unit on the chosen canvas, with its quote, pa
   assert.ok(b!.y > a!.y);
 
   // The context panel can go back to the passage.
-  const view = await call("node.view", { id: second.node.id });
+  const view = await call("unit.get", { id: second.node.id });
   assert.deepEqual(view.provenance.pdf, { ref: doc.ref, name: "Lab paper.pdf", page: 4, exact: "Autoantibodies accumulated" });
 
   // Undo takes the unit and its card back.
@@ -95,7 +95,7 @@ test("a paper's PDF lights the units extracted from it", async () => {
   assert.equal(opened.document.title, graphOf.paper.title);
   // A highlight on a paper hangs off the paper's own source unit.
   const cut = await call("pdf.cut", { ref: doc.ref, exact: "Serum samples", page: 2, title: "Serum samples", canvas: null });
-  const view = await call("node.view", { id: cut.node.id });
+  const view = await call("unit.get", { id: cut.node.id });
   assert.equal(view.provenance.pdf?.ref, doc.ref);
 });
 
@@ -114,7 +114,7 @@ test("the drawer lists units not on this canvas, grouped by the canvases and fol
   const { call, store } = await setup();
   const summaries = await call("canvas.summaries", {});
   const target = summaries.find((s) => s.title.startsWith("Issue exchange"))!;
-  const available = await call("units.available", { canvas: target.id });
+  const available = await call("unit.available", { canvas: target.id });
   const onTarget = new Set(cardsOf(store, target.id).flatMap((c) => (c.item as { dg?: { node?: string } }).dg?.node ?? []));
   const listed = Object.keys(available.units);
   assert.ok(listed.length > 0);
@@ -129,10 +129,10 @@ test("the drawer lists units not on this canvas, grouped by the canvases and fol
   }
   // A folder is a segment, and a unit in no canvas or folder is loose.
   const folder = await call("folder.create", { title: "To read" });
-  const lone = await call("node.create", { title: "A lone claim" });
+  const lone = await call("unit.create", { title: "A lone claim" });
   const extra = listed.find((id) => available.units[id]!.links === 0)!;
-  await call("units.export", { nodes: [extra], target: { kind: "folder", id: folder.id } });
-  const again = await call("units.available", { canvas: target.id });
+  await call("unit.export", { nodes: [extra], target: { kind: "folder", id: folder.id } });
+  const again = await call("unit.available", { canvas: target.id });
   assert.ok(again.segments.find((s) => s.kind === "folder" && s.title === "To read")?.units.includes(extra));
   assert.ok(again.segments.find((s) => s.kind === "loose")?.units.includes(lone.id));
 });
@@ -141,9 +141,9 @@ test("placing units together brings their relations, to each other and to what's
   const { call, store } = await setup();
   // A canvas missing units that link to its cards.
   let target: { id: string } | undefined;
-  let available: Awaited<ReturnType<typeof call<"units.available">>> | undefined;
+  let available: Awaited<ReturnType<typeof call<"unit.available">>> | undefined;
   for (const summary of await call("canvas.summaries", {})) {
-    const found = await call("units.available", { canvas: summary.id });
+    const found = await call("unit.available", { canvas: summary.id });
     if (Object.values(found.units).some((u) => u.links > 0) && found.relations.length) [target, available] = [summary, found];
   }
   assert.ok(target && available, "no canvas is missing a linked unit");
@@ -158,7 +158,7 @@ test("placing units together brings their relations, to each other and to what's
   assert.ok(edges.length >= 2, `${edges.length} edges`);
   // Placing again adds nothing, and they leave the drawer.
   assert.deepEqual((await call("canvas.placeUnits", { canvas: target.id, places: units.map((node) => ({ node, x: 0, y: 0, width: 240, height: 80 })) })).ids, []);
-  const left = await call("units.available", { canvas: target.id });
+  const left = await call("unit.available", { canvas: target.id });
   assert.ok(units.every((id) => !left.units[id]));
 });
 
@@ -176,5 +176,5 @@ test("a paper's PDF finds its source unit by DOI, lights the units that cite it,
   const node = store.records.find((r): r is NodeRecord => r.kind === "node" && r.id === cut.node.id)!;
   assert.equal(node.prov?.sourceDocument, source.id);
   const evidence = opened.marks[0]!.unit.id;
-  assert.equal((await call("node.view", { id: evidence })).provenance.pdf?.ref, doc.ref);
+  assert.equal((await call("unit.get", { id: evidence })).provenance.pdf?.ref, doc.ref);
 });

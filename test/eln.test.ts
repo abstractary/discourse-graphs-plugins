@@ -44,7 +44,7 @@ const bench = async () => {
   await arrive(revised);
   const evidence = await call("output.observe", { output: gel.id, title: "The 42 kDa band is absent in the knockout", canvas: canvas.id });
   const { nodeTypes, relationTypes } = await call("grammar.get", {});
-  const claim = await call("node.create", { title: "The knockout removes the protein", type: nodeTypes.find((type) => type.label === "Claim")!.id });
+  const claim = await call("unit.create", { title: "The knockout removes the protein", type: nodeTypes.find((type) => type.label === "Claim")!.id });
   await call("relation.assert", { type: relationTypes.find((type) => type.label === "Supports")!.id, source: evidence.id, target: claim.id });
   await call("canvas.placeUnits", { canvas: canvas.id, places: [{ node: claim.id, x: 0, y: 300, width: 260, height: 96 }, { node: run.id, x: 300, y: 300, width: 260, height: 96 }] });
   await call("unit.check", { unit: run.id, verdict: "checked", way: "sourceRead", note: "Lanes match the notebook" });
@@ -131,7 +131,7 @@ test("the notebook file opens again here with everything, sign-offs included", a
   const read = await second.call("crate.import", { ref: kept.value.ref });
   assert.equal(read.kind, "own");
   assert.equal(read.units, 5);
-  const view = await second.call("node.view", { id: first.run.id });
+  const view = await second.call("unit.get", { id: first.run.id });
   assert.equal(view.node.title, first.run.title);
   assert.equal(view.checks?.length, 1, "who checked the run came with it");
   assert.equal(view.checks![0]!.note, "Lanes match the notebook");

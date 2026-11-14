@@ -193,7 +193,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   useEffect(() => {
     if (!shown) return setPreview(null);
     let live = true;
-    void call("node.view", { id: shown }).then((view) => live && setPreview(view)).catch(() => live && setPreview(null));
+    void call("unit.get", { id: shown }).then((view) => live && setPreview(view)).catch(() => live && setPreview(null));
     return () => {
       live = false;
     };
@@ -205,12 +205,12 @@ export const App = ({ connection }: { connection: Connection }) => {
   };
   const context = (id: string) => void call("focus.set", { node: id }).then(() => call("panel.open", { surface: "context" })).catch(report);
   const link = (id: string) =>
-    void call("node.insertLink", { id })
+    void call("unit.insertLink", { id })
       .then(() => setNotice("Linked at your cursor"))
       .catch((error: Error) => setNotice(/cursor/i.test(error.message) ? "Click into a note first, then link." : error.message));
   const put = (ids: string[]) => {
     if (!canvas) return;
-    void call("units.put", { canvas: canvas.id, nodes: ids })
+    void call("unit.put", { canvas: canvas.id, nodes: ids })
       .then(({ placed, already }) => {
         const where = canvas.title;
         if (placed.length && already.length) setNotice(`Put ${placed.length} on ${where}. ${already.length} already there.`);

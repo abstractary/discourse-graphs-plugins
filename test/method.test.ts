@@ -85,7 +85,7 @@ test("evidence made from an output is pinned to its bytes, and a claim's method 
   const grammar = await call("grammar.get", {});
   const claimType = grammar.nodeTypes.find((type) => type.base === "claim")!;
   const supports = grammar.relationTypes.find((type) => type.base === "supports")!;
-  const claim = await call("node.create", { title: "Dose drives staining", type: claimType.id });
+  const claim = await call("unit.create", { title: "Dose drives staining", type: claimType.id });
   await call("relation.assert", { type: supports.id, source: evidence.id, target: claim.id });
 
   const method = await call("process.method", { id: claim.id });
@@ -107,9 +107,9 @@ test("a protocol, an experiment and a run each take their own fields, and a run 
   const { run } = await call("notebook.import", { ref: await save(notebook()) });
   const grammar = await call("grammar.get", {});
   const typeOf = (base: string) => grammar.nodeTypes.find((type) => type.base === base)!.id;
-  const question = await call("node.create", { title: "Does dose drive staining?", type: typeOf("question") });
-  const protocol = await call("node.create", { title: "Immunostaining", type: typeOf("protocol") });
-  const study = await call("node.create", { title: "Dose series", type: typeOf("study") });
+  const question = await call("unit.create", { title: "Does dose drive staining?", type: typeOf("question") });
+  const protocol = await call("unit.create", { title: "Immunostaining", type: typeOf("protocol") });
+  const study = await call("unit.create", { title: "Dose series", type: typeOf("study") });
 
   await call("process.setFacts", { id: protocol.id, facts: { steps: ["Fix", "Stain", "Image"], materials: ["RRID:AB_2314866"], version: "2" } });
   await call("process.setFacts", { id: study.id, facts: { design: "experimental", conditions: ["low", "high"], hypothesis: "High dose stains more." }, links: { question: question.id, protocols: [protocol.id] } });

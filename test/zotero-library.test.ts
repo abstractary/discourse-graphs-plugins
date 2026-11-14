@@ -171,7 +171,7 @@ test("a personal library's address marks and opens only for the person whose uni
   await host.putRecords({ records: [theirs] });
   emit({ type: "records-changed" });
   await arrive(theirs);
-  assert.equal((await call("node.view", { id: theirs.id })).node.card.library, undefined);
+  assert.equal((await call("unit.get", { id: theirs.id })).node.card.library, undefined);
   const brought = await call("zotero.import", { ref: ITEM_REF });
   assert.notEqual(brought.source.id, theirs.id, "my item makes my own source");
   assert.equal(brought.wasHere, false);

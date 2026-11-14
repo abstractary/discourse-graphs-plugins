@@ -126,7 +126,7 @@ try {
   check("pdf.new-passage-lit", marksAfter > marksBefore, `${marksBefore} -> ${marksAfter}`);
   const card = await until(() => s(`s.text(${q(`[data-dg="card-${title}"]`)})`));
   check("canvas.shows-the-card", card);
-  const provenance = onCanvas ? await s(`s.call("node.view", { id: ${q(onCanvas.id)} })`) : null;
+  const provenance = onCanvas ? await s(`s.call("unit.get", { id: ${q(onCanvas.id)} })`) : null;
   check("context.knows-the-passage", provenance?.provenance.pdf?.ref === PAPER && provenance.provenance.pdf.page === 1, JSON.stringify(provenance?.provenance.pdf ?? null));
   await host.shot(`${OUT}/obsidian-pdf-saved.png`);
 
@@ -151,7 +151,7 @@ try {
   check("pdf.the-mark-lets-go", await until(() => s(`s.pdfCount(".pdf-mark[data-flash]")`).then((n) => n === 0), 6000));
 
   // A card picked on the canvas goes to its passage in the open reader, and opens Context.
-  await s(`s.call("units.put", { canvas: ${q(canvas.id)}, nodes: ${q([evidence.unit.id])} })`);
+  await s(`s.call("unit.put", { canvas: ${q(canvas.id)}, nodes: ${q([evidence.unit.id])} })`);
   const cardOf = async () => (await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`)).items.find((entry) => entry.item.dg?.node === evidence.unit.id && !("fromNode" in entry.item));
   const followCard = await until(cardOf);
   await s(`s.call("pdf.show", { ref: ${q(PAPER)}, unit: ${q((await s(`s.call("pdf.open", { ref: ${q(PAPER)}, data: false })`)).marks[0].unit.id)} })`);
@@ -181,7 +181,7 @@ try {
   const segments = await until(async () => ((await s(`s.count(".drawer-seg")`)) > 0 ? s(`s.count(".drawer-seg")`) : null));
   const count = Number(((await s(`s.text('[data-dg="drawer-count"]')`)) ?? "").replace(/\D/g, ""));
   const onIt = Object.keys((await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`)).nodes).length;
-  const available = await s(`s.call("units.available", { canvas: ${q(canvas.id)} })`);
+  const available = await s(`s.call("unit.available", { canvas: ${q(canvas.id)} })`);
   check("drawer.lists-what-isnt-here", count === Object.keys(available.units).length && count > 0, `${count} to place, ${onIt} here, ${segments} groups`);
   check("drawer.groups-by-canvas-and-folder", available.segments.some((g) => g.kind === "canvas"), available.segments.map((g) => `${g.kind}:${g.title}`).join(", "));
   await canvasClick('[data-dg="drawer-grid"]');
@@ -207,7 +207,7 @@ try {
   check("drawer.links-come-along", !related || edgesAfter > edgesBefore, `${edgesBefore} -> ${edgesAfter} links`);
 
   // Drag one onto the canvas, where it's dropped.
-  const next = await s(`s.call("units.available", { canvas: ${q(canvas.id)} })`);
+  const next = await s(`s.call("unit.available", { canvas: ${q(canvas.id)} })`);
   const loose = next.segments.find((g) => g.kind !== "canvas" || !g.title.startsWith("Preclinical")) ?? next.segments[0];
   const dragged = next.units[loose.units[0]];
   const area = await s(`s.locate(".area")`);
@@ -219,10 +219,10 @@ try {
   check("drawer.drag-drops-where-dropped", off < 60, `${JSON.stringify(types)}, ${Math.round(off)} px from the drop point`);
 
   // A whole group at once.
-  const group = (await s(`s.call("units.available", { canvas: ${q(canvas.id)} })`)).segments.find((g) => g.kind === "canvas");
+  const group = (await s(`s.call("unit.available", { canvas: ${q(canvas.id)} })`)).segments.find((g) => g.kind === "canvas");
   if (group) {
     await canvasClick(`[data-dg="drawer-place-all-${group.title}"]`);
-    const gone = await until(async () => ((await s(`s.call("units.available", { canvas: ${q(canvas.id)} })`)).segments.some((g) => g.id === group.id) ? null : true));
+    const gone = await until(async () => ((await s(`s.call("unit.available", { canvas: ${q(canvas.id)} })`)).segments.some((g) => g.id === group.id) ? null : true));
     check("drawer.place-a-whole-group", gone, group.title);
   } else check("drawer.place-a-whole-group", false, "no group left");
   await host.shot(`${OUT}/obsidian-drawer-placed.png`);

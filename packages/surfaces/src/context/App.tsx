@@ -50,7 +50,7 @@ const Relate = ({ connection, node, onDone, initial }: { connection: Connection;
       setResults([]);
       return;
     }
-    void call("node.query", { text: query, limit: 6 })
+    void call("unit.list", { text: query, limit: 6 })
       .then((found) => setResults(found.filter((item) => item.id !== node)))
       .catch((error: Error) => setNotice(error.message));
   }, [call, node, query]);
@@ -124,7 +124,7 @@ const Elsewhere = ({ connection, node, onWalk, onRelate }: { connection: Connect
   const [looking, setLooking] = useState(false);
   const look = useCallback(() => {
     setLooking(true);
-    void call("node.similar", { id: node.id, limit: 6 })
+    void call("unit.similar", { id: node.id, limit: 6 })
       .then(setFound)
       .catch(() => setFound([]))
       .finally(() => setLooking(false));
@@ -381,7 +381,7 @@ const RemoveUnit = ({ unit, call, report }: { unit: string; call: Connection["ca
         <p className="ctx-line">
           Remove this unit? It leaves every canvas and its note goes to the trash.{" "}
           <button type="button" className="ctx-link" onClick={() => setAsking(false)}>Keep it</button>{" "}
-          <button type="button" className="ctx-link" data-dg="ctx-remove-yes" onClick={() => void call("node.remove", { id: unit }).catch(report)}>Remove</button>
+          <button type="button" className="ctx-link" data-dg="ctx-remove-yes" onClick={() => void call("unit.remove", { id: unit }).catch(report)}>Remove</button>
         </p>
       ) : (
         <button type="button" className="ctx-link" data-dg="ctx-remove-unit" onClick={() => setAsking(true)}>Remove this unit…</button>
@@ -411,7 +411,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       return;
     }
     try {
-      const next = await call("node.view", { id });
+      const next = await call("unit.get", { id });
       if (focusRef.current === id) setView(next);
     } catch (error) {
       setNotice(messageOf(error));
@@ -517,7 +517,7 @@ export const App = ({ connection }: { connection: Connection }) => {
         {view.provenance.paper?.asRead ? (
           <p className="ctx-line ctx-asread" data-dg="ctx-as-read">
             Reworded by a person. The model read it as: <q>{plain(view.provenance.paper.asRead)}</q>
-            <button type="button" className="ctx-link" data-dg="ctx-restore" onClick={() => void call("node.rename", { id: node.id, title: view.provenance.paper!.asRead! }).catch(report)}>Put the model's words back</button>
+            <button type="button" className="ctx-link" data-dg="ctx-restore" onClick={() => void call("unit.rename", { id: node.id, title: view.provenance.paper!.asRead! }).catch(report)}>Put the model's words back</button>
           </p>
         ) : null}
         <div className="ctx-actions">

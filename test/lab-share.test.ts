@@ -20,8 +20,8 @@ const lab = async (t: test.TestContext) => {
   await tomas.call("lab.acceptInvite", { invite: (await mira.call("lab.invite", {})).invite });
   mira.online = tomas.online = false;
   const canvas = (await mira.call("canvas.create", { title: "Shared" })).id;
-  const claim = await mira.call("node.create", { title: "Actin rises with tension", type: await typeOf(mira, "claim") });
-  const evidence = await mira.call("node.create", { title: "Actin doubled", type: await typeOf(mira, "evidence") });
+  const claim = await mira.call("unit.create", { title: "Actin rises with tension", type: await typeOf(mira, "claim") });
+  const evidence = await mira.call("unit.create", { title: "Actin doubled", type: await typeOf(mira, "evidence") });
   const cards = { claim: await card(mira, canvas, claim, 0), evidence: await card(mira, canvas, evidence, 300) };
   await mira.call("relation.assert", { type: await relationOf(mira, "supports"), source: evidence.id, target: claim.id, draw: true });
   await mira.call("canvas.share", { id: canvas });
@@ -40,14 +40,14 @@ test("what one member takes away is taken away for the other", async (t) => {
   assert.deepEqual(await titles(tomas), ["Actin doubled"]);
 
   // A unit removed by its author: the unit itself goes, not only its card, and no line is left to it.
-  await mira.call("node.remove", { id: evidence.id });
+  await mira.call("unit.remove", { id: evidence.id });
   await world.settle();
   assert.deepEqual(await titles(tomas), []);
   assert.equal((tomas.core.graph().documents.get(evidence.id) as { removed?: boolean }).removed, true);
   assert.deepEqual(Object.keys((await tomas.call("canvas.open", { id: canvas })).relations), []);
 
   // Once its card is off the canvas, a unit's later wording stays with its author.
-  await mira.call("node.rename", { id: claim.id, title: "A private second thought" });
+  await mira.call("unit.rename", { id: claim.id, title: "A private second thought" });
   await world.settle();
   assert.ok(!JSON.stringify(mira.sent).includes("private second thought"));
 
@@ -59,7 +59,7 @@ test("what one member takes away is taken away for the other", async (t) => {
 
 test("a member's relation, its withdrawal and a check all reach the other member", async (t) => {
   const { world, mira, tomas, canvas, claim, titles } = await lab(t);
-  const counter = await tomas.call("node.create", { title: "Flat above a threshold", type: await typeOf(tomas, "claim") });
+  const counter = await tomas.call("unit.create", { title: "Flat above a threshold", type: await typeOf(tomas, "claim") });
   await card(tomas, canvas, counter, 600);
   // Drawn on the lab's canvas, which is Mira's, because Tomas works on it too.
   const opposes = await tomas.call("relation.assert", { type: await relationOf(tomas, "opposes"), source: counter.id, target: claim.id, draw: true });
@@ -67,7 +67,7 @@ test("a member's relation, its withdrawal and a check all reach the other member
   await world.settle();
   assert.ok((await titles(mira)).includes("Flat above a threshold"));
   assert.equal((await mira.call("canvas.open", { id: canvas })).relations[opposes.id]?.state, "active");
-  const seen = await mira.call("node.view", { id: claim.id });
+  const seen = await mira.call("unit.get", { id: claim.id });
   assert.equal(seen.checks?.length, 1);
   assert.equal(seen.checks![0]!.credit.name, "Tomas");
   assert.equal(seen.checks![0]!.mine, false);
@@ -82,7 +82,7 @@ test("evidence read from a paper travels with its source, and never with where t
   await tomas.call("prefs.set", { zoteroLibrary: true });
   const cut = await tomas.call("pdf.cut", { ref: ZOTERO_FILE, exact: "the smallest testing error", page: 3, title: "The smallest error is at the edge", canvas });
   await world.settle();
-  const seen = await mira.call("node.view", { id: cut.node.id });
+  const seen = await mira.call("unit.get", { id: cut.node.id });
   assert.equal(seen.node.card.source?.name, "Carroll 2020", "Mira sees which paper it came from");
   assert.equal(seen.node.card.library, undefined, "and no mark for a library that is Tomas's");
   assert.ok(!JSON.stringify(tomas.sent).includes("/Users/reader"));
@@ -91,7 +91,7 @@ test("evidence read from a paper travels with its source, and never with where t
 test("a card that outlives its unit is not shown", async (t) => {
   const { world, mira, tomas, canvas, evidence, cards, titles } = await lab(t);
   // Mira removes her evidence while Tomas, apart, moves its card. His move is the later change to the card.
-  await mira.call("node.remove", { id: evidence.id });
+  await mira.call("unit.remove", { id: evidence.id });
   // A real wait: his change has to be stamped later than hers to be the later one.
   await new Promise((done) => setTimeout(done, 5));
   const held = (await tomas.call("canvas.open", { id: canvas })).items.find((item) => item.id === cards.evidence)!;

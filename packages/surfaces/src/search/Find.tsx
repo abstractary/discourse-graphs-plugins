@@ -51,10 +51,10 @@ export const Find = ({ connection }: { connection: Connection }) => {
         : call("focus.set", { node: hit.node.id }).then(() => call("panel.open", { surface: "context" })),
     );
   const put = (hit: SearchHit) => {
-    if (canvas) done(call("units.put", { canvas: canvas.id, nodes: [hit.node.id] }));
+    if (canvas) done(call("unit.put", { canvas: canvas.id, nodes: [hit.node.id] }));
   };
   const link = (hit: SearchHit) => {
-    if (hit.node.hasText) done(call("node.insertLink", { id: hit.node.id }));
+    if (hit.node.hasText) done(call("unit.insertLink", { id: hit.node.id }));
     else setNotice("This unit has no note to link to yet.");
   };
   const all = () => done(call("search.show", { query: { text } }));

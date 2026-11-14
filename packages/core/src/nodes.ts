@@ -5,7 +5,7 @@ import type { Provenance, UnitSocial } from "@dg/contract/surface.ts";
 import type { Context, Handlers } from "./context.ts";
 import { refuse, value } from "./refuse.ts";
 
-type NodeHandlers = Pick<Handlers, "node.query" | "node.create" | "node.setType" | "node.remove" | "node.rename" | "node.insertLink" | "node.view">;
+type NodeHandlers = Pick<Handlers, "unit.list" | "unit.create" | "unit.setType" | "unit.remove" | "unit.rename" | "unit.insertLink" | "unit.get">;
 
 /**
  * A unit by itself: finding it, making it, renaming and retyping it, removing it, and everything
@@ -43,7 +43,7 @@ export const nodeFeature = (
     );
 
   const handlers: NodeHandlers = {
-    "node.query": async ({ text, types, limit }) => {
+    "unit.list": async ({ text, types, limit }) => {
       const needle = text?.toLowerCase();
       return documents("node")
         .filter((node) => !node.removed)
@@ -52,11 +52,11 @@ export const nodeFeature = (
         .slice(0, limit)
         .map(summarize);
     },
-    "node.create": async ({ title, type }) => {
+    "unit.create": async ({ title, type }) => {
       const created = value(await capture({ text: title, ...(type ? { type } : {}) }));
       return summarize(nodeOf(created.node)!);
     },
-    "node.setType": async ({ id, type }) => {
+    "unit.setType": async ({ id, type }) => {
       const node = nodeOf(id);
       if (!node) throw refuse("not-found", `No node ${id}`);
       // The type goes first: the rename fires an event, and parsing that title
@@ -78,7 +78,7 @@ export const nodeFeature = (
       }
       return summarize(nodeOf(id)!);
     },
-    "node.remove": async ({ id }) => {
+    "unit.remove": async ({ id }) => {
       const node = nodeOf(id);
       if (!node || node.removed) return null;
       if (node.by.id !== me().id) throw refuse("read-only", `Only ${context.nameOf(node.by)} can remove this unit.`);
@@ -94,7 +94,7 @@ export const nodeFeature = (
       if (home) await host.removeText({ ref: home.ref });
       return null;
     },
-    "node.rename": async ({ id, title: wanted }) => {
+    "unit.rename": async ({ id, title: wanted }) => {
       const node = nodeOf(id);
       if (!node || node.removed) throw refuse("not-found", "That unit is gone.");
       if (node.by.id !== me().id) throw refuse("read-only", `Only ${context.nameOf(node.by)} can rename this unit.`);
@@ -118,13 +118,13 @@ export const nodeFeature = (
       }
       return summarize(nodeOf(id)!);
     },
-    "node.insertLink": async ({ id }) => {
+    "unit.insertLink": async ({ id }) => {
       const anchor = liveHome(id);
       if (!anchor) throw refuse("no-target", "This unit has no note to link to yet.");
       value(await host.insertLink({ ref: anchor.ref }));
       return null;
     },
-    "node.view": async ({ id }) => {
+    "unit.get": async ({ id }) => {
       const node = nodeOf(id);
       if (!node) throw refuse("not-found", `No node ${id}`);
       const graph = context.graph();

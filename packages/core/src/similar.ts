@@ -31,8 +31,8 @@ export const similarFeature = (context: Context) => {
   // A unit's own sentence, and what the extraction said about it. The quoted passage is left out: its wording is the paper's, and adds more noise than signal.
   const textOf = (node: NodeRecord): string => [node.title, node.title, node.source?.description ?? ""].join(" ");
 
-  const all: Pick<Handlers, "node.similar"> & { restsOn: (claim: DgId) => Promise<MethodView["rests"]> } = {
-    "node.similar": async ({ id, limit = 6 }) => {
+  const all: Pick<Handlers, "unit.similar"> & { restsOn: (claim: DgId) => Promise<MethodView["rests"]> } = {
+    "unit.similar": async ({ id, limit = 6 }) => {
       const node = context.nodeOf(id);
       if (!node) throw refuse("not-found", "That unit isn't in this graph.");
       const pool = live().filter((other) => ARGUABLE.has(base(other) ?? ""));

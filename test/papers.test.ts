@@ -144,14 +144,14 @@ test("exporting gives units real text, and brings their links along", async () =
   const view = await call("canvas.open", { id: paper.canvas });
   const claims = Object.values(view.nodes).filter(({ typeLabel }) => typeLabel === "Claim" || typeLabel === "Evidence");
   const before = store.texts.size;
-  const result = await call("units.export", { nodes: claims.map(({ id }) => id), target: { kind: "workspace" } });
+  const result = await call("unit.export", { nodes: claims.map(({ id }) => id), target: { kind: "workspace" } });
   assert.equal(result.made, claims.length);
   assert.equal(store.texts.size, before + claims.length + 1, "each unit, plus the workspace's own page");
   const workspace = await call("canvas.open", { id: result.canvas! });
   assert.equal(workspace.canvas.personal, true);
   assert.equal(Object.keys(workspace.nodes).length, claims.length);
   assert.ok(Object.keys(workspace.relations).length > 0, "relations between exported units come too");
-  const again = await call("units.export", { nodes: claims.map(({ id }) => id), target: { kind: "workspace" } });
+  const again = await call("unit.export", { nodes: claims.map(({ id }) => id), target: { kind: "workspace" } });
   assert.equal(again.made, 0, "the same id, so nothing is made twice");
   assert.equal(again.canvas, result.canvas);
 });
@@ -161,7 +161,7 @@ test("the anchor and description travel into the note", async () => {
   const paper = await call("paper.extract", EXTRACT);
   const view = await call("canvas.open", { id: paper.canvas });
   const claim = Object.values(view.nodes).find(({ title }) => title.startsWith("Low albumin-to-globulin"))!;
-  await call("units.export", { nodes: [claim.id], target: { kind: "workspace" } });
+  await call("unit.export", { nodes: [claim.id], target: { kind: "workspace" } });
   const text = [...store.texts.values()].find(({ title }) => title.includes("Low albumin-to-globulin"));
   assert.match(text!.body, /In particular, a low AGR/);
   assert.match(text!.body, /From: Predicting eventual development/);
@@ -172,10 +172,10 @@ test("folders collect units, in the base's own way", async () => {
   const paper = await call("paper.extract", EXTRACT);
   const view = await call("canvas.open", { id: paper.canvas });
   const ids = Object.keys(view.nodes).slice(0, 3);
-  const { folder } = await call("units.export", { nodes: ids, target: { kind: "new-folder", title: "AGR review" } });
+  const { folder } = await call("unit.export", { nodes: ids, target: { kind: "new-folder", title: "AGR review" } });
   assert.deepEqual((await call("folder.list", {})).map(({ title, units }) => [title, units]), [["AGR review", 3]]);
   assert.equal(store.folders.size, 3);
-  await call("units.export", { nodes: ids, target: { kind: "folder", id: folder! } });
+  await call("unit.export", { nodes: ids, target: { kind: "folder", id: folder! } });
   assert.equal((await call("folder.list", {}))[0]!.units, 3, "filing twice files once");
 });
 
@@ -184,16 +184,16 @@ test("opening a unit shows where it came from and everywhere it lives", async ()
   const paper = await call("paper.extract", EXTRACT);
   const view = await call("canvas.open", { id: paper.canvas });
   const claim = Object.values(view.nodes).find(({ title }) => title.startsWith("Low albumin-to-globulin"))!;
-  let opened = await call("node.view", { id: claim.id });
+  let opened = await call("unit.get", { id: claim.id });
   assert.equal(opened.provenance.paper?.title, paper.title);
   assert.equal(opened.provenance.paper?.doi, "10.1016/j.semarthrit.2018.02.012");
   assert.equal(opened.provenance.paper?.model, "nvidia/nemotron-3-ultra-550b-a55b:free");
   assert.match(opened.provenance.paper?.anchor ?? "", /In particular, a low AGR/);
   assert.equal(opened.provenance.lives.text, null);
   assert.deepEqual(opened.provenance.lives.canvases.map(({ title }) => title), [paper.title]);
-  await call("units.export", { nodes: [claim.id], target: { kind: "new-folder", title: "Keep" } });
-  await call("units.export", { nodes: [claim.id], target: { kind: "workspace" } });
-  opened = await call("node.view", { id: claim.id });
+  await call("unit.export", { nodes: [claim.id], target: { kind: "new-folder", title: "Keep" } });
+  await call("unit.export", { nodes: [claim.id], target: { kind: "workspace" } });
+  opened = await call("unit.get", { id: claim.id });
   assert.ok(opened.provenance.lives.text);
   assert.deepEqual(opened.provenance.lives.folders.map(({ title }) => title), ["Keep"]);
   assert.equal(opened.provenance.lives.canvases.length, 2);
@@ -205,7 +205,7 @@ test("reactions are one per person, and only shared canvases carry them", async 
   const view = await call("canvas.open", { id: paper.canvas });
   const unit = Object.keys(view.nodes)[0]!;
   assert.deepEqual(view.social, {});
-  assert.equal((await call("node.view", { id: unit })).social, undefined);
+  assert.equal((await call("unit.get", { id: unit })).social, undefined);
   await core.createLab("Home Lab");
   await call("canvas.share", { id: paper.canvas });
   await call("unit.react", { unit, value: "interesting" });
@@ -226,11 +226,11 @@ test("notes stay apart from the unit, and only their author can take them back",
   const view = await call("canvas.open", { id: paper.canvas });
   const unit = Object.keys(view.nodes)[0]!;
   await call("unit.note", { unit, text: "Worth checking the cut-off" });
-  const social = (await call("node.view", { id: unit })).social!;
+  const social = (await call("unit.get", { id: unit })).social!;
   assert.equal(social.notes[0]!.text, "Worth checking the cut-off");
   assert.equal(social.notes[0]!.mine, true);
   await call("unit.removeNote", { id: social.notes[0]!.id });
-  assert.equal((await call("node.view", { id: unit })).social!.notes.length, 0);
+  assert.equal((await call("unit.get", { id: unit })).social!.notes.length, 0);
 });
 
 const LINK: LabLink = { server: "http://local", id: "lab-1", name: "Home Lab", token: "t", tokenKind: "personal", role: "admin" };
@@ -532,7 +532,7 @@ test("a relation stated away from a canvas is drawn on the canvases that hold bo
   const { call, named } = await twoPapers();
   const canvas = await call("canvas.create", { title: "Across papers" });
   const [mine, theirs] = [named("It works"), named("Reservoir error falls")];
-  await call("units.put", { canvas: canvas.id, nodes: [mine.id, theirs.id] });
+  await call("unit.put", { canvas: canvas.id, nodes: [mine.id, theirs.id] });
   const option = (await call("relation.options", { source: theirs.id, target: mine.id })).find((item) => item.label === "Supports")!;
   const edges = async () => (await call("canvas.open", { id: canvas.id })).items.filter(({ item }) => "fromNode" in item).length;
   assert.equal(await edges(), 0);
@@ -546,7 +546,7 @@ test("a relation stated away from a canvas is drawn on the canvases that hold bo
 
 test("a claim says what it rests on through other claims, and which papers that comes from", async () => {
   const { call, named } = await twoPapers();
-  const own = await call("node.create", { title: "Capacity, not the reservoir, is what matters.", type: named("It works").type! });
+  const own = await call("unit.create", { title: "Capacity, not the reservoir, is what matters.", type: named("It works").type! });
   for (const from of [named("It works"), named("Reservoir error falls")]) {
     const option = (await call("relation.options", { source: from.id, target: own.id })).find((item) => item.label === "Supports")!;
     await call("relation.assert", { type: option.type, source: from.id, target: own.id });
@@ -561,13 +561,13 @@ test("a claim says what it rests on through other claims, and which papers that 
 
 test("units that read alike in other papers are offered, and never the same paper's or ones already related", async () => {
   const { call, named } = await twoPapers();
-  const own = await call("node.create", { title: "Reservoir error depends on memory capacity matching the task.", type: named("It works").type! });
-  const found = await call("node.similar", { id: own.id });
+  const own = await call("unit.create", { title: "Reservoir error depends on memory capacity matching the task.", type: named("It works").type! });
+  const found = await call("unit.similar", { id: own.id });
   assert.equal(found[0]?.node.title, "Reservoir error falls when memory capacity matches the task.");
   assert.ok(found[0]!.shared.length >= 2, "it says which words they share");
-  const fromSamePaper = await call("node.similar", { id: named("Reservoir error falls").id });
+  const fromSamePaper = await call("unit.similar", { id: named("Reservoir error falls").id });
   assert.ok(fromSamePaper.every((item) => item.node.paper?.label !== "Dambre et al. 2012"));
   const option = (await call("relation.options", { source: found[0]!.node.id, target: own.id })).find((item) => item.label === "Supports")!;
   await call("relation.assert", { type: option.type, source: found[0]!.node.id, target: own.id });
-  assert.ok(!(await call("node.similar", { id: own.id })).some((item) => item.node.id === found[0]!.node.id), "once related, it's no longer a lead");
+  assert.ok(!(await call("unit.similar", { id: own.id })).some((item) => item.node.id === found[0]!.node.id), "once related, it's no longer a lead");
 });

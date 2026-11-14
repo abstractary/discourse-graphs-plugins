@@ -27,7 +27,7 @@ try {
   await s("s.closeAll()");
 
   const roots = await until(async () => {
-    const found = await s(`s.call("holon.roots", {})`);
+    const found = await s(`s.call("overview.list", {})`);
     return found.some((r) => r.title === "Akamatsu Lab") ? found : null;
   });
   check("core.roots", roots, roots?.map((r) => r.title).join(", "));

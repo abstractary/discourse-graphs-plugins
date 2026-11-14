@@ -30,9 +30,9 @@ A skill is a set of instructions plus the tools it may use. Each tool maps to an
 
 | Tool | Surface API method |
 |---|---|
-| Find units | `node.query` |
-| Read a unit, with provenance | `node.view` |
-| Propose a unit | `node.create` |
+| Find units | `unit.list` |
+| Read a unit, with provenance | `unit.get` |
+| Propose a unit | `unit.create` |
 | Propose a relation | `relation.assert` |
 | Read a canvas | `canvas.open` |
 | Place a unit on a canvas | `canvas.place` |

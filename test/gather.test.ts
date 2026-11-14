@@ -58,9 +58,9 @@ test("a card lists what its unit is related to, what isn't on the canvas first, 
   const { nodeTypes, relationTypes } = await call("grammar.get", {});
   const typeOf = (label: string) => nodeTypes.find((type) => type.label === label)!.id;
   const supports = relationTypes.find((type) => type.label === "Supports")!.id;
-  const claim = await call("node.create", { title: "Actin tracks tension", type: typeOf("Claim") });
-  const first = await call("node.create", { title: "Actin rose twofold", type: typeOf("Evidence") });
-  const second = await call("node.create", { title: "Actin stayed flat", type: typeOf("Evidence") });
+  const claim = await call("unit.create", { title: "Actin tracks tension", type: typeOf("Claim") });
+  const first = await call("unit.create", { title: "Actin rose twofold", type: typeOf("Evidence") });
+  const second = await call("unit.create", { title: "Actin stayed flat", type: typeOf("Evidence") });
   await call("relation.assert", { type: supports, source: first.id, target: claim.id });
   await call("relation.assert", { type: relationTypes.find((type) => type.label === "Opposes")!.id, source: second.id, target: claim.id });
   const canvas = await call("canvas.create", { title: "Argument" });

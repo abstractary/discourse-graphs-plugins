@@ -30,7 +30,7 @@ try {
   check("links.id-stays", Boolean((await links(`Mirror claim ${stamp}`)).frontmatter["dg-id"]));
 
   // Renaming a unit renames its note, and the link on the other note follows.
-  await call("node.rename", { id: claim.id, title: `Mirror claim renamed ${stamp}` });
+  await call("unit.rename", { id: claim.id, title: `Mirror claim renamed ${stamp}` });
   const renamedPath = () => pathOf(`Mirror claim renamed ${stamp}`);
   check("links.follow-a-rename", await until(async () => { const note = await links(`Mirror evidence ${stamp}`); const path = await renamedPath(); return Boolean(path) && note.out.includes(path) && String(listed(note, type.label)[0]).includes("renamed"); }, 8000), JSON.stringify(await links(`Mirror evidence ${stamp}`)));
 
@@ -50,7 +50,7 @@ try {
   // Withdrawing the relation clears both notes.
   await call("relation.withdraw", { id: made.id });
   check("links.withdrawn-relation-goes", await until(async () => listed(await links(`Mirror evidence ${stamp}`), type.label).length === 1 && listed(await links(`Mirror claim renamed ${stamp}`), type.complement).length === 0, 6000), JSON.stringify((await links(`Mirror claim renamed ${stamp}`))?.frontmatter));
-  const context = await call("node.view", { id: claim.id });
+  const context = await call("unit.get", { id: claim.id });
   check("links.not-doubled-as-mentions", !context.mentionedIn.some(({ title }) => title.includes("Mirror evidence")), JSON.stringify(context.mentionedIn));
 } finally {
   await cleanup.run();

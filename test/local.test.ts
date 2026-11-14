@@ -41,7 +41,7 @@ test("the local app reads a vault's logs, sees another device's writes, and writ
   });
   await waitFor(async () => (await fetch(`http://127.0.0.1:${PORT}/about`)).ok);
 
-  const roots = await call("holon.roots", {});
+  const roots = await call("overview.list", {});
   assert.equal(roots.ok, true);
   const [root] = roots.result as { ref: { level: string; id: string }; title: string }[];
   assert.equal(root!.title, "Akamatsu Lab");
@@ -56,7 +56,7 @@ test("the local app reads a vault's logs, sees another device's writes, and writ
   const link = assertRelation({ ...stamp, type: addresses.id, source: claim.id, target: question.id });
   appendFileSync(join(vault, "discourse-graph/records/obsidian-device.jsonl"), `${JSON.stringify(claim)}\n${JSON.stringify(link)}\n`);
   await waitFor(async () => {
-    const view = await call("holon.view", { ref: { level: "question", id: question.id }, stance: "lab" });
+    const view = await call("overview.get", { ref: { level: "question", id: question.id }, stance: "lab" });
     return (view.result as { parts: unknown[] }).parts.length === 5;
   });
 

@@ -32,8 +32,8 @@ const setup = async ({ llm, link = null }: { llm?: Llm; link?: LabLink | null } 
   } as unknown as Services;
   const { call, events, store } = await makeCore({ services, secrets, ...(llm ? { llm } : {}) });
   const canvas = await call("canvas.create", { title: "Markers" });
-  const claim = await call("node.create", { title: "Anti-dsDNA antibodies predict nephritis" });
-  const other = await call("node.create", { title: "Vitamin D has no known effect" });
+  const claim = await call("unit.create", { title: "Anti-dsDNA antibodies predict nephritis" });
+  const other = await call("unit.create", { title: "Vitamin D has no known effect" });
   await call("canvas.placeUnits", {
     canvas: canvas.id,
     places: [

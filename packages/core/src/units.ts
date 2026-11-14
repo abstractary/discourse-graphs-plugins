@@ -233,11 +233,11 @@ export const unitFeature = (
     };
   };
 
-  const all: Pick<Handlers, "units.export" | "folder.list" | "folder.create" | "unit.react" | "unit.note" | "unit.removeNote"> & { provenance: (node: NodeRecord) => Provenance; social: (unit: DgId) => UnitSocial; giveAll: () => Promise<number> } = {
+  const all: Pick<Handlers, "unit.export" | "folder.list" | "folder.create" | "unit.react" | "unit.note" | "unit.removeNote"> & { provenance: (node: NodeRecord) => Provenance; social: (unit: DgId) => UnitSocial; giveAll: () => Promise<number> } = {
     provenance,
     social,
     giveAll,
-    "units.export": async ({ nodes: ids, target }) => {
+    "unit.export": async ({ nodes: ids, target }) => {
       const nodes = ids.flatMap((id) => {
         const node = context.nodeOf(id);
         return node ? [node] : [];

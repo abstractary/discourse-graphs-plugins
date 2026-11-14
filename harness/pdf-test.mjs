@@ -47,7 +47,7 @@ try {
   // Whatever this run puts on the shared example canvas comes off again at the end, so other suites see it as it was.
   const original = new Set(records.filter((r) => r.kind === "canvas-item" && r.canvas === canvas.id).map((r) => r.id));
   const tidyUp = async () => {
-    const view = await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`);
+    const view = await s(`s.call("canvas.get", { id: ${q(canvas.id)} })`);
     const extra = view.items.map((item) => item.id).filter((id) => !original.has(id));
     if (extra.length) await s(`s.call("canvas.write", { canvas: ${q(canvas.id)}, removes: ${q(extra)} })`);
     return extra.length;
@@ -103,8 +103,8 @@ try {
   const title = await s(`s.pdfValue('[data-dg="cut-title"]')`);
   // Undo takes the highlighted unit back further down. If the run stops before that, this does.
   cleanup("the highlighted unit", async () => {
-    const left = Object.values((await call("canvas.open", { id: canvas.id })).nodes).find((n) => n.title === title);
-    if (left) await call("pdf.uncut", { node: left.id });
+    const left = Object.values((await call("canvas.get", { id: canvas.id })).nodes).find((n) => n.title === title);
+    if (left) await call("pdf.uncut", { id: left.id });
   });
   const marksBefore = await s(`s.pdfCount(".pdf-mark:not(.pending)")`);
   await pdfClick('[data-dg="cut-save"]');
@@ -114,7 +114,7 @@ try {
   });
   check("pdf.save-says-where", notice?.includes("Issue exchange"), notice);
   const onCanvas = await until(async () => {
-    const view = await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`);
+    const view = await s(`s.call("canvas.get", { id: ${q(canvas.id)} })`);
     // Every unit gets a note of its own in Obsidian, so the highlighted one has text soon after it is saved.
     return Object.values(view.nodes).find((n) => n.title === title && n.hasText) ?? null;
   });
@@ -133,13 +133,13 @@ try {
   // Undo takes it back.
   await pdfClick('[data-dg="pdf-undo"]');
   const undone = await until(async () => {
-    const view = await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`);
+    const view = await s(`s.call("canvas.get", { id: ${q(canvas.id)} })`);
     return Object.values(view.nodes).some((n) => n.title === title) ? null : true;
   });
   check("pdf.undo-takes-it-back", undone);
 
   // The context panel's link goes to the passage.
-  const evidence = (await s(`s.call("pdf.open", { ref: ${q(PAPER)}, data: false })`)).marks.find((m) => m.page === undefined || m.page > 3);
+  const evidence = (await s(`s.call("pdf.get", { ref: ${q(PAPER)}, data: false })`)).marks.find((m) => m.page === undefined || m.page > 3);
   await s(`s.call("pdf.show", { ref: ${q(PAPER)}, unit: ${q(evidence.unit.id)} })`);
   const scrolled = await until(async () => {
     const page = Number(await s(`s.pdfValue('[data-dg="pdf-page"] input')`));
@@ -151,10 +151,10 @@ try {
   check("pdf.the-mark-lets-go", await until(() => s(`s.pdfCount(".pdf-mark[data-flash]")`).then((n) => n === 0), 6000));
 
   // A card picked on the canvas goes to its passage in the open reader, and opens Context.
-  await s(`s.call("unit.put", { canvas: ${q(canvas.id)}, nodes: ${q([evidence.unit.id])} })`);
-  const cardOf = async () => (await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`)).items.find((entry) => entry.item.dg?.node === evidence.unit.id && !("fromNode" in entry.item));
+  await s(`s.call("unit.put", { canvas: ${q(canvas.id)}, units: ${q([evidence.unit.id])} })`);
+  const cardOf = async () => (await s(`s.call("canvas.get", { id: ${q(canvas.id)} })`)).items.find((entry) => entry.item.dg?.node === evidence.unit.id && !("fromNode" in entry.item));
   const followCard = await until(cardOf);
-  await s(`s.call("pdf.show", { ref: ${q(PAPER)}, unit: ${q((await s(`s.call("pdf.open", { ref: ${q(PAPER)}, data: false })`)).marks[0].unit.id)} })`);
+  await s(`s.call("pdf.show", { ref: ${q(PAPER)}, unit: ${q((await s(`s.call("pdf.get", { ref: ${q(PAPER)}, data: false })`)).marks[0].unit.id)} })`);
   await sleep(3000);
   await canvasClick(`.react-flow__node[data-id="${followCard.id}"] .card`);
   check("follow.card-click-marks-the-passage", await until(() => s(`s.pdfCount('.pdf-mark[data-flash][data-unit="${evidence.unit.id}"]')`).then((n) => n > 0), 6000));
@@ -180,7 +180,7 @@ try {
   await canvasClick('[data-dg="drawer-toggle"]');
   const segments = await until(async () => ((await s(`s.count(".drawer-seg")`)) > 0 ? s(`s.count(".drawer-seg")`) : null));
   const count = Number(((await s(`s.text('[data-dg="drawer-count"]')`)) ?? "").replace(/\D/g, ""));
-  const onIt = Object.keys((await s(`s.call("canvas.open", { id: ${q(canvas.id)} })`)).nodes).length;
+  const onIt = Object.keys((await s(`s.call("canvas.get", { id: ${q(canvas.id)} })`)).nodes).length;
   const available = await s(`s.call("unit.available", { canvas: ${q(canvas.id)} })`);
   check("drawer.lists-what-isnt-here", count === Object.keys(available.units).length && count > 0, `${count} to place, ${onIt} here, ${segments} groups`);
   check("drawer.groups-by-canvas-and-folder", available.segments.some((g) => g.kind === "canvas"), available.segments.map((g) => `${g.kind}:${g.title}`).join(", "));

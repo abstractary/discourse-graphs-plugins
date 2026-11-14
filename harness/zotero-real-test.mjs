@@ -56,7 +56,7 @@ try {
   await sleep(300);
   await shot("01-zotero-as-the-pdf-library");
   // The file is measured inside the app: its bytes are megabytes, and only their size and first few come back here.
-  const opened = await s(`s.call("pdf.open", ${JSON.stringify({ ref: doc.ref })}).then((file) => ({ size: file.dataBase64.length, head: file.dataBase64.slice(0, 8) }))`);
+  const opened = await s(`s.call("pdf.get", ${JSON.stringify({ ref: doc.ref })}).then((file) => ({ size: file.dataBase64.length, head: file.dataBase64.slice(0, 8) }))`);
   check("file.is-read-from-where-zotero-keeps-it", opened.size > 1000 && atob(opened.head).startsWith("%PDF-"), `${Math.round((opened.size * 3) / 4 / 1024)} KB`);
   check("file.nothing-is-copied-into-the-vault", pdfsIn(VAULT) === pdfsBefore, `${pdfsIn(VAULT)} PDFs in the vault, ${pdfsBefore} before`);
   await call("pdf.show", { ref: doc.ref });
@@ -88,7 +88,7 @@ try {
   await click("canvas", '[data-dg="fit"]');
   await sleep(700);
   check("card.shows-the-zotero-mark", await until(() => has("canvas", '.card [data-dg^="library-"]'), 6000));
-  await call("focus.set", { node: unit.id });
+  await call("focus.set", { id: unit.id });
   await s('s.openSide("context")');
   check("context.offers-the-way-back", await until(() => has("context", '[data-dg="ctx-library-open"]'), 8000), await at("context", "text", '[data-dg="ctx-library"]'));
   await shot("03-a-unit-read-from-zoteros-pdf");

@@ -44,7 +44,7 @@ test("where the base wants it, every unit read from a paper gets a note, and its
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
   await settle();
   await settle();
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const nodes = Object.values(view.nodes);
   assert.ok(nodes.length > 3);
   assert.ok(nodes.every((node) => node.hasText), "no unit is left without a note");
@@ -63,6 +63,6 @@ test("without that, a unit read from a paper stays without a note", async () => 
   const { call, settle } = await setup();
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
   await settle();
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   assert.ok(Object.values(view.nodes).some((node) => !node.hasText));
 });

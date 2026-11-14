@@ -192,8 +192,8 @@ export const profileFeature = (context: Context, { shareable }: { /** What this 
     return Boolean(mine && context.documents("membership").some((item) => item.member === id && item.lab === mine.did));
   };
 
-  const handlers: Pick<Handlers, "profile.view" | "profile.card" | "profile.show"> = {
-    "profile.view": async ({ id }): Promise<Profile> => {
+  const handlers: Pick<Handlers, "profile.get" | "profile.card" | "profile.show"> = {
+    "profile.get": async ({ id }): Promise<Profile> => {
       const person = who(id ?? context.me().id);
       const given = input(person.id);
       const history = historyOf(given);

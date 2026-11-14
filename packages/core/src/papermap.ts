@@ -302,14 +302,14 @@ export const paperMap = (input: PaperMapInput): PaperMap => {
   return { scope, papers: told2, ties: told, card: CARD };
 };
 
-export const paperMapFeature = (context: Context): { handlers: Pick<Handlers, "papers.map" | "papers.show"> } => {
+export const paperMapFeature = (context: Context): { handlers: Pick<Handlers, "paper.map" | "paper.showMap"> } => {
   const labOf = () => {
     const lab = context.myLab();
     return lab ? { did: lab.did, name: lab.name } : undefined;
   };
   return {
     handlers: {
-      "papers.map": async ({ scope }) => {
+      "paper.map": async ({ scope }) => {
         const lab = labOf();
         const canvas = scope?.kind === "canvas" ? context.canvasOf(scope.id) : undefined;
         // A scope that isn't there any more falls back to the person's own workspace.
@@ -322,7 +322,7 @@ export const paperMapFeature = (context: Context): { handlers: Pick<Handlers, "p
         ];
         return { ...paperMap({ graph: context.graph(), me: context.me().id, ...(lab ? { lab } : {}), scope: wanted }), scopes };
       },
-      "papers.show": async ({ canvas }) => {
+      "paper.showMap": async ({ canvas }) => {
         const opened = await context.host.openSurface({ route: { surface: "papers", ...(canvas ? { id: canvas } : {}) }, placement: "main" });
         if (!opened.ok) throw new Error(opened.error.message);
         return null;

@@ -59,9 +59,9 @@ export const deviceFeature = (
     ];
   };
 
-  const handlers: Pick<Handlers, "device.list" | "device.approve" | "device.remove"> = {
+  const handlers: Pick<Handlers, "device.list" | "device.accept" | "device.remove"> = {
     "device.list": list,
-    "device.approve": async ({ id }) => {
+    "device.accept": async ({ id }) => {
       const device = context.documents("device").find((item) => item.id === id && item.by.id === did());
       if (!device || device.removed) throw new Error("That device isn't asking any more.");
       const by = await myKey();

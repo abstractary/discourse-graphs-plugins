@@ -1,4 +1,4 @@
-/* Holon views and the canvas repository. Calm and dense; color means a type, a relation or a state. */
+/* Whole views and the canvas repository. Calm and dense; color means a type, a relation or a state. */
 
 /* Dark defaults for the local app. Inside a base, the adapter's inline skin wins over these. */
 :root[data-theme="dark"] {

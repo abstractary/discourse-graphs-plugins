@@ -266,7 +266,7 @@ const Social = ({ view, call, report }: PanelProps) => {
   const unit = view.node.id;
   const add = (): void => {
     if (!text.trim()) return;
-    void call("unit.note", { unit, text: text.trim() }).catch(report);
+    void call("unit.note", { id: unit, text: text.trim() }).catch(report);
     setText("");
   };
   return (
@@ -280,7 +280,7 @@ const Social = ({ view, call, report }: PanelProps) => {
             data-dg={`ctx-react-${value}`}
             aria-pressed={social.mine === value}
             title={social.who[value].join(", ") || undefined}
-            onClick={() => void call("unit.react", { unit, value: social.mine === value ? null : value }).catch(report)}
+            onClick={() => void call("unit.react", { id: unit, value: social.mine === value ? null : value }).catch(report)}
           >
             {label}{social.who[value].length > 0 ? ` ${social.who[value].length}` : ""}
           </button>
@@ -324,7 +324,7 @@ const Checks = ({ unit, mine, checks, call, report }: { unit: string; mine: bool
   const [note, setNote] = useState("");
   const own = checks.find((check) => check.mine);
   const send = (verdict: "checked" | "needsWork"): void => {
-    void call("unit.check", { unit, verdict, way, ...(note.trim() ? { note } : {}) })
+    void call("unit.check", { id: unit, verdict, way, ...(note.trim() ? { note } : {}) })
       .then(() => (setOpen(null), setNote("")))
       .catch(report);
   };
@@ -445,7 +445,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const groups = useMemo(() => groupsOf(view?.context ?? []), [view]);
   const report = (error: Error): void => setNotice(error.message);
   const decide = (id: string, decision: "accepted" | "rejected"): void => {
-    void call("relation.decide", { id, decision }).catch(report);
+    void call(decision === "accepted" ? "relation.accept" : "relation.reject", { id }).catch(report);
   };
 
   if (!view) {
@@ -526,7 +526,7 @@ export const App = ({ connection }: { connection: Connection }) => {
               <Icon name="open" /> Open text
             </button>
           ) : null}
-          <button type="button" data-dg="ctx-place" onClick={() => void call("canvas.place", { node: node.id }).catch(report)}>
+          <button type="button" data-dg="ctx-place" onClick={() => void call("canvas.place", { unit: node.id }).catch(report)}>
             <Icon name="canvas" /> Add to canvas
           </button>
           <button type="button" data-dg="ctx-relate" aria-expanded={relating} onClick={() => setRelating((on_) => !on_)}>

@@ -106,7 +106,7 @@ const Fields = ({ connection, unit, onSaved }: { connection: Connection; unit: N
       if (base === "run") {
         const [studies, protocols] = await Promise.all([unitsOf("study"), unitsOf("protocol")]);
         setChoices({ partOf: studies, follows: protocols });
-        const run = await call("process.run", { id: unit.id, previews: false });
+        const run = await call("run.get", { id: unit.id, previews: false });
         setPage({ condition: run.condition ?? "", deviations: run.deviations.join("\n"), partOf: run.study?.unit.id ?? "", follows: run.protocol?.id ?? "", conditions: (run.study?.conditions ?? []).join("\n") });
       }
     })();
@@ -119,10 +119,10 @@ const Fields = ({ connection, unit, onSaved }: { connection: Connection; unit: N
     setProblem("");
     try {
       if (base === "protocol") {
-        await call("process.setFacts", { id: unit.id, facts: { ...(has("steps") ? { steps: lines(page.steps!) } : {}), ...(has("materials") ? { materials: lines(page.materials!) } : {}), ...(has("version") ? { version: page.version!.trim() } : {}) } });
+        await call("method.setFacts", { id: unit.id, facts: { ...(has("steps") ? { steps: lines(page.steps!) } : {}), ...(has("materials") ? { materials: lines(page.materials!) } : {}), ...(has("version") ? { version: page.version!.trim() } : {}) } });
       } else if (base === "study") {
         const size = page.sampleSize?.trim();
-        await call("process.setFacts", {
+        await call("method.setFacts", {
           id: unit.id,
           facts: {
             ...(has("hypothesis") ? { hypothesis: page.hypothesis!.trim() } : {}),
@@ -133,7 +133,7 @@ const Fields = ({ connection, unit, onSaved }: { connection: Connection; unit: N
           ...(has("question") ? { links: { question: page.question || null } } : {}),
         });
       } else {
-        await call("process.setFacts", {
+        await call("method.setFacts", {
           id: unit.id,
           facts: { condition: page.condition?.trim() ?? "", deviations: lines(page.deviations ?? "") },
           links: { partOf: page.partOf || null, follows: page.follows || null },
@@ -265,7 +265,7 @@ export const Method = ({ connection, node, onWalk }: { connection: Connection; n
   const [notice, setNotice] = useState("");
 
   const load = useCallback(() => {
-    void call("process.method", { id: node.id })
+    void call("method.get", { id: node.id })
       .then(setView)
       .catch(() => setView(null));
   }, [call, node.id]);

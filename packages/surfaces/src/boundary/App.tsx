@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
-import type { HolonRef, HolonView, Stance } from "@dg/contract/surface.ts";
+import type { WholeRef, WholeView, Stance } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, plain, Problem } from "../shared/ui.tsx";
-import { BaseChip, Boundary, Flag, LEVEL_WORD, PartRow, StanceSwitch } from "../shared/holon-parts.tsx";
+import { BaseChip, Boundary, Flag, LEVEL_WORD, PartRow, StanceSwitch } from "../shared/overview-parts.tsx";
 import { messageOf } from "../shared/words.ts";
 
 /**
- * The boundary of whichever holon is in focus, beside the context panel: the
- * open canvas's holon, or the holon of the note being read. A unit picked here
- * moves the context panel to it and lights it on the canvas; a holon opened
+ * The boundary of whichever whole is in focus, beside the context panel: the
+ * open canvas's whole, or the whole of the note being read. A unit picked here
+ * moves the context panel to it and lights it on the canvas; a whole opened
  * here opens its canvas.
  */
 export const App = ({ connection, onShowCanvas }: { connection: Connection; onShowCanvas?: (id: string) => void }) => {
   const { call, on } = connection;
-  const [focus, setFocus] = useState<{ ref: HolonRef | null; canvas: string | null } | null>(null);
+  const [focus, setFocus] = useState<{ ref: WholeRef | null; canvas: string | null } | null>(null);
   const [stance, setStance] = useState<Stance>("lab");
-  const [view, setView] = useState<HolonView | null>(null);
+  const [view, setView] = useState<WholeView | null>(null);
   const [lit, setLit] = useState<string[]>([]);
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
@@ -25,7 +25,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   useEffect(() => on("graph-changed", () => setVersion((v) => v + 1)), [on]);
   useEffect(() => on("highlight", ({ units }) => setLit(units)), [on]);
   // The selected question, claim or evidence is what the panel is about. With none selected, it is the canvas's own.
-  const [picked, setPicked] = useState<HolonRef | null>(null);
+  const [picked, setPicked] = useState<WholeRef | null>(null);
   const follow = useCallback(
     (node: string | null) => {
       if (!node) return setPicked(null);
@@ -43,14 +43,14 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
 
   const pick = useCallback(
     (unit: string) => {
-      void call("focus.set", { node: unit }).catch(() => undefined);
+      void call("focus.set", { id: unit }).catch(() => undefined);
       void call("canvas.highlight", { units: [unit] }).catch(() => undefined);
     },
     [call],
   );
   const light = useCallback((units: string[]) => void call("canvas.highlight", { units }).catch(() => undefined), [call]);
   const open = useCallback(
-    async (ref: HolonRef) => {
+    async (ref: WholeRef) => {
       try {
         const { id } = await call("overview.canvas", { ref });
         if (onShowCanvas) onShowCanvas(id);

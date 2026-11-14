@@ -96,7 +96,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [problem, setProblem] = useState("");
 
   const load = useCallback(() => {
-    void call("profile.view", id ? { id } : {})
+    void call("profile.get", id ? { id } : {})
       .then((next) => {
         setProfile(next);
         // Open on the widest view this viewer has that still shows a history.
@@ -126,7 +126,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const part = tab === "public" ? null : profile[tab];
   const stats = tab === "public" ? profile.public : part!.stats;
   const openUnit = (unit: string): void => {
-    void call("focus.set", { node: unit });
+    void call("focus.set", { id: unit });
     void call("panel.open", { surface: "context" }).catch(() => undefined);
   };
 

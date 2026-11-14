@@ -127,7 +127,7 @@ try {
   await s(`s.call("panel.open", { surface: "context" })`);
   await until(async () => (await s(`s.ctx.count('.ctx, .ctx-empty')`)) > 0, 8000);
   await sleep(600);
-  await s(`s.call("focus.set", { node: ${q(labNode.id)} })`);
+  await s(`s.call("focus.set", { id: ${q(labNode.id)} })`);
   await until(async () => (await s(`s.ctx.count('[data-dg="ctx-uri"]')`)) === 1, 5000);
   const shown = await s(`s.ctx.text('[data-dg="ctx-uri"]')`);
   check("panel.shows-the-unit-id", /^did:plc:[a-z0-9]+#[a-z0-9]+$/.test(shown ?? ""), shown);

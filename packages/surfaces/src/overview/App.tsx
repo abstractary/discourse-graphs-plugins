@@ -12,16 +12,16 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
-import type { HolonPart, HolonRef, HolonView, Prefs } from "@dg/contract/surface.ts";
+import type { WholePart, WholeRef, WholeView, Prefs } from "@dg/contract/surface.ts";
 import { arrange } from "@dg/layout/modes.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { Icon, Mark, plain } from "../shared/ui.tsx";
-import { BaseChip, Flag, KIND_WORD, LEVEL_WORD, PartRow, counted } from "../shared/holon-parts.tsx";
+import { BaseChip, Flag, KIND_WORD, LEVEL_WORD, PartRow, counted } from "../shared/overview-parts.tsx";
 
 /**
- * The holon explorer: for holons nobody has made a canvas for yet, and for the
- * top of the holarchy. It draws the holon laid out from the graph with Tidy's
- * Logic arrangement, read-only. A holon with a canvas opens in the canvas tab;
+ * The whole explorer: for wholes nobody has made a canvas for yet, and for the
+ * top of the holarchy. It draws the whole laid out from the graph with Tidy's
+ * Logic arrangement, read-only. A whole with a canvas opens in the canvas tab;
  * one without can be made into one. Its boundary is in the boundary panel.
  */
 
@@ -32,16 +32,16 @@ const READABLE = 0.7;
 const CARD_WIDTH = 240;
 
 /** `<level>|<id>`, `unit|<id>` for a unit to be located, or nothing for the top. */
-const parseStart = (id: string | undefined): { ref: HolonRef | null; locate?: string } => {
+const parseStart = (id: string | undefined): { ref: WholeRef | null; locate?: string } => {
   if (!id || id === "canvases") return { ref: null };
   const split = id.indexOf("|");
   const level = id.slice(0, split);
   const rest = id.slice(split + 1);
-  return level === "unit" ? { ref: null, locate: rest } : { ref: { level: level as HolonRef["level"], id: rest } };
+  return level === "unit" ? { ref: null, locate: rest } : { ref: { level: level as WholeRef["level"], id: rest } };
 };
 
 type CardData = {
-  part?: HolonPart;
+  part?: WholePart;
   text: string;
   focus: boolean;
   lit: boolean;
@@ -86,7 +86,7 @@ const ExplorerCard = ({ data }: NodeProps<Node<CardData>>) => (
     <Handle id="r-t" type="target" position={Position.Right} isConnectable={false} />
   </div>
 );
-const nodeTypes = { holon: ExplorerCard };
+const nodeTypes = { whole: ExplorerCard };
 
 const FitReadable = () => {
   const initialized = useNodesInitialized();
@@ -107,14 +107,14 @@ const LaidOut = ({
   onInside,
   onText,
 }: {
-  view: HolonView;
+  view: WholeView;
   lit: Set<string>;
   onPick: (unit: string) => void;
-  onInside: (ref: HolonRef) => void;
+  onInside: (ref: WholeRef) => void;
   onText: (unit: string) => void;
 }) => {
   const partOf = useMemo(() => {
-    const map = new Map<string, HolonPart>();
+    const map = new Map<string, WholePart>();
     for (const p of [...view.parts, ...view.behind]) map.set(p.id, p);
     for (const [id, n] of Object.entries(view.names)) {
       if (!map.has(id)) map.set(id, { id, title: n.title, base: n.base, label: n.label, credit: { kind: "person", id: "", name: "" }, privacy: "lab", flags: [], ...(n.ref ? { ref: n.ref } : {}) });
@@ -145,7 +145,7 @@ const LaidOut = ({
     const opens = Boolean(part?.ref && part.ref.id !== view.ref.id);
     return {
       id: card.id,
-      type: "holon",
+      type: "overview",
       position: places.get(card.id) ?? { x: card.x, y: card.y },
       style: { width: CARD_WIDTH },
       draggable: false,
@@ -183,7 +183,7 @@ const LaidOut = ({
     };
   });
   return (
-    <div className="hv-flow" data-dg="holon-canvas">
+    <div className="hv-flow" data-dg="whole-canvas">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -206,10 +206,10 @@ const LaidOut = ({
 export const App = ({ connection, onShowCanvas }: { connection: Connection; onShowCanvas?: (id: string) => void }) => {
   const { call, on } = connection;
   const start = useMemo(() => parseStart(connection.route.id), [connection.route.id]);
-  const [ref, setRef] = useState<HolonRef | null>(start.ref);
-  const [past, setPast] = useState<HolonRef[]>([]);
-  const [roots, setRoots] = useState<{ ref: HolonRef; title: string; holds: number }[] | null>(null);
-  const [view, setView] = useState<HolonView | null>(null);
+  const [ref, setRef] = useState<WholeRef | null>(start.ref);
+  const [past, setPast] = useState<WholeRef[]>([]);
+  const [roots, setRoots] = useState<{ ref: WholeRef; title: string; holds: number }[] | null>(null);
+  const [view, setView] = useState<WholeView | null>(null);
   const [prefs, setPrefs] = useState<Prefs>({ linkDelete: "ask", captureKey: "\\", notebookText: false, cardFields: ["source"], sidePinned: false, miniMap: true, zoteroLibrary: false });
   const [lit, setLit] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -232,7 +232,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   }, [call, current?.id, current?.level, version]);
 
   const go = useCallback(
-    (next: HolonRef) => {
+    (next: WholeRef) => {
       if (current) setPast((list) => [...list.slice(-30), current]);
       setLit(new Set());
       setRef(next);
@@ -243,9 +243,9 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
     (id: string) => (onShowCanvas ? onShowCanvas(id) : void call("canvas.show", { id }).catch(() => undefined)),
     [call, onShowCanvas],
   );
-  // A holon with a canvas opens there; one without stays here until someone makes one.
+  // A whole with a canvas opens there; one without stays here until someone makes one.
   const openInside = useCallback(
-    async (next: HolonRef) => {
+    async (next: WholeRef) => {
       const target = await call("overview.get", { ref: next, stance: "lab" });
       if (target.canvas.id) showCanvas(target.canvas.id);
       else go(next);
@@ -255,7 +255,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
   const pick = useCallback(
     (unit: string) => {
       setLit(new Set([unit]));
-      void call("focus.set", { node: unit }).catch(() => undefined);
+      void call("focus.set", { id: unit }).catch(() => undefined);
     },
     [call],
   );
@@ -284,7 +284,7 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
                   setRef(past[past.length - 1]!);
                   setPast((l) => l.slice(0, -1));
                 }}
-                data-dg="holon-back"
+                data-dg="whole-back"
               >
                 <Icon name="back" />
               </button>
@@ -321,9 +321,9 @@ export const App = ({ connection, onShowCanvas }: { connection: Connection; onSh
             <span className="hv-actions">
               {lit.size ? <button type="button" onClick={() => setLit(new Set())}>Clear highlight</button> : null}
               {view.canvas.id ? (
-                <button type="button" onClick={() => showCanvas(view.canvas.id!)} data-dg="open-holon-canvas"><Icon name="canvas" /> Open its canvas</button>
+                <button type="button" onClick={() => showCanvas(view.canvas.id!)} data-dg="open-whole-canvas"><Icon name="canvas" /> Open its canvas</button>
               ) : view.ref.level !== "lab" || view.parts.length ? (
-                <button type="button" onClick={() => void makeCanvas()} data-dg="make-holon-canvas"><Icon name="canvas" /> Make it a canvas</button>
+                <button type="button" onClick={() => void makeCanvas()} data-dg="make-whole-canvas"><Icon name="canvas" /> Make it a canvas</button>
               ) : null}
               <button type="button" onClick={() => void call("panel.open", { surface: "boundary" }).catch(() => undefined)} data-dg="explorer-boundary">
                 <Icon name="context" /> Boundary

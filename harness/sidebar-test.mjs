@@ -24,7 +24,7 @@ try {
   check("side.floats-by-default", (await at("canvas", "count", '.shell[data-side="floating"]')) === 1);
   check("side.library-is-the-library-panel", await has("canvas", '[data-dg="side-places"] [data-dg="library-canvases"]'));
   check("side.marks-the-open-canvas", ((await at("canvas", "text", '.repo-main[aria-current="page"]')) ?? "").includes("People test"), await at("canvas", "text", '.repo-main[aria-current="page"]'));
-  const places = await call("repository.canvases", {});
+  const places = await call("library.canvases", {});
   check("side.lists-every-canvas", (await at("canvas", "count", ".side-places .repo-main")) === places.length, `${await at("canvas", "count", ".side-places .repo-main")} of ${places.length}`);
   await shot("01-places-floating");
 

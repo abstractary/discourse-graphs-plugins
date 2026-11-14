@@ -96,7 +96,7 @@ test("an empty search lists the newest work first, and results say which canvase
   await new Promise((done) => setTimeout(done, 5));
   await call("unit.create", { title: "Newer", type: type("claim") });
   const canvas = await call("canvas.create", { title: "Argument" });
-  await call("unit.put", { canvas: canvas.id, nodes: [first.id] });
+  await call("unit.put", { canvas: canvas.id, units: [first.id] });
   const listed = await call("search.query", { limit: 10 });
   assert.deepEqual(titles(listed), ["Newer", "Older"]);
   assert.deepEqual(listed.hits[1]!.canvases, [{ id: canvas.id, title: "Argument" }]);
@@ -112,7 +112,7 @@ test("search sorts by title or by when units were made", async () => {
   assert.deepEqual(titles(await call("search.query", { sort: "created", limit: 10 })), ["Alpha", "Beta"]);
   const canvas = await call("canvas.create", { title: "Where" });
   const beta = (await call("search.query", { text: "beta", limit: 1 })).hits[0]!;
-  await call("unit.put", { canvas: canvas.id, nodes: [beta.node.id] });
+  await call("unit.put", { canvas: canvas.id, units: [beta.node.id] });
   assert.deepEqual((await call("search.query", { text: "beta", limit: 1 })).hits[0]!.canvases, [{ id: canvas.id, title: "Where" }]);
 });
 
@@ -188,9 +188,9 @@ test("units put on a canvas from search go beside what's there, and ones already
   const b = await call("unit.create", { title: "Evidence B", type: type("evidence") });
   const canvas = await call("canvas.create", { title: "Board" });
   await call("relation.assert", { type: (await call("relation.options", { source: b.id, target: a.id }))[0]!.type, source: b.id, target: a.id });
-  const first = await call("unit.put", { canvas: canvas.id, nodes: [a.id] });
+  const first = await call("unit.put", { canvas: canvas.id, units: [a.id] });
   assert.deepEqual(first, { placed: [a.id], already: [] });
-  const second = await call("unit.put", { canvas: canvas.id, nodes: [a.id, b.id] });
+  const second = await call("unit.put", { canvas: canvas.id, units: [a.id, b.id] });
   assert.deepEqual(second, { placed: [b.id], already: [a.id] });
   const items = new Map<string, CanvasItemRecord>();
   for (const record of store.records as DgRecord[]) if (record.kind === "canvas-item" && record.canvas === canvas.id) items.set(record.id, record);
@@ -210,8 +210,8 @@ test("a relation says whether this person asserted it", async () => {
   const b = await call("unit.create", { title: "B", type: type("evidence") });
   const canvas = await call("canvas.create", { title: "Mine" });
   await call("relation.assert", { type: (await call("relation.options", { source: b.id, target: a.id }))[0]!.type, source: b.id, target: a.id });
-  await call("unit.put", { canvas: canvas.id, nodes: [a.id, b.id] });
-  const view = await call("canvas.open", { id: canvas.id });
+  await call("unit.put", { canvas: canvas.id, units: [a.id, b.id] });
+  const view = await call("canvas.get", { id: canvas.id });
   assert.equal(Object.values(view.relations)[0]!.mine, true);
 });
 

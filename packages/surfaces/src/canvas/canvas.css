@@ -1,5 +1,5 @@
-/* One bar across the top, then the holon breadcrumb, the canvas, and the drawer. */
-.shell { display: grid; height: 100%; position: relative; overflow: hidden; grid-template: "bar" auto "fixed" auto "holon" auto "area" minmax(0, 1fr) "drawer" auto / minmax(0, 1fr); background: var(--dg-page); }
+/* One bar across the top, then the whole breadcrumb, the canvas, and the drawer. */
+.shell { display: grid; height: 100%; position: relative; overflow: hidden; grid-template: "bar" auto "fixed" auto "whole" auto "area" minmax(0, 1fr) "drawer" auto / minmax(0, 1fr); background: var(--dg-page); }
 .area { grid-area: area; position: relative; min-height: 0; min-width: 0; }
 
 /*
@@ -186,27 +186,27 @@ button.reaction[data-used="false"] { opacity: 0; }
 .export-menu .field input, .export-menu select { width: 100%; box-sizing: border-box; padding: 4px 6px; border: 1px solid var(--dg-line); border-radius: var(--dg-radius); background: var(--dg-page); color: var(--dg-ink); font: inherit; }
 .export-menu .go { margin-top: 8px; width: 100%; }
 
-/* The canvas as a holon: where it sits, and how to go in or up. */
-.holon-bar { grid-area: holon; position: relative; display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 6px 0 12px; border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 70%, transparent); background: var(--dg-page); color: var(--dg-muted); font-size: var(--small); min-width: 0; container-type: inline-size; }
-@container (max-width: 520px) { .holon-end .tool-label { display: none; } }
-.holon-path { display: flex; align-items: center; flex-wrap: nowrap; gap: 2px; min-width: 0; overflow: hidden; }
-.holon-step { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
-.holon-step:not(:last-child) { flex: 0 1 auto; max-width: 22ch; }
-.holon-step:last-child { flex: 1 1 auto; }
-.holon-step-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.holon-step > [aria-current] { display: inline-flex; align-items: center; gap: 4px; min-width: 0; color: var(--dg-ink); }
-.holon-sep { color: var(--dg-muted); padding: 0 3px; }
-button.holon-link { padding: 1px 3px; color: color-mix(in oklch, var(--dg-accent) 75%, var(--dg-ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: inline-flex; align-items: center; gap: 2px; }
-.holon-loose { display: inline-flex; align-items: center; gap: 6px; color: var(--dg-muted); white-space: nowrap; }
-.holon-end { display: flex; align-items: center; gap: 2px; margin-left: auto; flex: none; }
-.holon-end .tool { height: 24px; padding: 0 6px; color: var(--dg-muted); }
-.holon-end .tool:hover { color: var(--dg-ink); }
-.holon-menu { top: 30px; right: 6px; display: flex; flex-direction: column; min-width: 220px; max-width: min(320px, calc(100% - 12px)); }
-.holon-tie { right: 6px; left: auto; }
-.holon-menu button { text-align: left; display: flex; align-items: baseline; gap: 6px; }
-.holon-menu button[aria-checked="true"] { font-weight: 600; }
-.holon-menu hr { border: 0; border-top: 1px solid var(--dg-line); margin: 4px 0; width: 100%; }
-.holon-radio { color: var(--dg-accent); width: 1em; }
+/* The canvas as a whole: where it sits, and how to go in or up. */
+.whole-bar { grid-area: whole; position: relative; display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 6px 0 12px; border-bottom: 1px solid color-mix(in oklch, var(--dg-line) 70%, transparent); background: var(--dg-page); color: var(--dg-muted); font-size: var(--small); min-width: 0; container-type: inline-size; }
+@container (max-width: 520px) { .whole-end .tool-label { display: none; } }
+.whole-path { display: flex; align-items: center; flex-wrap: nowrap; gap: 2px; min-width: 0; overflow: hidden; }
+.whole-step { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
+.whole-step:not(:last-child) { flex: 0 1 auto; max-width: 22ch; }
+.whole-step:last-child { flex: 1 1 auto; }
+.whole-step-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.whole-step > [aria-current] { display: inline-flex; align-items: center; gap: 4px; min-width: 0; color: var(--dg-ink); }
+.whole-sep { color: var(--dg-muted); padding: 0 3px; }
+button.whole-link { padding: 1px 3px; color: color-mix(in oklch, var(--dg-accent) 75%, var(--dg-ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: inline-flex; align-items: center; gap: 2px; }
+.whole-loose { display: inline-flex; align-items: center; gap: 6px; color: var(--dg-muted); white-space: nowrap; }
+.whole-end { display: flex; align-items: center; gap: 2px; margin-left: auto; flex: none; }
+.whole-end .tool { height: 24px; padding: 0 6px; color: var(--dg-muted); }
+.whole-end .tool:hover { color: var(--dg-ink); }
+.whole-menu { top: 30px; right: 6px; display: flex; flex-direction: column; min-width: 220px; max-width: min(320px, calc(100% - 12px)); }
+.whole-tie { right: 6px; left: auto; }
+.whole-menu button { text-align: left; display: flex; align-items: baseline; gap: 6px; }
+.whole-menu button[aria-checked="true"] { font-weight: 600; }
+.whole-menu hr { border: 0; border-top: 1px solid var(--dg-line); margin: 4px 0; width: 100%; }
+.whole-radio { color: var(--dg-accent); width: 1em; }
 .react-flow__node.lit .card { outline: 2px solid var(--dg-accent); outline-offset: 2px; }
 .react-flow__node.dim { opacity: 0.35; transition: opacity 150ms var(--ease); }
 .open.inside { opacity: 0.55; }
@@ -360,7 +360,7 @@ button.holon-link { padding: 1px 3px; color: color-mix(in oklch, var(--dg-accent
  * The canvas sidebar. Floating, it lies over the left of the canvas with a shadow. Pinned, the canvas
  * makes room: the shell gains a column and nothing is covered.
  */
-.shell[data-side="pinned"] { grid-template: "bar bar" auto "fixed fixed" auto "holon holon" auto "side area" minmax(0, 1fr) "side drawer" auto / minmax(260px, 340px) minmax(0, 1fr); }
+.shell[data-side="pinned"] { grid-template: "bar bar" auto "fixed fixed" auto "whole whole" auto "side area" minmax(0, 1fr) "side drawer" auto / minmax(260px, 340px) minmax(0, 1fr); }
 .side-toggle { flex: none; }
 .side-toggle[aria-expanded="true"] { background: var(--hover); color: var(--dg-ink); }
 .side { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; background: var(--dg-page); border-right: 1px solid var(--dg-line); }

@@ -61,7 +61,7 @@ test("the local app reads a vault's logs, sees another device's writes, and writ
   });
 
   // A release this app makes lands in its own device log, where Obsidian reads it.
-  const shelf = (await call("repository.canvases", {})).result as { id: string; title: string; nested: string[] }[];
+  const shelf = (await call("library.canvases", {})).result as { id: string; title: string; nested: string[] }[];
   const canvas = shelf.find((c) => c.title.startsWith("Issue exchange"))!;
   assert.equal(canvas.nested.length, 1);
   const release = await call("canvas.release", { id: canvas.id, name: "v1" });

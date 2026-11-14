@@ -16,7 +16,7 @@ test("a person sees all of their own work, told as a history", async () => {
   await call("unit.rename", { id: claim.id, title: "Reservoirs need fading memory" });
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
 
-  const profile = await call("profile.view", {});
+  const profile = await call("profile.get", {});
   assert.equal(profile.person.me, true);
   assert.deepEqual(profile.audiences, ["private", "lab", "public"]);
   const history = profile.private!.history;
@@ -42,7 +42,7 @@ test("a person sees all of their own work, told as a history", async () => {
 test("what everyone sees is counts alone", async () => {
   const { call } = await setup();
   await call("unit.create", { title: "A secret hypothesis about spectral radius" } as never);
-  const profile = await call("profile.view", {});
+  const profile = await call("profile.get", {});
   const said = JSON.stringify(profile.public);
   assert.equal(profile.public.written, 1);
   assert.ok(!/secret|spectral/i.test(said), said);
@@ -74,14 +74,14 @@ test("initials lead to a profile, and a note on a canvas says who wrote it", asy
   const { call, opened, core } = await setup();
   await call("profile.show", { id: "did:plc:someone" });
   assert.deepEqual(opened.at(-1), { route: { surface: "profile", id: "did:plc:someone" }, placement: "main" });
-  const unknown = await call("profile.view", { id: "did:plc:someone" });
+  const unknown = await call("profile.get", { id: "did:plc:someone" });
   assert.deepEqual(unknown.audiences, ["public"]);
   assert.equal(unknown.private, undefined);
   assert.equal(unknown.public.units, 0);
 
   const paper = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: "AAAA" }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
-  const view = await call("canvas.open", { id: paper.canvas });
-  const me = (await call("profile.view", {})).person.id;
+  const view = await call("canvas.get", { id: paper.canvas });
+  const me = (await call("profile.get", {})).person.id;
   assert.ok(view.items.length > 0);
   for (const item of view.items) {
     assert.equal(item.credit.id, me);

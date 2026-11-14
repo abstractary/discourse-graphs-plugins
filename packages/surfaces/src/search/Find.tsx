@@ -48,10 +48,10 @@ export const Find = ({ connection }: { connection: Connection }) => {
     done(
       hit.node.hasText
         ? call("base.reveal", { id: hit.node.id, placement: "main" })
-        : call("focus.set", { node: hit.node.id }).then(() => call("panel.open", { surface: "context" })),
+        : call("focus.set", { id: hit.node.id }).then(() => call("panel.open", { surface: "context" })),
     );
   const put = (hit: SearchHit) => {
-    if (canvas) done(call("unit.put", { canvas: canvas.id, nodes: [hit.node.id] }));
+    if (canvas) done(call("unit.put", { canvas: canvas.id, units: [hit.node.id] }));
   };
   const link = (hit: SearchHit) => {
     if (hit.node.hasText) done(call("unit.insertLink", { id: hit.node.id }));

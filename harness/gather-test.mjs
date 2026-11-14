@@ -47,7 +47,7 @@ try {
   check("picture.card-appears", await until(async () => ((await cards()) ?? 0) === 1, 8000), `${await cards()} cards`);
   check("picture.is-drawn-on-its-card", await until(() => has("canvas", ".card-picture img"), 8000));
   check("picture.file-is-kept-under-its-name", existsSync(`${VAULT}/Discourse pictures/${PICTURE}`), readdirSync(VAULT).join(", ").slice(0, 120));
-  let view = await call("canvas.open", { id: board.id });
+  let view = await call("canvas.get", { id: board.id });
   const picture = Object.values(view.nodes)[0];
   if (picture) made.push(picture.id);
   check("picture.is-an-output", picture?.base === "output" && picture.image === true, JSON.stringify(picture)?.slice(0, 160));
@@ -60,7 +60,7 @@ try {
   await type(SAID);
   await key("Enter", 13);
   check("evidence.card-appears", await until(async () => ((await cards()) ?? 0) === 2, 8000), `${await cards()} cards`);
-  view = await call("canvas.open", { id: board.id });
+  view = await call("canvas.get", { id: board.id });
   const evidence = Object.values(view.nodes).find((unit) => unit.title === SAID);
   if (evidence) made.push(evidence.id);
   check("evidence.rests-on-the-picture", evidence?.base === "evidence", JSON.stringify(evidence)?.slice(0, 120));
@@ -81,7 +81,7 @@ try {
   await shot("02-what-a-card-is-related-to");
   await click("canvas", `[data-dg="related-add-The protein is lost ${RUN}"]`);
   check("related.brings-it-onto-the-canvas", await until(async () => ((await cards()) ?? 0) === 3, 8000), `${await cards()} cards`);
-  view = await call("canvas.open", { id: board.id });
+  view = await call("canvas.get", { id: board.id });
   check("related.draws-the-link", Object.values(view.relations).some((relation) => relation.source === evidence?.id && relation.target === claim.id), `${Object.keys(view.relations).length} links`);
 
   // ---------------------------------------------------------------- Canvas actions are Obsidian commands

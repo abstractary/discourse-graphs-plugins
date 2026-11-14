@@ -47,8 +47,8 @@ const bench = async () => {
   const claim = await call("unit.create", { title: "The knockout removes the protein", type: nodeTypes.find((type) => type.label === "Claim")!.id });
   await call("relation.assert", { type: relationTypes.find((type) => type.label === "Supports")!.id, source: evidence.id, target: claim.id });
   await call("canvas.placeUnits", { canvas: canvas.id, places: [{ node: claim.id, x: 0, y: 300, width: 260, height: 96 }, { node: run.id, x: 300, y: 300, width: 260, height: 96 }] });
-  await call("unit.check", { unit: run.id, verdict: "checked", way: "sourceRead", note: "Lanes match the notebook" });
-  await call("unit.check", { unit: evidence.id, verdict: "checked" });
+  await call("unit.check", { id: run.id, verdict: "checked", way: "sourceRead", note: "Lanes match the notebook" });
+  await call("unit.check", { id: evidence.id, verdict: "checked" });
   return { ...kit, canvas, run, protocol, gel, evidence, claim };
 };
 
@@ -167,7 +167,7 @@ test("real exports from two other notebooks come in as runs with their files, ha
     assert.ok(kept.ok);
     const read = await call("crate.import", { ref: kept.value.ref });
     assert.equal(read.kind, "foreign", file);
-    const units = Object.values((await call("canvas.open", { id: read.canvas! })).nodes);
+    const units = Object.values((await call("canvas.get", { id: read.canvas! })).nodes);
     const runs = units.filter((unit) => unit.base === "run");
     const outputs = units.filter((unit) => unit.base === "output");
     assert.equal(runs.length, expected.runs, `${file}: each entry is a run`);

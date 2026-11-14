@@ -113,7 +113,7 @@ export const App = ({ connection }: { connection: Connection }) => {
     setActive(null);
     void (async () => {
       try {
-        const opened = await call("pdf.open", { ref });
+        const opened = await call("pdf.get", { ref });
         if (gone) return;
         setDoc(opened.document);
         setMarks(opened.marks);
@@ -165,7 +165,7 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   const rereadMarks = useCallback(() => {
     if (!ref) return;
-    void call("pdf.open", { ref, data: false }).then((opened) => {
+    void call("pdf.get", { ref, data: false }).then((opened) => {
       setDoc(opened.document);
       setMarks(opened.marks);
     }).catch(report);
@@ -316,7 +316,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   };
   const pick = (mark: PdfMark) => {
     setActive(mark.unit.id);
-    void call("focus.set", { node: mark.unit.id }).catch(report);
+    void call("focus.set", { id: mark.unit.id }).catch(report);
     void call("canvas.highlight", { units: [mark.unit.id], brief: true }).catch(report);
   };
 
@@ -513,7 +513,7 @@ export const App = ({ connection }: { connection: Connection }) => {
             setCut(null);
             document.getSelection()?.removeAllRanges();
             setActive(made.node.id);
-            say(`Saved as ${made.node.typeLabel ?? "a unit"}${choice.label ? ` on ${choice.label}` : " in the graph"}`, () => call("pdf.uncut", { node: made.node.id }));
+            say(`Saved as ${made.node.typeLabel ?? "a unit"}${choice.label ? ` on ${choice.label}` : " in the graph"}`, () => call("pdf.uncut", { id: made.node.id }));
           }}
           report={report}
         />

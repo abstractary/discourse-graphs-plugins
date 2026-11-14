@@ -117,7 +117,7 @@ try {
     }, 40000);
     check("lookup.registries-answer", Boolean(checked), checked ?? (await at("context", "text", '[data-dg="ctx-work"]')));
     const held = (await call("paper.list")).find((item) => item.filename === FILE);
-    const view = await call("unit.get", { id: Object.values((await call("canvas.open", { id: paper.canvas })).nodes).find((node) => node.title === EVIDENCE).id });
+    const view = await call("unit.get", { id: Object.values((await call("canvas.get", { id: paper.canvas })).nodes).find((node) => node.title === EVIDENCE).id });
     const ids = view.node.card.identifiers.map(({ scheme, value }) => `${scheme}:${value}`);
     note(`identifiers: ${ids.join(", ")}`);
     note(`standing: ${JSON.stringify(view.provenance.work?.standing)}`);
@@ -166,7 +166,7 @@ try {
     const eln = await call("crate.export", { canvas: paper.canvas, format: "eln" });
     cleanup("the saved notebook file", () => rmSync(`${VAULT}/${eln.where}`, { force: true }));
     check("crate.eln-is-saved", existsSync(`${VAULT}/${eln.where}`), eln.where);
-    const before = Object.keys((await call("canvas.open", { id: paper.canvas })).nodes).length;
+    const before = Object.keys((await call("canvas.get", { id: paper.canvas })).nodes).length;
     const again = await call("crate.import", { ref: eln.where });
     check("crate.own-crate-reads-back-with-nothing-new", again.kind === "own" && again.fresh === 0 && again.units >= before, JSON.stringify(again));
 
@@ -191,10 +191,10 @@ try {
     check("crate.foreign-run-becomes-units", read.kind === "foreign" && read.units === 4, JSON.stringify(read));
     await s(`s.open(${q(read.canvas)})`);
     await until(async () => ((await cards()) ?? 0) >= 4);
-    const units = Object.values((await call("canvas.open", { id: read.canvas })).nodes);
+    const units = Object.values((await call("canvas.get", { id: read.canvas })).nodes);
     check("crate.foreign-units-are-typed", ["code", "output", "run", "source"].every((base) => units.some((unit) => unit.base === base)), units.map((unit) => `${unit.base}: ${unit.title}`).join(" | "));
     const run = units.find((unit) => unit.base === "run");
-    const page = await call("process.run", { id: run.id }).catch((error) => ({ error: String(error) }));
+    const page = await call("run.get", { id: run.id }).catch((error) => ({ error: String(error) }));
     note(`run page: ${JSON.stringify(page).slice(0, 300)}`);
     await sleep(1500);
     await click("canvas", '[data-dg="fit"]');

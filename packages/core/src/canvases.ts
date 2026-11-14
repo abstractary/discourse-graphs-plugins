@@ -83,7 +83,7 @@ type CanvasHandlers = Pick<
   | "canvas.reveal"
   | "canvas.revealed"
   | "canvas.setLayout"
-  | "canvas.open"
+  | "canvas.get"
   | "canvas.last"
   | "canvas.place"
   | "canvas.write"
@@ -253,7 +253,7 @@ export const canvasFeature = (
       if (canvas) await put([revise({ record: canvas, changes: { layout, needsLayout: false }, by: me() })]);
       return null;
     },
-    "canvas.open": async ({ id }) => {
+    "canvas.get": async ({ id }) => {
       const view = viewOf(id);
       if (lastCanvas !== id) {
         lastCanvas = id;
@@ -262,7 +262,7 @@ export const canvasFeature = (
       return view;
     },
     "canvas.last": async () => lastUsed(),
-    "canvas.place": async ({ node }) => {
+    "canvas.place": async ({ unit: node }) => {
       context.send({ event: "place-node", node });
       return null;
     },

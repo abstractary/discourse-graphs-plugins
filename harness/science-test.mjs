@@ -103,7 +103,7 @@ try {
     await click("canvas", cardSel(title));
   };
   const canvasOf = async (name) => (await paperOf(name))?.canvas;
-  const unitsOf = async (name) => Object.values((await call("canvas.open", { id: await canvasOf(name) })).nodes);
+  const unitsOf = async (name) => Object.values((await call("canvas.get", { id: await canvasOf(name) })).nodes);
 
   // ---------------------------------------------------------------- Reading: card, context, passage
   const EVIDENCE = "For polynomial map reservoir with Lorenz input, the smallest testing error is at the edge of stability.";
@@ -111,7 +111,7 @@ try {
     await s("s.closeAll()");
     await s(`s.open(${q(await canvasOf("carroll"))})`);
     await until(async () => ((await cards()) ?? 0) >= PAPERS.carroll.units);
-    check("read.no-holarchy-prompt", !/holarchy/i.test((await at("canvas", "text", '[data-dg="holon-bar"]')) ?? ""), await at("canvas", "text", '[data-dg="holon-bar"]'));
+    check("read.no-holarchy-prompt", !/holarchy/i.test((await at("canvas", "text", '[data-dg="whole-bar"]')) ?? ""), await at("canvas", "text", '[data-dg="whole-bar"]'));
     check("read.every-card-names-its-source", (await at("canvas", "count", '.card .fact[data-field="source"]')) === (await at("canvas", "count", ".card:not(.nested)")));
     await s(`s.openSide("context")`);
     await pick(EVIDENCE);
@@ -155,7 +155,7 @@ try {
     check("runs.page-lists-its-methods", /methods it followed/.test(howText ?? "") && (await at("run", "count", '[data-dg="run-also-followed"] li')) >= 2, (howText ?? "").slice(0, 120));
     const problems = (await at("run", "text", '[data-dg="run-problems"]')) ?? "";
     check("runs.no-false-warnings", !/no study|nothing says how/.test(problems), problems);
-    const page = await call("process.run", { id: run.id });
+    const page = await call("run.get", { id: run.id });
     const keys = page.claims.map((claim) => `${claim.unit.id}|${claim.stance}`);
     check("runs.each-claim-listed-once", new Set(keys).size === keys.length && keys.length >= 2, `${keys.length} claims`);
     const tabs = await s(`app.workspace.getLeavesOfType(${q("dg-contract-panel")}).filter((leaf) => leaf.view.route?.surface === "run").length`).catch(() => null);
@@ -271,10 +271,10 @@ try {
     }
 
     // Elsewhere: asked for, it finds units in the other papers that read close to this claim.
-    const view = await call("canvas.open", { id: canvas.id });
+    const view = await call("canvas.get", { id: canvas.id });
     const find = (start) => Object.values(view.nodes).find((unit) => unit.title.startsWith(start));
     const [mine, question, edge, trade, same, even, equivalent, shorter, total] = ["Performance follows", "What property", "The edge of stability is not", "There is a fundamental trade-off", "All dynamical systems", "The echo-state network", "The NG-RC is mathematically", "The NG-RC requires", "For the logistic map"].map(find);
-    await call("focus.set", { node: edge.id });
+    await call("focus.set", { id: edge.id });
     await until(async () => (await at("context", "text", '[data-dg="ctx-title"]'))?.startsWith("The edge of stability is not"));
     check("elsewhere.waits-to-be-asked", (await has("context", '[data-dg="ctx-similar-find"]')) && (await at("context", "count", '[data-dg^="similar-"]')) === 0);
     await s(`s.ctx.reveal('[data-dg="ctx-similar-find"]')`).catch(() => null);
@@ -307,7 +307,7 @@ try {
     await shot("21-argument");
 
     // What my claim rests on, across papers.
-    await call("focus.set", { node: mine.id });
+    await call("focus.set", { id: mine.id });
     const rests = await until(() => at("context", "text", '[data-dg="method-rests"]'));
     check("rests.counts-through-claims", /Rests on 5 claims/.test(rests ?? "") && /1 unit opposes it/.test(rests ?? ""), rests);
     check("rests.names-the-papers", /Carroll 2020/.test(rests ?? "") && /Dambre et al\. 2012/.test(rests ?? "") && /Gauthier et al\. 2021/.test(rests ?? ""), rests);

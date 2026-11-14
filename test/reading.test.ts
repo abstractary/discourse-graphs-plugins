@@ -29,7 +29,7 @@ test("a PDF dropped in is kept, listed and read back", async () => {
   assert.equal(added.units, 0);
   const listed = await call("pdf.list", {});
   assert.ok(listed.some((doc) => doc.ref === added.ref));
-  const opened = await call("pdf.open", { ref: added.ref });
+  const opened = await call("pdf.get", { ref: added.ref });
   assert.equal(opened.dataBase64, paperPdf);
   await assert.rejects(call("pdf.add", { name: "fake.pdf", dataBase64: btoa("hello") }), /isn't a PDF/);
 });
@@ -56,7 +56,7 @@ test("a highlight becomes a staged unit on the chosen canvas, with its quote, pa
 
   // The reader lights it, and a second highlight reuses the source and stacks under the first.
   const second = await call("pdf.cut", { ref: doc.ref, exact: "Autoantibodies accumulated", page: 4, title: "Autoantibodies came first", canvas: canvas.id });
-  const opened = await call("pdf.open", { ref: doc.ref });
+  const opened = await call("pdf.get", { ref: doc.ref });
   assert.deepEqual(opened.marks.map((m) => [m.exact, m.page]), [["IFN-α was elevated", 3], ["Autoantibodies accumulated", 4]]);
   assert.equal(opened.document.source, source.id);
   const [a, b] = [cut.node.id, second.node.id].map((id) => cardsOf(store, canvas.id).find((c) => (c.item as { dg?: { node?: string } }).dg?.node === id)!.item as { x: number; y: number; height: number });
@@ -68,8 +68,8 @@ test("a highlight becomes a staged unit on the chosen canvas, with its quote, pa
   assert.deepEqual(view.provenance.pdf, { ref: doc.ref, name: "Lab paper.pdf", page: 4, exact: "Autoantibodies accumulated" });
 
   // Undo takes the unit and its card back.
-  await call("pdf.uncut", { node: second.node.id });
-  assert.equal((await call("pdf.open", { ref: doc.ref })).marks.length, 1);
+  await call("pdf.uncut", { id: second.node.id });
+  assert.equal((await call("pdf.get", { ref: doc.ref })).marks.length, 1);
   assert.ok(!cardsOf(store, canvas.id).some((c) => (c.item as { dg?: { node?: string } }).dg?.node === second.node.id));
 });
 
@@ -90,7 +90,7 @@ test("a paper's PDF lights the units extracted from it", async () => {
   assert.ok(doc.paper);
   const list = await call("pdf.list", {});
   assert.equal(list[0]?.ref, doc.ref);
-  const opened = await call("pdf.open", { ref: doc.ref });
+  const opened = await call("pdf.get", { ref: doc.ref });
   assert.ok(opened.marks.length >= 10, `${opened.marks.length} marks`);
   assert.equal(opened.document.title, graphOf.paper.title);
   // A highlight on a paper hangs off the paper's own source unit.
@@ -106,8 +106,8 @@ test("the reader opens beside the canvas at a passage", async () => {
   await call("pdf.show", { ref: doc.ref, unit: cut.node.id });
   assert.deepEqual(opened.at(-1), { route: { surface: "pdf", id: doc.ref }, placement: "main" });
   assert.ok(events.some((e) => e.event === "pdf-reveal" && e.unit === cut.node.id));
-  assert.equal((await call("pdf.open", { ref: doc.ref })).reveal, cut.node.id);
-  assert.equal((await call("pdf.open", { ref: doc.ref })).reveal, undefined);
+  assert.equal((await call("pdf.get", { ref: doc.ref })).reveal, cut.node.id);
+  assert.equal((await call("pdf.get", { ref: doc.ref })).reveal, undefined);
 });
 
 test("the drawer lists units not on this canvas, grouped by the canvases and folders that hold them", async () => {
@@ -131,7 +131,7 @@ test("the drawer lists units not on this canvas, grouped by the canvases and fol
   const folder = await call("folder.create", { title: "To read" });
   const lone = await call("unit.create", { title: "A lone claim" });
   const extra = listed.find((id) => available.units[id]!.links === 0)!;
-  await call("unit.export", { nodes: [extra], target: { kind: "folder", id: folder.id } });
+  await call("unit.export", { units: [extra], target: { kind: "folder", id: folder.id } });
   const again = await call("unit.available", { canvas: target.id });
   assert.ok(again.segments.find((s) => s.kind === "folder" && s.title === "To read")?.units.includes(extra));
   assert.ok(again.segments.find((s) => s.kind === "loose")?.units.includes(lone.id));
@@ -167,7 +167,7 @@ test("a paper's PDF finds its source unit by DOI, lights the units that cite it,
   const doc = await call("pdf.add", { name: "preclinical-sle-mediators.pdf", dataBase64: paperPdf });
   const source = store.records.find((r): r is NodeRecord => r.kind === "node" && r.facts?.doi === "10.1016/j.jaut.2016.06.001")!;
   assert.equal(doc.source, source.id);
-  const opened = await call("pdf.open", { ref: doc.ref });
+  const opened = await call("pdf.get", { ref: doc.ref });
   assert.ok(opened.marks.length >= 6, `${opened.marks.length} marks`);
   const sources = () => store.records.filter((r) => r.kind === "node" && r.title === source.title).length;
   const before = sources();

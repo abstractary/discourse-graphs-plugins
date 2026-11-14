@@ -178,7 +178,7 @@ export const readTools = ({ core, call, widen = false, modelHere = false }: { co
       const node = nodeOf(id);
       if (!node) throw new Error(`No unit ${id} that this agent may read. Find ids with dg_search.`);
       const view = await call("unit.get", { id });
-      const method = await call("process.method", { id }).catch(() => undefined);
+      const method = await call("method.get", { id }).catch(() => undefined);
       const passage = passageOf(node);
       return {
         unit: compact(view.node),
@@ -239,7 +239,7 @@ export const readTools = ({ core, call, widen = false, modelHere = false }: { co
         return { ...compact(here), ...(under.length ? { under } : {}) };
       };
       const root = walk(id, depth);
-      const method = await call("process.method", { id }).catch(() => undefined);
+      const method = await call("method.get", { id }).catch(() => undefined);
       return { root, summary: counts, gaps: (method?.problems ?? []).map((problem) => problem.message), note: QUOTED };
     },
   };
@@ -270,7 +270,7 @@ export const readTools = ({ core, call, widen = false, modelHere = false }: { co
       }
       const one = all.find((item) => item.id === args.id);
       if (!one) throw new Error(`No canvas ${String(args.id)} that this agent may read. Call dg_canvas with no id to list them.`);
-      const view = await call("canvas.open", { id: one.id });
+      const view = await call("canvas.get", { id: one.id });
       const units = Object.values(view.nodes).filter((item) => nodeOf(item.id));
       const here = new Set(units.map((item) => item.id));
       const { items, total, more } = slice(units, args);

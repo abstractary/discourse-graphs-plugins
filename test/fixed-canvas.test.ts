@@ -17,7 +17,7 @@ const refused = new RegExp(PDF_CANVAS_FIXED);
 
 test("a PDF canvas can be polished, and takes nothing that isn't its paper's", async () => {
   const { call, paper } = await setup();
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   assert.ok(view.paper, "a PDF canvas says which reading it is");
   const card = view.items.find(({ item }) => "x" in item && "dg" in item)!;
   const { id: _id, ...item } = card.item as { id: string; x: number };
@@ -25,14 +25,14 @@ test("a PDF canvas can be polished, and takes nothing that isn't its paper's", a
   // Moving and taking off are polish.
   await call("canvas.write", { canvas: paper.canvas, upserts: [{ id: card.id, z: card.z, item: { ...item, x: item.x + 40 } as never }] });
   await call("canvas.write", { canvas: paper.canvas, removes: [card.id] });
-  assert.equal((await call("canvas.open", { id: paper.canvas })).items.some(({ id }) => id === card.id), false);
+  assert.equal((await call("canvas.get", { id: paper.canvas })).items.some(({ id }) => id === card.id), false);
   await call("canvas.write", { canvas: paper.canvas, restores: [card.id] });
 
   // A sticky, and a unit written from nothing, are someone's own work.
   await assert.rejects(call("canvas.write", { canvas: paper.canvas, upserts: [{ z: 99, item: { type: "text", text: "Mine", x: 0, y: 0, width: 200, height: 60 } as never }] }), refused);
   const own = await call("unit.create", { title: "My own claim" } as never);
   await assert.rejects(call("canvas.write", { canvas: paper.canvas, upserts: [{ z: 99, item: { type: "text", text: own.title, x: 0, y: 0, width: 200, height: 60, dg: { node: own.id } } as never }] }), refused);
-  await assert.rejects(call("unit.put", { canvas: paper.canvas, nodes: [own.id] }), refused);
+  await assert.rejects(call("unit.put", { canvas: paper.canvas, units: [own.id] }), refused);
   // The headings Tidy draws round groups of cards arrange the paper's cards and add nothing to them. A plain frame is still someone's own.
   const heading = await call("canvas.write", { canvas: paper.canvas, upserts: [{ z: 0, item: { type: "group", guide: true, label: "A line of thought", x: 0, y: 0, width: 400, height: 300 } as never }] });
   await call("canvas.write", { canvas: paper.canvas, upserts: [{ id: heading.ids[0]!, z: 0, item: { type: "group", guide: true, label: "A line of thought", x: 40, y: 0, width: 400, height: 300 } as never }] });
@@ -41,18 +41,18 @@ test("a PDF canvas can be polished, and takes nothing that isn't its paper's", a
   await assert.rejects(call("canvas.placeUnits", { canvas: paper.canvas, places: [{ node: own.id, x: 0, y: 0, width: 200, height: 60 }] }), refused);
   // A card can't be repointed at another unit.
   await assert.rejects(call("canvas.write", { canvas: paper.canvas, upserts: [{ id: card.id, z: card.z, item: { ...item, dg: { node: own.id } } as never }] }), refused);
-  assert.equal((await call("canvas.open", { id: paper.canvas })).items.length, view.items.length, "nothing foreign was added");
+  assert.equal((await call("canvas.get", { id: paper.canvas })).items.length, view.items.length, "nothing foreign was added");
 
   // One of the paper's own units, taken off earlier, can go back on.
   const unit = (card.item as { dg: { node: string } }).dg.node;
   await call("canvas.write", { canvas: paper.canvas, removes: [card.id] });
-  const { placed } = await call("unit.put", { canvas: paper.canvas, nodes: [unit] });
+  const { placed } = await call("unit.put", { canvas: paper.canvas, units: [unit] });
   assert.deepEqual(placed, [unit]);
 });
 
 test("a unit a model read can be reworded, and keeps the model's wording beside it", async () => {
   const { call, paper } = await setup();
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const read = Object.values(view.nodes).find((node) => node.card.source?.how === "auto")!;
   assert.equal(read.card.source?.reworded, undefined);
   const reworded = await call("unit.rename", { id: read.id, title: "Said more exactly" });
@@ -70,9 +70,9 @@ test("a unit a model read can be reworded, and keeps the model's wording beside 
 });
 test("building on a PDF canvas makes a canvas of the same cards that can be changed", async () => {
   const { call, paper } = await setup();
-  const before = await call("canvas.open", { id: paper.canvas });
+  const before = await call("canvas.get", { id: paper.canvas });
   const built = await call("canvas.buildOn", { id: paper.canvas });
-  const view = await call("canvas.open", { id: built.id });
+  const view = await call("canvas.get", { id: built.id });
   assert.equal(view.paper, undefined, "it is a canvas of the person's own");
   assert.equal(view.items.length, before.items.length);
   assert.deepEqual(Object.keys(view.nodes).sort(), Object.keys(before.nodes).sort(), "the same units, not copies of them");
@@ -80,9 +80,9 @@ test("building on a PDF canvas makes a canvas of the same cards that can be chan
   for (const { item } of view.items) if ("fromNode" in item) assert.ok(cards.has(item.fromNode) && cards.has(item.toNode), "links join the new cards");
 
   const own = await call("unit.create", { title: "My own claim" } as never);
-  const { placed } = await call("unit.put", { canvas: built.id, nodes: [own.id] });
+  const { placed } = await call("unit.put", { canvas: built.id, units: [own.id] });
   assert.deepEqual(placed, [own.id]);
-  assert.equal((await call("canvas.open", { id: paper.canvas })).items.length, before.items.length, "the PDF canvas is unchanged");
+  assert.equal((await call("canvas.get", { id: paper.canvas })).items.length, before.items.length, "the PDF canvas is unchanged");
   const again = await call("canvas.buildOn", { id: paper.canvas });
   assert.notEqual(again.title, built.title, "a second one gets its own name");
 });
@@ -91,8 +91,8 @@ test("the canvas list says which workspace each canvas lives in, what it draws o
   const { call, paper } = await setup();
   const built = await call("canvas.buildOn", { id: paper.canvas });
   const own = await call("unit.create", { title: "My own claim" } as never);
-  await call("unit.put", { canvas: built.id, nodes: [own.id] });
-  const list = await call("repository.canvases", {});
+  await call("unit.put", { canvas: built.id, units: [own.id] });
+  const list = await call("library.canvases", {});
   const fixedOne = list.find((c) => c.id === paper.canvas)!;
   const mine = list.find((c) => c.id === built.id)!;
   assert.equal(fixedOne.kind, "paper");
@@ -102,7 +102,7 @@ test("the canvas list says which workspace each canvas lives in, what it draws o
   assert.equal(mine.privacy, "private");
   assert.equal(mine.sources.length, 1);
   assert.equal(mine.sources[0]!.title, fixedOne.paper);
-  assert.equal(mine.sources[0]!.units, Object.keys((await call("canvas.open", { id: paper.canvas })).nodes).length);
+  assert.equal(mine.sources[0]!.units, Object.keys((await call("canvas.get", { id: paper.canvas })).nodes).length);
   assert.equal(mine.contributorCount, 1);
   assert.ok(mine.contributors[0]!.edits > 0);
   const summaries = await call("canvas.summaries", {});

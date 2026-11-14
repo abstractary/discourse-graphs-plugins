@@ -118,7 +118,7 @@ export const thingFeature = (context: Context, deps: { /* what it needs that isn
 | Zotero | `library.ts` | `zotero.*` |
 | Published work, announcements, profiles | `works.ts`, `notify.ts`, `profile.ts` | `work.*`, `notify.*`, `profile.*` |
 | Crates and publishing | `crate.ts`, `rocrate.ts`, `mira.ts`, `datacite.ts`, `zenodo.ts` | `crate.*`, `deposit.*` |
-| Overview and Boundary | `holons.ts` | `overview.*` |
+| Overview and Boundary | `overview.ts` | `overview.*` |
 | What a panel asks of the base | `shell.ts` | `panel.*`, `dialog.*`, `link.open`, `server.*` |
 | Shared small conversions | `bytes.ts` | none |
 | Failures that keep their kind | `refuse.ts` | none |
@@ -200,7 +200,7 @@ Types, boundaries, the dependency matrix, both unit suites, the simulation and t
 The audit lists everything. The largest:
 
 - `canvas/App.tsx` is down from 2,300 lines to 1,150. What is left in it places, pastes and adds cards and handles keys.
-- A unit is now reached through `unit.*` and the overview through `overview.*`. Other namespaces still mix `get`, `view` and `open` for a read, and one id parameter has several names. "holon" survives in identifiers and one record field.
+- A unit is now reached through `unit.*` and the overview through `overview.*`. Other namespaces still mix `get`, `view` and `open` for a read, and one id parameter has several names. "whole" survives in identifiers and one record field.
 - Routes are declared once, in `contract/routes.ts`. The shapes that cross are still declared on both sides, and three of twenty disagree: the server's info, an invitation, and a unit sent with a question.
 - In the Obsidian plugin only the test hooks take the whole core, by a name that says so. Everything else, the walkthrough included, takes the contract's narrower seam.
 - The server has no rate limits. It now refuses anything without a record's shape.

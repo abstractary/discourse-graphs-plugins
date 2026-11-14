@@ -47,7 +47,7 @@ export const toNode = ({ id, z, item, credit, at }: CanvasItemView, view: Canvas
       },
     };
   }
-  // Another canvas held inside this one: it opens in place, like going into a holon.
+  // Another canvas held inside this one: it opens in place, like going into a whole.
   if (item.type === "file" && item.dg?.canvas) {
     return { ...base, width: item.width, type: "nested", data: { canvas: item.dg.canvas, file: item.file, minHeight: Math.min(item.height, 120) } };
   }

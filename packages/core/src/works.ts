@@ -83,7 +83,7 @@ export const worksFeature = (context: Context) => {
   };
 
   const handlers: Pick<Handlers, "work.lookup" | "unit.identify"> = {
-    "work.lookup": async ({ unit }): Promise<WorkLookup> => {
+    "work.lookup": async ({ id: unit }): Promise<WorkLookup> => {
       if (!context.services) throw new Error("Looking a work up needs the network, and this base has none set up.");
       const node = context.nodeOf(unit);
       const target = node ? targetOf(node) : undefined;
@@ -109,7 +109,7 @@ export const worksFeature = (context: Context) => {
       if (mine) await context.put([revise({ record: target.unit, changes: sourceChanges(target.unit, work), by })]);
       return { work, saved: mine, target: "unit", title };
     },
-    "unit.identify": async ({ node: id, add, remove }) => {
+    "unit.identify": async ({ id: id, add, remove }) => {
       const node = context.nodeOf(id);
       if (!node) throw refuse("not-found", `No node ${id}`);
       if (node.by.id !== context.me().id) throw refuse("read-only", "Only whoever made a unit can change its identifiers.");

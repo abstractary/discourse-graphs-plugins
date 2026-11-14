@@ -165,7 +165,7 @@ test("a new unit's note starts from its type's template, and carries the facts a
   const claim = nodeTypes.find((type) => type.label === "Claim")!;
   await call("grammar.saveNodeType", { id: claim.id, label: "Claim", base: "claim", abbreviation: "CLM", template: "# {title}\n\nMade {date} by {author} as a {type}.\n\n## What it rests on\n" });
   const unit = await call("unit.create", { title: "Tension rises", type: claim.id });
-  await call("unit.export", { nodes: [unit.id], target: { kind: "workspace" } });
+  await call("unit.export", { units: [unit.id], target: { kind: "workspace" } });
   const note = texts().find((text) => text.title === "CLM - Tension rises")!;
   assert.ok(note, texts().map((text) => text.title).join(" | "));
   assert.match(note.body ?? "", /# Tension rises\n\nMade \d{4}-\d{2}-\d{2} by Test Person as a Claim\.\n\n## What it rests on/);
@@ -193,10 +193,10 @@ test("a canvas can be removed by its maker, and its units stay", async () => {
 
   // A unit goes the same way: off every canvas, its note to the trash, its record kept.
   const board = await call("canvas.create", { title: "Board" });
-  await call("unit.export", { nodes: [unit.id], target: { kind: "canvas", id: board.id } });
-  assert.equal(Object.keys((await call("canvas.open", { id: board.id })).nodes).length, 1);
+  await call("unit.export", { units: [unit.id], target: { kind: "canvas", id: board.id } });
+  assert.equal(Object.keys((await call("canvas.get", { id: board.id })).nodes).length, 1);
   await call("unit.remove", { id: unit.id });
   assert.equal((core.graph().documents.get(unit.id) as NodeRecord).removed, true);
-  assert.equal(Object.keys((await call("canvas.open", { id: board.id })).nodes).length, 0);
+  assert.equal(Object.keys((await call("canvas.get", { id: board.id })).nodes).length, 0);
   assert.ok(!texts().some((text) => text.title.includes("Stays")));
 });

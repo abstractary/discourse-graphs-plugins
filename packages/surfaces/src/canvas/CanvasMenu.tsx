@@ -20,7 +20,7 @@ export const useCanvasMenu = ({ connection, go, report }: { connection: Connecti
   const [pictures, setPictures] = useState<Record<string, RepositoryCanvas>>({});
   useEffect(() => {
     if (!open) return;
-    void call("repository.canvases", {})
+    void call("library.canvases", {})
       .then((list) => setPictures(Object.fromEntries(list.map((item) => [item.id, item]))))
       .catch(() => {});
   }, [open, call]);

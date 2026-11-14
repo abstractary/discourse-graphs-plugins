@@ -116,10 +116,10 @@ try {
   await host.shot(`${OUT}/${host.name}-connected.png`);
 
   // A mode stays with the canvas, for teammates too.
-  check("layout.is-stored", (await s(`s.call("canvas.open", ${q({ id })}).then((view) => view.canvas.layout?.mode)`)) === "connected");
+  check("layout.is-stored", (await s(`s.call("canvas.get", ${q({ id })}).then((view) => view.canvas.layout?.mode)`)) === "connected");
   await click('[data-dg="undo"]');
   await sleep(900);
-  check("undo.brings-back-the-last-mode", (await s(`s.call("canvas.open", ${q({ id })}).then((view) => view.canvas.layout?.mode)`)) === "timeline");
+  check("undo.brings-back-the-last-mode", (await s(`s.call("canvas.get", ${q({ id })}).then((view) => view.canvas.layout?.mode)`)) === "timeline");
 
   // Focus needs a card.
   await click('[data-dg="tidy-menu"]');

@@ -8,10 +8,10 @@ const { call, check, note, until, shot, at, has, click } = t;
 await t.s("s.test(true)");
 await t.s("s.closeAll()");
 
-await call("papers.show", {});
+await call("paper.showMap", {});
 check("map.opens", await until(() => has("papers", '[data-dg="papers"]'), 8000));
 await sleep(900);
-const everyone = await call("papers.map", { scope: { kind: "everyone" } });
+const everyone = await call("paper.map", { scope: { kind: "everyone" } });
 note(`everyone: ${everyone.papers.length} papers, ${everyone.ties.length} ties: ${everyone.ties.map((tie) => `${tie.stance} ${tie.strength}`).join(", ")}`);
 check("map.offers-the-ladder", (await at("papers", "count", ".pm-scopes [role=tab]")) === everyone.scopes.length, await at("papers", "text", ".pm-scopes"));
 await click("papers", '[data-dg="pm-scope-everyone"]');
@@ -28,12 +28,12 @@ if (everyone.papers.length) {
 }
 await click("papers", '[data-dg="pm-scope-own"]');
 await sleep(900);
-const own = await call("papers.map", { scope: { kind: "own" } });
+const own = await call("paper.map", { scope: { kind: "own" } });
 check("map.own-scope-matches-core", (await at("papers", "count", '[data-dg="pm-paper"]')) === own.papers.length, `${own.papers.length} papers, ${own.ties.length} ties`);
 await shot("03-only-you");
 
 // The type colors on a real canvas.
-const canvases = await call("repository.canvases", {});
+const canvases = await call("library.canvases", {});
 const busy = [...canvases].sort((a, b) => b.cards - a.cards)[0];
 if (busy) {
   await call("canvas.show", { id: busy.id });

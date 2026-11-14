@@ -20,9 +20,9 @@ try {
   // Left behind: this canvas, which sidebar-test.mjs also opens. The Zotero stage's source and highlights stay on it
   // with their units: whether units removed with node.remove are brought in again by the next import hasn't been tried.
   const board = (await call("canvas.list")).find((canvas) => canvas.title === "People test") ?? (await call("canvas.create", { title: "People test" }));
-  const itemsBefore = new Set((await call("canvas.open", { id: board.id })).items.map((entry) => entry.id));
+  const itemsBefore = new Set((await call("canvas.get", { id: board.id })).items.map((entry) => entry.id));
   cleanup("the note and the line put on the People test canvas", async () => {
-    const loose = (await call("canvas.open", { id: board.id })).items.filter((entry) => !itemsBefore.has(entry.id) && !entry.item.dg && !("fromNode" in entry.item)).map((entry) => entry.id);
+    const loose = (await call("canvas.get", { id: board.id })).items.filter((entry) => !itemsBefore.has(entry.id) && !entry.item.dg && !("fromNode" in entry.item)).map((entry) => entry.id);
     if (loose.length) await call("canvas.write", { canvas: board.id, removes: loose });
   });
 
@@ -36,11 +36,11 @@ try {
     const made = await at("canvas", "text", '.card .fact[data-field="created"] time');
     check("cards.date-carries-the-time", /\d{1,2}:\d{2}/.test(made ?? ""), made);
     check("cards.no-open-inside-button", (await at("canvas", "count", '[data-dg^="inside-"]')) === 0);
-    check("cards.bar-says-nothing-of-holons", !/holon|holarch/i.test((await at("canvas", "text", '[data-dg="holon-bar"]')) ?? ""));
+    check("cards.bar-says-nothing-of-wholes", !/whole|holarch/i.test((await at("canvas", "text", '[data-dg="whole-bar"]')) ?? ""));
 
     // A person's initials, anywhere: hover for a card, click for their profile.
     let mark = null;
-    for (const title of Object.values((await call("canvas.open", { id: paper.canvas })).nodes).map((node) => node.title)) {
+    for (const title of Object.values((await call("canvas.get", { id: paper.canvas })).nodes).map((node) => node.title)) {
       const box = await at("canvas", "locate", `[data-dg="credit-${title}"]`).catch(() => null);
       if (box && box.x > 320 && box.x < 1300 && box.y > 220 && box.y < 900) { mark = box; break; }
     }
@@ -63,7 +63,7 @@ try {
     if (!(await has("profile", '[data-dg="profile"]').catch(() => false))) await call("profile.show", {});
     await until(() => has("profile", '[data-dg="profile-stats"]'), 8000);
     await sleep(600);
-    const me = await call("profile.view", {});
+    const me = await call("profile.get", {});
     check("profile.names-the-person", (await at("profile", "text", '[data-dg="profile-name"]'))?.includes(me.person.name));
     check("profile.offers-three-audiences-to-oneself", (await at("profile", "count", ".profile-tabs [role=tab]")) === 3, await at("profile", "text", ".profile-tabs"));
     check("profile.says-who-sees-the-private-view", /Only you can see this/.test((await at("profile", "text", '[data-dg="profile-audience"]')) ?? ""));
@@ -100,7 +100,7 @@ try {
     const drawnBy = await at("canvas", "text", '[data-dg="ink-credit"]');
     check("ink.selected-says-who-drew-it", (drawnBy ?? "").length > 2, drawnBy);
     await shot("09-line-selected");
-    const drawn = (await call("canvas.open", { id: board.id })).items.filter((entry) => entry.item.type === "stroke").map((entry) => entry.id);
+    const drawn = (await call("canvas.get", { id: board.id })).items.filter((entry) => entry.item.type === "stroke").map((entry) => entry.id);
     await call("canvas.write", { canvas: board.id, removes: drawn });
   }
 
@@ -116,7 +116,7 @@ try {
       await sleep(900);
     }
     const by = await until(() => at("canvas", "text", '.note [data-dg="note-by"]'), 6000);
-    const me = (await call("profile.view", {})).person.name;
+    const me = (await call("profile.get", {})).person.name;
     check("notes.say-who-wrote-them-and-when", (by ?? "").includes(me) && /\d{1,2}:\d{2}/.test(by ?? ""), by);
     await shot("04-note-author");
   }
@@ -153,7 +153,7 @@ try {
       const go = await s(`s.dialog.locate('[data-dg="zotero-bring"]')`);
       await t.clickAt(go.x + go.width / 2, go.y + go.height / 2);
       check("zotero.dialog-closes", await until(async () => !(await s("s.dialogOpen()")), 12000));
-      const units = Object.values((await call("canvas.open", { id: board.id })).nodes);
+      const units = Object.values((await call("canvas.get", { id: board.id })).nodes);
       const source = units.find((unit) => unit.base === "source" && /reservoir computers work best/i.test(unit.title));
       const claim = units.find((unit) => /largest entropy/.test(unit.title));
       check("zotero.source-and-highlights-are-on-the-canvas", Boolean(source) && Boolean(claim), units.map((unit) => `${unit.abbreviation}: ${unit.title.slice(0, 30)}`).join(" | "));
@@ -163,7 +163,7 @@ try {
         const view = await call("unit.get", { id: claim.id });
         check("zotero.passage-opens-in-zotero", /^zotero:\/\/open-pdf\/library\/items\/PDFA0001\?page=6&annotation=ANNO0002$/.test(view.provenance.library?.open ?? ""), view.provenance.library?.open);
         await s(`s.openSide("context")`);
-        await call("focus.set", { node: claim.id });
+        await call("focus.set", { id: claim.id });
         await until(async () => /largest entropy/.test((await at("context", "text", '[data-dg="ctx-title"]')) ?? ""), 6000);
         check("zotero.panel-keeps-the-readers-note", /cuts against/.test((await at("context", "text", '[data-dg="ctx-library"]')) ?? ""), await at("context", "text", '[data-dg="ctx-library"]'));
       }

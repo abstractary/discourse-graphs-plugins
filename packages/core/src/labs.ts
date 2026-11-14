@@ -206,7 +206,13 @@ export const labFeature = (
     }
   };
 
-  const all: Pick<Handlers, "lab.view" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.decide" | "lab.setBreadcrumbs" | "lab.acknowledge" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
+  const settle = async (requestId: string, decision: "accept" | "decline", tokenKind?: "personal" | "team"): Promise<LabView> => {
+    const link = await services().link();
+    if (!link) throw new Error("You're not in a lab.");
+    await services().decide(link, { requestId, decision, ...(tokenKind ? { tokenKind } : {}) });
+    return view();
+  };
+  const all: Pick<Handlers, "lab.get" | "lab.find" | "lab.register" | "lab.requestJoin" | "lab.check" | "lab.accept" | "lab.reject" | "lab.setBreadcrumbs" | "lab.acknowledge" | "lab.invite" | "lab.revokeInvite" | "lab.acceptInvite" | "lab.remove" | "lab.configure" | "paper.getFile" | "canvas.share" | "canvas.audience"> & {
   shareable: () => DgRecord[];
   take: (records: DgRecord[]) => Promise<void>;
   prepare: () => Promise<void>;
@@ -216,7 +222,7 @@ export const labFeature = (
     shareable,
     take,
     prepare,
-    "lab.view": view,
+    "lab.get": view,
     "lab.find": ({ server, id }) => services().findLab({ server, id }),
     "lab.register": async ({ server, name }) => {
       await createLabRecord(name);
@@ -241,12 +247,8 @@ export const labFeature = (
       }
       return view();
     },
-    "lab.decide": async ({ requestId, decision, tokenKind }) => {
-      const link = await services().link();
-      if (!link) throw new Error("You're not in a lab.");
-      await services().decide(link, { requestId, decision, ...(tokenKind ? { tokenKind } : {}) });
-      return view();
-    },
+    "lab.accept": ({ id, tokenKind }) => settle(id, "accept", tokenKind),
+    "lab.reject": ({ id }) => settle(id, "decline"),
     "lab.setBreadcrumbs": async ({ value }) => {
       await context.setLocal(BREADCRUMB_KEY, value);
       return view();
@@ -281,7 +283,7 @@ export const labFeature = (
       await joinLab(link.name).catch(() => {});
       return view();
     },
-    "lab.remove": async ({ did }) => {
+    "lab.remove": async ({ id: did }) => {
       const link = await services().link();
       const lab = context.myLab();
       if (!link?.token || !lab) throw new Error("You're not in a lab.");

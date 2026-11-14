@@ -365,9 +365,9 @@ export const methodFeature = (
     if (node.by.id !== context.me().id) throw refuse("read-only", `Only ${node.by.name} can change this unit.`);
   };
 
-  const handlers: Pick<Handlers, "process.method" | "process.run" | "run.show" | "run.list" | "process.setFacts" | "notebook.list" | "notebook.import" | "evidence.fromOutput"> = {
-    "process.method": ({ id }) => method(id),
-    "process.run": ({ id, previews = true }) => runPage(id, previews),
+  const handlers: Pick<Handlers, "method.get" | "run.get" | "run.show" | "run.list" | "method.setFacts" | "notebook.list" | "notebook.import" | "evidence.fromOutput"> = {
+    "method.get": ({ id }) => method(id),
+    "run.get": ({ id, previews = true }) => runPage(id, previews),
     "run.show": async ({ id }) => {
       value(await context.host.openSurface({ route: { surface: "run", ...(id ? { id } : {}) }, placement: "main" }));
       return null;
@@ -386,7 +386,7 @@ export const methodFeature = (
         }))
         .sort((a, b) => b.at.localeCompare(a.at)),
 
-    "process.setFacts": async ({ id, facts, links }) => {
+    "method.setFacts": async ({ id, facts, links }) => {
       const node = context.nodeOf(id);
       if (!node) throw refuse("not-found", "That unit isn't in this graph.");
       mine(node);

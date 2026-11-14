@@ -26,7 +26,7 @@ const lab = async (t: test.TestContext) => {
   await mira.call("relation.assert", { type: await relationOf(mira, "supports"), source: evidence.id, target: claim.id, draw: true });
   await mira.call("canvas.share", { id: canvas });
   await world.settle();
-  const titles = async (vault: Vault): Promise<string[]> => Object.values((await vault.call("canvas.open", { id: canvas })).nodes).map((node) => node.title).sort();
+  const titles = async (vault: Vault): Promise<string[]> => Object.values((await vault.call("canvas.get", { id: canvas })).nodes).map((node) => node.title).sort();
   return { world, mira, tomas, canvas, claim, evidence, cards, titles };
 };
 
@@ -44,7 +44,7 @@ test("what one member takes away is taken away for the other", async (t) => {
   await world.settle();
   assert.deepEqual(await titles(tomas), []);
   assert.equal((tomas.core.graph().documents.get(evidence.id) as { removed?: boolean }).removed, true);
-  assert.deepEqual(Object.keys((await tomas.call("canvas.open", { id: canvas })).relations), []);
+  assert.deepEqual(Object.keys((await tomas.call("canvas.get", { id: canvas })).relations), []);
 
   // Once its card is off the canvas, a unit's later wording stays with its author.
   await mira.call("unit.rename", { id: claim.id, title: "A private second thought" });
@@ -63,10 +63,10 @@ test("a member's relation, its withdrawal and a check all reach the other member
   await card(tomas, canvas, counter, 600);
   // Drawn on the lab's canvas, which is Mira's, because Tomas works on it too.
   const opposes = await tomas.call("relation.assert", { type: await relationOf(tomas, "opposes"), source: counter.id, target: claim.id, draw: true });
-  await tomas.call("unit.check", { unit: claim.id, verdict: "checked" });
+  await tomas.call("unit.check", { id: claim.id, verdict: "checked" });
   await world.settle();
   assert.ok((await titles(mira)).includes("Flat above a threshold"));
-  assert.equal((await mira.call("canvas.open", { id: canvas })).relations[opposes.id]?.state, "active");
+  assert.equal((await mira.call("canvas.get", { id: canvas })).relations[opposes.id]?.state, "active");
   const seen = await mira.call("unit.get", { id: claim.id });
   assert.equal(seen.checks?.length, 1);
   assert.equal(seen.checks![0]!.credit.name, "Tomas");
@@ -94,11 +94,11 @@ test("a card that outlives its unit is not shown", async (t) => {
   await mira.call("unit.remove", { id: evidence.id });
   // A real wait: his change has to be stamped later than hers to be the later one.
   await new Promise((done) => setTimeout(done, 5));
-  const held = (await tomas.call("canvas.open", { id: canvas })).items.find((item) => item.id === cards.evidence)!;
+  const held = (await tomas.call("canvas.get", { id: canvas })).items.find((item) => item.id === cards.evidence)!;
   await tomas.call("canvas.write", { canvas, upserts: [{ id: cards.evidence, z: held.z, item: { ...(held.item as object), x: 900 } as never }] });
   await world.settle();
   for (const vault of [mira, tomas]) {
     assert.deepEqual(await titles(vault), ["Actin rises with tension"]);
-    assert.ok(!(await vault.call("canvas.open", { id: canvas })).items.some((item) => item.id === cards.evidence), `${vault.name} sees no card for it`);
+    assert.ok(!(await vault.call("canvas.get", { id: canvas })).items.some((item) => item.id === cards.evidence), `${vault.name} sees no card for it`);
   }
 });

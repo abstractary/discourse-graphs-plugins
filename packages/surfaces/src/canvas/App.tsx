@@ -26,7 +26,7 @@ import { ExportMenu } from "./ExportMenu.tsx";
 import { Legend } from "./Legend.tsx";
 import { MODES, arrange, leaningOf, measureOf, type Card, type RelationLink } from "@dg/layout/modes.ts";
 import { ActionsContext, nodeTypes, type Actions, type Box, type CardData } from "./nodes.tsx";
-import { HolonBar, isHolon, useHolonCanvas } from "./holons.tsx";
+import { WholeBar, isWhole, useWholeCanvas } from "./wholes.tsx";
 import { DRAG_TYPE } from "../shared/drag.ts";
 import { Drawer, useUnitsDrawer } from "./Drawer.tsx";
 import { Sidebar, type SideTab } from "./Sidebar.tsx";
@@ -144,7 +144,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     },
     report,
   });
-  const holon = useHolonCanvas({ connection, current, switchTo, report, notify: setNotice });
+  const whole = useWholeCanvas({ connection, current, switchTo, report, notify: setNotice });
   const drawerData = useUnitsDrawer({ connection, current, report });
   /** The sidebar: closed, or open on one of its tabs. It reopens on the tab it was last on. */
   const [side, setSide] = useState<SideTab | null>(null);
@@ -165,7 +165,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       return;
     }
     if (!currentRef.current) setCurrent(id);
-    const next = await call("canvas.open", { id });
+    const next = await call("canvas.get", { id });
     if ((currentRef.current ?? id) === id) setView(next);
   }, [call]);
   refreshRef.current = refresh;
@@ -297,12 +297,12 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       reveal: (node) => {
         // A unit still on its paper's canvas has no text to open, so it opens as context.
         if (viewRef.current?.nodes[node]?.hasText === false) {
-          void call("focus.set", { node }).then(() => call("panel.open", { surface: "context" })).catch(report);
+          void call("focus.set", { id: node }).then(() => call("panel.open", { surface: "context" })).catch(report);
           return;
         }
         void call("base.reveal", { id: node, placement: "main" }).catch(report);
       },
-      react: (node, value) => void call("unit.react", { unit: node, value }).catch(report),
+      react: (node, value) => void call("unit.react", { id: node, value }).catch(report),
       chooseType: (node, anchor) => {
         const { x, y } = inFrame(anchor.left, anchor.bottom + 4, 170, 240);
         setTypeMenu({ node, x, y });
@@ -328,7 +328,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       },
       openCanvas: (id) => (route.pinned ? void call("canvas.show", { id }).catch(report) : switchTo(id)),
       canvasTitle: (id) => canvasesRef.current.find((canvas) => canvas.id === id)?.title ?? null,
-      fields: holon.prefs.cardFields,
+      fields: whole.prefs.cardFields,
       openIdentifier: (id) => {
         const url = identifierUrl(id);
         if (url) void call("link.open", { url }).catch(report);
@@ -346,7 +346,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       },
       related: related.open,
     }),
-    [call, report, updateItem, inFrame, holon.prefs.cardFields, route.pinned, switchTo, rename, current, flow, freeSpot, related.open],
+    [call, report, updateItem, inFrame, whole.prefs.cardFields, route.pinned, switchTo, rename, current, flow, freeSpot, related.open],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<FlowNode>[]) => {
@@ -500,7 +500,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     }
   };
 
-  const { linkAsk, beforeDelete, removeItems } = useDelete({ connection, writer, items, view: viewRef, prefs: holon.prefs, report });
+  const { linkAsk, beforeDelete, removeItems } = useDelete({ connection, writer, items, view: viewRef, prefs: whole.prefs, report });
 
   /**
    * Puts a clip's items here, keeping their layout, at the pointer if it's over
@@ -662,7 +662,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     setFieldsAt((open) => (open ? null : { left: x, top: y }));
   }, [inFrame]);
 
-  const shownFields = holon.prefs.cardFields.join(",");
+  const shownFields = whole.prefs.cardFields.join(",");
   useCrowding({ nodes, fields: shownFields, canvas: canvasId, needsLayout, onCount: setCrowded });
   const closeFields = useCallback(() => setFieldsAt(null), []);
 
@@ -775,7 +775,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
       // One card picked by any means, such as the keyboard, is the card whose links show. None picked clears it.
       setPickedCard((old) => (picked.length === 1 ? picked[0]!.id : picked.length === 0 ? null : old));
       const node = picked.length === 1 ? (picked[0]!.data as CardData).node : undefined;
-      if (node) void call("focus.set", { node: node.id }).catch(report);
+      if (node) void call("focus.set", { id: node.id }).catch(report);
     },
     [call, report],
   );
@@ -810,7 +810,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
     [edges, near],
   );
 
-  const litHere = useMemo(() => holon.lit.length > 0 && nodes.some((node) => holon.lit.includes((node.data as CardData).node?.id ?? "")), [holon.lit, nodes]);
+  const litHere = useMemo(() => whole.lit.length > 0 && nodes.some((node) => whole.lit.includes((node.data as CardData).node?.id ?? "")), [whole.lit, nodes]);
   const shown = useMemo(
     () =>
       nodes.map((node) => {
@@ -819,14 +819,14 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
         const summary = (node.data as CardData).node;
         const marked = summary && grounded.includes(summary.id) ? { ...scored, data: { ...scored.data, grounded: true } } : scored;
         // Lit from another panel, such as a gap in the boundary panel. Nothing dims for units shown elsewhere.
-        const lit = litHere ? (summary && holon.lit.includes(summary.id) ? "lit" : "dim") : "";
+        const lit = litHere ? (summary && whole.lit.includes(summary.id) ? "lit" : "dim") : "";
         const arriving = summary && fresh.includes(summary.id) ? "arrived" : "";
         const touched = near ? (near.cards.has(node.id) ? "near" : "far") : "";
         const classes = [followed && summary?.id === followed ? "followed" : "", lit, arriving, touched].filter(Boolean).join(" ");
         const edited = editing === node.id ? { ...marked, data: { ...marked.data, editing: true } } : marked;
         return classes ? { ...edited, className: classes } : edited;
       }),
-    [nodes, followed, grounded, measure, scores, holon.lit, litHere, fresh, editing, near],
+    [nodes, followed, grounded, measure, scores, whole.lit, litHere, fresh, editing, near],
   );
 
   const pickedNodes = nodes.flatMap((node) => {
@@ -869,7 +869,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
 
   return (
     <ActionsContext.Provider value={actions}>
-      <div className="shell" ref={shell} data-side={side ? (holon.prefs.sidePinned ? "pinned" : "floating") : undefined}>
+      <div className="shell" ref={shell} data-side={side ? (whole.prefs.sidePinned ? "pinned" : "floating") : undefined}>
         <Toolbar
           refs={{ bar, add: addButton, tidy: tidyButton, fields: fieldsButton }}
           state={{
@@ -931,13 +931,13 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
             </button>
           </div>
         ) : null}
-        <HolonBar
+        <WholeBar
           connection={connection}
           current={current}
-          info={holon.info}
-          lit={litHere ? holon.lit.filter((id) => nodes.some((node) => (node.data as CardData).node?.id === id)) : []}
-          onClearLit={() => holon.setLit([])}
-          onOpen={(ref) => void holon.openInside(ref)}
+          info={whole.info}
+          lit={litHere ? whole.lit.filter((id) => nodes.some((node) => (node.data as CardData).node?.id === id)) : []}
+          onClearLit={() => whole.setLit([])}
+          onOpen={(ref) => void whole.openInside(ref)}
           report={report}
         />
         {canvasMenu.open ? (
@@ -955,7 +955,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
             }}
           />
         ) : null}
-        {fieldsAt ? <FieldsMenu connection={connection} at={fieldsAt} fields={holon.prefs.cardFields} button={fieldsButton} onClose={closeFields} report={report} /> : null}
+        {fieldsAt ? <FieldsMenu connection={connection} at={fieldsAt} fields={whole.prefs.cardFields} button={fieldsButton} onClose={closeFields} report={report} /> : null}
         {tidyAt ? <TidyMenu at={tidyAt} mode={mode} onPick={tidyUp} /> : null}
         {addAt ? <AddBox connection={connection} at={addAt} next={linking !== null} types={nodeTypeList} onPick={(node) => void addCard(node)} onCreate={(title, type) => void createNode(title, type)} onClose={closeAdd} report={report} /> : null}
         <div
@@ -1001,7 +1001,7 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
               closeMenus();
               setExportOpen(false);
               // A floating sidebar goes when the canvas is clicked. A pinned one stays.
-              if (!holon.prefs.sidePinned) setSide(null);
+              if (!whole.prefs.sidePinned) setSide(null);
             }}
             onNodeClick={(_, node) => {
               setPickedCard(node.id);
@@ -1061,12 +1061,12 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
           >
             <Background gap={24} size={1} />
             <Panel position="bottom-left">
-              <ViewBar map={holon.prefs.miniMap !== false} onMap={(miniMap) => void call("prefs.set", { miniMap }).catch(report)} />
+              <ViewBar map={whole.prefs.miniMap !== false} onMap={(miniMap) => void call("prefs.set", { miniMap }).catch(report)} />
             </Panel>
             <Panel position="bottom-center">
               <Legend edges={edges} labels={view?.relations ?? {}} />
             </Panel>
-            {holon.prefs.miniMap === false ? null : (
+            {whole.prefs.miniMap === false ? null : (
               <MiniMap
                 position="bottom-right"
                 pannable
@@ -1118,14 +1118,14 @@ export const App = ({ connection, Search, Library }: { connection: Connection; S
             connection={connection}
             current={current}
             tab={side}
-            pinned={holon.prefs.sidePinned}
+            pinned={whole.prefs.sidePinned}
             units={drawerData}
             onTab={openSide}
             onPin={(pinned) => void call("prefs.set", { sidePinned: pinned }).catch(report)}
             onClose={() => setSide(null)}
             onGo={(id) => {
               if (id !== current) switchTo(id);
-              if (!holon.prefs.sidePinned) setSide(null);
+              if (!whole.prefs.sidePinned) setSide(null);
             }}
             onPlace={(ids) => void placeGroup(ids)}
             Search={Search}

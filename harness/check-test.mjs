@@ -24,11 +24,11 @@ try {
   const runType = grammar.nodeTypes.find((item) => item.base === "run");
   const board = await makeCanvas(`Sign-off ${RUN}`);
   const unit = await makeUnit({ title: TITLE, type: runType.id });
-  await call("unit.export", { nodes: [unit.id], target: { kind: "canvas", id: board.id } });
+  await call("unit.export", { units: [unit.id], target: { kind: "canvas", id: board.id } });
   await s("s.closeAll()");
   await s(`s.open(${q(board.id)})`);
   await until(async () => ((await at("canvas", "count", ".react-flow__node")) ?? 0) === 1, 8000);
-  await call("focus.set", { node: unit.id });
+  await call("focus.set", { id: unit.id });
   await s('s.openSide("context")');
 
   // ---------------------------------------------------------------- Signing

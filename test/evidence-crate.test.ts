@@ -76,7 +76,7 @@ test("a MATSUlab evidence bundle comes in as evidence, the study that grounds it
   const ref = await put("ro-crate-metadata.json", "application/json", CRATE);
   const read = await call("crate.import", { ref });
   assert.equal(read.kind, "foreign");
-  const view = await call("canvas.open", { id: read.canvas! });
+  const view = await call("canvas.get", { id: read.canvas! });
   const count = (base: string): number => Object.values(view.nodes).filter((node) => node.base === base).length;
   assert.deepEqual(
     { evidence: count("evidence"), run: count("run"), protocol: count("protocol"), source: count("source"), code: count("code"), output: count("output"), claim: count("claim") },

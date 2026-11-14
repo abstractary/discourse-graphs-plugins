@@ -35,7 +35,7 @@ export const Work = ({ view, call, report }: { view: NodeView; call: Connection[
 
   const look = (): void => {
     setBusy(true);
-    void call("work.lookup", { unit: view.node.id })
+    void call("work.lookup", { id: view.node.id })
       .then(setLast)
       .catch(report)
       .finally(() => setBusy(false));
@@ -43,7 +43,7 @@ export const Work = ({ view, call, report }: { view: NodeView; call: Connection[
   const add = (): void => {
     const text = adding.trim();
     if (!text) return;
-    void call("unit.identify", { node: view.node.id, add: [text] })
+    void call("unit.identify", { id: view.node.id, add: [text] })
       .then(() => setAdding(""))
       .catch(report);
   };

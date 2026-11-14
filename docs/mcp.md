@@ -27,7 +27,7 @@ The 80 writes, by what should happen to them:
 | Add to the argument | `unit.create`, `relation.assert`, `pdf.cut`, `evidence.fromOutput`, `candidate.promote` | **Proposals.** This is the whole of what an agent may write |
 | Say a unit holds up | `unit.check` | **A proposed check.** An agent's reading can be useful to the person who signs. It is never a sign-off |
 | Change someone's words or remove things | `unit.rename`, `unit.remove`, `relation.withdraw`, `canvas.remove` | Never. These are the author's |
-| Decide | `relation.decide`, `device.approve`, `lab.decide`, `lab.remove` | Never. Deciding is what the person is for |
+| Decide | `relation.accept`, `relation.reject`, `device.accept`, `lab.accept`, `lab.reject`, `lab.remove` | Never. Deciding is what the person is for |
 | Arrange | `canvas.write`, `canvas.setLayout`, `unit.put` | Not in the first version. An arrangement is a person's reading of the argument |
 | Send outward | `canvas.share`, `crate.export`, `crate.deposit`, `notify.send`, `paper.share` | Never. See "No way out" below |
 | Settings, labs, devices, grammar | `lab.configure`, `grammar.save…`, `ai.configure`, `prefs.set` | Never |
@@ -70,10 +70,10 @@ The earlier design had sixteen. Current guidance, and our own reading of the job
 
 | Tool | Answers | Built from |
 |---|---|---|
-| `dg.search` | Units matching words, a type, a paper, a person, a time, an identifier (DOI, ORCID iD, RRID, a Zotero address), or a scope. The same ranking as the search panel | `search.query`, `unit.list`, `profile.view` |
-| `dg.unit` | One unit and what is around it, to a depth: its words, type, who made it and when, identifiers, the passage it was read from, its relations with their state, its checks and whether they still hold, its method chain, its gaps, and whose shelf its paper is on | `unit.get`, `process.method`, `unit.related` |
-| `dg.argument` | For a claim or a question: each chain of support and opposition down to evidence and runs, what is contested, and what is unchecked or has changed since it was checked | `overview.get`, `process.method`, checks |
-| `dg.canvas` | The canvases, or one canvas: its units and relations, compact, with its gaps | `canvas.list`, `canvas.open`, `canvas.summaries` |
+| `dg.search` | Units matching words, a type, a paper, a person, a time, an identifier (DOI, ORCID iD, RRID, a Zotero address), or a scope. The same ranking as the search panel | `search.query`, `unit.list`, `profile.get` |
+| `dg.unit` | One unit and what is around it, to a depth: its words, type, who made it and when, identifiers, the passage it was read from, its relations with their state, its checks and whether they still hold, its method chain, its gaps, and whose shelf its paper is on | `unit.get`, `method.get`, `unit.related` |
+| `dg.argument` | For a claim or a question: each chain of support and opposition down to evidence and runs, what is contested, and what is unchecked or has changed since it was checked | `overview.get`, `method.get`, checks |
+| `dg.canvas` | The canvases, or one canvas: its units and relations, compact, with its gaps | `canvas.list`, `canvas.get`, `canvas.summaries` |
 | `dg.paper` | The papers, or one paper's passages by page, each with an id to quote from. Says whose shelf the paper is on and whether its file can be read here | `paper.list`, `pdf.list`, new text service |
 | `dg.grammar` | The lab's types and relations, which pairs each relation may join, and the rules the gaps come from | `grammar.get`, the process shapes |
 

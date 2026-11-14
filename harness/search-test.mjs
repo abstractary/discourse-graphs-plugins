@@ -83,7 +83,7 @@ const fitAll = async () => {
   await canvasClick('[data-dg="fit"]');
   await sleep(500);
 };
-const view = (id) => s(`s.call("canvas.open", { id: ${q(id)} })`);
+const view = (id) => s(`s.call("canvas.get", { id: ${q(id)} })`);
 const unitsOn = async (id) => Object.keys((await view(id)).nodes);
 const status = () => s(`s.text('[data-dg="status-text"]')`);
 
@@ -107,7 +107,7 @@ const canvasNamed = async (title) => {
 };
 const board = await canvasNamed("Search test");
 const target = await canvasNamed("Paste target");
-await s(`s.call("unit.put", { canvas: ${q(board)}, nodes: ${q([A.id, B.id])} })`);
+await s(`s.call("unit.put", { canvas: ${q(board)}, units: ${q([A.id, B.id])} })`);
 // The two cards sit apart whatever facts cards are showing, so the link between them can be clicked.
 {
   const card = (await view(board)).items.find((item) => item.item.dg?.node === B.id);
@@ -260,7 +260,7 @@ for (const link of available.relations) {
     (c) => c.other.id === link.target && c.relation.source !== c.relation.target && (c.state === "active" || c.state === "pending") && c.relation.by.id !== me,
   );
   if (!entry) continue;
-  await s(`s.call("unit.put", { canvas: ${q(board)}, nodes: ${q([link.source, link.target])} })`);
+  await s(`s.call("unit.put", { canvas: ${q(board)}, units: ${q([link.source, link.target])} })`);
   if (await until(async () => ((await view(board)).items.some((item) => item.item.dg?.relation === entry.relation.id) ? true : null), 3000)) {
     theirRelation = entry.relation;
     break;

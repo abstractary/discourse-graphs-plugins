@@ -18,7 +18,7 @@ const t = await session({ out: resolve("reports/lab-real"), reload: !process.env
 const { s, check, note, until, shot, at, click, has, call, cleanup } = t;
 await s("s.test(true)");
 
-const before = await call("lab.view");
+const before = await call("lab.get");
 if (before.link || before.identity.lab) {
   note(`SKIP the sandbox is already in a lab (${before.link?.name ?? before.identity.lab?.name}). Leave it first, then run this again.`);
   await t.finish("lab-real");
@@ -70,7 +70,7 @@ try {
   const arrived = await until(async () => (await call("canvas.list")).find((item) => item.id === canvas.id), 20000);
   check("sync.the-shared-canvas-arrives-by-itself", Boolean(arrived), arrived?.title);
   const view = await until(async () => {
-    const now = await call("lab.view");
+    const now = await call("lab.get");
     return now.identity.lab && now.settings.reach === "device" ? now : null;
   }, 15000);
   check("inherit.the-pis-settings-reach-obsidian", view?.settings.reach === "device" && view?.settings.servers?.[0]?.name === "Mira's workstation", q(view?.settings));
@@ -106,7 +106,7 @@ try {
   }, 25000);
   check("sync.obsidians-work-reaches-the-others", reached?.title === mine.title, reached?.title);
   check("sync.and-is-credited-to-its-person", reached?.credit.name === joined.identity.name, q(reached?.credit));
-  const refused = (await online(tomas, () => tomas.call("lab.view", {}))).refused;
+  const refused = (await online(tomas, () => tomas.call("lab.get", {}))).refused;
   check("sign.obsidians-records-carry-a-signature-that-holds", refused === 0, `Tomas refused ${refused}`);
 
   // The plugin is turned off and on again in the middle of things, as an update does.
@@ -117,14 +117,14 @@ try {
   await mira.sync();
   const caught = await until(async () => (await call("unit.list", { text: again.title, limit: 1 }))[0], 25000);
   check("restart.obsidian-catches-up-after-the-plugin-restarts", caught?.title === again.title, caught?.title);
-  check("restart.it-is-still-in-the-lab", Boolean((await call("lab.view")).link?.token));
+  check("restart.it-is-still-in-the-lab", Boolean((await call("lab.get")).link?.token));
 
   // The PI takes the real person out.
   await call("unit.remove", { id: mine.id }).catch(() => undefined);
   await sleep(4500);
-  await online(mira, () => mira.call("lab.remove", { did: joined.identity.did }));
+  await online(mira, () => mira.call("lab.remove", { id: joined.identity.did }));
   const out = await until(async () => {
-    const now = await call("lab.view");
+    const now = await call("lab.get");
     return now.removedFrom ? now : null;
   }, 25000);
   check("remove.obsidian-is-told", out?.removedFrom === `Real Lab ${RUN}` && !out?.link, q({ removedFrom: out?.removedFrom }));
@@ -150,6 +150,6 @@ try {
   serverProcess.kill();
   rmSync(dataDir, { recursive: true, force: true });
 }
-const left = await call("lab.view");
+const left = await call("lab.get");
 check("after.the-vault-is-in-no-lab", !left.link && !left.identity.lab && !left.removedFrom, q({ link: Boolean(left.link), lab: left.identity.lab?.name }));
 await t.finish("lab-real");

@@ -73,7 +73,7 @@ test("a search lists references, not their notes, with what names each one", asy
 
 test("an item shows its highlights in reading order, each with the type it would most likely be", async () => {
   const { call } = await setup();
-  const view = await call("zotero.item", { ref: REF });
+  const view = await call("zotero.get", { ref: REF });
   assert.deepEqual(view.item.attachments.map(({ key, mediaType }) => [key, mediaType]), [["PDFA0001", "application/pdf"]]);
   assert.deepEqual(view.annotations.map(({ key }) => key), ["ANNO0001", "ANNO0003", "ANNO0002", "ANNO0004"]);
   const byKey = new Map(view.annotations.map((mark) => [mark.key, mark]));
@@ -118,7 +118,7 @@ test("bringing in makes one source and the chosen highlights, and doing it again
   const again = await call("zotero.import", { ref: REF, annotations: [{ key: "ANNO0001" }, { key: "ANNO0002" }, { key: "ANNO0004" }] });
   assert.deepEqual([again.made, again.already, again.wasHere], [1, 2, true]);
   assert.equal(nodes().filter((node) => node.title === source.title).length, 1, "one source, however often it is brought in");
-  const item = await call("zotero.item", { ref: REF });
+  const item = await call("zotero.get", { ref: REF });
   assert.equal(item.held, source.id);
   assert.equal(item.annotations.filter((mark) => mark.held).length, 3);
 });
@@ -128,7 +128,7 @@ test("a source already in the graph by its DOI is the one a Zotero item joins", 
   const types = await call("grammar.get", {});
   const sourceType = types.nodeTypes.find((type) => type.base === "source");
   const mine = await call("unit.create", { title: "Carroll's edge of chaos paper", ...(sourceType ? { type: sourceType.id } : {}) } as never);
-  await call("unit.identify", { node: mine.id, add: ["10.1063/5.0038163"] });
+  await call("unit.identify", { id: mine.id, add: ["10.1063/5.0038163"] });
   if (!sourceType) return;
   const made = await call("zotero.import", { ref: REF });
   assert.equal(made.source.id, mine.id);

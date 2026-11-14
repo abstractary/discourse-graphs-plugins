@@ -28,7 +28,7 @@ const Papers = ({ connection, report }: { connection: Connection; report: (error
   const [inLab, setInLab] = useState(false);
   const refresh = useCallback(() => {
     void call("paper.list", {}).then(setPapers).catch(report);
-    void call("lab.view", {}).then((lab) => setInLab(Boolean(lab.link?.token))).catch(report);
+    void call("lab.get", {}).then((lab) => setInLab(Boolean(lab.link?.token))).catch(report);
   }, [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
@@ -38,7 +38,7 @@ const Papers = ({ connection, report }: { connection: Connection; report: (error
       <div className="cvs-bar">
         <button type="button" data-dg="library-upload" onClick={() => void call("dialog.open", { surface: "upload" }).catch(report)}><Icon name="plus" /> Upload a paper</button>
         <button type="button" data-dg="library-demo" onClick={() => void call("paper.loadDemo", {}).catch(report)}>Load demo papers</button>
-        {papers && papers.length > 1 ? <button type="button" data-dg="library-paper-map" title="Papers placed by how tied they are" onClick={() => void call("papers.show", {}).catch(report)}>Paper map</button> : null}
+        {papers && papers.length > 1 ? <button type="button" data-dg="library-paper-map" title="Papers placed by how tied they are" onClick={() => void call("paper.showMap", {}).catch(report)}>Paper map</button> : null}
       </div>
       {papers !== null && papers.length === 0 ? <p className="cvs-none">No papers yet. Upload one, and its claims and evidence get a canvas of their own.</p> : null}
       <ul className="cvs-list">
@@ -116,7 +116,7 @@ const Devices = ({ connection, report }: { connection: Connection; report: (erro
               <span className="cvs-title">{device.name}{device.here ? " (this one)" : ""}</span>
               <span className="cvs-meta" data-dg={`device-state-${device.fingerprint}`}>{device.state === "trusted" ? "Signs as you" : "Waiting to be let in"} · key ends {device.fingerprint}</span>
             </span>
-            {device.state === "waiting" && !device.here && here?.state === "trusted" ? <button type="button" data-dg={`device-approve-${device.fingerprint}`} onClick={() => void call("device.approve", { id: device.id }).then(setDevices).catch(report)}>Let it in</button> : null}
+            {device.state === "waiting" && !device.here && here?.state === "trusted" ? <button type="button" data-dg={`device-approve-${device.fingerprint}`} onClick={() => void call("device.accept", { id: device.id }).then(setDevices).catch(report)}>Let it in</button> : null}
             {device.id !== "first" && !device.here && here?.state === "trusted" ? <button type="button" data-dg={`device-remove-${device.fingerprint}`} onClick={() => void call("device.remove", { id: device.id }).then(setDevices).catch(report)}>Remove</button> : null}
           </li>
         ))}
@@ -210,7 +210,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   const [invite, setInvite] = useState("");
   const [removing, setRemoving] = useState("");
   const refresh = useCallback(() => {
-    void call("lab.view", {}).then(setLab).catch(report);
+    void call("lab.get", {}).then(setLab).catch(report);
   }, [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", refresh), [on, refresh]);
@@ -218,7 +218,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   const link = lab?.link;
   useEffect(() => {
     if (!link) return undefined;
-    const timer = window.setInterval(() => void call(link.pending ? "lab.check" : "lab.view", {}).then(setLab).catch(() => {}), CHECK_MS);
+    const timer = window.setInterval(() => void call(link.pending ? "lab.check" : "lab.get", {}).then(setLab).catch(() => {}), CHECK_MS);
     return () => window.clearInterval(timer);
   }, [call, link]);
 
@@ -234,7 +234,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
   if (link.pending) return <p className="cvs-none" data-dg="lab-pending">Your request to join {link.name} is with its PI.</p>;
 
   const decide = (requestId: string, decision: "accept" | "decline", tokenKind?: "personal" | "team"): void =>
-    void call("lab.decide", { requestId, decision, ...(tokenKind ? { tokenKind } : {}) }).then(setLab).catch(report);
+    void (decision === "accept" ? call("lab.accept", { id: requestId, ...(tokenKind ? { tokenKind } : {}) }) : call("lab.reject", { id: requestId })).then(setLab).catch(report);
 
   return (
     <div className="stack">
@@ -293,7 +293,7 @@ const Lab = ({ connection, report }: { connection: Connection; report: (error: u
               <span className="cvs-static"><span className="cvs-title">{member.name}</span>{member.role === "admin" ? <span className="cvs-meta">PI</span> : null}</span>
               {lab.custodian && member.role !== "admin" ? (
                 removing === member.did
-                  ? <button type="button" data-dg={`remove-confirm-${member.name}`} onClick={() => { setRemoving(""); void call("lab.remove", { did: member.did }).then(setLab).catch(report); }}>Remove {member.name}? They keep their own work.</button>
+                  ? <button type="button" data-dg={`remove-confirm-${member.name}`} onClick={() => { setRemoving(""); void call("lab.remove", { id: member.did }).then(setLab).catch(report); }}>Remove {member.name}? They keep their own work.</button>
                   : <button type="button" data-dg={`remove-${member.name}`} onClick={() => setRemoving(member.did)}>Remove</button>
               ) : null}
             </li>

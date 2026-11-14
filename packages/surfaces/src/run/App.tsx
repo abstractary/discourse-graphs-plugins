@@ -63,7 +63,7 @@ const Page = ({ connection, id, onBack }: { connection: Connection; id: string; 
   const [notice, setNotice] = useState("");
 
   const load = useCallback(() => {
-    void call("process.run", { id })
+    void call("run.get", { id })
       .then(setPage)
       .catch((error: Error) => setProblem(error.message));
   }, [call, id]);
@@ -71,7 +71,7 @@ const Page = ({ connection, id, onBack }: { connection: Connection; id: string; 
   useEffect(() => on("graph-changed", load), [on, load]);
 
   const open: Open = (unit) => {
-    void call("focus.set", { node: unit });
+    void call("focus.set", { id: unit });
     void call("panel.open", { surface: "context" }).catch(() => {});
   };
   const evidence = (output: string) =>
@@ -99,7 +99,7 @@ const Page = ({ connection, id, onBack }: { connection: Connection; id: string; 
         {page.agents.length ? <p className="run-meta">Carried out by {page.agents.map(who).join(", ")}</p> : null}
         <div className="run-actions">
           <button type="button" data-dg="run-context" onClick={() => open(run.id)}><Icon name="context" /> Show in Context</button>
-          <button type="button" data-dg="run-place" onClick={() => void call("canvas.place", { node: run.id })}><Icon name="canvas" /> Add to canvas</button>
+          <button type="button" data-dg="run-place" onClick={() => void call("canvas.place", { unit: run.id })}><Icon name="canvas" /> Add to canvas</button>
         </div>
         {page.problems.length ? (
           <ul className="run-problems" data-dg="run-problems">

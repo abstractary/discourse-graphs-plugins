@@ -120,7 +120,7 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   useEffect(() => {
     void loadServers();
-    void call("lab.view", {}).then(setLab);
+    void call("lab.get", {}).then(setLab);
   }, [call, loadServers]);
 
   useEffect(() => on("job-status", ({ message }) => setStatus(message)), [on]);

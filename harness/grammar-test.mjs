@@ -62,7 +62,7 @@ try {
   });
   if (made) {
     unit = await call("unit.create", { title: "Load sets the rate", type: made.id });
-    await call("unit.export", { nodes: [unit.id], target: { kind: "workspace" } });
+    await call("unit.export", { units: [unit.id], target: { kind: "workspace" } });
     const file = `${VAULT}/HYP - Load sets the rate.md`;
     check("note.is-made", await until(async () => existsSync(file), 8000), file);
     const text = await until(async () => existsSync(file) && /dg-type:/.test(readFileSync(file, "utf8")) && readFileSync(file, "utf8"), 8000);
@@ -94,7 +94,7 @@ try {
 
   // ---------------------------------------------------------------- A canvas goes, its units stay
   const scratch = await call("canvas.create", { title: `Scratch ${NAME}` });
-  await call("canvas.place", { canvas: scratch.id, node: unit?.id }).catch(() => undefined);
+  await call("canvas.place", { canvas: scratch.id, unit: unit?.id }).catch(() => undefined);
   await call("canvas.remove", { id: scratch.id });
   check("canvas.is-removed", !(await call("canvas.list")).some((item) => item.id === scratch.id));
   check("canvas.note-is-gone", !readdirSync(VAULT).some((name) => name.includes(`Scratch ${NAME}`)));

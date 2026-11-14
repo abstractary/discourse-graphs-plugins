@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CanvasDiff, HolonCanvas, HolonEvent, ReleaseSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
+import type { CanvasDiff, WholeCanvas, WholeEvent, ReleaseSummary, RepositoryCanvas } from "@dg/contract/surface.ts";
 import type { Connection } from "../shared/rpc.ts";
 import { usePlace } from "../shared/place.ts";
 import { Icon, Mark } from "../shared/ui.tsx";
-import { DiffView, Flag, Preview, counted, when } from "../shared/holon-parts.tsx";
+import { DiffView, Flag, Preview, counted, when } from "../shared/overview-parts.tsx";
 import { Thumb } from "../shared/Thumb.tsx";
 
 type Scope = "everyone" | "lab" | "mine";
@@ -34,7 +34,7 @@ export const Repository = ({ connection, report }: { connection: Connection; rep
   const [name, setName] = useState("");
   const [version, setVersion] = useState(0);
 
-  const refresh = useCallback(() => void call("repository.canvases", {}).then(setCanvases).catch(report), [call, report]);
+  const refresh = useCallback(() => void call("library.canvases", {}).then(setCanvases).catch(report), [call, report]);
   useEffect(refresh, [refresh]);
   useEffect(() => on("graph-changed", () => {
     refresh();
@@ -225,9 +225,9 @@ const Versions = ({
   onShow: (id: string) => void;
 }) => {
   const { call } = connection;
-  const [history, setHistory] = useState<{ events: HolonEvent[]; releases: ReleaseSummary[] } | null>(null);
+  const [history, setHistory] = useState<{ events: WholeEvent[]; releases: ReleaseSummary[] } | null>(null);
   const [at, setAt] = useState<number | null>(null);
-  const [snapshot, setSnapshot] = useState<HolonCanvas | null>(null);
+  const [snapshot, setSnapshot] = useState<WholeCanvas | null>(null);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [diff, setDiff] = useState<CanvasDiff | null>(null);
@@ -293,7 +293,7 @@ const Versions = ({
             <select value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Compare from">
               {history.releases.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
-            <button type="button" disabled={!from} onClick={() => void call("canvas.diff", { canvas: canvas.id, from: from || "now", to: "now" }).then(setDiff).catch(report)} data-dg="diff">Compare</button>
+            <button type="button" disabled={!from} onClick={() => void call("canvas.diff", { id: canvas.id, from: from || "now", to: "now" }).then(setDiff).catch(report)} data-dg="diff">Compare</button>
           </div>
           {diff ? <DiffView diff={diff} /> : null}
         </>

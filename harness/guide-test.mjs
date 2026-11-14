@@ -65,7 +65,7 @@ try {
   // Provenance links are the author's own fields, so the chain shows even where a
   // teammate's argument relations are still waiting to be accepted.
   const evidence = records.find((r) => r.kind === "node" && r.title === "29% of MATSUlab issues (n=445) were claimed as experiments" && r.prov?.observationBase);
-  await s(`s.call("focus.set", ${q({ node: evidence.id })})`);
+  await s(`s.call("focus.set", ${q({ id: evidence.id })})`);
   await s(`s.openSide("context")`);
   const chain = await until(() => at("context", "text", '[data-dg="method-chain"]'));
   check("method.chain-reads-back-to-the-run", /Run/.test(chain ?? "") && /Protocol/.test(chain ?? "") && /Output/.test(chain ?? ""), (chain ?? "").slice(0, 140));
@@ -117,7 +117,7 @@ try {
     const figures = await until(async () => ((await at("run", "count", ".run-output img")) ?? 0) >= 1 ? at("run", "count", ".run-output img") : null);
     check("run.figures-shown-while-bytes-match", figures >= 1, `${figures} figures`);
     await shot("run-page");
-    const method = await s(`s.call("process.method", ${q({ id: made.run.id })})`);
+    const method = await s(`s.call("method.get", ${q({ id: made.run.id })})`);
     check("run.problems-come-from-the-shapes", Array.isArray(method.problems), method.problems.map((p) => p.rule).join(", "));
   } else {
     console.log(`SKIP runs: put a notebook at ${VAULT}/${NOTEBOOK}`);

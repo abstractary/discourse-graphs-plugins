@@ -83,7 +83,7 @@ export const checkFeature = (context: Context) => {
   };
 
   const handlers: Pick<Handlers, "unit.check" | "unit.uncheck"> = {
-    "unit.check": async ({ unit, verdict, way = "expertJudgment", note }) => {
+    "unit.check": async ({ id: unit, verdict, way = "expertJudgment", note }) => {
       const node = context.nodeOf(unit);
       if (!node || node.removed) throw refuse("not-found", "That unit is gone.");
       const said = note?.replace(/\s+/g, " ").trim();

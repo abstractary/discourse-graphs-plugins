@@ -1,4 +1,4 @@
-// The local app: the holon views and canvas repository over a vault's record log.
+// The local app: the whole views and canvas repository over a vault's record log.
 //   node local/src/main.ts --vault <folder> [--port 8796] [--name "Your name"]
 // The vault can be an Obsidian vault. The app reads every device's log in
 // `discourse-graph/records/`, the same files the Obsidian plugin reads, and it

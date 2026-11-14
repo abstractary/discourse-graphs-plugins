@@ -53,7 +53,7 @@ const Proposals = ({ call, on, say }: { call: Connection["call"]; on: Connection
   if (count === 0) return null;
   const decide = (ids: string[], decision: "accept" | "reject"): void => {
     setBusy(true);
-    void call("proposal.decide", { ids, decision })
+    void call(decision === "accept" ? "proposal.accept" : "proposal.reject", { ids })
       .then((next) => (setGroups(next), say(decision === "accept" ? `Accepted ${ids.length}. ${ids.length === 1 ? "It is" : "They are"} yours now.` : `Turned down ${ids.length}.`)))
       .catch((error: Error) => (say(error.message), load()))
       .finally(() => setBusy(false));
@@ -201,16 +201,16 @@ export const App = ({ connection }: { connection: Connection }) => {
 
   const open = (hit: SearchHit) => {
     if (hit.node.hasText) void call("base.reveal", { id: hit.node.id, placement: "main" }).catch(report);
-    else void call("focus.set", { node: hit.node.id }).then(() => call("panel.open", { surface: "context" })).catch(report);
+    else void call("focus.set", { id: hit.node.id }).then(() => call("panel.open", { surface: "context" })).catch(report);
   };
-  const context = (id: string) => void call("focus.set", { node: id }).then(() => call("panel.open", { surface: "context" })).catch(report);
+  const context = (id: string) => void call("focus.set", { id: id }).then(() => call("panel.open", { surface: "context" })).catch(report);
   const link = (id: string) =>
     void call("unit.insertLink", { id })
       .then(() => setNotice("Linked at your cursor"))
       .catch((error: Error) => setNotice(/cursor/i.test(error.message) ? "Click into a note first, then link." : error.message));
   const put = (ids: string[]) => {
     if (!canvas) return;
-    void call("unit.put", { canvas: canvas.id, nodes: ids })
+    void call("unit.put", { canvas: canvas.id, units: ids })
       .then(({ placed, already }) => {
         const where = canvas.title;
         if (placed.length && already.length) setNotice(`Put ${placed.length} on ${where}. ${already.length} already there.`);

@@ -90,7 +90,7 @@ test("a paper gets its own canvas, and its units stay off the base until exporte
   assert.equal(paper.units, graph.nodes.length);
   assert.equal(paper.relations, graph.edges.length);
   assert.equal(store.texts.size, textsBefore, "no notes yet");
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   assert.equal(Object.keys(view.nodes).length, graph.nodes.length);
   assert.equal(view.canvas.needsLayout, true);
   assert.equal(view.paper?.id, paper.id);
@@ -100,7 +100,7 @@ test("a paper gets its own canvas, and its units stay off the base until exporte
 test("MIRA types and relations keep their meaning", async () => {
   const { call } = await setup(demo(MEDIATORS));
   const paper = await call("paper.extract", EXTRACT);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const labels = new Set(Object.values(view.nodes).map(({ typeLabel }) => typeLabel));
   for (const label of ["Question", "Claim", "Evidence", "Run", "Protocol", "Source", "Request"]) assert.ok(labels.has(label), label);
   const kinds = new Set(Object.values(view.relations).map(({ kind }) => kind));
@@ -141,17 +141,17 @@ test("demo papers load once", async () => {
 test("exporting gives units real text, and brings their links along", async () => {
   const { call, store } = await setup(demo(NEPHRITIS));
   const paper = await call("paper.extract", EXTRACT);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const claims = Object.values(view.nodes).filter(({ typeLabel }) => typeLabel === "Claim" || typeLabel === "Evidence");
   const before = store.texts.size;
-  const result = await call("unit.export", { nodes: claims.map(({ id }) => id), target: { kind: "workspace" } });
+  const result = await call("unit.export", { units: claims.map(({ id }) => id), target: { kind: "workspace" } });
   assert.equal(result.made, claims.length);
   assert.equal(store.texts.size, before + claims.length + 1, "each unit, plus the workspace's own page");
-  const workspace = await call("canvas.open", { id: result.canvas! });
+  const workspace = await call("canvas.get", { id: result.canvas! });
   assert.equal(workspace.canvas.personal, true);
   assert.equal(Object.keys(workspace.nodes).length, claims.length);
   assert.ok(Object.keys(workspace.relations).length > 0, "relations between exported units come too");
-  const again = await call("unit.export", { nodes: claims.map(({ id }) => id), target: { kind: "workspace" } });
+  const again = await call("unit.export", { units: claims.map(({ id }) => id), target: { kind: "workspace" } });
   assert.equal(again.made, 0, "the same id, so nothing is made twice");
   assert.equal(again.canvas, result.canvas);
 });
@@ -159,9 +159,9 @@ test("exporting gives units real text, and brings their links along", async () =
 test("the anchor and description travel into the note", async () => {
   const { call, store } = await setup(demo(NEPHRITIS));
   const paper = await call("paper.extract", EXTRACT);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const claim = Object.values(view.nodes).find(({ title }) => title.startsWith("Low albumin-to-globulin"))!;
-  await call("unit.export", { nodes: [claim.id], target: { kind: "workspace" } });
+  await call("unit.export", { units: [claim.id], target: { kind: "workspace" } });
   const text = [...store.texts.values()].find(({ title }) => title.includes("Low albumin-to-globulin"));
   assert.match(text!.body, /In particular, a low AGR/);
   assert.match(text!.body, /From: Predicting eventual development/);
@@ -170,19 +170,19 @@ test("the anchor and description travel into the note", async () => {
 test("folders collect units, in the base's own way", async () => {
   const { call, store } = await setup(demo(NEPHRITIS));
   const paper = await call("paper.extract", EXTRACT);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const ids = Object.keys(view.nodes).slice(0, 3);
-  const { folder } = await call("unit.export", { nodes: ids, target: { kind: "new-folder", title: "AGR review" } });
+  const { folder } = await call("unit.export", { units: ids, target: { kind: "new-folder", title: "AGR review" } });
   assert.deepEqual((await call("folder.list", {})).map(({ title, units }) => [title, units]), [["AGR review", 3]]);
   assert.equal(store.folders.size, 3);
-  await call("unit.export", { nodes: ids, target: { kind: "folder", id: folder! } });
+  await call("unit.export", { units: ids, target: { kind: "folder", id: folder! } });
   assert.equal((await call("folder.list", {}))[0]!.units, 3, "filing twice files once");
 });
 
 test("opening a unit shows where it came from and everywhere it lives", async () => {
   const { call } = await setup(demo(NEPHRITIS));
   const paper = await call("paper.extract", EXTRACT);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const claim = Object.values(view.nodes).find(({ title }) => title.startsWith("Low albumin-to-globulin"))!;
   let opened = await call("unit.get", { id: claim.id });
   assert.equal(opened.provenance.paper?.title, paper.title);
@@ -191,8 +191,8 @@ test("opening a unit shows where it came from and everywhere it lives", async ()
   assert.match(opened.provenance.paper?.anchor ?? "", /In particular, a low AGR/);
   assert.equal(opened.provenance.lives.text, null);
   assert.deepEqual(opened.provenance.lives.canvases.map(({ title }) => title), [paper.title]);
-  await call("unit.export", { nodes: [claim.id], target: { kind: "new-folder", title: "Keep" } });
-  await call("unit.export", { nodes: [claim.id], target: { kind: "workspace" } });
+  await call("unit.export", { units: [claim.id], target: { kind: "new-folder", title: "Keep" } });
+  await call("unit.export", { units: [claim.id], target: { kind: "workspace" } });
   opened = await call("unit.get", { id: claim.id });
   assert.ok(opened.provenance.lives.text);
   assert.deepEqual(opened.provenance.lives.folders.map(({ title }) => title), ["Keep"]);
@@ -202,19 +202,19 @@ test("opening a unit shows where it came from and everywhere it lives", async ()
 test("reactions are one per person, and only shared canvases carry them", async () => {
   const { call, core } = await setup(demo(NEPHRITIS));
   const paper = await call("paper.extract", EXTRACT);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const unit = Object.keys(view.nodes)[0]!;
   assert.deepEqual(view.social, {});
   assert.equal((await call("unit.get", { id: unit })).social, undefined);
   await core.createLab("Home Lab");
   await call("canvas.share", { id: paper.canvas });
-  await call("unit.react", { unit, value: "interesting" });
-  await call("unit.react", { unit, value: "disagree" });
-  let shared = await call("canvas.open", { id: paper.canvas });
+  await call("unit.react", { id: unit, value: "interesting" });
+  await call("unit.react", { id: unit, value: "disagree" });
+  let shared = await call("canvas.get", { id: paper.canvas });
   assert.equal(shared.social[unit]!.mine, "disagree");
   assert.deepEqual([shared.social[unit]!.who.interesting.length, shared.social[unit]!.who.disagree.length], [0, 1]);
-  await call("unit.react", { unit, value: null });
-  shared = await call("canvas.open", { id: paper.canvas });
+  await call("unit.react", { id: unit, value: null });
+  shared = await call("canvas.get", { id: paper.canvas });
   assert.equal(shared.social[unit]!.mine, null);
 });
 
@@ -223,9 +223,9 @@ test("notes stay apart from the unit, and only their author can take them back",
   const paper = await call("paper.extract", EXTRACT);
   await core.createLab("Home Lab");
   await call("canvas.share", { id: paper.canvas });
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const unit = Object.keys(view.nodes)[0]!;
-  await call("unit.note", { unit, text: "Worth checking the cut-off" });
+  await call("unit.note", { id: unit, text: "Worth checking the cut-off" });
   const social = (await call("unit.get", { id: unit })).social!;
   assert.equal(social.notes[0]!.text, "Worth checking the cut-off");
   assert.equal(social.notes[0]!.mine, true);
@@ -243,7 +243,7 @@ test("sharing a paper uploads it with who did what, and shares its canvas", asyn
   assert.equal(calls.uploaded[0]!.fileBase64, FILE.dataBase64);
   assert.equal(calls.uploaded[0]!.graph.nodes.length, demo(NEPHRITIS).nodes.length);
   assert.equal(paper.labPaper, paper.id);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   assert.equal(view.canvas.shared, core.identity().lab!.did);
   const kinds = new Set(core.shareable().map(({ kind }) => kind));
   for (const kind of ["canvas", "canvas-item", "node", "relation", "paper", "lab"]) assert.ok(kinds.has(kind as never), kind);
@@ -268,7 +268,7 @@ test("what isn't on a shared canvas stays out of sync", async () => {
   const { call, core } = await setup(demo(NEPHRITIS), LINK);
   await core.createLab("Home Lab");
   const paper = await call("paper.extract", EXTRACT);
-  const units = Object.keys((await call("canvas.open", { id: paper.canvas })).nodes);
+  const units = Object.keys((await call("canvas.get", { id: paper.canvas })).nodes);
   assert.ok(!core.shareable().some(({ id }) => units.includes(id)));
 });
 
@@ -292,7 +292,7 @@ test("closing a lab paper asks first, and a person can set the default", async (
   await core.canvasClosed({ id: paper.canvas });
   assert.equal(calls.crumbs.length, 2);
   await core.answerBreadcrumb({ paper: paper.labPaper!, leave: true, remember: true });
-  assert.equal((await call("lab.view", {})).breadcrumbs, "always");
+  assert.equal((await call("lab.get", {})).breadcrumbs, "always");
 });
 
 test("the uploader isn't asked, because the repository already names them", async () => {
@@ -331,7 +331,7 @@ test("a lab's model answers about this canvas or the units picked, and with no l
   await core.createLab("Home Lab");
   assert.equal((await call("ai.status", {})).ready, true);
   const paper = await call("paper.extract", EXTRACT);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const [first] = Object.keys(view.nodes);
   const answer = await call("ai.ask", { canvas: paper.canvas, question: "What predicts nephritis?", grounded: [first!], requestId: "q1" });
   assert.equal(answer.mode, "search-only");
@@ -417,9 +417,9 @@ test("the paper's own source is told from the ones it cites, and keeps its DOI",
   const { call, store } = await setup(demo(NEPHRITIS));
   const ref = await put(store, "reservoir.pdf", "%PDF-1.4", "application/pdf");
   const paper = await call("paper.extract", { ref, saved: { name: "reservoir.graph.json", text: JSON.stringify(SAVED) } });
-  const opened = await call("pdf.open", { ref, data: false });
+  const opened = await call("pdf.get", { ref, data: false });
   assert.equal(opened.document.paper?.id, paper.id);
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const source = view.nodes[opened.document.source!]!;
   assert.match(source.title, /A paper about reservoirs/, "not the paper it cites, though that one comes first");
   assert.equal(opened.marks.length, 3, "every unit with a passage is marked in the reader");
@@ -434,7 +434,7 @@ test("MIRA's own JSON-LD reads into the same graph", async () => {
   assert.equal(saved?.units, 6);
   assert.equal(saved?.relations, 4);
   const paper = await call("paper.extract", { ref, saved: true });
-  const view = await call("canvas.open", { id: paper.canvas });
+  const view = await call("canvas.get", { id: paper.canvas });
   const titles = Object.values(view.nodes).map(({ title }) => title);
   assert.ok(titles.includes("It works."), "the title is the unit's own words, without the description");
   assert.equal(paper.authors[0], "A. Author");
@@ -486,7 +486,7 @@ const twoPapers = async () => {
   const made = await setup(demo(NEPHRITIS));
   const first = await made.call("paper.extract", { file: { ...FILE, name: "reservoir-2021.pdf" }, saved: { name: "reservoir-2021.graph.json", text: JSON.stringify(METHODS) } });
   const second = await made.call("paper.extract", { file: { ...FILE, name: "capacity.pdf" }, saved: { name: "capacity.graph.json", text: JSON.stringify(OTHER) } });
-  const unitsOf = async (canvas: string) => Object.values((await made.call("canvas.open", { id: canvas })).nodes);
+  const unitsOf = async (canvas: string) => Object.values((await made.call("canvas.get", { id: canvas })).nodes);
   const [a, b] = [await unitsOf(first.canvas), await unitsOf(second.canvas)];
   const named = (start: string) => [...a, ...b].find((unit) => unit.title.startsWith(start))!;
   return { ...made, first, second, named };
@@ -501,14 +501,14 @@ test("a unit read from a paper says which, in the few words a person would", asy
 
 test("a run a paper reports shows every method it followed, and isn't held to a lab's bookkeeping", async () => {
   const { call, named } = await twoPapers();
-  const method = await call("process.method", { id: named("Error fell by half").id });
+  const method = await call("method.get", { id: named("Error fell by half").id });
   const roles = method.chains[0]!.steps.map((step) => step.role);
   assert.deepEqual(roles, ["protocol", "protocol", "protocol", "run", "source", "evidence"]);
   assert.equal(method.chains[0]!.ungrounded, false, "it rests on a run and on the paper");
   assert.equal(method.chains[0]!.steps.find((step) => step.role === "run")!.detail, undefined, "the day it was imported isn't when it ran");
   assert.ok(!method.problems.some((problem) => problem.rule === "evidence-ungrounded"));
 
-  const page = await call("process.run", { id: named("A simulation").id });
+  const page = await call("run.get", { id: named("A simulation").id });
   assert.equal(page.protocol?.unit?.title, "Drive the reservoir with a Lorenz signal.");
   assert.equal(page.alsoFollowed.length, 2);
   assert.equal(page.reportedIn?.paper?.label, "Author 2021");
@@ -524,7 +524,7 @@ test("a type someone made under the same name but another meaning isn't taken fo
   const odd = createNodeType({ by: { id: "did:plc:someone", name: "Someone" }, space: "s", at: new Date().toISOString(), fields: { label: "Protocol", base: "source", abbreviation: "PRO", titleFormat: "PRO - {content}" } } as never);
   await core.take([odd]);
   const paper = await call("paper.extract", { file: { ...FILE, name: "reservoir-2021.pdf" }, saved: { name: "reservoir-2021.graph.json", text: JSON.stringify(METHODS) } });
-  const protocol = Object.values((await call("canvas.open", { id: paper.canvas })).nodes).find((unit) => unit.title.startsWith("Fit the readout"))!;
+  const protocol = Object.values((await call("canvas.get", { id: paper.canvas })).nodes).find((unit) => unit.title.startsWith("Fit the readout"))!;
   assert.equal(protocol.base, "protocol");
 });
 
@@ -532,9 +532,9 @@ test("a relation stated away from a canvas is drawn on the canvases that hold bo
   const { call, named } = await twoPapers();
   const canvas = await call("canvas.create", { title: "Across papers" });
   const [mine, theirs] = [named("It works"), named("Reservoir error falls")];
-  await call("unit.put", { canvas: canvas.id, nodes: [mine.id, theirs.id] });
+  await call("unit.put", { canvas: canvas.id, units: [mine.id, theirs.id] });
   const option = (await call("relation.options", { source: theirs.id, target: mine.id })).find((item) => item.label === "Supports")!;
-  const edges = async () => (await call("canvas.open", { id: canvas.id })).items.filter(({ item }) => "fromNode" in item).length;
+  const edges = async () => (await call("canvas.get", { id: canvas.id })).items.filter(({ item }) => "fromNode" in item).length;
   assert.equal(await edges(), 0);
   await call("relation.assert", { type: option.type, source: theirs.id, target: mine.id });
   assert.equal(await edges(), 0, "a canvas draws its own, so nothing is drawn unless asked");
@@ -551,12 +551,12 @@ test("a claim says what it rests on through other claims, and which papers that 
     const option = (await call("relation.options", { source: from.id, target: own.id })).find((item) => item.label === "Supports")!;
     await call("relation.assert", { type: option.type, source: from.id, target: own.id });
   }
-  const method = await call("process.method", { id: own.id });
+  const method = await call("method.get", { id: own.id });
   assert.equal(method.rests?.claims, 2);
   assert.equal(method.rests?.evidence, 2);
   assert.equal(method.rests?.runs, 2);
   assert.deepEqual(method.rests?.papers.map((paper) => paper.label).sort(), ["Author 2021", "Dambre et al. 2012"]);
-  assert.equal((await call("process.method", { id: named("It works").id })).rests, undefined, "a claim resting straight on evidence has its chains instead");
+  assert.equal((await call("method.get", { id: named("It works").id })).rests, undefined, "a claim resting straight on evidence has its chains instead");
 });
 
 test("units that read alike in other papers are offered, and never the same paper's or ones already related", async () => {

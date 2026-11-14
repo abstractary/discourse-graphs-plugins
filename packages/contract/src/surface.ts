@@ -323,7 +323,7 @@ export type UnitsSegment = {
   /** A canvas or folder id, or `loose`. */
   id: string;
   title: string;
-  holon?: HolonLevel;
+  whole?: WholeLevel;
   units: DgId[];
 };
 
@@ -463,20 +463,20 @@ export type CanvasSummary = {
 };
 
 /**
- * Holons: every level of the argument holarchy is shown the same way. A lab
+ * Wholes: every level of the argument holarchy is shown the same way. A lab
  * holds questions, a question holds the claims that address it, a claim holds
  * the evidence for and against it, and evidence holds the outputs it rests on.
  * Containment isn't exclusive: a claim can sit inside two questions. Each
- * holon is drawn as a canvas, authored when someone has arranged one.
+ * whole is drawn as a canvas, authored when someone has arranged one.
  */
-export type HolonLevel = "lab" | "question" | "claim" | "evidence" | "output";
-/** A lab is named by its DID; every other holon by its unit's id. */
-export type HolonRef = { level: HolonLevel; id: string };
+export type WholeLevel = "lab" | "question" | "claim" | "evidence" | "output";
+/** A lab is named by its DID; every other whole by its unit's id. */
+export type WholeRef = { level: WholeLevel; id: string };
 /** Whose arguments count as active: only mine, my lab's, or everyone's. */
 export type Stance = "mine" | "lab" | "everyone";
 export type Privacy = "private" | "lab" | "published";
 
-export type HolonPart = {
+export type WholePart = {
   id: DgId;
   title: string;
   /** Its base type, such as `claim` or `run`. */
@@ -484,15 +484,15 @@ export type HolonPart = {
   label: string;
   credit: Credit;
   privacy: Privacy;
-  /** Set when the part is itself a holon you can open into. */
-  ref?: HolonRef;
-  /** How many parts that holon holds. */
+  /** Set when the part is itself a whole you can open into. */
+  ref?: WholeRef;
+  /** How many parts that whole holds. */
   holds?: number;
   /** Short gap names that apply to this part, such as `single run`. */
   flags: string[];
 };
 
-export type HolonEdge = {
+export type WholeEdge = {
   id: string;
   from: DgId;
   to: DgId;
@@ -507,11 +507,11 @@ export type Crossing = {
   id: DgId;
   title: string;
   base: string;
-  /** In: something this holon rests on from elsewhere. Out: something of it used elsewhere. */
+  /** In: something this whole rests on from elsewhere. Out: something of it used elsewhere. */
   direction: "in" | "out";
   why: string;
-  /** The other holon, when there is one to open. */
-  other?: { ref: HolonRef; title: string };
+  /** The other whole, when there is one to open. */
+  other?: { ref: WholeRef; title: string };
 };
 
 export type Gap = {
@@ -521,7 +521,7 @@ export type Gap = {
   units: DgId[];
 };
 
-export type HolonCanvasCard = {
+export type WholeCanvasCard = {
   /** The canvas item id, or the unit id on a generated canvas. */
   id: string;
   unit?: DgId;
@@ -534,17 +534,17 @@ export type HolonCanvasCard = {
   height: number;
 };
 
-export type HolonCanvas = {
+export type WholeCanvas = {
   /** Null for a canvas laid out from the graph that nobody has saved. */
   id: DgId | null;
   title: string;
-  cards: HolonCanvasCard[];
+  cards: WholeCanvasCard[];
   links: { id: string; from: string; to: string; label?: string; relation?: DgId }[];
-  /** Other canvases of the same holon. */
+  /** Other canvases of the same whole. */
   others: { id: DgId; title: string }[];
 };
 
-export type HolonEvent = { at: string; by: string; what: string; unit?: DgId };
+export type WholeEvent = { at: string; by: string; what: string; unit?: DgId };
 
 /** What Delete does to a link between two cards: ask, take it off this canvas, or withdraw the relation. */
 export type LinkDelete = "ask" | "canvas" | "withdraw";
@@ -682,38 +682,38 @@ export type NotebookImported = {
 };
 
 /** A canvas's place in the holarchy, for the canvas tab's breadcrumb. */
-export type CanvasHolon = {
-  ref: HolonRef | null;
-  path: { ref: HolonRef; title: string }[];
-  /** Holons this canvas could be tied to: the lab and the holon units on it. */
-  candidates: { ref: HolonRef; title: string }[];
+export type CanvasWhole = {
+  ref: WholeRef | null;
+  path: { ref: WholeRef; title: string }[];
+  /** Wholes this canvas could be tied to: the lab and the whole units on it. */
+  candidates: { ref: WholeRef; title: string }[];
 };
 
-export type HolonView = {
-  ref: HolonRef;
+export type WholeView = {
+  ref: WholeRef;
   title: string;
   label: string;
   base: string;
   /** One path up to the lab, for the breadcrumb. */
-  path: { ref: HolonRef; title: string }[];
-  /** Every holon this one sits in. */
-  within: { ref: HolonRef; title: string }[];
-  parts: HolonPart[];
+  path: { ref: WholeRef; title: string }[];
+  /** Every whole this one sits in. */
+  within: { ref: WholeRef; title: string }[];
+  parts: WholePart[];
   /** What stands behind evidence or an output: runs, protocols, code, sources. */
-  behind: HolonPart[];
-  edges: HolonEdge[];
+  behind: WholePart[];
+  edges: WholeEdge[];
   boundary: {
     crossings: Crossing[];
     gaps: Gap[];
     privacy: { counts: Record<Privacy, number>; next: string };
     stance: { stance: Stance; active: number; pending: number; pendingBy: string[] };
   };
-  canvas: HolonCanvas;
-  history: HolonEvent[];
-  /** Gap names that apply to the holon's own unit. */
+  canvas: WholeCanvas;
+  history: WholeEvent[];
+  /** Gap names that apply to the whole's own unit. */
   flags: string[];
   /** Titles for every unit the boundary names, including ones a level or two down. */
-  names: Record<DgId, { title: string; base: string; label: string; ref?: HolonRef }>;
+  names: Record<DgId, { title: string; base: string; label: string; ref?: WholeRef }>;
 };
 
 export type ReleaseSummary = {
@@ -730,7 +730,7 @@ export type ReleaseSummary = {
 export type RepositoryCanvas = {
   id: DgId;
   title: string;
-  holon?: { ref: HolonRef; title: string };
+  whole?: { ref: WholeRef; title: string };
   cards: number;
   links: number;
   /** Units on it by base type. */
@@ -894,7 +894,7 @@ export type SurfaceMethods = {
    * Marks a unit as checked, or as needing work, by the person asking. The mark is pinned to the unit
    * as it stands now. A person has one standing mark per unit: a new one replaces their last.
    */
-  "unit.check": { params: { unit: DgId; verdict: "checked" | "needsWork"; way?: CheckWay; note?: string }; result: UnitCheck[] };
+  "unit.check": { params: { id: DgId; verdict: "checked" | "needsWork"; way?: CheckWay; note?: string }; result: UnitCheck[] };
   /** Takes back a mark its maker made. */
   "unit.uncheck": { params: { id: DgId }; result: UnitCheck[] };
   /**
@@ -936,41 +936,40 @@ export type SurfaceMethods = {
     result: RelationRecord & { made?: true };
   };
   "relation.withdraw": { params: { id: DgId; reason?: string }; result: null };
-  "relation.decide": {
-    params: { id: DgId; decision: "accepted" | "rejected" };
-    result: null;
-  };
+  /** A relation from elsewhere waits until this space accepts or rejects it. */
+  "relation.accept": { params: { id: DgId }; result: null };
+  "relation.reject": { params: { id: DgId }; result: null };
   "canvas.list": { params: Record<string, never>; result: CanvasRecord[] };
-  /** One holon, drawn the same way at every level. */
-  "overview.get": { params: { ref: HolonRef; stance: Stance }; result: HolonView };
-  /** The holon in focus: the active canvas's holon, or the holon of the note being read. */
-  "overview.focus.get": { params: Record<string, never>; result: { ref: HolonRef | null; canvas: DgId | null } };
-  /** A canvas tab or the explorer says which holon it's showing. */
-  "overview.focus.set": { params: { canvas?: DgId; ref?: HolonRef }; result: null };
-  "overview.ofCanvas": { params: { id: DgId }; result: CanvasHolon };
-  /** The holon's own canvas, made from its laid-out view if it has none yet. */
-  "overview.canvas": { params: { ref: HolonRef }; result: { id: DgId; made: boolean } };
-  /** Ties a canvas to a holon, so it becomes that holon's view. */
-  "canvas.setHolon": { params: { id: DgId; holon: string | null }; result: null };
+  /** One whole, drawn the same way at every level. */
+  "overview.get": { params: { ref: WholeRef; stance: Stance }; result: WholeView };
+  /** The whole in focus: the active canvas's whole, or the whole of the note being read. */
+  "overview.focus.get": { params: Record<string, never>; result: { ref: WholeRef | null; canvas: DgId | null } };
+  /** A canvas tab or the explorer says which whole it's showing. */
+  "overview.focus.set": { params: { canvas?: DgId; ref?: WholeRef }; result: null };
+  "overview.ofCanvas": { params: { id: DgId }; result: CanvasWhole };
+  /** The whole's own canvas, made from its laid-out view if it has none yet. */
+  "overview.canvas": { params: { ref: WholeRef }; result: { id: DgId; made: boolean } };
+  /** Ties a canvas to a whole, so it becomes that whole's view. */
+  "canvas.setWhole": { params: { id: DgId; whole: string | null }; result: null };
   /** Marks units on the open canvases. `brief` lets the mark go by itself after a moment, for pointing something out. */
   "canvas.highlight": { params: { units: DgId[]; brief?: boolean }; result: null };
   "prefs.get": { params: Record<string, never>; result: Prefs };
   "prefs.set": { params: Partial<Prefs>; result: Prefs };
-  /** The holon a unit opens as. A run or protocol opens as the evidence it stands behind. */
-  "overview.locate": { params: { id: DgId }; result: HolonRef | null };
+  /** The whole a unit opens as. A run or protocol opens as the evidence it stands behind. */
+  "overview.locate": { params: { id: DgId }; result: WholeRef | null };
   /** The top of the holarchy: the labs and spaces in this graph. */
-  "overview.list": { params: Record<string, never>; result: { ref: HolonRef; title: string; holds: number }[] };
+  "overview.list": { params: Record<string, never>; result: { ref: WholeRef; title: string; holds: number }[] };
   /** Every canvas, with its versions, forks, nesting and gaps. */
-  "repository.canvases": { params: Record<string, never>; result: RepositoryCanvas[] };
+  "library.canvases": { params: Record<string, never>; result: RepositoryCanvas[] };
   /** A canvas as it stood at a moment in its history. */
-  "canvas.at": { params: { id: DgId; at: string }; result: HolonCanvas };
-  "canvas.history": { params: { id: DgId }; result: { events: HolonEvent[]; releases: ReleaseSummary[] } };
-  /** Saves a holon's laid-out canvas, so it can be arranged, versioned and released. */
-  "canvas.saveHolon": { params: { ref: HolonRef }; result: { id: DgId } };
+  "canvas.at": { params: { id: DgId; at: string }; result: WholeCanvas };
+  "canvas.history": { params: { id: DgId }; result: { events: WholeEvent[]; releases: ReleaseSummary[] } };
+  /** Saves a whole's laid-out canvas, so it can be arranged, versioned and released. */
+  "canvas.saveWhole": { params: { ref: WholeRef }; result: { id: DgId } };
   "canvas.release": { params: { id: DgId; name: string; note?: string }; result: ReleaseSummary };
   "canvas.fork": { params: { release: DgId; title?: string }; result: { id: DgId } };
   /** `now` stands for the live canvas. */
-  "canvas.diff": { params: { canvas: DgId; from: DgId | "now"; to: DgId | "now" }; result: CanvasDiff };
+  "canvas.diff": { params: { id: DgId; from: DgId | "now"; to: DgId | "now" }; result: CanvasDiff };
   /** Every canvas with what a person needs to recognize it. */
   "canvas.summaries": { params: Record<string, never>; result: CanvasSummary[] };
   /** Goes to a canvas in the base, in the base's own way. */
@@ -982,7 +981,7 @@ export type SurfaceMethods = {
   /** Layouts are shared, so a teammate sees the same headings and scores. */
   "canvas.setLayout": { params: { id: DgId; layout: CanvasLayout }; result: null };
   "canvas.create": { params: { title: string }; result: CanvasRecord };
-  "canvas.open": { params: { id: DgId }; result: CanvasView };
+  "canvas.get": { params: { id: DgId }; result: CanvasView };
   /** The canvas last opened on this device, so a remounted panel can return to it. */
   "canvas.last": { params: Record<string, never>; result: DgId | null };
   /** Removing an edge takes it off the canvas. The relation itself stays. */
@@ -997,7 +996,7 @@ export type SurfaceMethods = {
     result: { ids: DgId[] };
   };
   /** Asks any open canvas to add this node. Null when no canvas is open. */
-  "canvas.place": { params: { node: DgId }; result: null };
+  "canvas.place": { params: { unit: DgId }; result: null };
   /** Puts units on a canvas where the caller laid them out, with their relations to each other and to what's there. */
   "canvas.placeUnits": {
     params: { canvas: DgId; places: { node: DgId; x: number; y: number; width: number; height: number }[] };
@@ -1007,7 +1006,7 @@ export type SurfaceMethods = {
    * Puts units on a canvas from another panel, such as search. They go beside what's there, and an
    * open canvas brings them to where the person is looking. Units already on it are only lit.
    */
-  "unit.put": { params: { canvas: DgId; nodes: DgId[] }; result: { placed: DgId[]; already: DgId[] } };
+  "unit.put": { params: { canvas: DgId; units: DgId[] }; result: { placed: DgId[]; already: DgId[] } };
   /** Units not on this canvas yet, grouped by the other canvases and folders that hold them. */
   "unit.available": { params: { canvas: DgId }; result: UnitsAvailable };
   /** PDFs the base holds: papers first, then the rest, newest first. */
@@ -1018,13 +1017,13 @@ export type SurfaceMethods = {
    */
   "pdf.library": { params: Record<string, never>; result: { on: boolean; wanted: boolean; reachable: boolean; files: number; problem?: string } };
   /** With `data: false`, only what the graph knows changes: the marks, for a re-read after an edit. */
-  "pdf.open": { params: { ref: string; data?: boolean }; result: PdfOpened };
+  "pdf.get": { params: { ref: string; data?: boolean }; result: PdfOpened };
   /** Keeps a dropped or chosen PDF in the base, where a person would look for it. */
   "pdf.add": { params: { name: string; dataBase64: string }; result: PdfDocument };
   /** Makes a unit from a highlight, and puts it on a canvas if one was chosen. */
   "pdf.cut": { params: PdfCut; result: { node: NodeSummary; canvas: DgId | null } };
   /** Takes back a unit just made from a highlight, and its card. */
-  "pdf.uncut": { params: { node: DgId }; result: null };
+  "pdf.uncut": { params: { id: DgId }; result: null };
   /** The PDF most of a canvas's cards were read from, when the file is here: its own paper's for a PDF canvas. */
   "canvas.pdf": { params: { id: DgId }; result: { ref: string; name: string } | null };
   /** Opens the reader beside the canvas, at a unit's passage if given. With no file, it offers the choice of PDFs. */
@@ -1084,16 +1083,16 @@ export type SurfaceMethods = {
   /** The reference the dialog was asked to open at, once. */
   "zotero.pending": { params: Record<string, never>; result: { item?: string } };
   "zotero.search": { params: { text: string; limit?: number }; result: LibraryHit[] };
-  "zotero.item": { params: { ref: string }; result: LibraryItemView };
+  "zotero.get": { params: { ref: string }; result: LibraryItemView };
   /** Brings an item in as a Source, with the annotations chosen as units that quote it. Reads Zotero; never writes to it. */
   "zotero.import": { params: { ref: string; annotations?: { key: string; type?: DgId }[]; canvas?: DgId }; result: LibraryImported };
   /** A person's work as this viewer may see it. Without an id, the viewer's own. */
-  "profile.view": { params: { id?: string }; result: Profile };
+  "profile.get": { params: { id?: string }; result: Profile };
   "profile.card": { params: { id: string }; result: ProfileCard };
   /** Papers placed by how tied they are, in one scope, with the scopes on offer. */
-  "papers.map": { params: { scope?: PaperScope }; result: PaperMap & { scopes: PaperScopeChoice[] } };
+  "paper.map": { params: { scope?: PaperScope }; result: PaperMap & { scopes: PaperScopeChoice[] } };
   /** Opens the paper map, on a canvas's scope when one is given. */
-  "papers.show": { params: { canvas?: DgId }; result: null };
+  "paper.showMap": { params: { canvas?: DgId }; result: null };
   /** Opens a person's profile in the base. */
   "profile.show": { params: { id?: string }; result: null };
   /** Builds the COAR Notify announcement that would tell a paper's repository about a unit. Sends nothing. */
@@ -1108,7 +1107,7 @@ export type SurfaceMethods = {
    * The papers' PDFs go in only when asked, since their licenses may not allow passing them on.
    */
   "crate.export": {
-    params: { canvas?: DgId; nodes?: DgId[]; name?: string; description?: string; license?: string; pdfs?: boolean; outputs?: boolean; format?: "zip" | "eln" };
+    params: { canvas?: DgId; units?: DgId[]; name?: string; description?: string; license?: string; pdfs?: boolean; outputs?: boolean; format?: "zip" | "eln" };
     result: CrateExported;
   };
   /**
@@ -1116,7 +1115,7 @@ export type SurfaceMethods = {
    * The draft is never published from here: the person reviews it on Zenodo and publishes it there.
    */
   "crate.deposit": {
-    params: { canvas?: DgId; nodes?: DgId[]; name?: string; description?: string; license?: string; pdfs?: boolean; outputs?: boolean; sandbox?: boolean };
+    params: { canvas?: DgId; units?: DgId[]; name?: string; description?: string; license?: string; pdfs?: boolean; outputs?: boolean; sandbox?: boolean };
     result: CrateDeposited;
   };
   "deposit.settings": { params: Record<string, never>; result: DepositSettings };
@@ -1126,9 +1125,9 @@ export type SurfaceMethods = {
   "crate.import": { params: { ref: string }; result: CrateImported };
   "crate.licenses": { params: Record<string, never>; result: { url: string; name: string }[] };
   /** Asks the open registries about the work behind a unit, and keeps what they say. Only identifiers and the title are sent. */
-  "work.lookup": { params: { unit: DgId }; result: WorkLookup };
+  "work.lookup": { params: { id: DgId }; result: WorkLookup };
   /** Adds or takes away what else names a unit. `add` takes identifiers as people paste them. */
-  "unit.identify": { params: { node: DgId; add?: (string | Identifier)[]; remove?: Identifier[] }; result: NodeSummary };
+  "unit.identify": { params: { id: DgId; add?: (string | Identifier)[]; remove?: Identifier[] }; result: NodeSummary };
   /** Opens a panel in the base's side area. */
   "panel.open": { params: { surface: "context" | "canvases" | "boundary" | "search" }; result: null };
   /** Opens a pop-up over the base. `find` is the quick finder. */
@@ -1169,29 +1168,32 @@ export type SurfaceMethods = {
   "paper.getFile": { params: { id: string }; result: { where: string } };
 
   /** Gives units their own notes or pages, then puts them where the person chose. */
-  "unit.export": { params: { nodes: DgId[]; target: ExportTarget }; result: { canvas?: DgId; folder?: DgId; made: number } };
+  "unit.export": { params: { units: DgId[]; target: ExportTarget }; result: { canvas?: DgId; folder?: DgId; made: number } };
   "folder.list": { params: Record<string, never>; result: { id: DgId; title: string; units: number }[] };
   "folder.create": { params: { title: string }; result: { id: DgId; title: string; units: number } };
 
-  "unit.react": { params: { unit: DgId; value: Reaction | null }; result: null };
-  "unit.note": { params: { unit: DgId; text: string }; result: null };
+  "unit.react": { params: { id: DgId; value: Reaction | null }; result: null };
+  "unit.note": { params: { id: DgId; text: string }; result: null };
   "unit.removeNote": { params: { id: DgId }; result: null };
 
-  "lab.view": { params: Record<string, never>; result: LabView };
+  "lab.get": { params: Record<string, never>; result: LabView };
   "lab.find": { params: { server: string; id: string }; result: { id: string; name: string } };
   "lab.register": { params: { server: string; name: string }; result: LabView };
   "lab.requestJoin": { params: { server: string; id: string }; result: LabView };
   "lab.check": { params: Record<string, never>; result: LabView };
-  "lab.decide": { params: { requestId: string; decision: "accept" | "decline"; tokenKind?: "personal" | "team" }; result: LabView };
+  /** A request to join the lab, by its id. */
+  "lab.accept": { params: { id: string; tokenKind?: "personal" | "team" }; result: LabView };
+  "lab.reject": { params: { id: string }; result: LabView };
   "lab.setBreadcrumbs": { params: { value: BreadcrumbDefault }; result: LabView };
   /** What agents have proposed, newest conversation first. Nothing in it is part of the argument yet. */
   "proposal.list": { params: Record<string, never>; result: ProposalGroup[] };
   /** Accepting makes a record of the person's own that says which proposal it began as. Turning down records only that. */
-  "proposal.decide": { params: { ids: DgId[]; decision: "accept" | "reject" }; result: ProposalGroup[] };
+  "proposal.accept": { params: { ids: DgId[] }; result: ProposalGroup[] };
+  "proposal.reject": { params: { ids: DgId[] }; result: ProposalGroup[] };
   /** This person's devices: the first, and each that has asked to sign as them. */
   "device.list": { params: Record<string, never>; result: DeviceView[] };
   /** Lets a waiting device sign as this person. Only works on a device that is already trusted. */
-  "device.approve": { params: { id: DgId }; result: DeviceView[] };
+  "device.accept": { params: { id: DgId }; result: DeviceView[] };
   "device.remove": { params: { id: DgId }; result: DeviceView[] };
   /** The person has read that they were removed from a lab. The notice goes. */
   "lab.acknowledge": { params: Record<string, never>; result: LabView };
@@ -1201,7 +1203,7 @@ export type SurfaceMethods = {
   /** Joins a lab with an invitation, at once. */
   "lab.acceptInvite": { params: { invite: string }; result: LabView };
   /** The PI takes a member out. They get nothing more from the lab. What they already hold stays with them. */
-  "lab.remove": { params: { did: string }; result: LabView };
+  "lab.remove": { params: { id: string }; result: LabView };
   /** The PI sets what every member inherits. A key set to null is cleared. */
   "lab.configure": { params: { [K in keyof LabSettings]?: LabSettings[K] | null }; result: LabView };
   "canvas.share": { params: { id: DgId }; result: null };
@@ -1211,15 +1213,15 @@ export type SurfaceMethods = {
   "canvas.buildOn": { params: { id: DgId; title?: string }; result: { id: DgId; title: string } };
 
   /** How a unit was produced: the chain behind evidence, or behind each piece of evidence for a claim. */
-  "process.method": { params: { id: DgId }; result: MethodView };
+  "method.get": { params: { id: DgId }; result: MethodView };
   /** One run as a page: what it followed, ran, took in and produced, and what rests on it. */
-  "process.run": { params: { id: DgId; previews?: boolean }; result: RunPage };
+  "run.get": { params: { id: DgId; previews?: boolean }; result: RunPage };
   /** Opens a run's page in the main area. With no run, it lists the notebooks to import and the runs already here. */
   "run.show": { params: { id?: DgId }; result: null };
   /** Every run in the graph, newest first, for the list beside the notebooks. */
   "run.list": { params: Record<string, never>; result: { run: NodeSummary; status?: string; at: string; /** Read from a paper, so `at` is when it was imported and not when it ran. */ reported?: true; outputs: number; evidence: number }[] };
   /** Sets the facts a person fills in by hand on a protocol, study or run. Own units only. */
-  "process.setFacts": {
+  "method.setFacts": {
     params: {
       id: DgId;
       facts: Partial<Pick<UnitFacts, "steps" | "materials" | "version" | "hypothesis" | "design" | "conditions" | "sampleSize" | "preregistration" | "condition" | "deviations">>;
@@ -1257,7 +1259,7 @@ export type SurfaceMethods = {
   "identity.setName": { params: { name: string }; result: IdentityView };
   "focus.get": { params: Record<string, never>; result: DgId | null };
   /** Selecting a card moves focus, so other surfaces can follow it. */
-  "focus.set": { params: { node: DgId | null }; result: null };
+  "focus.set": { params: { id: DgId | null }; result: null };
 };
 
 export type SurfaceMethod = keyof SurfaceMethods;
@@ -1274,7 +1276,7 @@ export type SurfaceResponse =
 
 export type SurfaceEvent =
   | { event: "graph-changed" }
-  | { event: "overview-focus-changed"; ref: HolonRef | null; canvas: DgId | null }
+  | { event: "overview-focus-changed"; ref: WholeRef | null; canvas: DgId | null }
   | { event: "highlight"; units: DgId[]; brief?: boolean }
   | { event: "prefs-changed"; prefs: Prefs }
   | { event: "focus-changed"; node: DgId | null }

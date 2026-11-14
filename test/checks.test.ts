@@ -12,7 +12,7 @@ test("a unit is signed by its author, and the mark holds only for the version it
   assert.equal(unit.checked, undefined);
   assert.deepEqual((await call("unit.get", { id: unit.id })).checks, []);
 
-  const [mark] = await call("unit.check", { unit: unit.id, verdict: "checked", way: "dataReanalyzed", note: "  Reran the fits  " });
+  const [mark] = await call("unit.check", { id: unit.id, verdict: "checked", way: "dataReanalyzed", note: "  Reran the fits  " });
   assert.equal(mark!.verdict, "checked");
   assert.equal(mark!.way, "dataReanalyzed");
   assert.equal(mark!.note, "Reran the fits");
@@ -33,7 +33,7 @@ test("a unit is signed by its author, and the mark holds only for the version it
   assert.equal(after.node.checked, "changed");
 
   // Checking it again replaces the old mark with one on the new words.
-  const again = await call("unit.check", { unit: unit.id, verdict: "checked" });
+  const again = await call("unit.check", { id: unit.id, verdict: "checked" });
   assert.equal(again.length, 1, "one standing mark per person");
   assert.equal(again[0]!.current, true);
   assert.equal(again[0]!.way, "expertJudgment");
@@ -46,8 +46,8 @@ test("a unit is signed by its author, and the mark holds only for the version it
 test("sending a unit back needs a reason, and outweighs a check on the same version", async () => {
   const { call, core, settle, host, emit } = await setup();
   const unit = await call("unit.create", { title: "The band is absent" });
-  await assert.rejects(call("unit.check", { unit: unit.id, verdict: "needsWork" }), /Say what needs work/);
-  await call("unit.check", { unit: unit.id, verdict: "checked" });
+  await assert.rejects(call("unit.check", { id: unit.id, verdict: "needsWork" }), /Say what needs work/);
+  await call("unit.check", { id: unit.id, verdict: "checked" });
 
   // A second person, the PI, looks at the same version and sends it back.
   const pi: Author = { id: "did:plc:pi", name: "Pat Investigator" };

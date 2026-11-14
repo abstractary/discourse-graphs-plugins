@@ -77,7 +77,7 @@ for (const [mine, theirs] of [[sides[0], sides[1]], [sides[1], sides[0]]]) {
   mine.canvas = canvas.id;
 
   // The other lab reads as one group, not as a stranger's name.
-  const groups = await s(`s.call("canvas.open", ${q({ id: canvas.id })}).then((view) => Object.values(view.nodes).map((node) => node.credit.name).sort())`);
+  const groups = await s(`s.call("canvas.get", ${q({ id: canvas.id })}).then((view) => Object.values(view.nodes).map((node) => node.credit.name).sort())`);
   check(`${name}.people-mode-would-group-by-lab`, groups.includes(theirs.lab) && groups.includes(mine.person), q(groups));
   await s("s.closeAll()");
 }

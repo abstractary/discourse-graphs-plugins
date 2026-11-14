@@ -71,7 +71,7 @@ test("moving one card writes one record", async () => {
   const before = store.records.length;
   await call("canvas.write", { canvas: canvas.id, upserts: [{ id: ids[0]!, item: { ...box, x: 40 }, z: 1 }, { id: ids[1]!, item: { ...box, x: 200 }, z: 2 }] });
   assert.equal(store.records.length, before + 1);
-  const view = await call("canvas.open", { id: canvas.id });
+  const view = await call("canvas.get", { id: canvas.id });
   assert.equal((view.items.find((entry) => entry.id === ids[0])!.item as { x: number }).x, 40);
 });
 
@@ -87,9 +87,9 @@ test("removing an edge from a canvas leaves the relation standing", async () => 
     { item: { ...box, x: 200, text: "C", dg: { node: claim.id } }, z: 2 },
   ] });
   const edge = await call("canvas.write", { canvas: canvas.id, upserts: [{ item: { fromNode: cards.ids[0]!, toNode: cards.ids[1]!, dg: { relation: assertion.id } }, z: 3 }] });
-  assert.equal((await call("canvas.open", { id: canvas.id })).relations[assertion.id]?.label, "Supports");
+  assert.equal((await call("canvas.get", { id: canvas.id })).relations[assertion.id]?.label, "Supports");
   await call("canvas.write", { canvas: canvas.id, removes: [edge.ids[0]!] });
-  assert.equal((await call("canvas.open", { id: canvas.id })).items.length, 2);
+  assert.equal((await call("canvas.get", { id: canvas.id })).items.length, 2);
   assert.equal(core.graph().relations.get(assertion.id)?.state, "active");
 });
 
@@ -100,7 +100,7 @@ test("strokes persist but stay out of plain JSON Canvas", async () => {
     { item: { type: "stroke", x: 1, y: 2, width: 30, height: 40, path: "M0 0 L30 40" }, z: 1 },
     { item: { type: "text", text: "note", x: 0, y: 0, width: 100, height: 50 }, z: 2 },
   ] });
-  assert.equal((await call("canvas.open", { id: canvas.id })).items.length, 2);
+  assert.equal((await call("canvas.get", { id: canvas.id })).items.length, 2);
   const doc = await call("canvas.export", { id: canvas.id });
   assert.deepEqual(doc.nodes.map((node) => node.type), ["text"]);
 });
@@ -134,7 +134,7 @@ test("records from elsewhere arrive through the cursor", async () => {
   store.records.push(createCanvasItem({ ...other, canvas: canvas.id, z: 9, item: { type: "text", text: "from elsewhere", x: 5, y: 5, width: 100, height: 50 } }));
   emit({ type: "records-changed" });
   await settle();
-  assert.equal((await call("canvas.open", { id: canvas.id })).items.length, 1);
+  assert.equal((await call("canvas.get", { id: canvas.id })).items.length, 1);
   assert.ok(events.some((event) => "event" in event && event.event === "graph-changed"));
 });
 
@@ -241,7 +241,7 @@ test("a badge opens the context panel on its node without moving the page", asyn
   const first = await call("unit.create", { title: "First", type: type("claim") });
   const second = await call("unit.create", { title: "Second", type: type("claim") });
   const secondRef = [...store.texts.keys()][1]!;
-  await call("focus.set", { node: first.id });
+  await call("focus.set", { id: first.id });
   const shown = await core.showContext({ ref: secondRef });
   assert.equal(shown.ok, true);
   assert.deepEqual(opened, [{ route: { surface: "context" }, placement: "side" }]);
@@ -331,7 +331,7 @@ test("a saved layout travels with the canvas", async () => {
   const { call } = await setup();
   const canvas = await call("canvas.create", { title: "Laid out" });
   await call("canvas.setLayout", { id: canvas.id, layout: { mode: "timeline" } });
-  assert.equal((await call("canvas.open", { id: canvas.id })).canvas.layout?.mode, "timeline");
+  assert.equal((await call("canvas.get", { id: canvas.id })).canvas.layout?.mode, "timeline");
   const [summary] = await call("canvas.summaries", {});
   assert.equal(summary?.title, "Laid out");
 });
@@ -362,10 +362,10 @@ test("a remounted panel can return to the last canvas", async () => {
   const first = await call("canvas.create", { title: "One" });
   const second = await call("canvas.create", { title: "Two" });
   assert.equal(await call("canvas.last", {}), null);
-  await call("canvas.open", { id: second.id });
+  await call("canvas.get", { id: second.id });
   assert.equal(await call("canvas.last", {}), second.id);
-  await call("canvas.open", { id: first.id });
-  await call("canvas.open", { id: second.id });
+  await call("canvas.get", { id: first.id });
+  await call("canvas.get", { id: second.id });
   const { core: again } = await makeCore({ store });
   const stored = await host.getLocal({ key: "last-canvas" });
   assert.ok(stored.ok && stored.value === second.id);
@@ -381,7 +381,7 @@ test("records made elsewhere stay pending until accepted", async () => {
   emit({ type: "records-changed" });
   await settle();
   assert.equal(core.graph().relations.get(theirs.id)?.state, "pending");
-  await call("relation.decide", { id: theirs.id, decision: "accepted" });
+  await call("relation.accept", { id: theirs.id });
   assert.equal(core.graph().relations.get(theirs.id)?.state, "active");
 });
 

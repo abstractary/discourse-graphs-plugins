@@ -85,7 +85,7 @@ export const useOpenCanvas = (connection: Connection) => {
     };
     void call("overview.focus.get", {}).then(({ canvas: id }) => titled(id));
     return on("overview-focus-changed", ({ canvas: id }) => {
-      // A note opened elsewhere moves the holon in focus, but the canvas tab stays where it was.
+      // A note opened elsewhere moves the whole in focus, but the canvas tab stays where it was.
       if (id) void titled(id);
     });
   }, [call, on]);

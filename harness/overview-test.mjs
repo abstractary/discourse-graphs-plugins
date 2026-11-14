@@ -1,8 +1,8 @@
-// The holonic canvas inside real Obsidian: a note opens as its holon's canvas,
+// The nested canvas inside real Obsidian: a note opens as its whole's canvas,
 // the breadcrumb goes up, a card's open-inside button goes in, the boundary
 // panel follows, a highlight crosses panels, the Library is the repository,
 // and the gesture choice lives in the plugin's settings.
-//   npm run build:test, then: node harness/holons-test.mjs
+//   npm run build:test, then: node harness/overview-test.mjs
 // It copies the build into the throwaway vault and adds the worked example as
 // one more device's log.
 // Leaves the worked example's records file, the same one every run. The notebook setting goes back to what it was.
@@ -11,14 +11,14 @@ import { resolve } from "node:path";
 import { q, session } from "./lib.mjs";
 
 const VAULT = process.env.DG_SANDBOX ?? "sandbox/dg-contract-sandbox";
-const OUT = resolve("reports/holons");
+const OUT = resolve("reports/overview");
 
 const records = JSON.parse(readFileSync("examples/worked-example/records.json", "utf8"));
 writeFileSync(`${VAULT}/discourse-graph/records/worked-example.jsonl`, records.map((r) => `${JSON.stringify(r)}\n`).join(""));
 // Left behind: the records file above. The worked example is the same file every run, and other suites read it.
 // The build is copied in and the plugin reloaded by the session.
 const { host, s, results, check, until, call, cleanup } = await session({ vault: VAULT, out: OUT, wait: { timeout: 20000, every: 400 } });
-const holonBar = () => s(`s.text('[data-dg="holon-bar"]')`);
+const wholeBar = () => s(`s.text('[data-dg="whole-bar"]')`);
 const boundaryTitle = () => s(`s.boundaryText('[data-dg="boundary-title"]')`);
 const node = (start) => records.find((r) => r.kind === "node" && r.title.startsWith(start));
 
@@ -37,7 +37,7 @@ try {
   const exchange = records.find((r) => r.kind === "canvas" && r.title.startsWith("Issue exchange"));
   await s(`s.open(${q(exchange.id)})`);
   await s("s.openBoundary()");
-  const questionBar = await until(async () => ((await holonBar()) ?? "").includes("How does a shared issue board") ? holonBar() : null);
+  const questionBar = await until(async () => ((await wholeBar()) ?? "").includes("How does a shared issue board") ? wholeBar() : null);
   check("canvas.shows-its-place", questionBar, questionBar);
   const questionBoundary = await until(async () => ((await boundaryTitle()) ?? "").startsWith("How does a shared issue board") ? boundaryTitle() : null);
   check("boundary.follows-the-canvas", questionBoundary, questionBoundary);

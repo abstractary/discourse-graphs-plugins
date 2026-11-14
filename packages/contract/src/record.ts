@@ -471,10 +471,10 @@ export type CanvasRecord = Envelope<"canvas"> &
     /** Cards were placed by a tool, so the next person to open it should tidy it. */
     needsLayout?: boolean;
     /**
-     * The holon this canvas is the inside of: a question, claim or evidence
-     * unit, or a lab's DID. A holon can have several canvases.
+     * The whole this canvas is the inside of: a question, claim or evidence
+     * unit, or a lab's DID. A whole can have several canvases.
      */
-    holon?: string;
+    whole?: string;
     /** The release this canvas was forked from, pinned. */
     forkOf?: Pin;
   };
@@ -858,7 +858,7 @@ export const createCanvas = ({
   ...stamp
 }: Stamp & {
   title: string;
-  fields?: Pick<CanvasRecord, "paper" | "shared" | "personal" | "needsLayout" | "holon" | "forkOf">;
+  fields?: Pick<CanvasRecord, "paper" | "shared" | "personal" | "needsLayout" | "whole" | "forkOf">;
 }): CanvasRecord => ({
   ...versioned({ ...stamp, kind: "canvas" }),
   title,

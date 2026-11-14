@@ -69,7 +69,7 @@ export class SurfaceView extends ItemView {
   getDisplayText(): string {
     if (this.route.surface === "context") return "Context";
     if (this.route.surface === "canvases") return "Library";
-    if (this.route.surface === "holon") return "Overview";
+    if (this.route.surface === "overview") return "Overview";
     if (this.route.surface === "boundary") return "Boundary";
     if (this.route.surface === "profile") return "Profile";
     if (this.route.surface === "papers") return "Paper map";
@@ -80,7 +80,7 @@ export class SurfaceView extends ItemView {
   }
   getIcon(): string {
     if (this.route.surface === "context") return "panel-right";
-    if (this.route.surface === "holon") return "network";
+    if (this.route.surface === "overview") return "network";
     if (this.route.surface === "boundary") return "layers";
     if (this.route.surface === "pdf") return "file-text";
     if (this.route.surface === "search") return "search";
@@ -119,7 +119,7 @@ export class SurfaceView extends ItemView {
   }
   /**
    * The canvas moved to another canvas inside this tab, such as going into a
-   * holon. The tab takes it as its route, so its title, its saved layout and a
+   * whole. The tab takes it as its route, so its title, its saved layout and a
    * restart all follow, without reloading the frame.
    */
   adopt(id: string): void {

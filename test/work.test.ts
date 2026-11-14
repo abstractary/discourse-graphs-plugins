@@ -56,7 +56,7 @@ test("a reading keeps the hash of the PDF it read, and its DOI in one form", asy
   const pdf = Buffer.from("%PDF-1.7 not really").toString("base64");
   const read = await call("paper.extract", { file: { name: "lupus.pdf", mediaType: "application/pdf", dataBase64: pdf }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
   assert.equal(read.doi, "10.1016/j.jaut.2016.06.001");
-  const record = (await call("canvas.open", { id: read.canvas })).canvas.paper;
+  const record = (await call("canvas.get", { id: read.canvas })).canvas.paper;
   assert.ok(record, "its canvas names the reading");
   const again = await call("paper.extract", { file: { name: "renamed.pdf", mediaType: "application/pdf", dataBase64: pdf }, server: "http://local", model: "demo-replay", schema: "mira" } as never);
   assert.notEqual(again.id, read.id, "a second reading is its own reading");

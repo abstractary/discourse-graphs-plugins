@@ -97,7 +97,7 @@ try {
   check("badge.panel-stays-on-the-node", stillThere?.includes(`Actin scales with tension ${stamp}`), stillThere);
 
   // The keyboard reaches the same place.
-  await s(`s.call("focus.set", { node: null })`);
+  await s(`s.call("focus.set", { id: null })`);
   await s(`document.querySelectorAll(${q(BADGE)})[1].focus()`);
   await key("Enter", 13);
   const byKey = await until(async () => {

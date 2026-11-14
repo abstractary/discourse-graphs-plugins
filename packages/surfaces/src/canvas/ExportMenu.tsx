@@ -52,7 +52,7 @@ export const ExportMenu = ({
   useEffect(() => {
     void call("folder.list", {}).then(setFolders);
     void call("canvas.list", {}).then((list) => setCanvases(list.filter(({ id }) => id !== view.canvas.id)));
-    void call("lab.view", {}).then(setLab);
+    void call("lab.get", {}).then(setLab);
     void call("crate.licenses", {}).then(setLicenses);
     void call("deposit.settings", {}).then(setDeposit);
   }, [call, view.canvas.id]);
@@ -93,7 +93,7 @@ export const ExportMenu = ({
         onDone(`Saved ${made.name} to ${made.where}: ${packed(made)}`);
         return;
       }
-      const result = await call("unit.export", { nodes, target: targetOf(destination, title.trim() || "New folder") });
+      const result = await call("unit.export", { units: nodes, target: targetOf(destination, title.trim() || "New folder") });
       onDone(`Exported ${nodes.length} ${nodes.length === 1 ? "unit" : "units"}${result.made > 0 ? `, ${result.made} new` : ""}`);
       if (result.canvas) void call("canvas.show", { id: result.canvas });
     } catch (error) {

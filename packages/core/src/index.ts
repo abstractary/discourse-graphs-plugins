@@ -44,7 +44,7 @@ import type {
   SurfacePort } from "@dg/contract/surface.ts";
 import { withUsageLog, type UsageEvent } from "@dg/contract/usage.ts";
 import { atUriOf, cidOf, toAtRecord, type AtRecord } from "@dg/contract/atproto.ts";
-import { DEFAULT_PREFS, holonFeature } from "./holons.ts";
+import { DEFAULT_PREFS, overviewFeature } from "./overview.ts";
 import { paperOfWork } from "./work.ts";
 import { readingFeature } from "./reading.ts";
 import { searchFeature } from "./search.ts";
@@ -900,7 +900,7 @@ export const createCore = async ({
 
   const ai = aiFeature(context, { ...(llm ? { llm } : {}), ...(secrets ? { secrets } : {}) });
 
-  const holons = holonFeature(context);
+  const wholes = overviewFeature(context);
   const reading = readingFeature(context);
   const search = searchFeature(context);
   const similar = similarFeature(context);
@@ -935,7 +935,7 @@ export const createCore = async ({
     ...proposalFeature(context, { createUnit: (args) => handlers["unit.create"](args) }).handlers,
     ...gather.handlers,
     ...checks.handlers,
-    ...holons.handlers,
+    ...wholes.handlers,
     ...ai.handlers,
     ...methodFeature(context, { restsOn: similar.restsOn }).handlers,
     ...similar.handlers,
@@ -962,7 +962,7 @@ export const createCore = async ({
       return identityView();
     },
     "focus.get": async () => focused,
-    "focus.set": async ({ node }) => {
+    "focus.set": async ({ id: node }) => {
       moveFocus(node);
       return null;
     } };
@@ -1081,7 +1081,7 @@ export const createCore = async ({
     setSession: (name: string) => {
       session = name;
     },
-    focusCanvas: (id) => holons.focusCanvas(id),
+    focusCanvas: (id) => wholes.focusCanvas(id),
     zoteroStatus: async () => (services?.zotero ? services.zotero.status() : { ok: false, app: "zotero", problem: "This base can't reach Zotero." }),
     pdfLibrary: () => handlers["pdf.library"]({}),
     command: (canvas, name) => {
@@ -1105,8 +1105,8 @@ export const createCore = async ({
       configure: (changes) => handlers["ai.configure"](changes),
       models: (args) => handlers["ai.models"](args),
       test: () => handlers["ai.test"]({}) },
-    prefs: () => holons.prefs(),
-    setPrefs: (changes) => holons.setPrefs(changes),
+    prefs: () => wholes.prefs(),
+    setPrefs: (changes) => wholes.setPrefs(changes),
     canvasClosed: labs.canvasClosed,
     answerBreadcrumb: labs.answerBreadcrumb,
     personName: () => me.name,

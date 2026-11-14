@@ -10,7 +10,7 @@ import {
   openCanvas,
   openCanvases,
   openDialog,
-  openHolons,
+  openOverview,
   openPaperMap,
   openPdf,
   openProfile,
@@ -42,7 +42,7 @@ export const fillMenu = (plugin: DiscourseGraphsPlugin, menu: Menu, here?: Surfa
   group("Canvases");
   add("Open canvas", "layout-dashboard", () => openCanvas(plugin), "canvas");
   add("Library", "library", () => openCanvases(plugin), "canvases");
-  add("Overview", "network", () => openHolons(plugin), "holon");
+  add("Overview", "network", () => openOverview(plugin), "overview");
   add("Paper map", "waypoints", () => openPaperMap(plugin), "papers");
   add("New canvas…", "square-plus", () => newCanvas(plugin));
   group("Panels");

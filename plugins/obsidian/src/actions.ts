@@ -127,18 +127,18 @@ export const openCanvases = async (plugin: DiscourseGraphsPlugin): Promise<void>
   await plugin.adapter!.host.openSurface({ route: { surface: "canvases" }, placement: "side" });
 };
 
-/** The boundary of the holon in focus, in the right sidebar beside the context panel. */
+/** The boundary of the whole in focus, in the right sidebar beside the context panel. */
 export const openBoundary = async (plugin: DiscourseGraphsPlugin): Promise<void> => {
   await plugin.ensureCore();
   await plugin.adapter!.host.openSurface({ route: { surface: "boundary" }, placement: "side" });
 };
 
 /** The overview in a tab: a lab, its questions and their claims, laid out from the graph. */
-export const openHolons = async (plugin: DiscourseGraphsPlugin, id?: string): Promise<void> => {
+export const openOverview = async (plugin: DiscourseGraphsPlugin, id?: string): Promise<void> => {
   await plugin.ensureCore();
   const { workspace } = plugin.app;
-  const open = loadedSurfaces(workspace).find((leaf) => (leaf.view as SurfaceView).route.surface === "holon");
-  const route = { surface: "holon" as const, ...(id ? { id } : {}) };
+  const open = loadedSurfaces(workspace).find((leaf) => (leaf.view as SurfaceView).route.surface === "overview");
+  const route = { surface: "overview" as const, ...(id ? { id } : {}) };
   if (open && (open.view as SurfaceView).route.id === route.id) {
     await workspace.revealLeaf(open);
     return;

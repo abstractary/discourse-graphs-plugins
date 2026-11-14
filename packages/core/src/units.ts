@@ -237,7 +237,7 @@ export const unitFeature = (
     provenance,
     social,
     giveAll,
-    "unit.export": async ({ nodes: ids, target }) => {
+    "unit.export": async ({ units: ids, target }) => {
       const nodes = ids.flatMap((id) => {
         const node = context.nodeOf(id);
         return node ? [node] : [];
@@ -261,13 +261,13 @@ export const unitFeature = (
       await context.put([folder]);
       return { id: folder.id, title, units: 0 };
     },
-    "unit.react": async ({ unit, value }) => {
+    "unit.react": async ({ id: unit, value }) => {
       if (value !== null && !REACTIONS.includes(value as Reaction)) throw new Error("Unknown reaction.");
       const mine = reactionOf(unit);
       await context.put([mine ? revise({ record: mine, changes: { value }, by: context.me() }) : createReaction({ ...context.stamp(), unit, value })]);
       return null;
     },
-    "unit.note": async ({ unit, text }) => {
+    "unit.note": async ({ id: unit, text }) => {
       await context.put([createUnitNote({ ...context.stamp(), unit, text })]);
       return null;
     },

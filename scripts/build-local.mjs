@@ -6,7 +6,7 @@ import { build } from "esbuild";
 mkdirSync("dist", { recursive: true });
 const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'self'";
 const result = await build({
-  entryPoints: ["packages/surfaces/src/holon/standalone.tsx"],
+  entryPoints: ["packages/surfaces/src/overview/standalone.tsx"],
   bundle: true,
   minify: process.env.DG_RELEASE === "1",
   write: false,

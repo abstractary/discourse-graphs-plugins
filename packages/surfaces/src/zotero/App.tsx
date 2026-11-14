@@ -67,7 +67,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const open = (ref: string): void => {
     setBusy(true);
     setProblem("");
-    void call("zotero.item", { ref })
+    void call("zotero.get", { ref })
       .then((next) => {
         setView(next);
         // Start with every highlight that isn't here yet. The person takes away what they don't want.
@@ -86,7 +86,7 @@ export const App = ({ connection }: { connection: Connection }) => {
       .then(async (made) => {
         if (made.canvas) await call("canvas.show", { id: made.canvas }).catch(() => null);
         else {
-          await call("focus.set", { node: made.source.id }).catch(() => null);
+          await call("focus.set", { id: made.source.id }).catch(() => null);
           await call("panel.open", { surface: "context" }).catch(() => null);
         }
         await call("dialog.close", {});

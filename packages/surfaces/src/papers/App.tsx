@@ -99,7 +99,7 @@ const Map = ({ connection }: { connection: Connection }) => {
   const flow = useReactFlow();
 
   const load = useCallback(() => {
-    void call("papers.map", { scope })
+    void call("paper.map", { scope })
       .then((next) => {
         setMap(next);
         setProblem("");

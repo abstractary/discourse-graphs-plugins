@@ -11,7 +11,7 @@ export const App = ({ connection }: { connection: Connection }) => {
   const [lab, setLab] = useState<LabView | null>(null);
 
   useEffect(() => {
-    void call("lab.view", {}).then(setLab);
+    void call("lab.get", {}).then(setLab);
   }, [call]);
 
   const pending = Boolean(lab?.link?.pending);

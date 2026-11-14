@@ -154,7 +154,7 @@ export const Drawer = ({
                     })}
                   >
                     <span className="drawer-caret" aria-hidden="true"><Icon name="chevron" /></span>
-                    <span className="chip" data-base={segment.kind === "canvas" ? (segment.holon ?? "canvas") : "none"}>{segment.kind === "canvas" && segment.holon ? `${KIND_WORD.canvas} · ${segment.holon}` : KIND_WORD[segment.kind]}</span>
+                    <span className="chip" data-base={segment.kind === "canvas" ? (segment.whole ?? "canvas") : "none"}>{segment.kind === "canvas" && segment.whole ? `${KIND_WORD.canvas} · ${segment.whole}` : KIND_WORD[segment.kind]}</span>
                     <span className="drawer-seg-title">{segment.title}</span>
                     <span className="drawer-seg-count">{segment.shown.length}</span>
                   </button>

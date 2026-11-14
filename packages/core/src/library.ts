@@ -64,7 +64,7 @@ export const libraryFeature = (context: Context) => {
   const typesHere = (): NodeTypeRecord[] => context.nodeTypes().filter((type) => type.base === "question" || type.base === "claim" || type.base === "evidence");
 
   let pending: string | undefined;
-  const handlers: Pick<Handlers, "zotero.status" | "zotero.groups" | "zotero.search" | "zotero.item" | "zotero.import" | "zotero.show" | "zotero.pending"> = {
+  const handlers: Pick<Handlers, "zotero.status" | "zotero.groups" | "zotero.search" | "zotero.get" | "zotero.import" | "zotero.show" | "zotero.pending"> = {
     "zotero.status": async () => services().status(),
     "zotero.groups": async () => (context.services?.zotero ? context.services.zotero.groups().catch(() => []) : []),
     "zotero.show": async ({ item, canvas }) => {
@@ -85,7 +85,7 @@ export const libraryFeature = (context: Context) => {
         return { item, label: sourceLabel(item.authors.map(({ name }) => name), item.published, item.title), ...(held ? { held: held.id } : {}) };
       });
     },
-    "zotero.item": async ({ ref }): Promise<LibraryItemView> => {
+    "zotero.get": async ({ ref }): Promise<LibraryItemView> => {
       const [item, marks] = await Promise.all([services().item({ ref }), services().annotations({ ref })]);
       const held = sourceFor(item);
       const types = typesHere();

@@ -19,7 +19,7 @@ import {
 } from "../../../harness/tools.ts";
 import { readExisting } from "./existing.ts";
 import { ROOT, SURFACE_VIEW, type ObsidianHost } from "./host.ts";
-import { capture, extractGraph, findUnit, importCrate, openBoundary, openCanvas, openCanvases, openDialog, openHolons, openPdf, openRuns, openSettings, openSide } from "./actions.ts";
+import { capture, extractGraph, findUnit, importCrate, openBoundary, openCanvas, openCanvases, openDialog, openOverview, openPdf, openRuns, openSettings, openSide } from "./actions.ts";
 import type DiscourseGraphsPlugin from "./main.ts";
 import { fillMenu } from "./menus.ts";
 import { writeReport } from "./panels.ts";
@@ -37,7 +37,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   const probe = createFrameProbe(() => surfaceFrame(plugin));
   const contextProbe = createFrameProbe(() => surfaceFrame(plugin, "context"));
   const canvasesProbe = createFrameProbe(() => surfaceFrame(plugin, "canvases"));
-  const holonProbe = createFrameProbe(() => surfaceFrame(plugin, "holon"));
+  const overviewProbe = createFrameProbe(() => surfaceFrame(plugin, "overview"));
   const boundaryProbe = createFrameProbe(() => surfaceFrame(plugin, "boundary"));
   const pdfProbe = createFrameProbe(() => surfaceFrame(plugin, "pdf"));
   const dialogProbe = createFrameProbe(() => plugin.dialogFrame);
@@ -245,11 +245,11 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
       scroll: () => probe.scroll(),
       drawn: () => probe.drawn(),
       style: (selector: string, prop: string) => probe.style(selector, prop),
-      openHolons: (id?: string) => openHolons(plugin, id),
-      holonText: (selector: string) => holonProbe.text(selector),
-      holonCount: (selector: string) => holonProbe.count(selector),
-      holonLocate: (selector: string) => holonProbe.locate(selector),
-      holonTheme: () => holonProbe.theme(),
+      openOverview: (id?: string) => openOverview(plugin, id),
+      overviewText: (selector: string) => overviewProbe.text(selector),
+      overviewCount: (selector: string) => overviewProbe.count(selector),
+      overviewLocate: (selector: string) => overviewProbe.locate(selector),
+      overviewTheme: () => overviewProbe.theme(),
       openBoundary: () => openBoundary(plugin),
       boundaryText: (selector: string) => boundaryProbe.text(selector),
       boundaryTheme: () => boundaryProbe.theme(),
@@ -472,7 +472,7 @@ export const testHooks = (plugin: DiscourseGraphsPlugin) => {
   };
 
   const stop = (): void => {
-    for (const each of [probe, contextProbe, canvasesProbe, holonProbe, boundaryProbe, pdfProbe, dialogProbe, searchProbe]) each.stop();
+    for (const each of [probe, contextProbe, canvasesProbe, overviewProbe, boundaryProbe, pdfProbe, dialogProbe, searchProbe]) each.stop();
   };
 
   return { ...slice(), runConformance, openPanel, verifyPanel, exportExchange, importExchange, measureRecords, stop };

@@ -11,7 +11,7 @@ import {
   openCanvas,
   openCanvases,
   openDialog,
-  openHolons,
+  openOverview,
   openPaperMap,
   openPdf,
   openProfile,
@@ -175,13 +175,13 @@ export const registerCommands = (plugin: DiscourseGraphsPlugin): void => {
     callback: () => void plugin.adapter!.host.openSurface({ route: { surface: "search" }, placement: "side" }),
   });
   plugin.addCommand({
-    id: "open-holons",
+    id: "open-overview",
     name: "Open the overview",
     icon: "network",
-    callback: () => void openHolons(plugin),
+    callback: () => void openOverview(plugin),
   });
   plugin.addCommand({
-    id: "open-holon-boundary",
+    id: "open-whole-boundary",
     name: "Open boundary",
     icon: "layers",
     callback: () => void openBoundary(plugin),

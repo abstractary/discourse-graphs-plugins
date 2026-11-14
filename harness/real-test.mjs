@@ -79,7 +79,7 @@ try {
   await call("canvas.write", { canvas: canvas.id, upserts: edges.map((item, index) => ({ z: 100 + index, item: { fromNode: itemOf.get(item.source), toNode: itemOf.get(item.target), dg: { relation: item.id } } })) });
 
   const opening = Date.now();
-  await call("canvas.open", { id: canvas.id });
+  await call("canvas.get", { id: canvas.id });
   const openMs = Date.now() - opening;
   await s("s.closeAll()");
   await sleep(500);

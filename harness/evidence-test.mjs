@@ -33,7 +33,7 @@ try {
   const read = await call("crate.import", { ref: `${FOLDER}/ro-crate-metadata.json` });
   check("bundle.reads-as-units", read.kind === "foreign" && read.units === 18, JSON.stringify(read));
   check("bundle.files-are-hashed", read.hashed >= 9, `${read.hashed} files`);
-  const view = await call("canvas.open", { id: read.canvas });
+  const view = await call("canvas.get", { id: read.canvas });
   const bases = Object.values(view.nodes).reduce((count, node) => ({ ...count, [node.base]: (count[node.base] ?? 0) + 1 }), {});
   check("bundle.has-evidence-study-protocol", bases.evidence === 1 && bases.run === 1 && bases.protocol === 1 && bases.code === 4, JSON.stringify(bases));
 

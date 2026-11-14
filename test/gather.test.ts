@@ -21,7 +21,7 @@ test("a picture becomes an output pinned to its bytes, sits on the canvas, and i
   assert.equal(record.facts?.outputKind, "figure");
   assert.equal(record.facts?.size, 70);
   assert.ok(store.assets.has(record.facts!.locator!.path!), "the file is kept in the base");
-  const view = await call("canvas.open", { id: canvas.id });
+  const view = await call("canvas.get", { id: canvas.id });
   assert.deepEqual(Object.keys(view.nodes), [made.unit.id]);
 
   const again = await call("image.add", { canvas: canvas.id, file: { ...gel, name: "copy.png" } });
@@ -48,7 +48,7 @@ test("saying what a picture shows makes evidence that rests on it, pinned to its
   assert.equal(evidence.base, "evidence");
   assert.equal(evidence.title, "The 42 kDa band is absent in the knockout");
   assert.deepEqual(node(evidence.id).prov?.observationBase, [{ uri: picture.id, cid: node(picture.id).facts!.cid! }]);
-  assert.equal(Object.keys((await call("canvas.open", { id: canvas.id })).nodes).length, 2);
+  assert.equal(Object.keys((await call("canvas.get", { id: canvas.id })).nodes).length, 2);
   await assert.rejects(call("output.observe", { output: picture.id, title: " " }), /Say what it shows/);
   await assert.rejects(call("output.observe", { output: evidence.id, title: "x" }), /isn't an output/);
 });
@@ -71,7 +71,7 @@ test("a card lists what its unit is related to, what isn't on the canvas first, 
   assert.deepEqual((await call("unit.related", { id: first.id, canvas: canvas.id })).map(({ label, here }) => [label, here]), [["Supports", true]]);
   // Placing the one that was missing draws its link too.
   await call("canvas.placeUnits", { canvas: canvas.id, places: [{ node: second.id, x: 300, y: 140, width: 260, height: 96 }] });
-  const view = await call("canvas.open", { id: canvas.id });
+  const view = await call("canvas.get", { id: canvas.id });
   assert.equal(Object.keys(view.relations).length, 2);
   assert.ok((await call("unit.related", { id: claim.id, canvas: canvas.id })).every(({ here }) => here));
 });

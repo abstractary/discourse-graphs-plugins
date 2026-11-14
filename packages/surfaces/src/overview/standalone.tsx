@@ -6,7 +6,7 @@ import "../shared/tokens.css";
 import "../canvas/canvas.css";
 import "../context/context.css";
 import "../library/library.css";
-import "./whole.css";
+import "./overview.css";
 import "../pdf/pdf.css";
 import "../run/run.css";
 import "../search/search.css";

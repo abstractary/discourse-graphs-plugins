@@ -18,29 +18,214 @@ Discourse Graphs runs inside other tools, called bases. The project keeps what p
 
 ```mermaid
 flowchart TB
-  subgraph base["Inside a base"]
-    subgraph frames["Sandboxed frames: no network, no base API"]
-      surfaces["@dg/surfaces<br/>canvas, context, Library, search, PDF reader, and the rest"]
-    end
-    native["@dg/native<br/>capture menu, link badges, walkthrough, dialogs"]
-    core["@dg/core<br/>the graph and every feature over it"]
-    adapter["plugins/obsidian, plugins/roam, local/<br/>one Host contract, an adapter each"]
-    sync["@dg/sync<br/>every call to an outside service"]
-  end
-  layout["@dg/layout<br/>Tidy arrangements, pure functions"]
-  contract["@dg/contract<br/>records and their rules, Host, Surface API, Services"]
-  server["server/<br/>compute, graph store, labs, exchange, AI"]
+  person["A person"] --> obsidian
+  person --> localapp
+  agent["An assistant"] --> mcp
 
-  surfaces -- "Surface API over a MessagePort" --> core
+  subgraph hosts["Hosts: one Host contract, an adapter each"]
+    obsidian["plugins/obsidian"]
+    localapp["local/main.ts<br/>local app"]
+    mcp["local/mcp.ts<br/>MCP server"]
+    roam["plugins/roam"]
+  end
+
+  subgraph ui["Interface"]
+    surfaces["@dg/surfaces<br/>panels in sandboxed frames:<br/>no network, no base API"]
+    native["@dg/native<br/>drawn in the base's own page"]
+    layout["@dg/layout<br/>Tidy, pure functions"]
+  end
+
+  core["@dg/core<br/>the graph and every feature over it"]
+  sync["@dg/sync<br/>every call to an outside service"]
+  disk[("This device<br/>logs, notes, canvases, keys")]
+  out(["Off this device<br/>server/, registries, models, Zenodo"])
+
+  obsidian --> surfaces
+  obsidian --> native
+  localapp --> surfaces
   surfaces --> layout
-  native --> core
-  core -- "Host contract" --> adapter
+  surfaces -- "Surface API" --> core
+  native -- "CoreForAdapter" --> core
+  mcp -- "tools" --> core
+  core -- "Host contract" --> hosts
+  hosts --> disk
   core -- "Services" --> sync
-  sync -- "HTTP" --> server
-  contract -.- core
-  contract -.- surfaces
-  contract -.- sync
-  contract -.- adapter
+  sync -- "HTTP, only when asked" --> out
+```
+
+`@dg/contract` sits under every box: the records and their rules, and the seams the arrows are labelled with. The four pictures below open one part each.
+
+### Hosts and the device
+
+```mermaid
+flowchart LR
+  subgraph ob["plugins/obsidian"]
+    oMain["main.ts, wiring.ts<br/>start-up"]
+    oHost["host.ts<br/>the Host contract"]
+    oUi["views, panels, commands,<br/>menus, settings, badges"]
+  end
+  subgraph lc["local/"]
+    lMain["main.ts<br/>HTTP on 127.0.0.1:<br/>/rpc, /events, /about"]
+    lMcp["mcp.ts, mcp-tools.ts<br/>stdio, six read tools,<br/>role: agent"]
+    lVault["vault.ts<br/>a folder as a base"]
+  end
+  rm["plugins/roam<br/>no optional host calls"]
+
+  subgraph dev["On this device"]
+    log[("discourse-graph/records/<br/>one .jsonl for each device")]
+    notes[("Notes, .canvas files,<br/>PDFs, tables")]
+    keys[("Device id, settings, signing keys,<br/>model keys: outside the notes")]
+  end
+
+  oMain --> oHost
+  oMain --> oUi
+  lMain --> lVault
+  lMcp --> lVault
+  oHost --> log
+  oHost --> notes
+  oHost --> keys
+  lVault --> log
+  lVault --> notes
+  lVault --> keys
+  rm --> rmg[("A Roam graph")]
+```
+
+### The interface
+
+```mermaid
+flowchart LR
+  subgraph frames["@dg/surfaces"]
+    canvas["canvas/<br/>React Flow, freehand,<br/>sidebar, minimap"]
+    ctx["context/, boundary/,<br/>overview/"]
+    lib["library/, papers/,<br/>profile/"]
+    rd["pdf/, upload/,<br/>zotero/, run/"]
+    fd["search/, grammar/,<br/>welcome/"]
+    shared["shared/<br/>rpc, load, ui, people, http"]
+  end
+  subgraph nat["@dg/native"]
+    cap["capture-menu.ts"]
+    badge["link-badge.ts"]
+    walk["walkthrough.ts"]
+    dlg["dialog.ts, frame.ts<br/>host a frame"]
+  end
+  layout["@dg/layout<br/>ten arrangements,<br/>centrality, crossings"]
+  core["@dg/core"]
+
+  canvas --> layout
+  canvas --> shared
+  ctx --> shared
+  lib --> shared
+  rd --> shared
+  fd --> shared
+  shared -- "Surface API: a MessagePort in a base,<br/>POST /rpc in the local app" --> core
+  cap -- "CoreForAdapter" --> core
+  badge --> core
+  walk --> core
+```
+
+`@dg/surfaces` is one React bundle, and the route picks the panel. `@dg/native` is drawn in the base's own page.
+
+### Inside the core
+
+```mermaid
+flowchart LR
+  fold["@dg/contract fold.ts<br/>whose word stands"] --> entry
+  entry["index.ts: createCore<br/>reads the log, folds it,<br/>builds the Context, wires the features"]
+  context["context.ts<br/>graph, put, nodeOf, typeOf,<br/>services, offers"]
+
+  subgraph argue["Argument"]
+    a1["nodes, relations, grammar,<br/>canvases, capture, mirror, units"]
+  end
+  subgraph reading["Reading"]
+    r1["reading, papers, papermap,<br/>similar, search, library"]
+  end
+  subgraph method["Method"]
+    m1["method, process,<br/>gather, checks"]
+  end
+  subgraph people["People"]
+    p1["labs, devices, identity,<br/>signing, profile, proposals"]
+  end
+  subgraph record["Models and the record"]
+    o1["ai, works, notify, crate, rocrate,<br/>mira, datacite, zenodo, zip"]
+  end
+  frame["overview, shell<br/>history, releases, forks,<br/>what a panel asks of the base"]
+
+  entry --> context
+  context --> argue
+  context --> reading
+  context --> method
+  context --> people
+  context --> record
+  context --> frame
+
+  context -- "put: stamp, sign, append" --> host["Host contract"]
+  context -- "services" --> svc["Services"]
+```
+
+Each name inside a group is a file in `packages/core/src/`. The table further down lists every feature with the calls it answers.
+
+### Every outside call
+
+```mermaid
+flowchart LR
+  subgraph sy["@dg/sync"]
+    sClient["client.ts"]
+    sLab["lab-sync.ts"]
+    sProv["providers.ts"]
+    sSch["scholarly.ts"]
+    sZen["zenodo.ts"]
+    sZot["zotero.ts"]
+  end
+  subgraph srv["server/: reference server"]
+    vCompute["compute.ts, extract/<br/>extraction"]
+    vGraphs["graphs.ts, papers.ts<br/>graph store"]
+    vLabs["labs.ts, sync.ts<br/>labs and the exchange"]
+    vAi["ai.ts<br/>a lab's model"]
+    vPub["signposting.ts, notify.ts<br/>landing pages, inbox"]
+  end
+  models(["Anthropic, OpenAI-compatible,<br/>Gemini, a model on this computer"])
+  reg(["Crossref, DataCite,<br/>OpenAlex, PubMed, doi.org"])
+  inbox(["A repository's inbox"])
+  zen(["Zenodo"])
+  zot(["Zotero on this computer"])
+
+  sClient --> vCompute
+  sClient --> vGraphs
+  sLab --> vLabs
+  sProv --> models
+  sProv --> vAi
+  sSch --> reg
+  sSch --> inbox
+  sZen --> zen
+  sZot --> zot
+  wire["@dg/contract<br/>routes.ts, wire.ts"] -. "generated copies" .-> srv
+```
+
+Nothing but `@dg/sync` reaches anything in this picture, and each arrow is used only after a person asks. [what-leaves-the-device.md](what-leaves-the-device.md) says what each one carries.
+
+### One change, end to end
+
+```mermaid
+sequenceDiagram
+  participant P as Panel (sandboxed frame)
+  participant C as Core
+  participant H as Host adapter
+  participant D as Device log
+  participant S as @dg/sync
+  participant L as Lab server
+  P->>C: unit.create over the Surface API
+  C->>C: check against the grammar, stamp, sign
+  C->>H: putRecords (Host contract)
+  H->>D: one line appended to this device's .jsonl
+  C->>C: fold the record into the graph
+  C-->>P: the new unit, and records-changed to every panel
+  Note over C,S: only if the unit is on a canvas shared with a lab
+  C->>S: pushRecords (Services)
+  S->>L: POST /v1/labs/:id/records
+  C->>S: pullRecords, after the last cursor
+  S->>L: GET /v1/labs/:id/records
+  L-->>C: records from labmates
+  C->>C: check signatures, fold, tell the panels
 ```
 
 Three seams hold it together, and each one is a file you can read:

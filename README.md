@@ -155,19 +155,65 @@ With no lab joined, no model set up and no server chosen, nothing does.
 ## How it is built
 
 ```mermaid
-flowchart LR
-  subgraph base["Host"]
-    panels["Panels<br/>sandboxed frames"]
-    core["Core"]
-    adapter["Adapter"]
-    sync["Sync"]
+flowchart TB
+  person["A person"] --> obsidian
+  person --> localapp
+  agent["An assistant"] --> mcp
+
+  subgraph hosts["Hosts"]
+    obsidian["Obsidian plugin"]
+    localapp["Local app"]
+    mcp["MCP server<br/>read only"]
+    roam["Roam extension"]
   end
-  server["Server<br/>optional"]
-  panels -- "Surface API" --> core
-  core -- "Host contract" --> adapter
+
+  subgraph ui["Interface"]
+    panels["Panels in sandboxed frames<br/>canvas, context, Library, reader,<br/>search, upload, profile, run page"]
+    native["Drawn in the host<br/>capture, badges, dialogs, walkthrough"]
+    layout["Layout<br/>Tidy and centrality"]
+  end
+
+  subgraph core["Core"]
+    glog["Log of signed records,<br/>folded into the graph"]
+    features["Features<br/>argument, reading, method,<br/>people, models and the record"]
+  end
+
+  subgraph sync["Sync: every outside call"]
+    s1["Lab exchange"]
+    s2["Compute and graph store"]
+    s3["Model providers"]
+    s4["Registries, Zenodo, Zotero"]
+  end
+
+  subgraph disk["On this device"]
+    log["One log for each device"]
+    notes["Notes, canvases, PDFs"]
+  end
+
+  subgraph outside["Off this device, only when asked"]
+    server["Reference server<br/>compute, labs, AI, graph store"]
+    services["Crossref, DataCite, OpenAlex,<br/>PubMed, Zenodo, model providers"]
+  end
+
+  obsidian --> panels
+  obsidian --> native
+  localapp --> panels
+  panels --> layout
+  panels -- "Surface API" --> features
+  native --> features
+  mcp --> features
+  features --> glog
+  core -- "Host contract" --> hosts
+  hosts --> disk
   core -- "Services" --> sync
-  sync --> server
+  s1 --> server
+  s2 --> server
+  s3 --> services
+  s3 --> server
+  s4 --> services
 ```
+
+`packages/contract` sits under all of it: the records and their rules, the three seams (Surface API, Host contract, Services), the route table and the conformance suite. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the same picture file by file, and one change traced end to end.
 
 ```text
 packages/

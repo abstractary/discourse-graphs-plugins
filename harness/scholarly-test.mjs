@@ -51,6 +51,12 @@ try {
     check("cards.source-names-the-paper", /Carroll 2020/.test((await at("canvas", "text", `[data-dg="fact-source-${EVIDENCE}"]`)) ?? ""));
     check("cards.other-facts-start-hidden", (await rows("authors")) === 0 && (await rows("identifiers")) === 0);
 
+    // One card is set over another first, so there is something to report however roomy an earlier run left the canvas.
+    const held = (await call("canvas.get", { id: paper.canvas })).items.filter(({ item }) => item.type === "text" && item.dg?.node);
+    const [under, over] = held;
+    await call("canvas.write", { canvas: paper.canvas, upserts: [{ id: over.id, z: over.z, item: { ...over.item, x: under.item.x + 20, y: under.item.y + 20 } }] });
+    cleanup("the card set over another", () => call("canvas.write", { canvas: paper.canvas, upserts: [{ id: over.id, z: over.z, item: over.item }] }));
+    await sleep(800);
     await click("canvas", '[data-dg="card-fields"]');
     check("cards.menu-opens", await until(() => has("canvas", '[data-dg="card-fields-menu"]')));
     check("cards.menu-lists-five-switches", (await at("canvas", "count", '[data-dg="card-fields-menu"] [role="menuitemcheckbox"]')) === 5);

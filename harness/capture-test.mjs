@@ -93,7 +93,9 @@ try {
   await sleep(400);
   await s(`s.runCapture("selection")`);
   check("capture.command-opens-menu", await until(async () => (await menu()) === 1, 3000));
-  await typeChar("n", "KeyN", 78);
+  // "No type yet" takes whichever letter the vault's types have left it, so the key is read off the menu.
+  const none = ((await s(`document.querySelector('[data-dg="capture-No type yet"] span')?.textContent ?? ""`)) || "n").toLowerCase();
+  await typeChar(none, `Key${none.toUpperCase()}`, none.toUpperCase().charCodeAt(0));
   const draft = await until(() => coreNode(loose));
   check("capture.no-type-yet", draft, draft?.id);
   check("id.draft-collection", (await uriOf(draft.id))?.includes("/org.discoursegraphs.draft/"), await uriOf(draft.id));

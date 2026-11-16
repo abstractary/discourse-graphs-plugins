@@ -15,9 +15,17 @@ const click = (selector) => clickIn("s", selector, { timeout: 6000 });
 const clickList = (selector) => clickIn("s.list", selector, { timeout: 6000 });
 const card = (title) => `[data-dg=${q(`card-${title}`)}]`;
 const xOf = async (title) => (await s(`s.locate(${q(card(title))})`))?.x;
-const tidyAs = async (mode) => {
-  await click('[data-dg="tidy-menu"]');
+// The bar reflows when its status line changes, and a click made mid-reflow can miss the caret: open until it is open.
+const pickMode = async (mode) => {
+  for (let tries = 0; tries < 3; tries += 1) {
+    await click('[data-dg="tidy-menu"]');
+    await sleep(350);
+    if ((await s(`s.count(${q(`[data-dg="tidy-${mode}"]`)})`)) > 0) break;
+  }
   await click(`[data-dg="tidy-${mode}"]`);
+};
+const tidyAs = async (mode) => {
+  await pickMode(mode);
   await sleep(1500);
 };
 const guides = () => s(`s.drawn().then(() => null)`).then(() => s(`s.text('[data-dg^="guide-"]')`));
@@ -122,8 +130,7 @@ try {
   check("undo.brings-back-the-last-mode", (await s(`s.call("canvas.get", ${q({ id })}).then((view) => view.canvas.layout?.mode)`)) === "timeline");
 
   // Focus needs a card.
-  await click('[data-dg="tidy-menu"]');
-  await click('[data-dg="tidy-focus"]');
+  await pickMode("focus");
   await sleep(600);
   const noted = await s(`s.text(".status span")`);
   await click(card(claim.title));

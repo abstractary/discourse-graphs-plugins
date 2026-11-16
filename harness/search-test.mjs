@@ -124,8 +124,17 @@ await until(() => s(`s.locate('[data-dg="card-ST claim about mediators"]')`));
 await s("s.openSearch()");
 const panel = await until(async () => (await s("s.layout()")).find((l) => l.surface === "search" && l.shown));
 check("search.opens-in-the-sidebar", panel?.title === "Search units" && panel.header === "Search units", JSON.stringify(panel));
-await click("s.search", '[data-dg="search-input"]');
-await typeText("quokka");
+// A panel that has just opened can take the keyboard back once, so typing is tried until the words are in the box.
+const typeInto = async (probe, selector, text, landed) => {
+  for (let tries = 0; tries < 4; tries += 1) {
+    await click(probe, selector);
+    await sleep(250);
+    await typeText(text);
+    if (await until(landed, 2000)) return true;
+  }
+  return false;
+};
+await typeInto("s.search", '[data-dg="search-input"]', "quokka", () => s(`s.search.count('[data-dg="search-clear"]')`));
 const noteHit = await until(async () => ((await s(`s.search.text('[data-dg="search-count"]')`)) === "1 unit" ? s(`s.search.text('[data-dg="search-results"]')`) : null));
 check("search.finds-note-text", noteHit?.includes("ST claim about mediators") && /note/i.test(noteHit), noteHit);
 
@@ -174,8 +183,12 @@ await host.shot(`${OUT}/obsidian-search-panel.png`);
 
 // The first result not on this canvas, put on it from its preview; undo takes it off.
 const notHere = core.hits.find((hit) => !hit.canvases.some((c) => c.id === board));
+// The result can sit below the fold of the list, where a click at its place would miss it.
+await s(`s.search.reveal(${q(`[data-dg="search-hit-${notHere.node.title}"]`)})`).catch(() => null);
+await sleep(300);
 await click("s.search", `[data-dg="search-hit-${notHere.node.title}"]`);
 await until(() => s(`s.search.count('[data-dg="search-preview"]')`).then((n) => n === 1));
+await sleep(300);
 await click("s.search", '[data-dg="search-put"]');
 const put = await until(async () => ((await unitsOn(board)).includes(notHere.node.id) ? true : null));
 check("search.put-on-the-open-canvas", put, notHere.node.title);
@@ -215,7 +228,9 @@ await s("s.findUnit()");
 await until(() => s(`s.dialog.count('[data-dg="find-input"]')`).then((n) => n === 1));
 await sleep(300);
 await typeKeys("ST claim about mediators");
-await until(() => s(`s.dialog.count('[data-dg="find-hit-ST claim about mediators"]')`).then((n) => n === 1));
+// The list before typing can already hold this unit further down, so wait for the typed words and for it to lead.
+await until(async () => (await s(`s.dialog.value('[data-dg="find-input"]')`)) === "ST claim about mediators" && ((await s(`s.dialog.text(".find-row")`)) ?? "").includes("ST claim about mediators"));
+await sleep(400);
 await press("Enter", { alt: true });
 const linked = await until(async () => ((await s(`s.noteBody(${q(noteRef)})`)) ?? "").includes("[[CLM - ST claim about mediators]]"));
 check("find.alt-enter-links-at-the-cursor", linked, await s(`s.noteBody(${q(noteRef)})`));

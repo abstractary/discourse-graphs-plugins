@@ -33,7 +33,7 @@ try {
   check("core.roots", roots, roots?.map((r) => r.title).join(", "));
 
   // A canvas tied to a question shows where it sits, and the boundary panel follows it.
-  // A unit no longer opens as a graph of its own (12 Nov 2026): it is a leaf.
+  // A unit is a leaf: it never opens as a graph of its own.
   const exchange = records.find((r) => r.kind === "canvas" && r.title.startsWith("Issue exchange"));
   await s(`s.open(${q(exchange.id)})`);
   await s("s.openBoundary()");

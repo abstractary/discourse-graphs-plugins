@@ -1,6 +1,6 @@
 // The six tools an agent reads a vault with. Nothing here writes, sends or fetches, and nothing
 // here knows about the wire: the server in `mcp.ts` hands each call to `run` and returns what
-// comes back. See docs/mcp.md for why there are six and what each is for.
+// comes back. See docs/mcp.md for what each is for.
 import type { DgId, LabRecord, NodeRecord, RelationRecord } from "@dg/contract/records.ts";
 import type { NodeSummary, SurfaceMethod, SurfaceMethods } from "@dg/contract/surface.ts";
 import type { Core } from "@dg/core/index.ts";

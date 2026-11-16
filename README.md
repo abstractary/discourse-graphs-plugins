@@ -1,8 +1,8 @@
 <h1 align="center">Discourse Graphs plugins</h1>
 
 <p align="center">
-  One core, one canvas and one set of panels, built for Obsidian first, behind one host contract.<br>
-  Your data stays in your notes. Sync, AI, your Zotero library and the scholarly record are there when you ask for them.
+  Questions, claims and evidence as a graph you can see, trace and share, inside your notes.<br>
+  One core, one canvas and one set of panels, behind one host contract. Your data stays in your vault until you send it somewhere.
 </p>
 
 <p align="center">
@@ -13,51 +13,79 @@
 </p>
 
 > [!IMPORTANT]
-> **This is a demo.** It was built to show the Discourse Graphs team one way the plugins could be structured. It isn't a release, it isn't a replacement for the [current plugins](https://github.com/DiscourseGraphs/discourse-graph), and it covers 59% of what they do. Use a throwaway vault.
+> **This is a demo, not a release.** It is an independent implementation, and it is not a replacement for the [official Discourse Graphs plugins](https://github.com/DiscourseGraphs/discourse-graph). Use a throwaway vault.
 
 <p align="center">
-  <img src="docs/media/paper-canvas.png" alt="A paper's claims and evidence on a canvas in Obsidian" width="49%">
-  <img src="docs/media/roam-canvas.png" alt="The same canvas in Roam" width="49%">
+  <img src="docs/guide/media/across-papers.png" alt="Claims from three papers on one canvas in Obsidian, with the selected claim's relations in the context panel" width="90%">
 </p>
+
+## Contents
+
+- [What it does](#what-it-does)
+- [Install](#install)
+- [A first session](#a-first-session)
+- [Hosts](#hosts)
+- [Models and keys](#models-and-keys)
+- [What leaves your machine](#what-leaves-your-machine)
+- [How it is built](#how-it-is-built)
+- [Scripts](#scripts)
+- [Testing](#testing)
+- [Limits](#limits)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
 
 ## What it does
 
-**The same tool in both bases.** Canvas, context panel, Library and upload are one set of web panels, rendered inside Roam and Obsidian in the base's own fonts and colors. People in each base can share a mental model, and a feature is built once.
+A discourse graph holds one chain: a **question**, the **claims** that answer it, the **evidence** for and against each claim, and the **source** the evidence was read from. This implementation extends the chain to how the evidence was made: the **output** it rests on, the **run** that made the output, and the **protocol** and **code** the run followed. [The schema reference](docs/guide/schema.md) lists every type, field, relation and rule.
 
-**Papers become canvases.** Upload a PDF, Word, Markdown or text file, then pick where it runs, which model reads it, and which schema it's read into. Its questions, claims and evidence land on a canvas of their own.
+### Build an argument
 
-**Nothing fills your vault until you ask.** Units stay on the paper's canvas until you export them, whole or a few at a time, to your workspace, your lab's canvas, or a folder.
+- **A canvas** of cards and typed links, with stickies, freehand drawing, a minimap, a legend, undo and redo, and copy and paste that keeps links.
+- **Ten Tidy arrangements**: by logic, for and against, timeline, kinds, people, papers, focus, and three rankings by centrality. Link colours stay the same in all of them.
+- **Capture from your notes.** Select text and press a key to make a unit, turn a whole note into one, or tag a line as a candidate and promote it later.
+- **Your own types.** A lab renames and adds types on nine fixed kinds, sets a template and a tag for each, and says which types each relation may join. The grammar is saved and read as one file.
+- **Relations as note properties**, and a table for each type, so the vault stays legible without the plugin.
 
-**Every unit knows where it came from.** Open one to see its paper, DOI, extraction model, the passage it came from, and everywhere it lives now. A card can show the same on its face: its source and whether a person or a model read it, its authors, workspace, date and identifiers.
+### Read
 
-**It works with your Zotero library.** Find a reference, tick the highlights that matter, and they arrive as a source and units that quote their passages, each with a link back to the page in Zotero. Zotero is only read, and only when you ask. [docs/zotero.md](docs/zotero.md) has the design and what is next.
+- **A PDF reader** beside the canvas. A highlighted passage becomes a unit that keeps its exact words and its page.
+- **Extract graph** reads a whole paper into a canvas of its own. Nothing reaches your workspace until you bring it over.
+- **Zotero** as the library: references, highlights and PDFs, read only, with a link back to the page.
+- **Search** over titles, passages and notes, with filters for type and credit, and a quick finder.
+- **A paper map** that places papers by the links people drew between their units and by citations.
 
-**People have profiles.** Hover someone's initials for a card, click for their profile. You see your whole history, your lab sees what you did on shared canvases, and anyone else sees counts alone.
+### Record how it was found
 
-**It joins the scholarly record.** Look a paper up in Crossref, DataCite, OpenAlex and PubMed to find its other identifiers and whether it was retracted. Export a canvas as an RO-Crate for Zenodo, WorkflowHub or a lab notebook, and read other tools' crates in. The server signposts each stored graph and takes COAR Notify notifications.
+- **Runs, protocols, code and outputs** as units. A run says "changed" or "missing" when what it pinned drifts.
+- **A Jupyter notebook** becomes code, a run and its outputs, each pinned by a hash.
+- **Pictures as evidence.** A dropped image is an output pinned by its bytes.
+- **Sign-off.** A unit is marked checked, with how it was checked, against the version that was read. The mark goes stale when the unit changes.
 
-**Labs work together.** Join with an identifier. Once accepted, you get AI and the lab's shared canvases. Shared papers show who uploaded and extracted them, and people can choose to leave a breadcrumb when they've read one.
+### Work with a lab
 
-**Quiet team signals.** Units on shared canvases can carry notes and reactions: interesting, agree, disagree. They sit compactly on the card, never notify anyone, and never stand in for approval.
+- **Labs** with invitations, members, devices, a shared shelf of papers, and shared canvases that sync by themselves.
+- **Signed records.** Every change names its author and device.
+- **Reactions and notes** on shared units. They never notify anyone.
+- **Profiles** with three audiences: you see your history, your lab sees your work on shared canvases, anyone else sees counts.
 
-**Ask your canvas.** Press AI and start typing. Click cards to ground the answer in just those units.
+### Use a model
 
-**Tidy that understands arguments.** Ten arrangements, from logical dependency and debate to timeline, people and centrality, with link colors that stay the same across all of them.
+- **Ask AI** answers from a canvas, grounded in the cards you pick, with your own key, your lab's model, or no model at all.
+- **An MCP server** lets an assistant you already use read the graph.
+- **People decide.** Whatever a model or an agent writes arrives as a proposal, attributed, and waits for a person.
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/media/upload.png" alt="The upload pop-up, with compute server, model and schema"></td>
-    <td width="50%"><img src="docs/media/provenance.png" alt="A unit's provenance, reactions and notes in Roam's context panel"></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/media/reactions.png" alt="Reactions shown compactly on a card"></td>
-    <td width="50%"><img src="docs/media/ai.png" alt="AI mode answering from the canvas"></td>
-  </tr>
-</table>
+### Join the scholarly record
 
-## Try it
+- **Lookups** in Crossref, DataCite, OpenAlex and PubMed for a paper's identifiers and whether it was retracted.
+- **Research crates**: export and import a canvas with its files as an RO-Crate or an `.eln` file, with an optional Zenodo draft.
+- **Signposting and COAR Notify** on the reference server.
 
-You need [Node 26](https://nodejs.org), and Obsidian or Roam Desktop.
+The [user guide](docs/guide/README.md) covers every panel, command, key and setting.
+
+## Install
+
+You need [Node 26](https://nodejs.org) and [Obsidian](https://obsidian.md).
 
 ```bash
 git clone https://github.com/abstractary/discourse-graphs-plugins.git
@@ -67,62 +95,68 @@ git clone https://github.com/abstractary/discourse-graphs-plugins.git
 cd discourse-graphs-plugins && npm install && npm run build
 ```
 
-Start the local compute server and a stand-in for the Discourse Graphs service, on ports 8787 and 8788:
+Make a new vault, copy `dist/obsidian/` to `.obsidian/plugins/discourse-graphs-demo/` inside it, and turn on **Discourse Graphs (demo)** under Community plugins.
+
+The plugin works with no server. To try extraction on a server, labs and Ask AI, start the reference server and a stand-in for the Discourse Graphs service, on ports 8787 and 8788:
 
 ```bash
 npm run server
 ```
 
-**In Obsidian:** make a new vault, copy `dist/obsidian/` to `.obsidian/plugins/discourse-graphs-demo/`, then turn on "Discourse Graphs (demo)" under Community plugins.
+## A first session
 
-**In Roam:** make a new offline graph in Roam Desktop, start Roam with its debug port, then load the extension:
-
-```bash
-open -a "Roam Research" --args --remote-debugging-port=9333 --remote-allow-origins='*'
-```
-
-```bash
-node harness/cdp.mjs file dist/roam/extension.js
-```
-
-It lasts until Roam reloads. A `{{[[roam/js]]}}` block should also work, but that hasn't been tried.
-
-The first time it loads, it asks whether you're joining a lab. Then try this:
-
-1. Open the command palette and run **Find a canvas**. In the Library, open **Papers** and press **Load demo papers**. This works with no server.
-2. Open a paper, and press **Tidy**.
-3. Click a card, then open the context panel to see its provenance.
+1. Run **Find a canvas** from the command palette. In the Library, open **Papers** and press **Load demo papers**.
+2. Open a paper and press **Tidy**.
+3. Click a card and open the context panel to see where it came from.
 4. Select a few cards and press **Export**.
 5. Run **Upload a paper**, choose `demo/papers/lupus-nephritis-prediction.pdf` with **Demo replay**, and press **Extract graph**.
-6. To try a lab, run **Join or start a lab** in one app. On the Library's **Lab** tab press **Make an invitation**, and paste the line into **Join a lab** in the other.
-7. Run **Start walkthrough** for a guided tour of the basics.
+6. Run **Join or start a lab**. On the Library's **Lab** tab press **Make an invitation**, and paste the line into **Join a lab** in a second vault.
+7. Run **Start walkthrough** for a tour of the basics.
 
-### Extraction models
+## Hosts
 
-| Model | What it does | Needs |
+The core runs inside a host. Everything a host must do is one [contract](docs/CONTRACT.md), checked by a conformance suite.
+
+| Host | State | Start |
 |---|---|---|
-| Demo replay | Replays the saved extraction for the two demo papers | Nothing |
-| Sentence split | A rough stand-in that sorts sentences by simple rules | Nothing |
-| MIRA (hosted) | Sends the file to the [MIRA extraction app](https://mira-extraction.vercel.app/) | Network access |
+| Obsidian plugin | Current | See [Install](#install) |
+| Local app | Current. The same panels in a browser, over a vault folder. No editor, capture key or tables | `npm run build:local`, then `npm run local -- --vault <folder>` and open http://localhost:8796 |
+| MCP server | Current. Six tools, all read only | `npm run mcp -- --vault <folder>` |
+| Roam extension | Builds and passes conformance. It lacks the optional host calls, so it has none of the tables, link properties or local-file features | [docs/testing.md](docs/testing.md) |
 
-AI mode quotes the closest units word for word until a model is connected. To connect one, set `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` before starting the server. [server/README.md](server/README.md) has every setting.
+[local/README.md](local/README.md) has every flag for the local app, and [docs/mcp.md](docs/mcp.md) has the MCP server's tools and how to connect a client.
 
-### What leaves your machine
+## Models and keys
 
-With no lab joined, no model set up and no server chosen, nothing does. [docs/what-leaves-the-device.md](docs/what-leaves-the-device.md) is the full account, written from the code: one row for each destination, with what is sent, when, and whether it can be turned off. In short:
+| Use | Choices | Needs |
+|---|---|---|
+| Extraction | Demo replay, for the two demo papers | Nothing |
+| | Sentence split, a rough stand-in | Nothing |
+| | MIRA (hosted) | Network access |
+| Ask AI | Word-for-word quoting of the closest units | Nothing |
+| | Anthropic, any OpenAI-compatible endpoint, or Gemini, with your own key | An account with the provider |
+| | Your lab's model, through the lab's server | A lab |
 
-- **A lab** is sent what is on the canvases shared with it, by itself, every few seconds. A paper's file goes only if you tick it.
+Keys are kept on the device, outside the vault. A lab can limit which servers and providers its work may reach. [docs/ai.md](docs/ai.md) has every setting, and [server/README.md](server/README.md) has the server's environment variables.
+
+## What leaves your machine
+
+With no lab joined, no model set up and no server chosen, nothing does.
+
+- **A lab** is sent what is on the canvases shared with it. A paper's file goes only if you tick it.
 - **Extraction** sends the file to the server you pick. If the paper has a DOI, its graph and DOI then go to the Discourse Graphs service, without the file.
-- **Ask AI** sends your question and the canvas's units to the provider you chose, or to your lab's server. Your key goes to that provider, or to your lab's server if you choose that route. You need your own account with the provider, which may charge you.
-- **Look it up**, a Zenodo draft and an announcement each send only when you press the button.
-- **A lab's reach** can refuse a server or a provider outside the lab.
+- **Ask AI** sends your question and the canvas's units to the provider you chose, or to your lab's server.
+- **A lookup, a Zenodo draft and an announcement** each send only when you press the button.
+- **Zotero** is read on your own computer.
 - Reading a PDF or a Jupyter notebook sends nothing.
 
-## How it's built
+[docs/what-leaves-the-device.md](docs/what-leaves-the-device.md) has one row for each destination: what is sent, when, and how to turn it off.
+
+## How it is built
 
 ```mermaid
 flowchart LR
-  subgraph base["Roam or Obsidian"]
+  subgraph base["Host"]
     panels["Panels<br/>sandboxed frames"]
     core["Core"]
     adapter["Adapter"]
@@ -137,92 +171,107 @@ flowchart LR
 
 ```text
 packages/
-  contract/   Records, the three seams, and the conformance suite
+  contract/   Records, the three seams, the route table and the conformance suite
   core/       The graph, identity, papers, units, labs, profiles, crates and the Zotero mapping
   layout/     Tidy modes and centrality, as pure functions
-  sync/       The only module that touches the network: servers, registries and Zotero
-  native/     What's drawn in the base: capture, badges, dialogs, walkthrough
-  surfaces/   The panels: canvas, context, Library, reader, runs, profile, upload, From Zotero
+  sync/       Everything that calls a server, a registry or Zotero
+  native/     What is drawn in the host: capture, badges, dialogs, walkthrough
+  surfaces/   The panels: canvas, context, Library, reader, runs, profile, upload, search
 plugins/
   obsidian/   The Obsidian adapter
   roam/       The Roam adapter
+local/        The local app and the MCP server
 server/       Reference server: compute, graph store, labs, exchange, AI, landing pages, inbox
-harness/      Tests that drive the real apps
+ontology/     The schema as an ontology, with shapes and a validator
 lexicons/     AT Protocol schemas
-demo/papers/  Two papers and their extractions
+harness/      Tests that drive the real apps, and the simulation of several people
+examples/     A worked example, three disciplines, and evidence crates
+demo/papers/  Two papers and their saved extractions
 ```
 
-The boundaries are checked: `npm run check-boundaries` fails if core imports React or anything but sync calls the network, and `npm run dsm` prints the dependency matrix from the real imports and fails on a cycle. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains each cut.
+Three rules hold the cuts in place, and CI checks them:
 
-## How it's tested
+- Panels reach the core only through the Surface API.
+- The core reaches a host only through the Host contract, and a server only through `packages/sync`.
+- No module imports from inside another, and there are no cycles between modules.
 
-| Level | Checks | Covers |
-|---|---:|---|
-| Unit | 393 | Records, core, papers, labs, layout, sync, cards, lookups, crates, profiles, Zotero |
-| Server | 121 | Every route, with fake model servers |
-| Conformance | 37 in each app | One host contract, run inside real Obsidian and real Roam |
-| Real-app suites | 183 in Obsidian, 184 in Roam | Canvas, capture, badges, Tidy, walkthrough, real data |
-| Across both apps | 124 | Upload, export, provenance, labs, sync, reactions, breadcrumbs, AI |
+The data is a log of signed records. A unit's id is `did#tid` and never changes. The graph is what the log adds up to. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains each part.
 
-A simulation of four people and their devices also runs in CI, 135 expectations in all (`npm run sim`). The unit and server counts are from 13 November 2026. That day eight suites also ran in real Obsidian, 219 checks in all: reading three papers, the PDF reader, search, cards and lookups, crates, profiles and Zotero. All passed except one search check, linking a found unit at the cursor, which fails on some runs and passes on others. The other rows are from the first version, and Roam has not been run since.
+## Scripts
 
-The real-app suites use real mouse and keyboard input inside real Obsidian and Roam. [docs/testing.md](docs/testing.md) explains how to run them.
+| Command | Does |
+|---|---|
+| `npm run build` | Builds the plugins into `dist/`, without test hooks |
+| `npm run build:test` | The same, with the hooks the real-app tests use |
+| `npm run build:local` | Builds the local app |
+| `npm run local` | Starts the local app |
+| `npm run mcp` | Starts the MCP server on stdio |
+| `npm run server` | Starts the reference server and the service stand-in |
+| `npm test` | Unit tests |
+| `npm run test:server` | Server tests, with fake model servers |
+| `npm run sim` | The simulation of several people, their devices and one lab server |
+| `npm run check-types` | Type check |
+| `npm run check-boundaries` | Fails when a package reaches where it may not |
+| `npm run check:routes` | Fails when the server or the docs disagree with the route table |
+| `npm run gen:routes` | Writes the server's and the docs' copies of the route table |
+| `npm run dsm` | Prints the dependency matrix, and fails on a cycle |
+| `npm run validate:ontology` | Checks the ontology's shapes against their cases (needs Python with `rdflib` and `pyshacl`) |
+| `npm run seed:example` | Writes the worked example into a vault folder |
+| `npm run example` | Rebuilds the worked example |
+| `npm run coverage` | Sorts the official plugins' host calls by whether the contract covers them (needs a checkout of them) |
 
-## What's next: agent skills and hooks
+## Testing
 
-Skills and hooks are next. The aim is for an agent to work with a discourse graph the same way in either base:
+| Layer | Command | Covers |
+|---|---|---|
+| Unit | `npm test` | Records, core, papers, labs, layout, sync, cards, lookups, crates, profiles, Zotero |
+| Server | `npm run test:server` | Every route |
+| Simulation | `npm run sim` | Several people sharing a lab: joining, syncing, removal, signatures, replay |
+| Conformance | `harness/` | The host contract, run inside the real app |
+| Real app | `harness/` | Canvas, capture, reading, search, crates, profiles and Zotero, with real mouse and keyboard input |
 
-- **Skills** give an agent the same tools a panel has, like finding units, proposing relations and reading a canvas, through a local bridge to core.
-- **Hooks** tell it what happened, like a paper being extracted or a relation waiting for a decision.
-- **Agents propose, and people decide.** Agent work arrives pending, attributed to the agent and the person who ran it.
+The first three, with the type, boundary, route, cycle and ontology checks, run in CI. The real-app suites are run by hand. [docs/testing.md](docs/testing.md) has every suite and how to run it.
 
-Because both plugins share one core, a skill written once works in both. [docs/agent-skills-and-hooks.md](docs/agent-skills-and-hooks.md) goes through how this could work in each base, with the open questions.
+## Limits
 
-## Known limits
+- **It is a demo.** It matches 59% of the 95 capabilities of the official plugins, and 83% of the 50 that are on by default in both of them. Queries are one example of what is missing. [docs/COMPARISON.md](docs/COMPARISON.md) has every row.
+- **The server is a reference for the API.** It has no TLS, rate limits or way to revoke a token. Do not host it.
+- **Real models and MIRA have only been tested against stand-in servers.**
+- **Zotero** has been read from a real library. Highlights and group libraries have only been tested against a stand-in.
+- **Nothing is published.** No Zenodo deposit, repository inbox or lab notebook has been tried for real, and no unit resolves from outside.
+- **The real-app tests** have run on macOS, in Obsidian 1.15.
+- **The Roam extension** has only run in an offline graph.
 
-- **Roam has fallen behind.** Its adapter builds and passes conformance, and has none of what was built since the first version. Whether to retire it is [an open decision](https://github.com/abstractary/discourse-graphs-plugins/issues/32).
-- It covers 59% of what today's plugins do. Queries, for example, aren't here. [docs/COMPARISON.md](docs/COMPARISON.md) has the full picture, row by row.
-- The server is a reference for the API, not something to host. It has no TLS, rate limits or way to revoke a token.
-- MIRA and real AI models were only tested against fake servers.
-- Zotero has been read from a real library. Its highlights and groups were only tested against a stand-in.
-- No real repository inbox, Zenodo deposit or lab notebook has been tried with the crates and announcements.
-- A public profile isn't published anywhere. The counts stay on your device.
-- Tests ran on macOS, in Obsidian 1.15 and an offline graph in Roam Desktop.
-- The Roam plugin has only run in an offline graph.
+Each reference page ends with its own limits.
 
 ## Documentation
 
 | Read this | For |
 |---|---|
-| [User guide](docs/guide/README.md) | How the schema works and how to use every panel, with pictures |
-| [Schema reference](docs/guide/schema.md) | Every type, field, link and rule |
-| [Cards, identifiers and the scholarly record](docs/scholarly.md) | Card facts, registry lookups, RO-Crate, DataCite, Signposting and COAR Notify, with the dependency matrix |
-| [Information architecture](docs/information-architecture.md) | The objects, the one name each has, which frame is about which, where papers live across workspaces, and what is built |
-| [Zotero](docs/zotero.md) | What the existing Zotero plugins teach, the design for a long-lived integration, what is built and what to check first |
-| [LLM and MCP spec](docs/llm-and-mcp-spec.md) | Own-key AI as built, and the design for Jupyter |
-| [Feature map](docs/features.md) | The fourteen feature areas, where each stands, and the issues that track them |
-| [Audit, November 2026](docs/audit-2026-11.md) | The investigation before the refactor: what to keep, what to end, every finding |
-| [MCP server design](docs/mcp.md) | Ten tools reached from what the core offers and what people ask for. Every write is a proposal. Groundwork built, server not |
-| [Four vaults](docs/four-vaults.md) | A simulation of people sharing a lab, what it found, how labs, signing and devices work now, and the research behind it |
-| [Tooling](docs/tooling.md) | Open-source tools for contracts, tests and upkeep, with a first five to adopt. Nothing adopted yet |
-| [Interface audit](docs/ui-audit.md) | What was found in the Obsidian interface, what was fixed and what is open |
-| [Architecture](docs/ARCHITECTURE.md) | Modules, boundaries and why they're where they are |
-| [Contract](docs/CONTRACT.md) | Records, identity, the host contract, and settled decisions |
-| [Services](docs/services.md) | The server API: compute, graph store, labs, sync, AI |
-| [Product](docs/PRODUCT.md) and [Design](docs/DESIGN.md) | Who this is for, and how it looks and behaves |
-| [Comparison](docs/COMPARISON.md) | How this measures up against today's plugins |
-| [Canvas engines](docs/CANVAS-ENGINES.md) | Why React Flow |
-| [Testing](docs/testing.md) | Every suite, and how to run it |
+| [User guide](docs/guide/README.md) | Every panel, command, key and setting, with pictures |
+| [Schema reference](docs/guide/schema.md) | Every type, field, relation and rule |
+| [Feature map](docs/features.md) | The fourteen feature areas and where each is tracked |
+| [Architecture](docs/ARCHITECTURE.md) | The packages, the seams and the rules |
+| [Contract](docs/CONTRACT.md) | Records, identity and what a host must offer |
+| [Services](docs/services.md) | Every route of the reference server |
+| [AI](docs/ai.md) and [MCP](docs/mcp.md) | Models, keys, proposals, and the server for agents |
+| [Labs and sync](docs/labs-and-sync.md) | Labs, devices, signatures and merging |
+| [Scholarly record](docs/scholarly.md) and [Zotero](docs/zotero.md) | Identifiers, crates, announcements and the library |
+| [Roadmap](ROADMAP.md) and [Strategy](docs/strategy.md) | What is planned, and why |
 
-[docs/README.md](docs/README.md) says which pages are kept current and which are dated notes.
+[docs/README.md](docs/README.md) lists every page.
+
+## Roadmap
+
+The plan extends one chain outward from one person: a researcher, then a lab, then the lab's agents, then the public record, then other labs. It connects to six groups of research tools, by a designed surface where a group's products agree and by open standards where they vary. [ROADMAP.md](ROADMAP.md) has the work for each group, and [docs/strategy.md](docs/strategy.md) gives the reasoning.
 
 ## Contributing
 
-Issues and disagreements are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues and disagreements are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and report a security problem as [SECURITY.md](SECURITY.md) says. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgements
 
-Built on the ideas and research of the [Discourse Graphs](https://discoursegraphs.com) project. The extraction format, reaction design and much of the team interaction model come from MIRA.
+Built on the ideas and research of the [Discourse Graphs](https://discoursegraphs.com) project. The extraction format, the reaction design and much of the team model come from MIRA.
 
 ## License
 

@@ -1,42 +1,62 @@
 # Documentation
 
-Two kinds of page live here. **Reference** pages say how things are and are kept current. **Working notes** are dated: research, plans and reviews that were true when written and are kept for their reasoning.
+Every page here describes the software as it is. What is planned is in [ROADMAP.md](../ROADMAP.md), and what changed is in [CHANGELOG.md](../CHANGELOG.md).
 
-## Reference
+## Start here
 
 | Page | For |
 |---|---|
-| [guide/README.md](guide/README.md) | Using every panel, with pictures |
-| [guide/schema.md](guide/schema.md) | Every type, field, link and rule |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | How the code is cut, and the rules each part keeps |
-| [features.md](features.md) | The feature areas, where each stands, and the issues that track them |
-| [CONTRACT.md](CONTRACT.md) | What a host must offer, and how one is checked |
+| [../README.md](../README.md) | What it is, and how to install and try it |
+| [guide/README.md](guide/README.md) | Using every panel, command and setting, with pictures |
+| [guide/schema.md](guide/schema.md) | Every type, field, relation and rule |
+| [information-architecture.md](information-architecture.md) | The words the interface uses, and what each one means |
+
+## Features
+
+| Page | For |
+|---|---|
+| [features.md](features.md) | The fourteen feature areas, what each holds, and where each is tracked |
+| [search.md](search.md) | The search panel, the finder and candidate tags |
+| [ai.md](ai.md) | Extraction, Ask AI, providers and keys, proposals and review |
+| [mcp.md](mcp.md) | The MCP server: starting it, connecting an assistant, and each tool |
+| [zotero.md](zotero.md) | What is read from Zotero, and how |
+| [scholarly.md](scholarly.md) | Card facts, registry lookups, crates, DataCite, Signposting and COAR Notify |
+| [labs-and-sync.md](labs-and-sync.md) | Labs, invitations, device keys, signed records and how sync merges |
+| [what-leaves-the-device.md](what-leaves-the-device.md) | Every destination, what is sent to it, when, and how to turn it off |
+
+## Internals
+
+| Page | For |
+|---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | The packages, the seams between them, and the rules each keeps |
+| [CONTRACT.md](CONTRACT.md) | Records, identity, and what a host must offer |
 | [services.md](services.md) | Every route of the reference server |
-| [testing.md](testing.md) | The test layers and how to run each |
-| [scholarly.md](scholarly.md) | Crates, lookups, announcements and what leaves the device |
-| [zotero.md](zotero.md) | What is read from Zotero and how |
-| [information-architecture.md](information-architecture.md) | The words the interface uses, and what each means |
-| [color.md](color.md) | The palette for unit types and links, and how it was measured |
-| [COMPARISON.md](COMPARISON.md) | Row by row against today's official plugins |
+| [testing.md](testing.md) | The test layers, and how to run each |
+| [../server/README.md](../server/README.md) | Running and configuring the reference server |
+| [../local/README.md](../local/README.md) | The local app and the MCP server's entry point |
+| [../ontology/README.md](../ontology/README.md) | The schema as an ontology, and its validator |
 
-## Designs not yet built
+## Design
 
 | Page | For |
 |---|---|
-| [mcp.md](mcp.md) | The MCP server: ten tools, proposals only. Groundwork built |
-| [semantic-search-plan.md](semantic-search-plan.md) | Search by meaning |
-| [agent-skills-and-hooks.md](agent-skills-and-hooks.md) | An earlier sketch of agents; [mcp.md](mcp.md) supersedes it |
-| [llm-and-mcp-spec.md](llm-and-mcp-spec.md) | An earlier specification for models and agents |
+| [PRODUCT.md](PRODUCT.md) | Who it is for, and what it should and should not do |
+| [DESIGN.md](DESIGN.md) | How the canvas and panels look and behave |
+| [color.md](color.md) | The palette for unit types and links |
 
-## Working notes
+## Direction
 
-| Page | Written | For |
-|---|---|---|
-| [audit-2026-11.md](audit-2026-11.md) | 13 Nov 2026 | The investigation before the refactor: angles, patterns, findings |
-| [four-vaults.md](four-vaults.md) | 13 Nov 2026 | The simulation of several people, sync research, positions taken |
-| [tooling.md](tooling.md) | 13 Nov 2026 | Open-source projects that could carry cross-cutting concerns |
-| [ui-audit.md](ui-audit.md) | Nov 2026 | A review of the interface |
-| [DESIGN.md](DESIGN.md) | Nov 2026 | Design decisions for the canvas and panels |
-| [CANVAS-ENGINES.md](CANVAS-ENGINES.md) | Nov 2026 | Canvas libraries compared |
-| [HOLONS.md](HOLONS.md) | 11 Nov 2026 | Nested canvases as first designed. The interface now says Overview and Boundary |
-| [PRODUCT.md](PRODUCT.md) | Nov 2026 | Who it is for and what it should do |
+| Page | For |
+|---|---|
+| [../ROADMAP.md](../ROADMAP.md) | What is planned, and how the software connects to the six groups of research tools |
+| [strategy.md](strategy.md) | Why the chain is built end to end, where that stops, and the rollout |
+| [COMPARISON.md](COMPARISON.md) | Capability by capability against the official Discourse Graphs plugins |
+
+## Examples
+
+| Folder | For |
+|---|---|
+| [../examples/worked-example](../examples/worked-example/README.md) | One argument built record by record |
+| [../examples/disciplines](../examples/disciplines/README.md) | The same schema in three disciplines |
+| [../examples/evidence-bundles](../examples/evidence-bundles/README.md) | Crates with their files |
+| [../demo/papers](../demo/papers/README.md) | The demo papers and their saved extractions |

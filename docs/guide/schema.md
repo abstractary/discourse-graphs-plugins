@@ -1,31 +1,91 @@
-# The schema, in full
+# Schema reference
 
-For a first read, start with the [guide](README.md#the-schema-in-five-minutes). This page is the reference: every type, field, link and rule. It matches version 0.2 of the process ontology in [`ontology/`](../../ontology/README.md), 12 November 2026.
+Every record kind, unit type, field, link and rule. For a first read, start with the [guide](README.md#the-schema-in-five-minutes). This page matches version 0.2 of the process ontology in [`ontology/`](../../ontology/README.md) and record format version 2.
 
 ## Where the schema is written down
 
 | Form | File | Used for |
 |---|---|---|
-| TypeScript types | `packages/contract/src/records.ts` | What the plugins read and write |
+| TypeScript types | `packages/contract/src/record.ts` | What the plugins read and write |
 | OWL | `ontology/dg_process.ttl` | The classes and properties, built on W3C PROV-O |
 | SHACL | `ontology/dg_process.shacl.ttl` | The rules, one named shape each |
-| The same rules in the app | `packages/core/src/shapes.ts` | Gaps shown in the Method section and on a run's page |
+| The same rules in the app | `packages/core/src/shapes.ts` | Gaps shown in the Method section, on a run's page and in the Boundary panel |
 | JSON-LD context | `ontology/dg_process.context.jsonld` | Reading an export as linked data |
 | Mappings | `ontology/mappings.sssom.tsv` | Alignment to PROV-O, MIRA, schema.org, Bioschemas |
 | AT Protocol lexicons | `lexicons/` | The published form of each record |
 
-The SHACL file and the in-app check hold the same rules under the same names. A shared set of deliberately wrong graphs (`ontology/tests/cases.json`, one per rule) is run through both, so they can't drift apart.
+The SHACL file and the in-app check hold the same rules under the same names. A shared set of deliberately wrong graphs (`ontology/tests/cases.json`, one per rule) is run through both, so they cannot drift apart.
+
+## Records
+
+The graph is a log of records. Each record is one JSON object. Nothing is edited in place: a change is a new version of a record, appended.
+
+### What every record carries
+
+| Field | Holds |
+|---|---|
+| `v` | The format version, `2` |
+| `id` | The record's id |
+| `kind` | One of the kinds below |
+| `space` | The vault or graph that first wrote it |
+| `at` | When it was first written. Never changes |
+| `by` | Who wrote it: `{id, name}`. The id is a DID |
+| `lab` | The lab's DID, when its author is in one |
+| `sig`, `sigBy` | The signature of the device that wrote this version, and which key signed |
+| `acceptedFrom` | The proposal a record began as, when a person accepted one |
+| `ext` | Room for a tool's own fields |
+
+Document records also carry `rev` (the edit count), `editedAt`, `editedBy`, and `prev` (the version this one replaces). A version beats every version it replaces. Versions made apart, neither having seen the other, go to a tie-break.
+
+### Kinds
+
+| Kind | What it is |
+|---|---|
+| `node` | A unit: title, type, source, provenance links and facts |
+| `node-type` | A type in the grammar: label, base, abbreviation, title format, candidate tag, color, template |
+| `relation-type` | A relation in the grammar: label, complement, base, and the pairs of types it may join |
+| `relation` | An argument between two units. `proposed` marks one waiting for a decision |
+| `decision` | An acceptance or rejection of a proposed relation |
+| `retraction` | A withdrawal of a relation by its author, with an optional reason |
+| `evaluation` | A check or sign-off on one version of a unit: method, term and note |
+| `canvas` | A canvas: title, Tidy mode, the paper it holds, the lab it is shared with, what it is the canvas of, what it was forked from |
+| `canvas-item` | One card, sticky, link, nested canvas or stroke on a canvas. One record each, so two people editing different items never overwrite each other |
+| `release` | A canvas pinned at a moment: each item's revision and each card's unit by content hash |
+| `paper` | A paper that was read: title, authors, DOI and other identifiers, file hash, model, schema and server. The file itself is never in a record |
+| `anchor` | Ties a unit to its note in one vault |
+| `snapshot` | A unit's text, for readers in other workspaces |
+| `folder`, `folder-item` | A Library folder, and one unit filed in it |
+| `reaction` | One person's reaction to a unit: interesting, agree or disagree |
+| `unit-note` | A note on a unit, kept apart from the unit's own text |
+| `person` | A person's name, ORCID iD and DID |
+| `lab` | A lab: name, DID, PI, and what the PI sets for everyone |
+| `membership` | A person's choice to work in a lab |
+| `device` | One more key that may sign as a person, vouched for by a device already trusted. Its role is `device` or `agent` |
+
+### A canvas's items
+
+A canvas follows [JSON Canvas](https://jsoncanvas.org/) 1.0: `text`, `file`, `link` and `group` nodes, and edges. A card is a `text` node whose `dg.node` field names its unit, so the file still reads as a plain canvas. A heading that Tidy draws is a `group` marked `guide`. A link's `dg` field names its relation. A nested canvas is a `file` node with `dg.canvas`. A freehand stroke is a `stroke` item, which JSON Canvas does not have. Obsidian's own Canvas keeps the `dg` fields through a save.
 
 ## Units of argument
 
-| Unit | Class | Fields of its own |
-|---|---|---|
-| Question | `dg:Question` | — |
-| Claim | `dg:Claim` | — |
-| Evidence | `dg:Evidence` | `anchor` (the exact words, page and figure in its source) |
-| Source | `dg:Source` | `doi`, `openalex` |
+| Unit | Base | Class | Fields of its own |
+|---|---|---|---|
+| Question | `question` | `dg:Question` | None |
+| Claim | `claim` | `dg:Claim` | None |
+| Evidence | `evidence` | `dg:Evidence` | `anchor`: the exact words, page and figure in its source, and any comment the reader wrote beside the passage |
+| Source | `source` | `dg:Source` | `doi`, `authors`, `published`, `venue`, `openalex`, `identifiers`, `standing` |
 
-Every unit also has a title, an author, a lab if there is one, a time, and `provenance`: how it was made (`authored`, `aiAssisted`, `aiGenerated` or `imported`), by what agent, and who reviewed it.
+Every unit also has:
+
+| Field | Holds |
+|---|---|
+| `title` | The content alone, with no type prefix, so it reads the same in every base |
+| `type` | Its type in the grammar. Absent until someone types it |
+| `source` | For a unit read from a paper: the paper, the passage word for word, and the model's wording once a person has reworded it |
+| `provenance` | How it was made: `authored`, `aiAssisted`, `aiGenerated` or `imported`, by what agent, and who reviewed it |
+| `creators` | For a unit that arrived from elsewhere: who first made it |
+| `identifiers` | Identifiers, each a scheme and a value. The schemes are `doi`, `pmid`, `pmcid`, `arxiv`, `openalex`, `orcid`, `ror`, `swhid`, `isbn`, `rrid`, `citekey`, `zotero`, `at`, `cid` and `url` |
+| `removed` | Taken back by its author. The record stays, so nothing else loses its history |
 
 ## Units of process
 
@@ -42,7 +102,7 @@ In PROV-O's terms a protocol, an experiment and code are **plans**, a run is an 
 | `sameAs` | The same protocol elsewhere, such as a protocols.io DOI |
 | `implementedBy` (link) | Code that carries it out. A wet-lab protocol may have none |
 
-### Experiment (Study): what one investigation compares
+### Experiment (base `study`): what one investigation compares
 
 | Field | Holds |
 |---|---|
@@ -51,7 +111,7 @@ In PROV-O's terms a protocol, an experiment and code are **plans**, a run is an 
 | `hypothesis` | What the design expects to see, in a sentence |
 | `design` | experimental, observational, computational, replication or review |
 | `conditions` | The arms or factor levels it compares |
-| `variables` | What is varied, measured and held fixed: name, role, unit |
+| `variables` | What is varied, measured and held fixed: name, role (independent, dependent or controlled), unit |
 | `sampleSize` | The planned sample size |
 | `preregistration` | Where the design was registered before it ran |
 
@@ -82,8 +142,9 @@ In PROV-O's terms a protocol, an experiment and code are **plans**, a run is an 
 | Output | `cid` | A hash of its own bytes. Its identity |
 | | `generatedBy` (link) | The run that produced it. Exactly one |
 | | `derivedFrom` (pins) | Outputs it was made from |
-| | `outputKind`, `mediaType`, `size`, `caption` | What it is |
-| | `locator` | Where it sat: path, cell, label. Never identity |
+| | `outputKind` | dataset, file, figure, table, text or image |
+| | `mediaType`, `size`, `caption`, `uri` | What it is |
+| | `locator` | Where it sat: path, commit, cell, output index, label. Never identity |
 
 ## Links
 
@@ -105,15 +166,39 @@ In PROV-O's terms a protocol, an experiment and code are **plans**, a run is an 
 | `sourceDocument` | Evidence | Source |
 | `describesActivity` | Source | Run |
 
-**Arguments** are their own signed records, with a state: proposed, active, rejected or withdrawn.
+**Arguments** are their own signed records.
 
-| Relation | From | To |
-|---|---|---|
-| `supports`, `opposes` | Evidence or Claim | Claim |
-| `addresses` | Claim | Question |
-| `informs` | Evidence | Question |
+| Relation | Complement | From | To |
+|---|---|---|---|
+| Supports | Supported by | Evidence or Claim | Claim |
+| Opposes | Opposed by | Evidence or Claim | Claim |
+| Addresses | Addressed by | Claim | Question |
+| Informs | Informed by | Evidence | Question |
+| Derived from | Has derivation | Evidence | Source |
 
-**A pin** is `{target, cid}`. The `cid` is the version the author used. When the target's current hash differs, that is drift.
+An argument is in one of four states:
+
+| State | Means |
+|---|---|
+| Proposed | Asserted by someone else, or suggested by a tool, and waiting for a decision |
+| Active | Stated by its author, or accepted |
+| Rejected | Turned down by the person it was proposed to |
+| Withdrawn | Taken back by its author |
+
+**A pin** is `{uri, cid}`. The `uri` names the target. The `cid` is the version the author used. When the target's current hash differs, that is drift.
+
+## The grammar
+
+A lab's grammar is its set of types and relations.
+
+- **Nine bases:** question, claim, evidence, source, protocol, study, run, code, output. Every type sits on one base. The base, not the label, is what other tools read. A lab can add types on a base and cannot add a base.
+- **Nine relation bases:** supports, opposes, addresses, informs, derivedFrom, grounds, follows, describesActivity, requestTarget. A relation type sits on one, has a label and a complement, and lists the pairs of types it may join.
+- **A type's title format** has exactly one `{content}`, such as `CLM - {content}`. A Source defaults to `@{content}`. The format is local presentation, so vaults can differ.
+- **A type's template** fills `{title}`, `{date}`, `{author}` and `{type}`.
+- **Removed** types and relations stay on the units and links that have them, and are no longer offered.
+- **In a lab,** the PI's grammar is the lab's. A member's own type of the same name and meaning gives way to the lab's when they join.
+
+A new vault starts with Question (QUE), Claim (CLM), Evidence (EVD), Source (SRC) and the five relations above. Protocol (PRO), Experiment (EXP), Run (RUN), Code (COD) and Output (OUT) are added when first needed. Reading a MIRA extraction adds Request (REQ), a question by base.
 
 ## Rules
 
@@ -169,7 +254,21 @@ Forty-eight rules, each with its own name. **Violation** means the data is wrong
 | `argument-subject` | Violation | Only Evidence or a Claim can support or oppose. |
 | `addresses-subject` | Violation | Only a Claim addresses a question. Evidence informs one. |
 | `source-describesActivity` | Violation | A source describes Runs. |
-Four checks on a claim's support are computed from chains and are not single-unit rules: **single run**, **replicated**, **one method** and **failed runs**. They are in `claimSupport` in `packages/core/src/process.ts`.
+
+### Checks on a claim's support
+
+Four checks are computed from a claim's chains of evidence and are not single-unit rules. They are in `claimSupport` in `packages/core/src/process.ts`.
+
+| Check | True when |
+|---|---|
+| Single run | All supporting evidence rests on one run |
+| Replicated | Two or more runs of the same protocol support it |
+| One method | Several pieces of evidence support it, and all used one protocol |
+| Failed runs | Any run in its chains has the status failed |
+
+### Sign-off methods
+
+An evaluation records how a unit was checked: `expertJudgment` (read it and agree), `sourceRead` (read the source), `quoteChecked` (checked the quote against the source), `dataReanalyzed` (reanalysed the data) or `replicated` (repeated it). It pins the version of the unit that was checked.
 
 ## Checking a graph yourself
 
@@ -187,19 +286,19 @@ That runs the wrong-on-purpose cases, then the worked example. To check your own
 python3 -I ontology/validate.py path/to/graph.jsonld
 ```
 
-The validator also reports any key in the export that the context doesn't define. JSON-LD drops such keys without a word, so a misspelt field would otherwise vanish.
+The validator also reports any key in the export that the context does not define. JSON-LD drops such keys without a word, so a misspelt field would otherwise vanish.
 
 ## How it maps to other vocabularies
 
 | Here | PROV-O | MIRA | schema.org |
 |---|---|---|---|
 | Protocol | Plan | Protocol (typed there as an activity) | HowTo |
-| Experiment | Plan | No design-level class yet | — |
+| Experiment | Plan | No design-level class | None |
 | Run | Activity | Study | CreateAction |
-| Code | Plan | — | SoftwareSourceCode |
-| Output | Entity | — | MediaObject |
-| `generatedBy` | wasGeneratedBy | — | inverse of result |
-| `follows` | qualifiedAssociation / hadPlan | follows | — |
-| `observationBase` | wasDerivedFrom | observationBase | — |
+| Code | Plan | None | SoftwareSourceCode |
+| Output | Entity | None | MediaObject |
+| `generatedBy` | wasGeneratedBy | None | inverse of result |
+| `follows` | qualifiedAssociation / hadPlan | follows | None |
+| `observationBase` | wasDerivedFrom | observationBase | None |
 
 The one place the names collide: MIRA's **Study** is one activity that produces evidence, which here is a **Run**. A run is published as `science.mira.study`.

@@ -1,14 +1,18 @@
 # Services API
 
-The plugins work with no server. These services add extraction, labs, a shared paper repository and AI. Everything here is what the reference server in [server/](../server) implements, and another server can implement the same API.
+Every route a Discourse Graphs server answers: extraction, the graph store, landing pages, notifications, labs, sync, the lab paper repository and AI. The plugins work with no server. The reference server in [server/](../server) implements this API, and another server can implement the same one. [server/README.md](../server/README.md) says how to run and configure it.
 
-Base URL is configurable. The reference server listens on `http://localhost:8787`.
+Core reaches a server only through the `Services` seam in [packages/contract/src/services.ts](../packages/contract/src/services.ts), which `@dg/sync` implements. That seam also covers outside services that are not this API: the scholarly registries, Zotero, Zenodo and other servers' inboxes. See [scholarly.md](scholarly.md) and [zotero.md](zotero.md).
 
-- Bodies are JSON unless noted. Errors are `{"error":{"code":"...","message":"..."}}` with a matching HTTP status.
-- CORS is open (`*`), because Roam runs in a browser origin and Obsidian in `app://obsidian.md`. A browser can read the `Link`, `Location`, `Accept-Post` and `Content-Disposition` response headers.
-- `HEAD` works on every `GET` path and answers the same headers with no body.
-- `Authorization: Bearer <token>` carries a lab token where one is needed.
-- Streaming responses are `application/x-ndjson`, one JSON object per line.
+## Conventions
+
+- **Base URL.** Configurable in the plugin. The reference server listens on `http://127.0.0.1:8787`. `npm run server` starts two: a local compute server on 8787 and a stand-in for the Discourse Graphs service on 8788.
+- **Bodies** are JSON unless noted. A request body may be up to 40 MB. A larger one gets 413 `too-big`.
+- **Errors** are `{"error":{"code":"...","message":"..."}}` with a matching HTTP status. An unexpected failure is 500 `internal`. A known path with the wrong method is 405 `wrong-method`.
+- **CORS** is open (`Access-Control-Allow-Origin: *`), because Roam runs in a browser origin and Obsidian in `app://obsidian.md`. Allowed methods are `GET`, `HEAD`, `POST`, `DELETE` and `OPTIONS`. Allowed request headers are `Accept`, `Authorization` and `Content-Type`. A browser can read the `Link`, `Location`, `Accept-Post` and `Content-Disposition` response headers. Private-network requests are allowed, and a preflight is cached for 600 seconds.
+- **`HEAD`** works on every `GET` path and answers the same headers with no body.
+- **Auth.** `Authorization: Bearer <token>` carries a lab token where one is needed. No token is 401 `no-token`. An unknown one is 403 `wrong-token`, a removed member's is 403 `removed`, and a member's on an admin route is 403 `not-admin`.
+- **Streams** are `application/x-ndjson`, one JSON object per line.
 
 ## Routes
 
@@ -57,7 +61,7 @@ Takes and Answers name the types in [packages/contract/src/wire.ts](../packages/
 
 ## Compute
 
-A compute server is anything that answers these. A person can add several in the plugin: a machine on their network, DG's managed service, or their own cloud server.
+A compute server is anything that answers these. A person can add several in the plugin: this computer, a machine on their network, a managed service, or their own cloud server.
 
 | Method | Path | Result |
 |---|---|---|
@@ -77,7 +81,7 @@ A compute server is anything that answers these. A person can add several in the
 
 `data` is an extraction graph: `{source, models, paper: {title, doi?, url?, license?, authors?: [{name}]}, nodes, edges}`. A node is `{id, type, text, description?, doi?, url?, anchor?}`, and an edge is `{relation, subject, object, anchor?}`. Node types and relations follow the chosen schema. The files in [demo/papers](../demo/papers) are real examples.
 
-Supported documents: `.pdf`, `.docx`, `.md`, `.txt`. A legacy `.doc` returns `{"code":"unsupported-type"}` asking for `.docx`.
+Supported documents: `.pdf`, `.docx`, `.md`, `.txt`. A `.doc` gets `unsupported-type` and a message asking for `.docx`. An unknown `model` or `schema` is 400 `unknown-model` or `unknown-schema`. A file with no readable text is 422 `no-text` or `unreadable-file`. The built-in models are `demo-replay`, `sentence-split` and `mira-hosted`, and the schemas are `mira` and `discourse-graph`. See [server/README.md](../server/README.md#models).
 
 ## Graph store
 
@@ -143,7 +147,7 @@ What a notification must have:
 
 To find the inbox, read the `Link` header with `rel="http://www.w3.org/ns/ldp#inbox"` on `/` or on any landing page.
 
-This demo inbox does not check who is sending. Anyone can post, as LDN expects, and the specification leaves trust to each deployment. So the server only checks, keeps and hands back a notification. It never fetches, follows or runs anything in one, and a reader should treat every claim in one as unverified. A real deployment would add an allow-list of origin inboxes it trusts, or signed requests, and would confirm a claim by fetching the review or the link from the sender's own site before showing it as fact. The inbox keeps the newest 500 notifications.
+The inbox does not check who is sending. Anyone can post, as LDN expects, and the specification leaves trust to each deployment. So the server only checks, keeps and hands back a notification. It never fetches, follows or runs anything in one, and a reader should treat every claim in one as unverified. The inbox keeps the newest 500 notifications.
 
 ## Labs
 
@@ -177,7 +181,9 @@ Records are opaque JSON. The server orders them and hands them back. It never re
 | POST | `/v1/labs/:id/records` | Member | `{records: [...]}` returns `{stored, now}`. An identical record is stored once |
 | GET | `/v1/labs/:id/records?after=&limit=` | Member | `{records, next, done, now}`. `after` is the `next` from the last call |
 
-`now` is the server's time as an ISO string, such as `2026-11-13T09:30:00.000Z`. A client can compare it with its own clock and correct for the difference.
+`limit` defaults to 100 and is capped at 1,000. `now` is the server's time as an ISO string, such as `2026-11-13T09:30:00.000Z`. A client compares it with its own clock and corrects for the difference.
+
+Each pushed item must have `id`, `kind`, `at` and `by.id`, or the whole push is refused with 400 `bad-record`. Beyond that the server does not read a record.
 
 ## Lab paper repository
 
@@ -195,7 +201,7 @@ Records are opaque JSON. The server orders them and hands them back. It never re
 |---|---|---|---|
 | POST | `/v1/ai/ask` | Member | NDJSON stream |
 
-Body: `{question, units: [{id, type?, title, description?, anchor?, paper?}], grounded?: [id]}`. `units` is the canvas. `grounded` narrows the answer to the units a person picked. Stream lines:
+Body: `{question, units: [{id, type?, title, description?, anchor?, paper?}], grounded?: [id], provider?: {kind, model, key}}`. `units` is the canvas. `grounded` narrows the answer to the units a person picked. `provider` is a member's own model: `kind` is `anthropic`, `openai` or `gemini`. The server calls that provider's own address with the key for this one question and keeps neither the key nor the answer. A malformed one is 400 `bad-provider`. Stream lines:
 
 ```
 {"type":"status","message":"..."}
@@ -204,4 +210,15 @@ Body: `{question, units: [{id, type?, title, description?, anchor?, paper?}], gr
 {"type":"error","message":"..."}
 ```
 
-With no model key set on the server, `mode` is `search-only`: the answer is the most relevant units quoted as they stand, and it says so. The server never invents an answer in that mode.
+With no model key set on the server and no `provider` sent, `mode` is `search-only`: the answer is the five most relevant units quoted as they stand, and it says so. The server never invents an answer in that mode. A model that fails answers an error line with `model-failed`, `model-refused` or `model-unreachable`.
+
+## Limits
+
+The reference server shows the API. It is not hardened.
+
+- It has no rate limits and no TLS.
+- A person's `did` is taken at their word. Records carry their own signatures, which members check on their devices.
+- The only way to revoke a token is to remove its member.
+- The inbox accepts a notification from anyone and verifies nothing in it. A deployment that shows notifications as fact needs an allow-list of trusted origins or signed requests, and needs to confirm each claim at the sender's own site.
+- The rows it stores for papers and graphs are not type-checked against `wire.ts`.
+

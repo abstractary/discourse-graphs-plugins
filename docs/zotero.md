@@ -1,50 +1,52 @@
 # Zotero
 
-How Discourse Graphs and Zotero should fit together over the long run, what was built toward that, and what was learned from the plugins people use today.
+This page covers how Discourse Graphs reads a Zotero library: what is asked of Zotero, what each thing in Zotero becomes, how Zotero serves as the PDF library, and how a lab shares a Zotero group.
 
-The short version: **Zotero stays the library, and Discourse Graphs is the argument built on it.** A reference becomes one Source unit that points back at its Zotero item. A highlight becomes a unit that quotes its passage. Nothing is mirrored, nothing arrives unasked, and what makes two things the same paper is a DOI, never a Zotero key.
+Zotero stays the library, and Discourse Graphs is the argument built on it. A reference becomes one Source unit that points back at its Zotero item. A highlight becomes a unit that quotes its passage. Zotero is only read, and only when a person asks.
 
-For the facts this rests on and where each was read, see [What was checked](#what-was-checked) at the end.
+## Requirements
 
-## What exists today, and what it teaches
+- The Zotero desktop app, running on the same computer. The local API exists from Zotero 7. Annotations are served from Zotero 8.
+- In Zotero, under Settings, Advanced, the setting that lets other applications on the computer communicate with Zotero is on.
+- No Zotero account, key or web access is needed.
+- A base that can reach `localhost`. Obsidian and the local app can. Roam in a browser cannot read a file in place.
 
-The official Discourse Graphs docs send Obsidian users to **Zotsidian**, a community plugin with "built-in discourse graph support", and the official example vault ships with it. It was read closely for this page. Three other tools set what people expect.
+When Zotero cannot be reached, the dialog says which it is: Zotero is not open, or the setting is off.
 
-| Tool | How it reaches Zotero | What it puts in the vault | State |
-|---|---|---|---|
-| **Zotsidian** (0.2.1, Oct 2026) | Zotero's local API, with Better BibTeX for citation keys | A page per reference named `@citekey`, with its annotations in a managed block. Discourse nodes made from an annotation | Active, one author. It ships as a built bundle with no source |
-| Zotero Integration (611,000 downloads) | Better BibTeX, and a helper program for annotations inside the PDF | A templated literature note | Archived. Last release August 2024 |
-| ZotLit | Reads Zotero's database file directly | Notes, and its own reader | Active |
-| zotero-mcp | Reads the database, writes through the local API | Nothing. It gives an agent tools | Active, widely used |
-
-**What Zotsidian gets right, and is kept:**
-
-- It reads through the local API, which needs no key and no account.
-- It turns one annotation into one node whose statement is the quoted text.
-- It marks an annotation it has used with a `dg/<type>` tag in Zotero. People who use it have already typed their highlights.
-- It keeps one page per reference, named for its citation key.
-
-**Where it will not carry the project, and why this design differs:**
-
-| In Zotsidian | The trouble | Here |
-|---|---|---|
-| A reference's identity is its citation key, through the filename | A citation key is one person's label. Change it, or merge two items, and the page and every node pointing at it are orphaned. Two labmates rarely share keys | Identity is the DOI, PMID or arXiv id. The Zotero item and the citation key are kept as ways to find it again |
-| It reads the official plugin's settings file, and writes its `relations.json` directly | These are the official plugin's internals, not a contract. They can change in any release | Everything goes through the record log and the Host contract, the same in Obsidian, Roam and Logseq |
-| An evidence node points at its source with a wikilink in frontmatter | No quote, no page a reader can use. Only Zotero can open the passage | The unit holds the exact words and the page, so this app's reader, an export, or any other tool can find the passage |
-| Obsidian only | Discourse Graphs also runs in Roam, and Logseq is next | The mapping is in the shared core. Only the HTTP call differs by base |
-| Two write keys kept in plugin settings | A stored key that can change a whole library | Nothing is written to Zotero yet. When it is, the key goes in the system keychain, as model keys do |
-
-Zotsidian does not send `Zotero-Allowed-Request` with its local API calls. Zotero's source drops any request that looks like it came from a browser unless it carries that header. Whether Zotsidian's calls get through as they are was not tested, since nothing was run.
-
-## The seven rules
+## The rules
 
 1. **Zotero is the library.** Discourse Graphs holds a pointer to an item, not a copy of the library. There is no background sync and no index of everything.
-2. **Pull only.** A person searches, picks a reference, and picks which highlights to bring. Nothing else arrives. This is the same rule as lookups and analysis.
-3. **Identity is the work, not the item.** DOI first, then PMID, PMCID, arXiv id, ISBN. A Zotero item address (`users/<id>/items/<key>`) and a citation key are locators: good for finding the item again, never for deciding that two things are the same paper.
-4. **A passage is its words.** A unit keeps the quoted text and the page. Zotero's own coordinates are a way to open the passage in Zotero, not the anchor.
-5. **When it is your PDF library, it is the only one.** With **Use Zotero as your PDF library** on in Settings, the papers to read are Zotero's. Each is opened where Zotero keeps it and never copied into the base. A copy in the base of a paper Zotero holds is the same work, so it is not listed beside Zotero's.
-6. **A personal library's address is one person's.** On its own computer a personal library is always `users/0`, so that address means a different library on every teammate's machine. It is kept as a fact about the unit, and it marks, matches and opens an item only for the person whose unit carries it. A group library's address (`groups/…`) is the same for every member and is used by all of them.
-7. **One file knows Zotero.** `packages/sync/src/zotero.ts` is the only place that knows Zotero's API. Zotero ships a major version every six to ten weeks and has tightened that API twice, so the change has to land in one place.
+2. **Pull only.** A person searches, picks a reference, and picks which highlights to bring. Nothing else arrives.
+3. **Identity is the work, not the item.** DOI first, then PMID, PMCID, arXiv id, ISBN. A Zotero item address (`users/<id>/items/<key>`) and a citation key are locators. They find an item again. They never decide that two things are the same paper. The comparison is made by the one resolver in [`core/work.ts`](../packages/core/src/work.ts), described in [scholarly.md](scholarly.md#is-this-the-same-work).
+4. **A passage is its words.** A unit keeps the quoted text and the page. Zotero's own coordinates are kept only inside the link that opens the passage in Zotero.
+5. **When Zotero is the PDF library, it is the only one.** With **Use Zotero as your PDF library** on in Settings, the papers to read are Zotero's. Each is opened where Zotero keeps it and never copied into the base. A copy in the base of a paper Zotero holds is the same work, so it is not listed beside Zotero's.
+6. **A personal library's address is one person's.** On its own computer a personal library is always `users/0`, so that address means a different library on every teammate's machine. It is kept as a fact about the unit. It marks, matches and opens an item only for the person whose unit carries it. A group library's address (`groups/…`) is the same for every member and is used by all of them.
+7. **One file knows Zotero.** [`packages/sync/src/zotero.ts`](../packages/sync/src/zotero.ts) is the only place that knows Zotero's API.
+
+## What is asked of Zotero
+
+Every request goes to `http://localhost:23119/api` with three headers: `Zotero-Allowed-Request: 1`, `Zotero-API-Version: 3` and `accept: application/json`. Zotero drops a request that looks like it came from a web page unless it carries the first. Each request has eight seconds.
+
+| Call | Request | Used for |
+|---|---|---|
+| Status | `/users/0/items?limit=1&format=keys` | Whether Zotero answers. Reads its version from `X-Zotero-Version` and its id from `Zotero-Server-ID` |
+| Groups | `/users/0/groups` | The group libraries this person belongs to |
+| Search | `/users/0/items/top?q=<words>&qmode=titleCreatorYear&limit=20&sort=dateModified&direction=desc` | Finding a reference by title, author or year. Attachments and notes are left out |
+| One item | `/<library>/items/<key>`, then `/children` | A reference and its attachments |
+| Annotations | `/children` of each attachment | A reference's highlights, in reading order |
+| PDFs | `/<library>/items?itemType=attachment&sort=dateModified&direction=desc`, 100 a page, then the parents 50 at a time | Listing up to 500 PDFs across the personal library and every group |
+| One PDF | `/<library>/items/<key>`, then its parent | Where one PDF sits on disk, and its reference |
+
+| Zotero answers | The person is told |
+|---|---|
+| Nothing | Zotero is not open |
+| 403 | The setting under Advanced is off |
+| 404 | Zotero no longer has that item. It may have been merged or deleted |
+| Any other error | Zotero answered with an error, with its status |
+
+The local API gives a PDF's path, not its bytes. The base reads the file itself through `Host.readLocalFile` in [`contract/host.ts`](../packages/contract/src/host.ts).
+
+Nothing is sent to zotero.org, and nothing is written to Zotero. [what-leaves-the-device.md](what-leaves-the-device.md) has the full account.
 
 ## What maps to what
 
@@ -52,40 +54,40 @@ Zotsidian does not send `Zotero-Allowed-Request` with its local API calls. Zoter
 |---|---|---|
 | An item (article, preprint, book) | One **Source** unit | Title, authors, date, venue. DOI, PMID, PMCID, arXiv id, ISBN, citation key, and the item's address in the library |
 | A PDF attachment | Nothing by itself. It is what annotations hang from | Its key, inside the link that opens a passage |
-| A highlight or underline | A unit that quotes it. **Evidence** unless it says otherwise | The exact words, the page, the reader's comment beside it, and a link that opens it in Zotero |
-| A note annotation | A unit whose statement is the note. **Claim** unless it says otherwise | The page and the link |
-| A picture or a drawing | Not brought in yet | — |
-| A tag on an annotation | Its type, when the tag names one: `dg/claim`, `claim` or `CLM` | — |
+| A highlight or underline | A unit that quotes it. **Evidence** unless a tag says otherwise | The exact words, the page, the reader's comment, and a link that opens it in Zotero |
+| A note or text annotation | A unit whose statement is the note. **Claim** unless a tag says otherwise | The page and the link |
+| A picture or a drawing | Listed in the dialog and not brought in | — |
+| A tag on an annotation | Its type, when the tag names one | — |
 | A colour | Shown, never interpreted | — |
 | A group library | The same, with the group in the item's address | — |
 
-**Colour is not a type.** The older plugins let each person decide in a template what yellow means, so there is no shared meaning to read. Tags are explicit, and Zotsidian users already have them, so tags decide.
+- **Venue** is the first of: publication title, proceedings title, book title, repository, publisher.
+- **Identifiers without a field of their own** are read from `Label: value` lines in the item's Extra field.
+- **A tag names a type** when, with any leading `#` or `dg/` removed and case ignored, it equals a type's label, its abbreviation or its base. So `dg/claim`, `claim` and `CLM` all read as Claim.
+- **A unit's title** is the quoted words, or the comment when there are none, cut at 300 characters.
+- **A highlight is "By hand".** A person read and marked it. Its card says so, cites the source as "Carroll 2020", and lists the paper's identifiers, the same as a highlight made in this app's own reader.
+- **The links back** are `zotero://select/library/items/<key>` (or `…/groups/<id>/items/<key>`) for an item, and `zotero://open-pdf/…?page=<n>&annotation=<key>` for a passage.
 
-**A highlight is "By hand".** A person read and marked it. Its card says so, cites the source as "Carroll 2020", and lists the paper's identifiers, the same as a highlight made in this app's own reader.
+### Bringing the same thing in twice
 
-**Bringing the same thing in twice makes nothing new.** A source is found by its identifiers, then by its item address. A highlight is found by its annotation's address.
+- **Nothing new is made.** A source is found by its identifiers, then by its item address. A highlight is found by its annotation's address.
+- **A source already in the graph is joined, not doubled.** If a paper was read with Extract graph, or a source was typed by hand with a DOI, the Zotero item attaches to that unit. The unit learns the item's address and any identifier Zotero knows that it did not. Its title stays as its author wrote it.
+- **A vault that already has `@citekey` pages keeps them.** When a page with that name exists, the Source unit is tied to it, so the vault is not given a second page per reference.
 
-**A source already in the graph is joined, not doubled.** If a paper was read with Extract graph, or a source was typed by hand with a DOI, the Zotero item attaches to that unit. The unit learns the item's address and any identifier Zotero knows that it didn't. Its title stays as its author wrote it.
-
-**A vault that already has `@citekey` pages keeps them.** When a page with that name exists, the Source unit is tied to it, so an existing Zotsidian vault is not given a second page per reference.
-
-## What was built
+## The parts
 
 | Part | Where | What it does |
 |---|---|---|
-| Library types | [`contract/scholarly.ts`](../packages/contract/src/scholarly.ts) | `LibraryItem`, `LibraryAnnotation`, and the `zotero` and `citekey` identifier schemes |
-| The Zotero client | [`sync/zotero.ts`](../packages/sync/src/zotero.ts) | Status, search, one item, and its annotations, over the local API |
+| Library types | [`contract/scholarly.ts`](../packages/contract/src/scholarly.ts) | `LibraryItem`, `LibraryAnnotation`, `LibraryFile`, `PaperShelf`, and the `zotero` and `citekey` identifier schemes |
+| The Zotero client | [`sync/zotero.ts`](../packages/sync/src/zotero.ts) | The calls above |
 | The mapping | [`core/library.ts`](../packages/core/src/library.ts) | Finds the Source an item belongs to, suggests a type for each mark, makes the units, places them on the canvas |
 | The dialog | [`surfaces/zotero/App.tsx`](../packages/surfaces/src/zotero/App.tsx) | **From Zotero…** in a canvas's menu: search, pick a reference, tick highlights, choose types, bring them in |
 | The way back | Context panel | **Open the passage in Zotero** on a highlight, **Show it in Zotero** on a source |
-| Zotero as the PDF library | [`core/reading.ts`](../packages/core/src/reading.ts), `Context.readFile` in [`core/index.ts`](../packages/core/src/index.ts) | Lists Zotero's PDFs first, reads each from Zotero's own folder, and finds the paper or source a file already has by its identifiers |
-| Reading a file in place | `Host.readLocalFile` in [`contract/host.ts`](../packages/contract/src/host.ts) | The base reads one PDF from outside itself, at the path Zotero gives. Obsidian and the local app have it; Roam in a browser can't |
+| Zotero as the PDF library | [`core/reading.ts`](../packages/core/src/reading.ts), `Context.readFile` in [`core/index.ts`](../packages/core/src/index.ts) | Lists Zotero's PDFs, reads each from Zotero's own folder, and finds the paper or source a file already has by its identifiers |
 | The mark | `LibraryMark` in [`surfaces/shared/ui.tsx`](../packages/surfaces/src/shared/ui.tsx), `inLibraryOf` in [`core/card.ts`](../packages/core/src/card.ts) | One mark wherever a source is shown, worked out in one place |
 | Checking again | The reader's **N in Zotero** button, and `zotero.show` | Opens From Zotero at that reference, with the highlights made since ticked |
 
-**It reads and never writes.** No key is asked for and nothing in the library changes.
-
-**When Zotero can't be reached, the dialog says what to do**: open Zotero, or tick the setting under Settings, Advanced that lets other apps talk to it.
+The surface calls are `zotero.status`, `zotero.groups`, `zotero.search`, `zotero.get`, `zotero.import`, `zotero.show` and `zotero.pending`.
 
 ### Where the mark shows
 
@@ -95,84 +97,62 @@ The same small **Z** mark says "this is in your Zotero library" everywhere a sou
 |---|---|
 | A card's Source row, and a Source unit's own card | Says it is in Zotero. Opens it there once the card is selected |
 | The head of the Context panel, and **Show it in Zotero** under Where it came from | Opens the item or the passage |
-| Every "Carroll 2020" label beside a unit: in Context, in Search | Says the paper is in Zotero |
+| Every "Carroll 2020" label beside a unit, in Context and in Search | Says the paper is in Zotero |
 | The PDF chooser | Marks each of Zotero's PDFs, under **In Zotero** |
-| The reader's bar | **Zotero** shows the reference. **N in Zotero** offers highlights made there that aren't units yet |
+| The reader's bar | **Zotero** shows the reference. **N in Zotero** offers highlights made there that are not units yet |
 | The Library panel and the Paper map | Marks each paper that is in Zotero |
 | A canvas's menu | **From Zotero…** carries the mark |
 
-### What it has been run against
+## Reading a Zotero PDF
 
-**Zotero itself, since 13 November.** Zotero 10.0.9 on this computer, with one reference and its PDF. `harness/zotero-real-test.mjs` passes 17 checks in real Obsidian: Zotero answers Obsidian's own request; the PDF is listed under In Zotero and named for its reference; its 1.4 MB are read from Zotero's storage folder with nothing copied into the vault; the reader draws it; a highlight made from it becomes a unit whose source carries the reference's DOI, PMID and PMCID; the card, the panel and the settings line all say so.
+With **Use Zotero as your PDF library** on:
 
-**What that run found.** Two faults the stand-in had hidden:
+- The PDF chooser lists Zotero's PDFs, each named for its reference.
+- A PDF opens in this app's reader, read from Zotero's storage folder. Nothing is copied into the base.
+- A highlight made in the reader becomes a unit whose source carries the reference's identifiers.
+- Zotero's own highlights on that PDF are counted on the reader's bar and offered. Once brought in, they are lit in the reader. They are not drawn before they are units.
 
-- A personal library read on its own computer has the id 0. The code took 0 for "no library" and never recorded where an item sits, so nothing brought in from a real personal library could be found again in Zotero.
-- The same address, `users/0/items/…`, names a different item on every computer. It was being used to recognise a source across people. It now only does that for its owner.
+## A lab's shelf and your own library
 
-**Still only against the stand-in:** anything to do with highlights, because the real library has none. That covers bringing highlights in, the **N in Zotero** count, and opening a passage. Group libraries were not run at all, since the real library has no groups. `zotero://` links were built as Zotero's source writes them and were not clicked.
+A lab's PI picks one Zotero group as the lab's shelf, on the Lab tab. Every member inherits the choice as part of the lab's settings. See [labs-and-sync.md](labs-and-sync.md#what-the-pi-sets).
 
-## The lab's group and your own library
-
-Added 13 November 2026. A lab's PI picks one Zotero group as the lab's shelf, on the Lab tab. Every member inherits the choice.
-
-- **The lab's shelf** is that group. Its items have the same address for every member, so a unit read from one carries the mark for everyone in the group, and each opens the PDF from their own Zotero. The PDF never goes through the lab server.
-- **Your own library** stays yours. A unit read from it travels with its reference and DOI. Labmates are told it is your copy and aren't offered the PDF.
-- **The PDF chooser** lists the lab's shelf first, under the group's name, then your own library.
-- **With no Zotero**, the lab's shelf is the lab server's paper repository, and your own shelf is the PDFs in your vault. A member with no Zotero in a lab that uses a group sees every reference and is told the PDF is in Zotero.
-- **Who may add to the group** is Zotero's to say. Nothing is written to Zotero, so moving a paper onto the lab's shelf is done in Zotero.
-
-This has run only against the stand-in, in the four-vault simulation. The real library on this computer has no groups. See [four-vaults.md](four-vaults.md).
-
-## Where it goes next
-
-In the order that buys the most for the least risk.
-
-| Step | What | Why then |
+| Shelf | What it is | Who can open the PDF |
 |---|---|---|
-| **1. Read, on this computer** | Built: search, item, highlights, the way back | It needs no account and can't harm a library |
-| **2. Check again** | Built 13 November, from the reader: **N in Zotero** opens the reference with highlights made since | People keep reading after the first import |
-| **3. The PDF itself** | Built 13 November: a Zotero PDF opens in this app's reader, read in place. Zotero's highlights are counted and offered, and are lit once brought in. Drawing them before they are units is not built | The local API gives the file's path, not its bytes, so the base reads the file itself |
-| **4. Where Zotero isn't running** | The web API with a person's own key, for Roam in a browser and for group libraries on another computer | The item JSON is the same shape, so the mapping is reused. Only the client grows |
-| **5. Write back, asked for** | Tag a used annotation `dg/<type>`. Add a link on the Zotero item to its Source. Make a Zotero highlight from one made in this app's reader | Zotero 10 lets an app ask for write access with a dialog in Zotero itself. Each write is one click here and visible there |
-| **6. Inside Zotero** | A small Zotero plugin: "Add to Discourse Graphs" in the reader's selection popup, and a pane on an item listing the claims that rest on it | This is the only way to act at the moment of reading. It is a separate program under Zotero's licence terms, and its APIs change with each major version, so it comes last and stays small |
+| The lab's | The Zotero group the PI chose. With no Zotero, the lab server's paper repository | Every member, each from their own Zotero, or by getting the file from the lab |
+| Yours | Your own Zotero library, or a file in your vault | Only you. Labmates see the reference and its DOI |
+| A labmate's | Their own library or vault | Only them. You are told whose copy it is |
+| Another group | A Zotero group that is not the lab's | Whoever is in that group |
 
-**For agents, nothing new is needed.** The planned `resolve_identifier` tool answers "which units carry this DOI", and the existing Zotero MCP server answers the same for the library. An agent joins the two by DOI.
+- **The lab's shelf.** Its items have the same address for every member, so a unit read from one carries the mark for everyone in the group, and each opens the PDF from their own Zotero. The PDF never goes through the lab server.
+- **Your own library** stays yours. A unit read from it travels with its reference and DOI.
+- **The PDF chooser** lists the lab's shelf first, under the group's name, then your own library.
+- **A member with no Zotero**, in a lab that uses a group, sees every reference and is told the PDF is in Zotero.
+- **A unit's facts say which shelf its paper is on.** A card says so only when labmates cannot open it.
+- **Permissions are Zotero's.** Who may read or add to the group is set in Zotero. The local API does not say what role a person has, and nothing is written to Zotero, so a paper is moved onto the lab's shelf in Zotero.
 
-### Decisions that are yours
+## Tests
 
-1. **Should a used annotation be tagged in Zotero?** Zotsidian does. It makes the library show what has been argued from, and it is a write.
-2. **Does colour ever suggest a type?** The answer here is no. A per-person setting could offer it.
-3. **One page per reference, or none?** A Source has no note until it is exported. Zotsidian users expect a page per reference from the start.
-4. **Is a Zotero plugin wanted at all?** It is the deepest integration and the most upkeep.
-5. **Whose key, for labs?** A group library read through the web API needs someone's key. The lab's server could hold one for the lab, or each member could use their own.
+| What | Where | Run |
+|---|---|---|
+| The client, against responses in the shape Zotero's local API returns | `test/zotero.test.ts`, [`test/fixtures/zotero`](../test/fixtures/zotero/README.md) | `npm test` |
+| The mapping, joining and the PDF library | `test/zotero-library.test.ts`, `test/work.test.ts` | `npm test` |
+| A lab's shelf across four people | `harness/four-vaults.ts` | `npm run sim` |
+| Obsidian against a stand-in Zotero | `harness/people-test.mjs` | See [testing.md](testing.md) |
+| Obsidian against the Zotero on this computer | `harness/zotero-real-test.mjs` | See [testing.md](testing.md). Needs Zotero open with at least one reference and its PDF |
 
-## The hardest parts
+## Limits
 
-1. **There is no stable handle on "this item, this version".** Local version numbers belong to one Zotero installation and say nothing to another. Keys are per library and can change on a merge. So change is detected by content (the words of a highlight, the fields of an item), and identity by DOI.
-2. **A passage has to survive outside Zotero.** PDF rectangles need exact handling of rotation and crop. EPUB and web snapshot annotations use selectors, not rectangles. Annotations saved inside a PDF file by another program are not in Zotero's database at all. Keeping the quoted words covers all three, at the cost of an occasional passage that can't be found again.
-3. **Zotero moves fast, and asks before it trusts.** Three major versions shipped in 2026. Writes need a dialog in Zotero and an unscoped key. Tools that read the database file directly now meet a locking mode that makes that fragile, which is why this design uses only the API.
+- **Run against a real Zotero (10.0.9) in Obsidian:** reaching it, listing its PDFs, reading one in place, and making a highlight in this app's reader on it.
+- **Run only against the stand-in:** bringing Zotero's own highlights in, the **N in Zotero** count, opening a passage, and group libraries.
+- **`zotero://` links** are built in the form Zotero's source writes them and handed to the system. They have not been clicked in a test.
+- **Search covers the personal library.** Group libraries are read for PDFs and by item address, not searched.
+- **Pictures and drawings** are listed and not brought in.
+- **Annotations saved inside a PDF file by another program** are not in Zotero's database, so they are not offered.
+- **The same paper in a personal library and in the lab's group** is read as two places for one work. The source keeps the address it was first read from.
+- **A passage is found again by its words.** Now and then one cannot be found in this app's reader.
+- **Zotero must be running on the same computer.** There is no route through zotero.org, so Roam in a browser and a group library on another computer are out of reach.
+- **Roam.** The mapping is shared code. It has not been run in Roam.
 
-## First checks with a real Zotero
+## Not built
 
-| Check | Result, 13 November |
-|---|---|
-| 1. Does Obsidian's own request get through with `Zotero-Allowed-Request`? | **Yes.** No other header was needed. A request that looks like a browser's and lacks the header is dropped, as the source says |
-| 2. Do `zotero://select/…` and `zotero://open-pdf/…` open the right thing? | **Not run.** The links are built and handed to the system. Nothing clicked them, and the library has no group or highlight to try |
-| 3. Does a highlight's quoted text find its passage in this app's reader? | **Not run.** The real library has no highlights. A highlight made in this app's reader on Zotero's PDF does light up |
-| 4. What comes back for a highlight another program saved inside the PDF? | **Not run.** None to try |
-| 5. In a vault that uses Zotsidian, does a Source tie itself to the `@citekey` page? | **Not run.** No such vault here |
-
-To finish 2 to 4, highlight a passage in Zotero's own reader and run `node harness/zotero-real-test.mjs` again.
-
-## What was checked
-
-Read on 13 November 2026.
-
-- **Zotero's source** for the local API's routes, the rule that drops browser-like requests, the link forms, and the annotation fields. The current version was 10.0.9. The local API arrived in Zotero 7, gained annotations in 8 and writes in 10.
-- **Zotero's documentation** for the web API: keys, paging, sync by version, rate limits, and writing.
-- **Zotsidian's published bundle**, statically. It was not run. Line references are in the working notes, not here.
-- **The official Discourse Graphs docs and plugin source**, for how nodes and relations are stored today.
-- **Not verified:** anything that needs a running Zotero; Zotsidian's behaviour at run time; what Zotero's licence means for a plugin that runs inside it, which is a legal question.
-
-The earlier sketch in [llm-and-mcp-spec.md](llm-and-mcp-spec.md) section 5 had four things wrong, corrected here: the local API is older than Zotero 10; an item's key and version are not a fingerprint; group libraries work; and PMID is now a field of its own.
+Reading through Zotero's web API, writing back to Zotero (tagging a used annotation, linking an item to its Source), and a plugin inside Zotero are not built. See [ROADMAP.md](../ROADMAP.md).
